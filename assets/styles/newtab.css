@@ -276,6 +276,24 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Temporary group card styling */
+.temp-group-card {
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.temp-group-card .mini-group-header {
+  font-weight: 600;
+  color: #1e293b;
+}
+.temp-group-card .temp-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
 
 .bookmark-card {
   background: white;
@@ -333,6 +351,32 @@ body {
 .action-btn:hover {
   background: #f3f4f6;
   color: #374151;
+}
+/* Temp group list and bookmark row */
+.temp-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+.bookmark-row .bookmark-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+.bookmark-row .bookmark-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .empty-state {

@@ -67,12 +67,52 @@ export function renderBookmarkGrid(items) {
     return;
   }
 
+// Group bookmarks into a temp folder card when nested
+let renderItems = items;
+if (depth > 0) {
+  const bookmarkItems = items.filter(item => item.url);
+  const folderItems = items.filter(item => !item.url);
+  renderItems = [];
+  if (bookmarkItems.length) {
+    renderItems.push({
+      id: '__temp',
+      title: 'Nhóm bookmark tạm',
+      children: bookmarkItems,
+      isTempGroup: true
+    });
+  }
+  renderItems.push(...folderItems);
+} else {
+  renderItems = items;
+}
   // Build container for items: grid at root, list in nested group
   const grid = document.createElement('div');
   grid.className = depth === 0 ? 'bookmarks-grid' : 'bookmark-list';
 
   // Render items
-  items.forEach(item => {
+  renderItems.forEach(item => {
+// Handle temp group list display (icon + text, single line truncated)
+    if (item.isTempGroup) {
+      // Temporary group card wrapper
+      const tempCard = document.createElement('div');
+      tempCard.className = 'mini-group-card temp-group-card';
+      tempCard.innerHTML = `
+        <div class="mini-group-header">${item.title}</div>
+        <div class="temp-group-body"></div>
+      `;
+      const body = tempCard.querySelector('.temp-group-body');
+      item.children.forEach(child => {
+        const row = document.createElement('div');
+        row.className = 'bookmark-row';
+        row.innerHTML = `
+          <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=24&domain_url=${child.url}" alt="Favicon">
+          <div class="bookmark-title truncate" title="${child.title}">${child.title}</div>
+        `;
+        body.appendChild(row);
+      });
+      grid.appendChild(tempCard);
+      return;
+    }
     if (item.url) {
       // Bookmark card
       const card = document.createElement('div');
@@ -100,11 +140,16 @@ export function renderBookmarkGrid(items) {
         <div class="mini-group-header">${item.title}</div>
         <div class="mini-group-body">Đang tải...</div>
       `;
-      // Load child bookmarks
-      chrome.bookmarks.getChildren(item.id, list => {
-        const names = list.filter(c => c.url).map(c => c.title).join(', ');
+      // Load child bookmarks or render temp group children
+      if (item.isTempGroup) {
+        const names = item.children.map(c => c.title).join(', ');
         groupCard.querySelector('.mini-group-body').textContent = names || 'Không có bookmark';
-      });
+      } else {
+        chrome.bookmarks.getChildren(item.id, list => {
+          const names = list.filter(c => c.url).map(c => c.title).join(', ');
+          groupCard.querySelector('.mini-group-body').textContent = names || 'Không có bookmark';
+        });
+      }
       // If root, allow drilling into folder
       if (depth === 0) {
         groupCard.addEventListener('click', async () => {
