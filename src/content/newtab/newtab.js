@@ -28,14 +28,16 @@ async function init() {
   try {
     const tree = await getBookmarks();
     console.log('Bookmark tree:', tree);
+    // Render sidebar and initial empty state
     renderSidebar(tree[0].children);
-    const allBookmarks = flattenTree(tree[0].children);
-    document.getElementById('folder-title').textContent = 'All Bookmarks';
-    renderBookmarkGrid(allBookmarks);
+    document.getElementById('folder-title').textContent = 'Chọn thư mục';
+    renderBookmarkGrid([]);
   } catch (error) {
     console.error('Error in init:', error);
   }
-  setupAddBookmarkForm();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  setupAddBookmarkForm();
+});

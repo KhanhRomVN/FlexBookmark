@@ -1,34 +1,70 @@
-export function renderSidebar(bookmarkTree) {
-  console.log('renderSidebar received tree:', bookmarkTree);
+import { renderBookmarkGrid } from './BookmarkGrid.js';
+export function renderSidebar(folders) {
   const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
 
-  function processNode(nodes) {
-    return nodes
-      .filter(node => !node.url)
-      .map(node => {
-        const childrenHTML = node.children && node.children.length
-          ? `<ul class="folder-list">${processNode(node.children)}</ul>`
-          : '';
-        return `
-          <li class="folder-item" data-id="${node.id}">
-            <span>${node.title}</span>
-            ${childrenHTML}
-          </li>`;
-      })
-      .join('');
+  // Build first-level groups: skip Bookmark Bar, expand Other bookmarks children
+  const groups = [];
+  folders.forEach(node => {
+    if (node.url) return;
+    const titleLower = node.title.toLowerCase();
+    if (titleLower.includes('bookmark bar')) return;
+    if (node.title === 'Other bookmarks' && node.children) {
+      node.children
+        .filter(child => !child.url)
+        .forEach(child => groups.push(child));
+    } else {
+      groups.push(node);
+    }
+  });
+
+  function countUrls(node) {
+    let count = 0;
+    if (node.url) count++;
+    if (node.children) {
+      node.children.forEach(child => {
+        count += countUrls(child);
+      });
+    }
+    return count;
   }
 
-  const html = `<ul class="folder-list">${processNode(bookmarkTree)}</ul>`;
-  sidebar.innerHTML = html;
+  groups.forEach(folder => {
+      const count = countUrls(folder);
+      const element = document.createElement('div');
+      element.className = 'group-item';
+      element.dataset.id = folder.id;
+      element.innerHTML = `
+        <div class="group-color" style="background-color: #3b82f6"></div>
+        <span class="group-name">${folder.title}</span>
+        <span class="group-count">${count}</span>
+        <div class="group-actions">
+          <button class="group-action-btn" title="Chỉnh sửa">✏️</button>
+        </div>
+      `;
+      sidebar.appendChild(element);
+    });
 
-  sidebar.querySelectorAll('.folder-item').forEach(item => {
+  sidebar.querySelectorAll('.group-item').forEach(item => {
     item.addEventListener('click', async e => {
       e.stopPropagation();
+      sidebar.querySelectorAll('.group-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
       const folderId = item.dataset.id;
-      const children = await chrome.bookmarks.getChildren(folderId);
+      // fetch full subtree and flatten all bookmarks in this folder
+      const list = await new Promise(res => chrome.bookmarks.getSubTree(folderId, res));
+      const subtreeChildren = (list[0] && list[0].children) || [];
+      const bookmarks = [];
+      (function traverse(nodes) {
+        nodes.forEach(n => {
+          if (n.url) bookmarks.push(n);
+          if (n.children) traverse(n.children);
+        });
+      })(subtreeChildren);
+      console.log('Sidebar click:', folderId, 'bookmarks count:', bookmarks.length, bookmarks);
       document.getElementById('folder-title').textContent =
-        item.querySelector('span').textContent;
-      renderBookmarkGrid(children);
+        item.querySelector('.group-name').textContent;
+      renderBookmarkGrid(bookmarks);
     });
   });
 }

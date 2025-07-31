@@ -3,6 +3,10 @@ import { createBookmark } from '../../utils/api.js';
 export function setupAddBookmarkForm() {
   const modal = document.getElementById('add-bookmark-modal');
   const addBtn = document.getElementById('add-bookmark-btn');
+  if (!addBtn || !modal) {
+    console.warn('AddBookmarkForm init: missing addBtn or modal');
+    return;
+  }
 
   addBtn.addEventListener('click', () => {
     modal.innerHTML = `
