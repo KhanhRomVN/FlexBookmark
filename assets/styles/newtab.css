@@ -1,0 +1,78 @@
+/* New Tab Specific Styles */
+.folder-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .folder-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .folder-item:hover {
+    background-color: var(--hover-color);
+  }
+  
+  .folder-item > span {
+    padding: 6px 0;
+  }
+  
+  .folder-item ul {
+    margin-left: 16px;
+    border-left: 1px dashed #dadce0;
+    padding-left: 8px;
+  }
+  
+  .bookmark-item {
+    position: relative;
+  }
+  
+  .delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #5f6368;
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .bookmark-item:hover .delete-btn {
+    opacity: 1;
+  }
+  
+  .modal-content {
+    background: white;
+    margin: 15% auto;
+    padding: 20px;
+    width: 400px;
+    border-radius: 8px;
+  }
+  
+  #bookmark-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  #bookmark-form input {
+    padding: 10px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+  }
+  
+  #bookmark-form button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }

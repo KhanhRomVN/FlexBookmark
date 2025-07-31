@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "FlexBookmark",
+  "version": "1.0.0",
+  "description": "Advanced bookmark management with Google sync",
+  "icons": {
+    "128": "assets/icons/icon.png"
+  },
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "newtab": "src/content/newtab/newtab.html"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/newtab/*.js",
+        "src/content/newtab/components/*.js",
+        "src/content/utils/*.js",
+        "src/content/utils/*.js",
+        "assets/styles/*.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

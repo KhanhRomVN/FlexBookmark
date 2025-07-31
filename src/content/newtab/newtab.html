@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlexBookmark</title>
+  <link rel="stylesheet" href="../../../assets/styles/main.css">
+  <link rel="stylesheet" href="../../../assets/styles/newtab.css">
+<script>
+    window.onerror = (msg, src, line, col, err) => {
+      console.error('Global error:', { message: msg, source: src, line, col, error: err });
+    };
+    window.addEventListener('unhandledrejection', e => {
+      console.error('Unhandled rejection:', e.reason);
+    });
+    console.log('Error logging initialized');
+  </script>
+</head>
+<body>
+  <div class="flex-container">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar"></aside>
+    
+    <!-- Main Content -->
+    <main class="content">
+      <div class="header">
+        <h1 id="folder-title">Tất cả bookmark</h1>
+        <button id="add-bookmark-btn">+ Thêm bookmark</button>
+      </div>
+      <div id="bookmark-grid" class="bookmark-grid"></div>
+    </main>
+  </div>
+  
+  <!-- Form thêm bookmark (hidden) -->
+  <div id="add-bookmark-modal" class="modal">
+    <!-- Nội dung sẽ được inject bởi AddBookmarkForm.js -->
+  </div>
+
+  <script type="module" src="./newtab.js"></script>
+</body>
+</html>
