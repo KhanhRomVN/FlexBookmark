@@ -28,10 +28,14 @@ async function init() {
   try {
     const tree = await getBookmarks();
     console.log('Bookmark tree:', tree);
-    // Render sidebar and initial empty state
-    renderSidebar(tree[0].children);
-    document.getElementById('folder-title').textContent = 'Chọn thư mục';
-    renderBookmarkGrid([]);
+    // Initialize sidebar and grid with root children
+    const root = tree[0];
+    renderSidebar(root.children);
+    const gridEl = document.getElementById('bookmark-grid');
+    gridEl.dataset.parentId = root.id;
+    gridEl.dataset.depth = '0';
+    document.getElementById('folder-title').textContent = 'Tất cả bookmark';
+    renderBookmarkGrid(root.children);
   } catch (error) {
     console.error('Error in init:', error);
   }

@@ -197,6 +197,18 @@ body {
   background: #2563eb;
 }
 
+/* Hide URL line in bookmark cards; show only icon + title */
+.bookmark-card .bookmark-url {
+  display: none;
+}
+
+.bookmark-card .bookmark-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
 .breadcrumb {
   display: flex;
   align-items: center;
@@ -213,6 +225,56 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
+}
+
+/* Grid header buttons */
+.grid-header {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.add-group-btn-grid,
+.add-bookmark-btn-grid {
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.add-group-btn-grid:hover,
+.add-bookmark-btn-grid:hover {
+  background: #2563eb;
+}
+
+/* Mini-group cards */
+.mini-group-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.mini-group-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.mini-group-header {
+  font-weight: 600;
+  color: #1e293b;
+}
+.mini-group-body {
+  font-size: 14px;
+  color: #4b5563;
+  max-height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bookmark-card {
@@ -283,6 +345,50 @@ body {
   font-size: 48px;
   margin-bottom: 16px;
   opacity: 0.5;
+/* Equal-height shared header */
+.header-common {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80px;
+}
+
+/* Sidebar footer styling */
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Settings button */
+.settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.settings-btn:hover {
+  background: #f1f5f9;
+}
+
+/* User info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
 }
 /* Mobile responsiveness */
 @media (max-width: 768px) {

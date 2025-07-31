@@ -8,7 +8,7 @@ export function renderSidebar(folders) {
   folders.forEach(node => {
     if (node.url) return;
     const titleLower = node.title.toLowerCase();
-    if (titleLower.includes('bookmark bar')) return;
+    // always include Bookmark Bar
     if (node.title === 'Other bookmarks' && node.children) {
       node.children
         .filter(child => !child.url)
@@ -51,20 +51,15 @@ export function renderSidebar(folders) {
       sidebar.querySelectorAll('.group-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       const folderId = item.dataset.id;
-      // fetch full subtree and flatten all bookmarks in this folder
-      const list = await new Promise(res => chrome.bookmarks.getSubTree(folderId, res));
-      const subtreeChildren = (list[0] && list[0].children) || [];
-      const bookmarks = [];
-      (function traverse(nodes) {
-        nodes.forEach(n => {
-          if (n.url) bookmarks.push(n);
-          if (n.children) traverse(n.children);
-        });
-      })(subtreeChildren);
-      console.log('Sidebar click:', folderId, 'bookmarks count:', bookmarks.length, bookmarks);
-      document.getElementById('folder-title').textContent =
-        item.querySelector('.group-name').textContent;
-      renderBookmarkGrid(bookmarks);
+      // fetch direct children of this folder
+      const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
+      const children = list || [];
+      // update grid context
+      const grid = document.getElementById('bookmark-grid');
+      grid.dataset.parentId = folderId;
+      grid.dataset.depth = '1';
+      document.getElementById('folder-title').textContent = item.querySelector('.group-name').textContent;
+      renderBookmarkGrid(children);
     });
   });
 }

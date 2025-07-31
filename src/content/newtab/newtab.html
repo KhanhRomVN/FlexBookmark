@@ -11,21 +11,28 @@
   <div class="container">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1>📚 Bookmark Manager</h1>
-        <button class="add-group-btn" id="add-group-btn">+ Thêm nhóm</button>
+      <div class="sidebar-header header-common">
+        <h1>FlexBookmark</h1>
       </div>
       <div class="groups-list" id="sidebar"></div>
+      <footer class="sidebar-footer">
+        <button class="add-group-btn" id="add-group-btn">+ Thêm nhóm</button>
+      </footer>
     </aside>
     <!-- Main Content -->
     <main class="main-content">
-      <div class="main-header">
+      <div class="main-header header-common">
         <div class="header-top">
           <h2 class="header-title" id="folder-title">Tất cả bookmark</h2>
           <div class="header-actions">
             <div class="search-box">
               <span class="search-icon">🔍</span>
               <input type="text" class="search-input" placeholder="Tìm kiếm bookmark..." id="searchInput">
+            </div>
+            <button class="settings-btn" id="settings-btn">⚙️</button>
+            <div class="user-info">
+              <img src="avatar.png" alt="Avatar" class="avatar">
+              <span class="username">User Name</span>
             </div>
             <button class="add-bookmark-btn" id="add-bookmark-btn">+ Thêm bookmark</button>
           </div>
