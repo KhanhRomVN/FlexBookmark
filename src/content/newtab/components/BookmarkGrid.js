@@ -20,7 +20,7 @@ export function renderBookmarkGrid(bookmarks) {
     card.className = 'bookmark-card';
     card.innerHTML = `
       <div class="bookmark-header">
-        <img class="bookmark-icon" src="chrome://favicon/size/16@2x/${bookmark.url}" alt="Favicon">
+        <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=64&domain_url=${bookmark.url}" alt="Favicon">
         <div class="bookmark-title" title="${bookmark.title}">${bookmark.title}</div>
         <div class="bookmark-actions">
           <button class="action-btn delete-btn" data-id="${bookmark.id}" title="Xóa">🗑️</button>
