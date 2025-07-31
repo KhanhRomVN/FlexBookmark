@@ -29,18 +29,25 @@ export function renderBookmarkGrid(items) {
     breadcrumbEl.textContent = cur;
   }
 
-  // Add-group handler (root only)
+  // Add-group handler (allow up to 2 levels)
   container.querySelector('.add-group-btn-grid').addEventListener('click', async () => {
-    if (depth >= 1) {
+    // Re-read depth & parentId at click time
+    const currentDepth = parseInt(container.dataset.depth || '0', 10);
+    const currentParent = container.dataset.parentId || null;
+    if (currentDepth >= 2) {
       alert('Không thể tạo nhóm con trong nhóm con');
       return;
     }
     const title = prompt('Tên nhóm mới');
     if (!title) return;
-    await createFolder({ title, parentId });
-    const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-    container.dataset.parentId = parentId;
-    container.dataset.depth = '1';
+    // Create new folder under currentParent
+    const newNode = await createFolder({ title, parentId: currentParent });
+    const newParentId = newNode.id;
+    // Get children of the newly created folder for display
+    const list = await new Promise(res => chrome.bookmarks.getChildren(newParentId, res));
+    // Update dataset values
+    container.dataset.parentId = newParentId;
+    container.dataset.depth = String(currentDepth + 1);
     container.dataset.groupTitle = title;
     renderBookmarkGrid(list);
   });
@@ -150,12 +157,13 @@ if (depth > 0) {
           groupCard.querySelector('.mini-group-body').textContent = names || 'Không có bookmark';
         });
       }
-      // If root, allow drilling into folder
-      if (depth === 0) {
+      // Allow drilling into folder up to level 2
+      if (depth < 2) {
         groupCard.addEventListener('click', async () => {
           const list = await new Promise(res => chrome.bookmarks.getChildren(item.id, res));
+          const nextDepth = depth + 1;
           container.dataset.parentId = item.id;
-          container.dataset.depth = '1';
+          container.dataset.depth = String(nextDepth);
           container.dataset.groupTitle = item.title;
           renderBookmarkGrid(list);
         });
