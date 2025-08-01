@@ -145,7 +145,7 @@ body {
 
 .header-top {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
   margin-bottom: 16px;
@@ -159,11 +159,15 @@ body {
 
 .header-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  flex: 1;
 }
 
 .search-box {
-  position: relative;
+  flex: 1;
+  max-width: 400px;
 }
 
 .search-input {
@@ -877,4 +881,59 @@ body.image-theme .main-content {
   /* Ensure button spans full width with top margin */
   width: 100% !important;
   margin-top: 16px !important;
+}
+/* Icon-only buttons */
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.icon-btn:hover {
+  background: #f1f5f9;
+  transform: scale(1.1);
+}
+
+/* Header buttons container */
+.header-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+/* Hide user info */
+.user-info {
+  display: none;
+}
+
+/* Theme container positioning */
+.theme-container {
+  position: relative;
+}
+
+.theme-dropdown {
+  right: 0;
+  left: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .header-actions {
+    flex-wrap: wrap;
+  }
+
+  .search-box {
+    max-width: none;
+    order: 1;
+    width: 100%;
+    margin-top: 8px;
+  }
 }
