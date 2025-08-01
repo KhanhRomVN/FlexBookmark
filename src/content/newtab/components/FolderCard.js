@@ -11,7 +11,23 @@ import { createBookmark } from '../../utils/api.js';
 export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup = false) {
   // Temporary group card (non-persistent grouping)
   if (isTempGroup) {
+    // Enable dropping bookmarks into this temporary group (moves into current folder)
     const tempCard = document.createElement('div');
+    tempCard.addEventListener('dragover', e => e.preventDefault());
+    tempCard.addEventListener('drop', async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        if (data.type === 'bookmark') {
+          await chrome.bookmarks.move(data.id, { parentId });
+          const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+          renderBookmarkGrid(list);
+        }
+      } catch (err) {
+        console.error('Drop to temp group failed', err);
+      }
+    });
     tempCard.className = 'mini-group-card temp-group-card';
     tempCard.innerHTML = `
       <div class="mini-group-header">${item.title}</div>
@@ -23,6 +39,7 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
       row.className = 'bookmark-row';
       row.draggable = true;
       row.addEventListener('dragstart', e => {
+        e.stopPropagation();
         e.dataTransfer.setData(
           'application/json',
           JSON.stringify({ type: 'bookmark', id: child.id })
@@ -46,6 +63,22 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
       'application/json',
       JSON.stringify({ type: 'folder', id: item.id })
     );
+  });
+
+  // Allow dropping bookmarks onto this folder
+  groupCard.addEventListener('dragover', e => e.preventDefault());
+  groupCard.addEventListener('drop', async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'bookmark') {
+        await chrome.bookmarks.move(data.id, { parentId: item.id });
+        renderBookmarkGrid();
+      }
+    } catch (err) {
+      console.error('Drop to folder failed', err);
+    }
   });
 
   groupCard.innerHTML = `
@@ -130,14 +163,30 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
 
   // Fetch and display child bookmarks
   chrome.bookmarks.getChildren(item.id, list => {
-    const html = list.filter(c => c.url)
-      .map(c => `
-        <div class="bookmark-row nested" title="${c.title}">
+    const body = groupCard.querySelector('.mini-group-body');
+    body.innerHTML = '';
+    const bookmarks = list.filter(c => c.url);
+    if (bookmarks.length === 0) {
+      body.textContent = 'Không có bookmark';
+    } else {
+      bookmarks.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'bookmark-row nested';
+        row.draggable = true;
+        row.title = c.title;
+        row.addEventListener('dragstart', e => {
+          e.dataTransfer.setData(
+            'application/json',
+            JSON.stringify({ type: 'bookmark', id: c.id })
+          );
+        });
+        row.innerHTML = `
           <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" alt="">
           ${c.title}
-        </div>`)
-      .join('') || 'Không có bookmark';
-    groupCard.querySelector('.mini-group-body').innerHTML = html;
+        `;
+        body.appendChild(row);
+      });
+    }
   });
 
   return groupCard;
