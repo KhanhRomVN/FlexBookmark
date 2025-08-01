@@ -39,13 +39,30 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     console.log('BookmarkCard: drop event, types=', e.dataTransfer.types);
     e.preventDefault();
     card.classList.remove('drag-over');
-    const raw =
-      e.dataTransfer.getData('text/plain') ||
-      e.dataTransfer.getData('application/json');
-    console.log('BookmarkCard: drop data=', raw);
+    
     try {
+      const raw = e.dataTransfer.getData('text/plain') ||
+                 e.dataTransfer.getData('application/json');
+      console.log('BookmarkCard: drop data=', raw);
+      
       const data = JSON.parse(raw);
-      // handle drop logic if needed
+      console.log(`BookmarkCard: dropping ${data.type} ${data.id} onto bookmark ${item.id}`);
+      
+      // Prevent dropping onto itself
+      if (data.id === item.id) {
+        console.log('Cannot drop onto itself');
+        return;
+      }
+      
+      // Get current parent folder
+      const grid = document.getElementById('bookmark-grid');
+      const parentId = grid.dataset.parentId || null;
+      
+      // Move the bookmark
+      await chrome.bookmarks.move(data.id, { parentId });
+      
+      // Re-render the grid
+      renderBookmarkGrid();
     } catch (err) {
       console.error('Invalid drop data on bookmark card', err);
     }

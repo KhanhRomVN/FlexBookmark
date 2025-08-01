@@ -1,17 +1,25 @@
-// Global drag-and-drop performance optimizations
-document.addEventListener('dragover', e => {
-  // Allow dragging through non-draggable elements
-  if (e.target.draggable !== true) {
-    e.preventDefault();
-  }
-}, false);
-
-document.addEventListener('drop', e => {
-  // Prevent default drop behavior except on valid drop-targets
-  if (!e.target.classList.contains('drop-target')) {
-    e.preventDefault();
-  }
-}, false);
+ // Global drag-and-drop performance optimizations
+ document.addEventListener('dragover', e => {
+   // Only prevent default if it's a valid drop target
+   if (
+     e.target.classList.contains('drop-target') ||
+     e.target.classList.contains('bookmark-card') ||
+     e.target.classList.contains('mini-group-card')
+   ) {
+     e.preventDefault();
+   }
+ }, false);
+ 
+ document.addEventListener('drop', e => {
+   // Prevent default drop behavior except on valid drop targets
+   if (
+     e.target.classList.contains('drop-target') ||
+     e.target.classList.contains('bookmark-card') ||
+     e.target.classList.contains('mini-group-card')
+   ) {
+     e.preventDefault();
+   }
+ }, false);
 import { renderSidebar } from './components/Sidebar.js';
 import { renderBookmarkGrid } from './components/BookmarkGrid.js';
 import { setupAddBookmarkForm } from './components/AddBookmarkForm.js';

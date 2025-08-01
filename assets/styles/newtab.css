@@ -223,6 +223,7 @@ body {
 }
 .bookmarks-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
@@ -230,6 +231,7 @@ body {
 /* Nested group/folder grid layout (same as root) */
 .bookmark-list {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
@@ -324,9 +326,9 @@ body {
 .mini-group-body {
   font-size: 14px;
   color: #4b5563;
-  max-height: 40px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 /* Temporary group card styling */
 .temp-group-card {
@@ -701,4 +703,33 @@ body {
 .drop-target {
   min-height: 20px;
   transition: all 0.2s;
+}
+/* Add to drag-and-drop visual feedback section */
+.drag-over {
+  outline: 2px dashed #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  transition: all 0.3s ease;
+}
+
+.bookmark-card.drag-over {
+  transform: scale(1.02);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.7);
+}
+
+.mini-group-card.drag-over {
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+}
+
+/* Dragging state - more visible */
+.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+/* Spacing for rows in group cards */
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

@@ -57,8 +57,12 @@ export function renderBookmarkGrid(items) {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      const raw = e.dataTransfer.getData('text/plain') ||
+                 e.dataTransfer.getData('application/json');
+      console.log('BookmarkGrid: drop data=', raw);
+      
       const data = JSON.parse(raw);
+      console.log(`BookmarkGrid: dropping ${data.type} ${data.id} onto grid with parentId ${parentId}`);
       if (!data || !data.id) {
         console.warn('Invalid drop data');
         return;
@@ -68,6 +72,9 @@ export function renderBookmarkGrid(items) {
         return;
       }
       await chrome.bookmarks.move(data.id, { parentId });
+      console.log(`Moved ${data.id} to ${parentId}`);
+      
+      // Re-fetch children and re-render
       const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
       renderBookmarkGrid(list);
     } catch (err) {

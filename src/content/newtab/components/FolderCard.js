@@ -115,54 +115,39 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
     e.preventDefault();
     e.stopPropagation();
     groupCard.classList.remove('drag-over');
+
     try {
-      const raw =
-        e.dataTransfer.getData('text/plain') ||
-        e.dataTransfer.getData('application/json');
+      const raw = e.dataTransfer.getData('text/plain') ||
+                 e.dataTransfer.getData('application/json');
+      console.log(`FolderCard: drop data on folder ${item.id}:`, raw);
+
       const data = JSON.parse(raw);
+      console.log(`Dropping ${data.type} ${data.id} onto folder ${item.id}`);
+
       if (!data || !data.id) {
         console.warn('Invalid drop data');
         return;
       }
+
+      // Prevent invalid moves
       if (data.type === 'folder' && data.id === item.id) {
         console.log('Cannot drop folder into itself');
         return;
       }
-      if (data.type === 'bookmark') {
-        await chrome.bookmarks.move(data.id, { parentId: item.id });
-        // Optimized: update only this folder's body
-        chrome.bookmarks.getChildren(item.id, list => {
-          const body = groupCard.querySelector('.mini-group-body');
-          body.innerHTML = '';
-          const bookmarks = list.filter(c => c.url);
-          if (bookmarks.length === 0) {
-            body.textContent = 'Không có bookmark';
-          } else {
-            bookmarks.forEach(c => {
-              const row = document.createElement('div');
-              row.className = 'bookmark-row nested';
-              row.draggable = true;
-              row.title = c.title;
-              row.addEventListener('dragstart', ev => {
-                ev.dataTransfer.setData(
-                  'text/plain',
-                  JSON.stringify({ type: 'bookmark', id: c.id })
-                );
-                ev.dataTransfer.effectAllowed = 'move';
-                row.classList.add('dragging');
-              });
-              row.addEventListener('dragend', () => {
-                row.classList.remove('dragging');
-              });
-              row.innerHTML = `
-                <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" alt="">
-                ${c.title}
-              `;
-              body.appendChild(row);
-            });
-          }
-        });
+
+      // Prevent dropping into same parent
+      if (data.parentId === item.id) {
+        console.log('Item is already in this folder');
+        return;
       }
+
+      // Move the item
+      await chrome.bookmarks.move(data.id, { parentId: item.id });
+      console.log(`Moved ${data.id} to folder ${item.id}`);
+
+      // Refresh both source and target
+      refreshBody();
+      renderBookmarkGrid();
     } catch (err) {
       console.error('Drop to folder failed', err);
     }
