@@ -47,3 +47,9 @@ export function formatUrl(url) {
       timer = setTimeout(() => func.apply(this, args), delay);
     };
   }
+// Hàm md5 cho Gravatar
+export async function md5(str) {
+  const buffer = await crypto.subtle.digest('MD5', new TextEncoder().encode(str));
+  const array = Array.from(new Uint8Array(buffer));
+  return array.map(b => b.toString(16).padStart(2, '0')).join('');
+}

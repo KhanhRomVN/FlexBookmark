@@ -29,12 +29,23 @@
               <span class="search-icon">🔍</span>
               <input type="text" class="search-input" placeholder="Tìm kiếm bookmark..." id="searchInput">
             </div>
-            <button class="settings-btn" id="settings-btn">⚙️</button>
-            <div class="user-info">
-              <img src="avatar.png" alt="Avatar" class="avatar">
-              <span class="username">User Name</span>
+            <!-- Thêm theme button và dropdown -->
+            <div class="theme-container">
+              <button class="settings-btn" id="theme-btn">🎨</button>
+              <div class="theme-dropdown" id="theme-dropdown">
+                <button data-theme="light">Light Theme</button>
+                <button data-theme="dark">Dark Theme</button>
+                <button data-theme="image">Image Theme</button>
+              </div>
             </div>
-            <button class="add-bookmark-btn" id="add-bookmark-btn">+ Thêm bookmark</button>
+            <button class="settings-btn" id="settings-btn">⚙️</button>
+            <!-- Cập nhật user-info -->
+            <div class="user-info">
+              <img id="user-avatar" src="" alt="Avatar" class="avatar">
+              <span id="user-name" class="username"></span>
+            </div>
+            <!-- Xóa button Thêm bookmark -->
+            <!-- <button class="add-bookmark-btn" id="add-bookmark-btn">+ Thêm bookmark</button> -->
           </div>
         </div>
         <div class="breadcrumb" id="breadcrumb">Trang chủ</div>

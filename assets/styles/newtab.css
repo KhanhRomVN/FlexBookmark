@@ -25,7 +25,8 @@ body {
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: 16px 20px;
+  height: 70px;
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -61,8 +62,8 @@ body {
 .group-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  margin-bottom: 4px;
+  padding: 10px 16px;
+  margin-bottom: 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -79,9 +80,9 @@ body {
 }
 
 .group-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -134,14 +135,16 @@ body {
 
 .main-header {
   background: white;
-  padding: 24px;
+  padding: 16px 24px;
+  height: 70px;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .header-top {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -732,4 +735,75 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+/* Hide add bookmark button */
+#add-bookmark-btn {
+  display: none;
+}
+
+/* Theme dropdown */
+.theme-container {
+  position: relative;
+  display: inline-block;
+}
+.theme-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 100;
+  min-width: 150px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.theme-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.theme-dropdown button:hover {
+  background: #f1f5f9;
+}
+
+/* Theme styles */
+/* Light theme (default) */
+body.light-theme {
+  --bg-color: #f8fafc;
+  --text-color: #1e293b;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Dark theme */
+body.dark-theme {
+  --bg-color: #0f172a;
+  --text-color: #f1f5f9;
+  --sidebar-bg: #1e293b;
+  --hover-color: #334155;
+}
+body.dark-theme .sidebar {
+  background-color: var(--sidebar-bg);
+}
+body.dark-theme .group-item:hover {
+  background: var(--hover-color);
+}
+
+/* Image theme */
+body.image-theme {
+  background-size: cover;
+  background-position: center;
+}
+body.image-theme .sidebar {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+body.image-theme .main-content {
+  background-color: rgba(255, 255, 255, 0.8);
 }

@@ -1,5 +1,6 @@
 import { renderBookmarkGrid } from './BookmarkGrid.js';
 export function renderSidebar(folders) {
+  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
 
@@ -37,7 +38,7 @@ export function renderSidebar(folders) {
     element.classList.add('drop-target');
     element.dataset.id = folder.id;
     element.innerHTML = `
-      <div class="group-color" style="background-color: #3b82f6"></div>
+      <div class="group-color" style="background-color: ${colors[Math.floor(Math.random() * colors.length)]}"></div>
       <span class="group-name">${folder.title}</span>
       <span class="group-count">${count}</span>
       <div class="group-actions">
@@ -45,6 +46,20 @@ export function renderSidebar(folders) {
       </div>
     `;
     sidebar.appendChild(element);
+
+    // F2 rename folder
+    element.setAttribute('tabindex', '0');
+    element.addEventListener('keydown', async (e) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        const groupNameSpan = element.querySelector('.group-name');
+        const newName = prompt('Tên mới:', groupNameSpan.textContent);
+        if (newName) {
+          await chrome.bookmarks.update(folder.id, { title: newName });
+          groupNameSpan.textContent = newName;
+        }
+      }
+    });
   });
 
   // After rendering, restore last selected folder if any
