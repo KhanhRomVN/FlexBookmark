@@ -1,3 +1,43 @@
+:root {
+  --bg-body: #f8fafc;
+  --bg-sidebar: #fff;
+  --bg-header: #fff;
+  --bg-group-card: #fff;
+  --bg-bookmark-card: #fff;
+  --text-color: #000;
+}
+
+[data-theme="dark"] {
+  --bg-body: #202126;
+  --bg-sidebar: #24252a;
+  --bg-header: #24252a;
+  --bg-group-card: #1e1f24;
+/* Dark theme sidebar text + remove group squares */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .sidebar h1,
+[data-theme="dark"] .groups-list,
+[data-theme="dark"] .group-item,
+[data-theme="dark"] .group-name,
+[data-theme="dark"] .group-count {
+/* Ensure all sidebar text is white in dark theme */
+[data-theme="dark"] .sidebar * {
+  color: var(--text-color) !important;
+}
+  color: var(--text-color);
+}
+[data-theme="dark"] .group-color {
+  display: none;
+}
+/* Bookmark card theming */
+.bookmark-card {
+  background: var(--bg-bookmark-card);
+  color: var(--text-color);
+}
+  --bg-bookmark-card: #25262b;
+  --text-color: #ffffff;
+}
+
+/* Theme variable overrides applied below */
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +46,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f8fafc;
+  background: var(--bg-body);
+  color: var(--text-color);
   height: 100vh;
   overflow: hidden;
 }
@@ -18,7 +59,8 @@ body {
 
 .sidebar {
   width: 280px;
-  background: white;
+  background: var(--bg-sidebar);
+  color: var(--text-color);
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
@@ -137,7 +179,8 @@ body {
 }
 
 .main-header {
-  background: white;
+  background: var(--bg-header);
+  color: var(--text-color);
   padding: 16px 24px;
   height: 70px;
   border-bottom: 1px solid #e2e8f0;
@@ -315,7 +358,8 @@ body {
 
 /* Mini-group cards */
 .mini-group-card {
-  background: white;
+  background: var(--bg-group-card);
+  color: var(--text-color);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
@@ -342,7 +386,8 @@ body {
 }
 /* Temporary group card styling */
 .temp-group-card {
-  background: white;
+  background: var(--bg-group-card);
+  color: var(--text-color);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
@@ -936,4 +981,96 @@ body.image-theme .main-content {
     width: 100%;
     margin-top: 8px;
   }
+}
+/* Dark theme final overrides – placed at end to ensure priority */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .sidebar * {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* Dark theme final overrides – append at end for precedence */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .sidebar * {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* Dark theme sidebar final override – appended at EOF */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: var(--text-color) !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* ===== Dark theme sidebar override (append at EOF) ===== */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: var(--text-color) !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* Final override for dark theme sidebar text and hide squares */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* ===== Ultimate dark-theme sidebar override ===== */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* === Final dark-theme sidebar override (appended) === */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* ===== Ultimate dark-theme sidebar override ===== */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* === Append at EOF: ensure dark-theme sidebar overrides === */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* === Dark theme sidebar enforcement (EOF) === */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+/* === Ultimate dark theme sidebar fixes (append at EOF) === */
+html[data-theme="dark"] .sidebar {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .sidebar .group-color {
+  display: none !important;
 }

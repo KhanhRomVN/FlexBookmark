@@ -56,8 +56,12 @@ function flattenTree(nodes) {
 
 // Apply theme
 function applyTheme(theme) {
-  document.body.className = '';
-  document.body.classList.add(theme + '-theme');
+  const root = document.documentElement;
+  if (theme === 'light') {
+    root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
   if (theme === 'image') {
     const imageUrl = prompt('Nhập URL hình ảnh:');
     if (imageUrl) {
