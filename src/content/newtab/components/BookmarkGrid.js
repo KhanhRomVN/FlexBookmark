@@ -31,24 +31,16 @@ export function renderBookmarkGrid(items) {
 
   // Add-group handler (allow up to 2 levels)
   container.querySelector('.add-group-btn-grid').addEventListener('click', async () => {
-    // Re-read depth & parentId at click time
     const currentDepth = parseInt(container.dataset.depth || '0', 10);
-    const currentParent = container.dataset.parentId || null;
-    if (currentDepth >= 2) {
-      alert('Không thể tạo nhóm con trong nhóm con');
+    if (currentDepth >= 3) {
+      alert('Không thể tạo nhóm con quá cấp 2');
       return;
     }
     const title = prompt('Tên nhóm mới');
     if (!title) return;
-    // Create new folder under currentParent
-    const newNode = await createFolder({ title, parentId: currentParent });
-    const newParentId = newNode.id;
-    // Get children of the newly created folder for display
-    const list = await new Promise(res => chrome.bookmarks.getChildren(newParentId, res));
-    // Update dataset values
-    container.dataset.parentId = newParentId;
-    container.dataset.depth = String(currentDepth + 1);
-    container.dataset.groupTitle = title;
+    const currentParent = container.dataset.parentId || null;
+    await createFolder({ title, parentId: currentParent });
+    const list = await new Promise(res => chrome.bookmarks.getChildren(currentParent, res));
     renderBookmarkGrid(list);
   });
 
@@ -83,7 +75,7 @@ if (depth > 0) {
   if (bookmarkItems.length) {
     renderItems.push({
       id: '__temp',
-      title: 'Nhóm bookmark tạm',
+      title: 'Temp',
       children: bookmarkItems,
       isTempGroup: true
     });
@@ -144,30 +136,36 @@ if (depth > 0) {
       const groupCard = document.createElement('div');
       groupCard.className = 'mini-group-card';
       groupCard.innerHTML = `
-        <div class="mini-group-header">${item.title}</div>
+        <div class="mini-group-header">
+          <span class="mini-group-icon">📁</span>
+          ${item.title}
+        </div>
         <div class="mini-group-body">Đang tải...</div>
       `;
-      // Load child bookmarks or render temp group children
+      // Load child bookmarks with icons
       if (item.isTempGroup) {
-        const names = item.children.map(c => c.title).join(', ');
-        groupCard.querySelector('.mini-group-body').textContent = names || 'Không có bookmark';
+        const html = item.children
+          .filter(c => c.url)
+          .map(c =>
+            `<img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" title="${c.title}" />`
+          )
+          .join('');
+        groupCard.querySelector('.mini-group-body').innerHTML = html || 'Không có bookmark';
       } else {
         chrome.bookmarks.getChildren(item.id, list => {
-          const names = list.filter(c => c.url).map(c => c.title).join(', ');
-          groupCard.querySelector('.mini-group-body').textContent = names || 'Không có bookmark';
+          const html = list
+            .filter(c => c.url)
+            .map(c => `
+              <div class="bookmark-row nested">
+                <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" title="${c.title}" />
+                <span class="bookmark-title truncate" title="${c.title}">${c.title}</span>
+              </div>
+            `)
+            .join('');
+          groupCard.querySelector('.mini-group-body').innerHTML = html || 'Không có bookmark';
         });
       }
-      // Allow drilling into folder up to level 2
-      if (depth < 2) {
-        groupCard.addEventListener('click', async () => {
-          const list = await new Promise(res => chrome.bookmarks.getChildren(item.id, res));
-          const nextDepth = depth + 1;
-          container.dataset.parentId = item.id;
-          container.dataset.depth = String(nextDepth);
-          container.dataset.groupTitle = item.title;
-          renderBookmarkGrid(list);
-        });
-      }
+      // No click navigation for group cards
       grid.appendChild(groupCard);
     }
   });

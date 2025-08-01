@@ -227,6 +227,57 @@ body {
   gap: 16px;
 }
 
+/* Nested group/folder grid layout (same as root) */
+.bookmark-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+/* Responsive adjustments for nested grid */
+@media (max-width: 768px) {
+  .bookmark-list {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .bookmark-list {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+}
+/* Folder icon in mini-group header */
+/* Root bookmark grid layout */
+.bookmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+/* Responsive adjustments for root grid */
+@media (max-width: 768px) {
+  .bookmarks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .bookmarks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+}
+/* Mini bookmark icon styling in group cards */
+.mini-bookmark-icon {
+  margin: 0 4px 4px 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.mini-group-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
 /* Grid header buttons */
 .grid-header {
   display: flex;
@@ -374,6 +425,23 @@ body {
 }
 .bookmark-row .bookmark-title {
   flex: 1;
+/* Nested bookmark rows (depth-2) */
+.bookmark-row.nested {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.bookmark-row.nested .mini-bookmark-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+.bookmark-row.nested .bookmark-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
