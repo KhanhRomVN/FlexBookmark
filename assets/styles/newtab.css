@@ -5,6 +5,11 @@
   --bg-group-card: #fff;
   --bg-bookmark-card: #fff;
   --text-color: #000;
+/* Sidebar total bookmark count dark theme */
+html[data-theme="dark"] .group-count {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
 }
 
 [data-theme="dark"] {
@@ -1073,4 +1078,55 @@ html[data-theme="dark"] .sidebar * {
 }
 html[data-theme="dark"] .sidebar .group-color {
   display: none !important;
+}
+/* Sidebar item hover/focus for dark theme */
+html[data-theme="dark"] .group-item:hover {
+  background: #000000 !important;
+}
+
+html[data-theme="dark"] .group-item:focus {
+  background: #2a2a32 !important;
+}
+/* === Dark theme total badge override (append at EOF) === */
+html[data-theme="dark"] .group-count {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+/* === ENSURE DARK-THEME SIDEBAR BADGE AT EOF FOR HIGHEST SPECIFICITY === */
+html[data-theme="dark"] .sidebar .group-count {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+/* === Final dark-theme sidebar total badge override (highest specificity) === */
+html[data-theme="dark"] .sidebar .group-item .group-count {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+/* === Override at EOF: dark-theme sidebar badge background black === */
+html[data-theme="dark"] aside.sidebar .group-item .group-count {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+/* === Dark theme sidebar badge override (append at EOF) === */
+html[data-theme="dark"] .sidebar .group-item .group-count {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+/* === Ultimate override at EOF for dark-theme sidebar badge === */
+html[data-theme="dark"] aside.sidebar .groups-list .group-item .group-count {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+/* ===== FINAL OVERRIDE at EOF for Dark Theme Sidebar Badge ===== */
+html[data-theme="dark"] aside.sidebar .group-item .group-count {
+  background: #000 !important;
+  color: #fff !important;
+}
+/* === Dark-theme sidebar item hover/focus overrides (append at EOF) === */
+html[data-theme="dark"] aside.sidebar .group-item:hover {
+  background: #2f2f38 !important;
+}
+html[data-theme="dark"] aside.sidebar .group-item:focus,
+html[data-theme="dark"] aside.sidebar .group-item.active {
+  background: #2a2a32 !important;
 }
