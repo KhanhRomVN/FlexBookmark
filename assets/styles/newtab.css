@@ -25,6 +25,9 @@ body {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   padding: 16px 20px;
   height: 70px;
   border-bottom: 1px solid #e2e8f0;
@@ -34,7 +37,7 @@ body {
   font-size: 20px;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
 .add-group-btn {
@@ -568,8 +571,11 @@ body {
 
 /* Sidebar footer styling */
 .sidebar-footer {
-  padding: 20px;
+  padding: 16px 20px 40px;
   border-top: 1px solid #e2e8f0;
+}
+.sidebar-footer .add-group-btn {
+  margin: 0;
 }
 
 /* Settings button */
@@ -642,6 +648,20 @@ body {
   .main-header .header-top {
     flex-direction: column;
     align-items: stretch;
+/* === Override for sidebar header and footer based on feedback === */
+.sidebar-header {
+  /* keep vertical centering, revert horizontal centering */
+  justify-content: flex-start !important;
+}
+
+.sidebar-footer {
+  padding: 16px !important;
+}
+
+.sidebar-footer .add-group-btn {
+  width: auto !important;
+  margin: 0 auto !important;
+}
     gap: 8px;
   }
   .header-actions {
@@ -806,4 +826,55 @@ body.image-theme .sidebar {
 }
 body.image-theme .main-content {
   background-color: rgba(255, 255, 255, 0.8);
+}
+/* Remove pencil icon in sidebar groups */
+.sidebar .group-item .group-actions {
+  display: none !important;
+}
+/* === Final adjustments for sidebar footer button spacing === */
+.sidebar-footer .add-group-btn {
+  display: block;
+  margin: 16px auto 0;
+}
+/* === Feedback-based overrides === */
+/* Revert horizontal centering; keep left-aligned FlexBookmark */
+.sidebar-header {
+  justify-content: flex-start !important;
+}
+
+/* Add extra bottom padding so the “+ Thêm nhóm” button isn’t flush */
+.sidebar-footer {
+  padding-bottom: 32px !important;
+}
+
+/* Ensure group button spans full width with no extra margins */
+.sidebar-footer .add-group-btn {
+  width: 100% !important;
+  margin: 0 !important;
+}
+/* === Feedback overrides === */
+.sidebar-header {
+  justify-content: flex-start !important;
+}
+.sidebar-footer {
+  padding: 16px 20px 32px !important;
+}
+.sidebar-footer .add-group-btn {
+  width: 100% !important;
+  margin: 0 !important;
+}
+/* === Final feedback overrides === */
+.sidebar-header {
+  /* Keep left-aligned title */
+  justify-content: flex-start !important;
+  padding-left: 20px !important;
+}
+.sidebar-footer {
+  /* Add bottom padding so button is not flush */
+  padding-bottom: 20px !important;
+}
+.sidebar-footer .add-group-btn {
+  /* Ensure button spans full width with top margin */
+  width: 100% !important;
+  margin-top: 16px !important;
 }
