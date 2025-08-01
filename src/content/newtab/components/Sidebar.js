@@ -33,6 +33,7 @@ export function renderSidebar(folders) {
       const count = countUrls(folder);
       const element = document.createElement('div');
       element.className = 'group-item';
+      element.classList.add('drop-target');
       element.dataset.id = folder.id;
       element.innerHTML = `
         <div class="group-color" style="background-color: #3b82f6"></div>
@@ -64,10 +65,12 @@ export function renderSidebar(folders) {
 
     // Drag-and-drop handlers for sidebar folder items
     item.addEventListener('dragenter', e => {
+      console.log('Sidebar: dragenter on folder', item.dataset.id);
       e.preventDefault();
       item.classList.add('drag-over');
     });
     item.addEventListener('dragover', e => {
+      console.log('Sidebar: dragover on folder', item.dataset.id);
       e.preventDefault();
       item.classList.add('drag-over');
     });
@@ -75,10 +78,12 @@ export function renderSidebar(folders) {
       item.classList.remove('drag-over');
     });
     item.addEventListener('drop', async e => {
+      console.log('Sidebar: drop event, types=', e.dataTransfer.types);
       e.preventDefault();
       item.classList.remove('drag-over');
       e.stopPropagation();
       const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      console.log('Sidebar: drop data=', raw);
       try {
         const data = JSON.parse(raw);
         if (!data || !data.id) return;

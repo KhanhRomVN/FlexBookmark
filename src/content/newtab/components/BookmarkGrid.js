@@ -47,30 +47,33 @@ export function renderBookmarkGrid(items) {
   // Grid container with drag/drop
   const grid = document.createElement('div');
   grid.className = depth === 0 ? 'bookmarks-grid' : 'bookmark-list';
-  grid.addEventListener('dragover', e => e.preventDefault());
+  grid.classList.add('drop-target');
+  grid.addEventListener('dragover', e => {
+    console.log('BookmarkGrid: dragover on parentId', parentId);
+    e.preventDefault();
+  });
   grid.addEventListener('drop', async e => {
-      e.preventDefault();
-      try {
-        const data = JSON.parse(e.dataTransfer.getData('application/json'));
-  
-        if (!data || !data.id) {
-          console.warn('Invalid drop data');
-          return;
-        }
-  
-        if (data.id === parentId) {
-          console.log('Cannot drop into itself');
-          return;
-        }
-  
-        await chrome.bookmarks.move(data.id, { parentId });
-  
-        const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-        renderBookmarkGrid(list);
-      } catch (err) {
-        console.error('Drop failed', err);
+    console.log('BookmarkGrid: drop event, types=', e.dataTransfer.types);
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      const data = JSON.parse(raw);
+      if (!data || !data.id) {
+        console.warn('Invalid drop data');
+        return;
       }
-    });
+      if (data.id === parentId) {
+        console.log('Cannot drop into itself');
+        return;
+      }
+      await chrome.bookmarks.move(data.id, { parentId });
+      const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+      renderBookmarkGrid(list);
+    } catch (err) {
+      console.error('Drop failed', err);
+    }
+  });
 
   // Render each item
   renderItems.forEach(item => {

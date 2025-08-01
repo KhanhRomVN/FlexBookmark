@@ -11,46 +11,80 @@ import { createBookmark } from '../../utils/api.js';
 export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup = false) {
   // Temporary group card (non-persistent grouping)
   if (isTempGroup) {
-    // Enable dropping bookmarks into this temporary group (moves into current folder)
     const tempCard = document.createElement('div');
-    tempCard.addEventListener('dragover', e => e.preventDefault());
-    tempCard.addEventListener('drop', async e => {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        const data = JSON.parse(e.dataTransfer.getData('application/json'));
-        if (data.type === 'bookmark') {
-          await chrome.bookmarks.move(data.id, { parentId });
-          const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-          renderBookmarkGrid(list);
-        }
-      } catch (err) {
-        console.error('Drop to temp group failed', err);
-      }
-    });
     tempCard.className = 'mini-group-card temp-group-card';
+
+    // helper: render this temp group's body
+    function refreshTempBody() {
+      const body = tempCard.querySelector('.temp-group-body');
+      body.innerHTML = '';
+      if (item.children.length === 0) {
+        body.textContent = 'Không có bookmark';
+      } else {
+        item.children.forEach(c => {
+          const row = document.createElement('div');
+          row.className = 'bookmark-row';
+          row.draggable = true;
+          row.title = c.title;
+          row.addEventListener('dragstart', e => {
+            e.stopPropagation();
+            e.dataTransfer.setData(
+              'application/json',
+              JSON.stringify({ type: 'temp', id: c.id, fromGroupId: item.id })
+            );
+            e.dataTransfer.effectAllowed = 'move';
+            row.classList.add('dragging');
+          });
+          row.addEventListener('dragend', () => row.classList.remove('dragging'));
+          row.innerHTML = `
+            <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=24&domain_url=${c.url}" alt="">
+            <div class="bookmark-title truncate" title="${c.title}">${c.title}</div>
+          `;
+          body.appendChild(row);
+        });
+      }
+    }
+
+    // registry for cross-group moves
+    if (!window.tempGroupRegistry) window.tempGroupRegistry = new Map();
+    window.tempGroupRegistry.set(item.id, {
+      children: item.children,
+      refresh: refreshTempBody,
+    });
+
     tempCard.innerHTML = `
       <div class="mini-group-header">${item.title}</div>
       <div class="temp-group-body"></div>
     `;
-    const body = tempCard.querySelector('.temp-group-body');
-    item.children.forEach(child => {
-      const row = document.createElement('div');
-      row.className = 'bookmark-row';
-      row.draggable = true;
-      row.addEventListener('dragstart', e => {
-        e.stopPropagation();
-        e.dataTransfer.setData(
-          'application/json',
-          JSON.stringify({ type: 'bookmark', id: child.id })
-        );
-      });
-      row.innerHTML = `
-        <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=24&domain_url=${child.url}" alt="">
-        <div class="bookmark-title truncate" title="${child.title}">${child.title}</div>
-      `;
-      body.append(row);
+
+    tempCard.addEventListener('dragover', e => e.preventDefault());
+    tempCard.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        const raw = e.dataTransfer.getData('application/json');
+        const data = JSON.parse(raw);
+        if (data.type === 'temp' && data.id && data.fromGroupId) {
+          const source = window.tempGroupRegistry.get(data.fromGroupId);
+          if (source) {
+            const idx = source.children.findIndex(x => x.id === data.id);
+            if (idx > -1) {
+              const [moved] = source.children.splice(idx, 1);
+              if (item.id !== data.fromGroupId) {
+                item.children.push(moved);
+              }
+              source.refresh();
+              refreshTempBody();
+            }
+          }
+        }
+      } catch (err) {
+        console.error('TempGroupCard: drop failed', err);
+      }
     });
+
+    // initial render
+    refreshTempBody();
     return tempCard;
   }
 
@@ -82,7 +116,9 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
     e.stopPropagation();
     groupCard.classList.remove('drag-over');
     try {
-      const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      const raw =
+        e.dataTransfer.getData('text/plain') ||
+        e.dataTransfer.getData('application/json');
       const data = JSON.parse(raw);
       if (!data || !data.id) {
         console.warn('Invalid drop data');
@@ -108,7 +144,10 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
               row.draggable = true;
               row.title = c.title;
               row.addEventListener('dragstart', ev => {
-                ev.dataTransfer.setData('text/plain', JSON.stringify({ type: 'bookmark', id: c.id }));
+                ev.dataTransfer.setData(
+                  'text/plain',
+                  JSON.stringify({ type: 'bookmark', id: c.id })
+                );
                 ev.dataTransfer.effectAllowed = 'move';
                 row.classList.add('dragging');
               });
@@ -135,6 +174,40 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
     </div>
     <div class="mini-group-body">Đang tải...</div>
   `;
+// helper: render this folder's body
+function refreshBody() {
+  const body = groupCard.querySelector('.mini-group-body');
+  body.innerHTML = '';
+  chrome.bookmarks.getChildren(item.id, list => {
+    const bookmarks = list.filter(c => c.url);
+    if (bookmarks.length === 0) {
+      body.textContent = 'Không có bookmark';
+    } else {
+      bookmarks.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'bookmark-row nested';
+        row.draggable = true;
+        row.title = c.title;
+        row.addEventListener('dragstart', ev => {
+          ev.dataTransfer.setData(
+            'text/plain',
+            JSON.stringify({ type: 'bookmark', id: c.id })
+          );
+          ev.dataTransfer.effectAllowed = 'move';
+          row.classList.add('dragging');
+        });
+        row.addEventListener('dragend', () => row.classList.remove('dragging'));
+        row.innerHTML = `
+          <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" alt="">
+          ${c.title}
+        `;
+        body.appendChild(row);
+      });
+    }
+  });
+}
+// initial render of persistent folder
+refreshBody();
 
   // Menu button & dropdown
   const menuBtn = document.createElement('button');
@@ -144,11 +217,11 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
 
   const dropdown = document.createElement('div');
   dropdown.className = 'folder-dropdown';
-  dropdown.innerHTML = ''
-    + '<button class="rename-folder">Rename</button>'
-    + '<button class="delete-folder">Delete</button>'
-    + '<button class="add-bookmark-folder">Add Bookmark</button>';
-  groupCard.append(dropdown);
+  dropdown.innerHTML =
+    '<button class="rename-folder">Rename</button>' +
+    '<button class="delete-folder">Delete</button>' +
+    '<button class="add-bookmark-folder">Add Bookmark</button>';
+  groupCard.appendChild(dropdown);
 
   menuBtn.addEventListener('click', e => {
     e.stopPropagation();
@@ -180,61 +253,33 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
     e.stopPropagation();
     dropdown.style.display = 'none';
     const body = groupCard.querySelector('.mini-group-body');
-    body.innerHTML = ''
-      + '<div class="add-bookmark-inline">'
-      + '  <input class="bookmark-url-input" placeholder="Enter URL" />'
-      + '  <button class="confirm-url">✅</button>'
-      + '</div>';
+    body.innerHTML =
+      '<div class="add-bookmark-inline">' +
+      '  <input class="bookmark-url-input" placeholder="Enter URL" />' +
+      '  <button class="confirm-url">✅</button>' +
+      '</div>';
     const urlInput = body.querySelector('.bookmark-url-input');
     const confirmUrl = body.querySelector('.confirm-url');
 
     const toTitle = () => {
       const u = urlInput.value.trim();
-      if (!u) return;
-      body.innerHTML = ''
-        + '<div class="add-bookmark-inline">'
-        + '  <input class="bookmark-title-input" placeholder="Enter Title" />'
-        + '  <button class="confirm-title">✅</button>'
-        + '</div>';
-      const ti = body.querySelector('.bookmark-title-input');
-      const ok = body.querySelector('.confirm-title');
-      ok.addEventListener('click', async () => {
-        await createBookmark({ title: ti.value.trim() || '', url: u, parentId: item.id });
-        renderBookmarkGrid();
-      });
-      ti.addEventListener('keypress', ke => ke.key === 'Enter' && ok.click());
+      return u ? new URL(u).hostname : '';
     };
-
-    confirmUrl.addEventListener('click', toTitle);
-    urlInput.addEventListener('keypress', ke => ke.key === 'Enter' && confirmUrl.click());
-  });
-
-  // Fetch and display child bookmarks
-  chrome.bookmarks.getChildren(item.id, list => {
-    const body = groupCard.querySelector('.mini-group-body');
-    body.innerHTML = '';
-    const bookmarks = list.filter(c => c.url);
-    if (bookmarks.length === 0) {
-      body.textContent = 'Không có bookmark';
-    } else {
-      bookmarks.forEach(c => {
-        const row = document.createElement('div');
-        row.className = 'bookmark-row nested';
-        row.draggable = true;
-        row.title = c.title;
-        row.addEventListener('dragstart', e => {
-          e.dataTransfer.setData(
-            'application/json',
-            JSON.stringify({ type: 'bookmark', id: c.id })
-          );
-        });
-        row.innerHTML = `
-          <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" alt="">
-          ${c.title}
-        `;
-        body.appendChild(row);
+    urlInput.addEventListener('input', () => {
+      const title = toTitle();
+      urlInput.title = title;
+    });
+    confirmUrl.addEventListener('click', async () => {
+      const u = urlInput.value.trim();
+      if (!u) return;
+      const bk = await chrome.bookmarks.create({
+        parentId: item.id,
+        title: toTitle(),
+        url: u,
       });
-    }
+      item.children.push(bk);
+      renderBookmarkGrid();
+    });
   });
 
   return groupCard;
