@@ -121,6 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+// Add new group button handler
+  const addGroupBtn = document.getElementById('add-group-btn');
+  addGroupBtn.addEventListener('click', async () => {
+    const groupName = prompt('Tên nhóm mới:');
+    if (groupName) {
+      // create new bookmark folder at root
+      await new Promise(res => chrome.bookmarks.create({ title: groupName }, res));
+      // re-fetch folders and re-render sidebar
+      const tree = await getBookmarks();
+      const root = tree[0];
+      renderSidebar(root.children);
+    }
+  });
   init();
   setupAddBookmarkForm();
 });
