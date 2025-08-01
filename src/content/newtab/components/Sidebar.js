@@ -61,5 +61,38 @@ export function renderSidebar(folders) {
       document.getElementById('folder-title').textContent = item.querySelector('.group-name').textContent;
       renderBookmarkGrid(children);
     });
+
+    // Drag-and-drop handlers for sidebar folder items
+    item.addEventListener('dragenter', e => {
+      e.preventDefault();
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('drop', async e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      e.stopPropagation();
+      const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      try {
+        const data = JSON.parse(raw);
+        if (!data || !data.id) return;
+        const folderId = item.dataset.id;
+        if (data.type === 'folder' && data.id === folderId) {
+          console.log('Cannot drop folder into itself');
+          return;
+        }
+        await chrome.bookmarks.move(data.id, { parentId: folderId });
+        const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
+        renderBookmarkGrid(list);
+      } catch (err) {
+        console.error('Drop to sidebar folder failed', err);
+      }
+    });
   });
 }

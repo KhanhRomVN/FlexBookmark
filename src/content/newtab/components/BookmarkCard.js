@@ -11,9 +11,15 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   card.draggable = true;
   card.addEventListener('dragstart', e => {
     e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({ type: 'bookmark', id: item.id })
+      'text/plain',
+      JSON.stringify({
+        type: 'bookmark',
+        id: item.id,
+        parentId: item.parentId
+      })
     );
+    e.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
   });
 
   card.innerHTML = `
@@ -37,6 +43,34 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   const editBtn = card.querySelector('.edit-btn');
   editBtn.addEventListener('click', async e => {
     e.stopPropagation();
+// Drag-and-drop visual handlers for bookmark card
+card.addEventListener('dragenter', e => {
+  e.preventDefault();
+  card.classList.add('drag-over');
+});
+card.addEventListener('dragover', e => {
+  e.preventDefault();
+  card.classList.add('drag-over');
+});
+card.addEventListener('dragleave', () => {
+  card.classList.remove('drag-over');
+});
+card.addEventListener('drop', async e => {
+  e.preventDefault();
+  card.classList.remove('drag-over');
+  const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+  try {
+    const data = JSON.parse(raw);
+    // TODO: handle drop logic if needed
+  } catch (err) {
+    console.error('Invalid drop data on bookmark card', err);
+  }
+});
+
+// Remove drag state classes on drag end
+card.addEventListener('dragend', () => {
+  card.classList.remove('dragging', 'drag-over');
+});
     const newUrl = prompt('URL mới', item.url) || item.url;
     const newTitle = prompt('Title mới', item.title) || item.title;
     await chrome.bookmarks.update(item.id, { url: newUrl, title: newTitle });

@@ -661,3 +661,26 @@ body {
     font-size: 20px;
   }
 }
+/* Drag-and-drop visual feedback */
+.drag-over {
+  outline: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+.bookmark-card.drag-over {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+.mini-group-card.drag-over {
+  border-color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+}
+/* Dragging state */
+.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+/* Drop target areas */
+.drop-target {
+  min-height: 20px;
+  transition: all 0.2s;
+}

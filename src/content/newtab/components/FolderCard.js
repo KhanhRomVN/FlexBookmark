@@ -65,16 +65,64 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
     );
   });
 
-  // Allow dropping bookmarks onto this folder
-  groupCard.addEventListener('dragover', e => e.preventDefault());
+  // Drag-and-drop handlers for persistent folder card
+  groupCard.addEventListener('dragenter', e => {
+    e.preventDefault();
+    groupCard.classList.add('drag-over');
+  });
+  groupCard.addEventListener('dragover', e => {
+    e.preventDefault();
+    groupCard.classList.add('drag-over');
+  });
+  groupCard.addEventListener('dragleave', () => {
+    groupCard.classList.remove('drag-over');
+  });
   groupCard.addEventListener('drop', async e => {
     e.preventDefault();
     e.stopPropagation();
+    groupCard.classList.remove('drag-over');
     try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+      const data = JSON.parse(raw);
+      if (!data || !data.id) {
+        console.warn('Invalid drop data');
+        return;
+      }
+      if (data.type === 'folder' && data.id === item.id) {
+        console.log('Cannot drop folder into itself');
+        return;
+      }
       if (data.type === 'bookmark') {
         await chrome.bookmarks.move(data.id, { parentId: item.id });
-        renderBookmarkGrid();
+        // Optimized: update only this folder's body
+        chrome.bookmarks.getChildren(item.id, list => {
+          const body = groupCard.querySelector('.mini-group-body');
+          body.innerHTML = '';
+          const bookmarks = list.filter(c => c.url);
+          if (bookmarks.length === 0) {
+            body.textContent = 'Không có bookmark';
+          } else {
+            bookmarks.forEach(c => {
+              const row = document.createElement('div');
+              row.className = 'bookmark-row nested';
+              row.draggable = true;
+              row.title = c.title;
+              row.addEventListener('dragstart', ev => {
+                ev.dataTransfer.setData('text/plain', JSON.stringify({ type: 'bookmark', id: c.id }));
+                ev.dataTransfer.effectAllowed = 'move';
+                row.classList.add('dragging');
+              });
+              row.addEventListener('dragend', () => {
+                row.classList.remove('dragging');
+              });
+              row.innerHTML = `
+                <img class="mini-bookmark-icon" src="https://www.google.com/s2/favicons?sz=16&domain_url=${c.url}" alt="">
+                ${c.title}
+              `;
+              body.appendChild(row);
+            });
+          }
+        });
       }
     } catch (err) {
       console.error('Drop to folder failed', err);

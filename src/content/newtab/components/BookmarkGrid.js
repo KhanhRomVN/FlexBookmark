@@ -49,16 +49,28 @@ export function renderBookmarkGrid(items) {
   grid.className = depth === 0 ? 'bookmarks-grid' : 'bookmark-list';
   grid.addEventListener('dragover', e => e.preventDefault());
   grid.addEventListener('drop', async e => {
-    e.preventDefault();
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json'));
-      await chrome.bookmarks.move(data.id, { parentId });
-      const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-      renderBookmarkGrid(list);
-    } catch (err) {
-      console.error('Drop failed', err);
-    }
-  });
+      e.preventDefault();
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+  
+        if (!data || !data.id) {
+          console.warn('Invalid drop data');
+          return;
+        }
+  
+        if (data.id === parentId) {
+          console.log('Cannot drop into itself');
+          return;
+        }
+  
+        await chrome.bookmarks.move(data.id, { parentId });
+  
+        const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+        renderBookmarkGrid(list);
+      } catch (err) {
+        console.error('Drop failed', err);
+      }
+    });
 
   // Render each item
   renderItems.forEach(item => {
