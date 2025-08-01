@@ -95,7 +95,7 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
   groupCard.addEventListener('dragstart', e => {
     e.dataTransfer.setData(
       'application/json',
-      JSON.stringify({ type: 'folder', id: item.id })
+      JSON.stringify({ type: 'folder', id: item.id, parentId })
     );
   });
 
@@ -123,6 +123,18 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
 
       const data = JSON.parse(raw);
       console.log(`Dropping ${data.type} ${data.id} onto folder ${item.id}`);
+      if (data.type === 'folder') {
+        const siblings = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+        const sourceIdx = siblings.findIndex(x => x.id === data.id);
+        const targetIdx = siblings.findIndex(x => x.id === item.id);
+        if (sourceIdx > -1 && targetIdx > -1) {
+          await chrome.bookmarks.move(data.id, { parentId, index: targetIdx });
+          await chrome.bookmarks.move(item.id, { parentId, index: sourceIdx });
+          const updatedList = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+          renderBookmarkGrid(updatedList);
+        }
+        return;
+      }
 
       if (!data || !data.id) {
         console.warn('Invalid drop data');
