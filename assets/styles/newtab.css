@@ -331,10 +331,14 @@ body {
 /* Temporary group card styling */
 .temp-group-card {
   background: white;
-  border: none;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
   width: 100%;
+}
+.temp-group-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .temp-group-card .mini-group-header {
   font-weight: 600;
@@ -485,6 +489,20 @@ body {
   gap: 8px;
   margin-bottom: 16px;
 }
+  
+/* Truncate bookmark-row titles to a single line */
+.bookmark-row .bookmark-title {
+/* Truncate nested bookmark rows to one line */
+.bookmark-row.nested {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .bookmark-row {
   display: flex;
   align-items: center;
@@ -492,6 +510,9 @@ body {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .bookmark-row .bookmark-icon {
   width: 16px;
