@@ -1130,3 +1130,337 @@ html[data-theme="dark"] aside.sidebar .group-item:focus,
 html[data-theme="dark"] aside.sidebar .group-item.active {
   background: #2a2a32 !important;
 }
+/* === Dark-theme sidebar badge lighter override (append at EOF) === */
+html[data-theme="dark"] aside.sidebar .group-item .group-count {
+  background: #4a4a55 !important;
+  color: #ffffff !important;
+}
+/* === Ultimate Dark Theme Sidebar Overrides (append at EOF) === */
+html[data-theme="dark"] aside.sidebar .groups-list .group-item {
+  background: transparent !important;
+}
+html[data-theme="dark"] aside.sidebar .groups-list .group-item:hover {
+  background: #2f2f38 !important;
+}
+html[data-theme="dark"] aside.sidebar .groups-list .group-item:focus,
+html[data-theme="dark"] aside.sidebar .groups-list .group-item.active {
+  background: #2a2a32 !important;
+}
+html[data-theme="dark"] aside.sidebar .groups-list .group-item .group-count {
+  background: #4a4a55 !important;
+  color: #ffffff !important;
+}
+/* === Dark-theme overrides for bookmark cards (append at EOF) === */
+html[data-theme="dark"] .bookmark-card {
+  background: #2a2a32 !important;
+  color: #ffffff !important;
+  border: 1px solid #3b82f6 !important;
+}
+html[data-theme="dark"] .bookmark-card:hover {
+  background: #33323d !important;
+}
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+/* === Dark-theme final overrides for folder and bookmark cards === */
+html[data-theme="dark"] aside.sidebar .mini-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+  color: #ffffff !important;
+}
+html[data-theme="dark"] aside.sidebar .mini-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title {
+  color: #ffffff !important;
+}
+/* === Dark theme overrides for main content folder cards and bookmark cards === */
+html[data-theme="dark"] main .mini-group-card,
+html[data-theme="dark"] main .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+  color: #ffffff !important;
+}
+html[data-theme="dark"] main .mini-group-card .mini-group-header,
+html[data-theme="dark"] main .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] main .mini-group-body,
+html[data-theme="dark"] main .temp-group-body {
+  color: #ffffff !important;
+}
+
+/* Bookmark card override */
+html[data-theme="dark"] .bookmark-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+}
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .bookmark-card:hover {
+  background: #33323d !important;
+}
+/* === Additional dark-theme fixes for folder and bookmark cards in grid === */
+html[data-theme="dark"] #bookmark-grid .mini-group-card,
+html[data-theme="dark"] #bookmark-grid .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card .mini-group-header,
+html[data-theme="dark"] #bookmark-grid .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* Ensure bookmark cards pick up dark background */
+html[data-theme="dark"] #bookmark-grid .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title,
+html[data-theme="dark"] #bookmark-grid .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+/* === FINAL: Dark theme overrides for all cards and text === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn,
+html[data-theme="dark"] .mini-group-card .mini-group-header,
+html[data-theme="dark"] .mini-group-card .mini-group-body,
+html[data-theme="dark"] .temp-group-card .mini-group-header,
+html[data-theme="dark"] .temp-group-card .temp-group-body {
+  color: #ffffff !important;
+}
+
+/* Adjust rows inside folder cards */
+html[data-theme="dark"] .bookmark-row,
+html[data-theme="dark"] .bookmark-row.nested {
+  background: #33323d !important;
+  color: #ffffff !important;
+}
+
+/* Ensure badge text remains visible */
+html[data-theme="dark"] .group-count {
+  background: #4a4a55 !important;
+  color: #ffffff !important;
+}
+/* === Additional Dark Theme Overrides for Cards and Text === */
+html[data-theme="dark"] .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] .mini-group-header {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .mini-group-body,
+html[data-theme="dark"] .temp-group-body {
+  color: #ffffff !important;
+}
+
+/* Sidebar group titles */
+html[data-theme="dark"] .group-name {
+  color: #ffffff !important;
+}
+/* === FINAL DARK THEME CARD & TEXT OVERRIDES (append at EOF) === */
+html[data-theme="dark"] .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] .mini-group-card .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-name,
+html[data-theme="dark"] .group-count {
+  color: #ffffff !important;
+}
+/* === Dark theme overrides for bookmark and folder card texts === */
+html[data-theme="dark"] #bookmark-grid .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title,
+html[data-theme="dark"] #bookmark-grid .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card .mini-group-header,
+html[data-theme="dark"] #bookmark-grid .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* === Dark-theme grid card overrides (append at EOF for specificity) === */
+html[data-theme="dark"] #bookmark-grid .bookmark-card {
+  background: #2a2a32 !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title,
+html[data-theme="dark"] #bookmark-grid .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card,
+html[data-theme="dark"] #bookmark-grid .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card .mini-group-header,
+html[data-theme="dark"] #bookmark-grid .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* === FINAL DARK-THEME OVERRIDES FOR ALL CARDS AND HEADERS === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn,
+html[data-theme="dark"] .mini-group-card .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* === FINAL DARK-THEME OVERRIDES FOR ALL BOOKMARK & FOLDER CARDS === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+}
+
+/* Ensure all text/icons inside cards are white */
+html[data-theme="dark"] .bookmark-card *,
+html[data-theme="dark"] .mini-group-card *,
+html[data-theme="dark"] .temp-group-card * {
+  color: #ffffff !important;
+}
+
+/* Specific overrides for nested rows inside folder cards */
+html[data-theme="dark"] .bookmark-row,
+html[data-theme="dark"] .bookmark-row.nested {
+  background: #33323d !important;
+  color: #ffffff !important;
+}
+/* === DARK THEME: FORCE CARD BACKGROUNDS & TEXT COLORS === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+}
+
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn,
+html[data-theme="dark"] .mini-group-card .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+
+/* Ensure nested rows are visible */
+html[data-theme="dark"] .bookmark-row,
+html[data-theme="dark"] .bookmark-row.nested {
+  background: #33323d !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar group titles */
+html[data-theme="dark"] .group-name {
+  color: #ffffff !important;
+}
+/* === FINAL DARK THEME OVERRIDES FOR ALL CARDS & TEXT (EOF) === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+}
+html[data-theme="dark"] .bookmark-card *,
+html[data-theme="dark"] .mini-group-card *,
+html[data-theme="dark"] .temp-group-card * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .bookmark-row,
+html[data-theme="dark"] .bookmark-row.nested {
+  background: #33323d !important;
+  color: #ffffff !important;
+}
+/* === FINAL DARK-THEME GRID CARD & HEADER TEXT OVERRIDES === */
+html[data-theme="dark"] #bookmark-grid .bookmark-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title,
+html[data-theme="dark"] #bookmark-grid .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card,
+html[data-theme="dark"] #bookmark-grid .temp-group-card {
+  background: #2a2a32 !important;
+  border-color: #3b82f6 !important;
+}
+html[data-theme="dark"] #bookmark-grid .mini-group-card .mini-group-header,
+html[data-theme="dark"] #bookmark-grid .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* === ULTIMATE DARK THEME CARD & TEXT OVERRIDES (EOF) === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #3b82f6 !important;
+}
+
+html[data-theme="dark"] .bookmark-card *,
+html[data-theme="dark"] .mini-group-card *,
+html[data-theme="dark"] .temp-group-card * {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .group-name {
+  color: #ffffff !important;
+}
+
+/* Sidebar badge count */
+html[data-theme="dark"] .group-count {
+  background: #4a4a55 !important;
+  color: #ffffff !important;
+}
+/* === FINAL: Enforce dark-theme card backgrounds & group titles === */
+html[data-theme="dark"] .bookmark-card {
+  background: #2a2a32 !important;
+}
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .bookmark-card .action-btn {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .mini-group-card .mini-group-header {
+  color: #ffffff !important;
+}
