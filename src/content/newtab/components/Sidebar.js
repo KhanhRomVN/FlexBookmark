@@ -29,29 +29,45 @@ export function renderSidebar(folders) {
     return count;
   }
 
+  // Render each folder group
   groups.forEach(folder => {
-      const count = countUrls(folder);
-      const element = document.createElement('div');
-      element.className = 'group-item';
-      element.classList.add('drop-target');
-      element.dataset.id = folder.id;
-      element.innerHTML = `
-        <div class="group-color" style="background-color: #3b82f6"></div>
-        <span class="group-name">${folder.title}</span>
-        <span class="group-count">${count}</span>
-        <div class="group-actions">
-          <button class="group-action-btn" title="Chỉnh sửa">✏️</button>
-        </div>
-      `;
-      sidebar.appendChild(element);
-    });
+    const count = countUrls(folder);
+    const element = document.createElement('div');
+    element.className = 'group-item';
+    element.classList.add('drop-target');
+    element.dataset.id = folder.id;
+    element.innerHTML = `
+      <div class="group-color" style="background-color: #3b82f6"></div>
+      <span class="group-name">${folder.title}</span>
+      <span class="group-count">${count}</span>
+      <div class="group-actions">
+        <button class="group-action-btn" title="Chỉnh sửa">✏️</button>
+      </div>
+    `;
+    sidebar.appendChild(element);
+  });
 
+  // After rendering, restore last selected folder if any
+  chrome.storage.local.get('lastFolderId', ({ lastFolderId }) => {
+    if (lastFolderId) {
+      const savedItem = sidebar.querySelector(`.group-item[data-id="${lastFolderId}"]`);
+      if (savedItem) {
+        savedItem.click();
+      }
+    }
+  });
+
+  // Attach event handlers
   sidebar.querySelectorAll('.group-item').forEach(item => {
     item.addEventListener('click', async e => {
       e.stopPropagation();
       sidebar.querySelectorAll('.group-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       const folderId = item.dataset.id;
+
+      // Persist this selection
+      chrome.storage.local.set({ lastFolderId: folderId });
+
       // fetch direct children of this folder
       const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
       const children = list || [];
@@ -87,13 +103,13 @@ export function renderSidebar(folders) {
       try {
         const data = JSON.parse(raw);
         if (!data || !data.id) return;
-        const folderId = item.dataset.id;
-        if (data.type === 'folder' && data.id === folderId) {
+        const folderIdDrop = item.dataset.id;
+        if (data.type === 'folder' && data.id === folderIdDrop) {
           console.log('Cannot drop folder into itself');
           return;
         }
-        await chrome.bookmarks.move(data.id, { parentId: folderId });
-        const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
+        await chrome.bookmarks.move(data.id, { parentId: folderIdDrop });
+        const list = await new Promise(res => chrome.bookmarks.getChildren(folderIdDrop, res));
         renderBookmarkGrid(list);
       } catch (err) {
         console.error('Drop to sidebar folder failed', err);

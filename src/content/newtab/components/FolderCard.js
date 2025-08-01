@@ -147,7 +147,9 @@ export function createFolderCard(item, renderBookmarkGrid, parentId, isTempGroup
 
       // Refresh both source and target
       refreshBody();
-      renderBookmarkGrid();
+      // Re-fetch main grid items and re-render with up-to-date list
+      const updatedList = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
+      renderBookmarkGrid(updatedList);
     } catch (err) {
       console.error('Drop to folder failed', err);
     }
