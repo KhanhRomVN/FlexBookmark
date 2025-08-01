@@ -37,6 +37,8 @@ html[data-theme="dark"] .group-count {
 .bookmark-card {
   background: var(--bg-bookmark-card);
   color: var(--text-color);
+  border: 1px solid #696969;
+  border: 1px solid #696969;
 }
   --bg-bookmark-card: #25262b;
   --text-color: #ffffff;
@@ -66,7 +68,7 @@ body {
   width: 280px;
   background: var(--bg-sidebar);
   color: var(--text-color);
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #696969;
   display: flex;
   flex-direction: column;
 }
@@ -77,7 +79,7 @@ body {
   justify-content: flex-start;
   padding: 16px 20px;
   height: 70px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #696969;
 }
 
 .sidebar-header h1 {
@@ -181,6 +183,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-left: 1px solid #696969;
 }
 
 .main-header {
@@ -188,7 +191,7 @@ body {
   color: var(--text-color);
   padding: 16px 24px;
   height: 70px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #696969;
 }
 
 .header-top {
@@ -365,7 +368,7 @@ body {
 .mini-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #696969;
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -393,7 +396,7 @@ body {
 .temp-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #696969;
   border-radius: 8px;
   padding: 12px;
   width: 100%;
@@ -626,7 +629,7 @@ body {
 /* Sidebar footer styling */
 .sidebar-footer {
   padding: 16px 20px 40px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #696969;
 }
 .sidebar-footer .add-group-btn {
   margin: 0;
@@ -681,7 +684,7 @@ body {
     width: 100%;
     height: auto;
     border-right: none;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
     flex-direction: row;
   }
   .sidebar-header {
@@ -1154,7 +1157,7 @@ html[data-theme="dark"] aside.sidebar .groups-list .group-item .group-count {
 html[data-theme="dark"] .bookmark-card {
   background: #2a2a32 !important;
   color: #ffffff !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
 }
 html[data-theme="dark"] .bookmark-card:hover {
   background: #33323d !important;
@@ -1166,7 +1169,7 @@ html[data-theme="dark"] .bookmark-card .action-btn {
 /* === Dark-theme final overrides for folder and bookmark cards === */
 html[data-theme="dark"] aside.sidebar .mini-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
   color: #ffffff !important;
 }
 html[data-theme="dark"] aside.sidebar .mini-group-card .mini-group-header {
@@ -1183,7 +1186,7 @@ html[data-theme="dark"] #bookmark-grid .bookmark-card .bookmark-title {
 html[data-theme="dark"] main .mini-group-card,
 html[data-theme="dark"] main .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
   color: #ffffff !important;
 }
 html[data-theme="dark"] main .mini-group-card .mini-group-header,
@@ -1198,7 +1201,7 @@ html[data-theme="dark"] main .temp-group-body {
 /* Bookmark card override */
 html[data-theme="dark"] .bookmark-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
 }
 html[data-theme="dark"] .bookmark-card .bookmark-title,
 html[data-theme="dark"] .bookmark-card .action-btn {
@@ -1231,7 +1234,7 @@ html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
   color: #ffffff !important;
 }
 
@@ -1354,7 +1357,7 @@ html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
 }
 
 /* Ensure all text/icons inside cards are white */
@@ -1400,7 +1403,7 @@ html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
 }
 html[data-theme="dark"] .bookmark-card *,
 html[data-theme="dark"] .mini-group-card *,
@@ -1435,7 +1438,7 @@ html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #3b82f6 !important;
+  border: 1px solid #696969 !important;
 }
 
 html[data-theme="dark"] .bookmark-card *,
@@ -1463,4 +1466,38 @@ html[data-theme="dark"] .bookmark-card .action-btn {
 }
 html[data-theme="dark"] .mini-group-card .mini-group-header {
   color: #ffffff !important;
+}
+/* Default card borders */
+.bookmark-card,
+.mini-group-card,
+.temp-group-card {
+  border: 1px solid #696969 !important;
+}
+/* Force consistent card borders in dark theme too */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  border: 1px solid #696969 !important;
+}
+/* === Final override: enforce gray borders on all cards === */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card,
+.bookmark-card,
+.mini-group-card,
+.temp-group-card {
+  border: 1px solid #696969 !important;
+}
+/* === Override: sidebar & main header use gentle gray borders === */
+aside.sidebar,
+html[data-theme="dark"] aside.sidebar,
+body.light-theme .sidebar,
+body.dark-theme .sidebar {
+  border-right: 1px solid #696969 !important;
+}
+.main-header,
+html[data-theme="dark"] .main-header,
+body.light-theme .main-header,
+body.dark-theme .main-header {
+  border-bottom: 1px solid #696969 !important;
 }
