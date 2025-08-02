@@ -1,6 +1,40 @@
 /* ==========================================================================
    newtab theme overrides
    ========================================================================== */
+/* Theme picker dropdown */
+.theme-container {
+  position: relative;
+  display: inline-block;
+}
+.theme-dropdown {
+   display: none; /* hidden by default until toggled */
+   position: absolute;
+   top: 100%;      /* just below the button */
+   right: 0;
+   margin-top: 4px;
+   background: #ffffff;
+   border: 1px solid #e2e8f0;
+   border-radius: 8px;
+   padding: 8px 0;
+   min-width: 160px;
+   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+   z-index: 100;
+}
+
+.theme-dropdown.active {
+  display: block !important;
+}
+.theme-dropdown button {
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.theme-dropdown button:hover {
+  background: #f1f5f9;
+}
 
 /* Dark‐theme sidebar text & hide color squares */
 html[data-theme="dark"] .sidebar,

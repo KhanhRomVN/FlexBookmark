@@ -2,12 +2,6 @@
    newtab header
    ========================================================================== */
 
-/* Ensure theme and settings container aligns icons */  
-.theme-container {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
 .main-header {
   background: var(--bg-header);
   color: var(--text-color);

@@ -109,7 +109,7 @@ async function init() {
 document.addEventListener('DOMContentLoaded', () => {
   // Theme dropdown toggle
   document.body.addEventListener('click', () => {
-    document.getElementById('theme-dropdown').style.display = 'none';
+    document.getElementById('theme-dropdown').classList.remove('active');
   });
   document.getElementById('theme-btn').addEventListener('click', e => {
     e.stopPropagation();
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const theme = this.dataset.theme;
       applyTheme(theme);
       chrome.storage.local.set({ theme });
-      document.getElementById('theme-dropdown').style.display = 'none';
+      document.getElementById('theme-dropdown').classList.remove('active');
     });
   });
 
