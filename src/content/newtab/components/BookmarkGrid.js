@@ -62,25 +62,15 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
 
   // Direct bookmarks (level1)
   const bookmarksLevel1 = items.filter(item => item.url);
-
-  // Subfolders (level2)
-  const level2Folders = items.filter(item => !item.url);
-
-  // Group all level1 bookmarks into "Temp"
   if (bookmarksLevel1.length > 0) {
     const tempGroup = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
-    const tempCard = createFolderCard(tempGroup);
-    gridList.append(tempCard);
+    gridList.append(createFolderCard(tempGroup));
   }
 
-  // For each subfolder, group its direct bookmarks
+  // Render subfolder cards with their enriched children
+  const level2Folders = items.filter(item => !item.url);
   level2Folders.forEach(subFolder => {
-    const childUrls = subFolder.children ? subFolder.children.filter(c => c.url) : [];
-    if (childUrls.length > 0) {
-      const group = { id: subFolder.id, title: subFolder.title, children: childUrls };
-      const card = createFolderCard(group);
-      gridList.append(card);
-    }
+    gridList.append(createFolderCard(subFolder));
   });
 
   container.append(gridList);

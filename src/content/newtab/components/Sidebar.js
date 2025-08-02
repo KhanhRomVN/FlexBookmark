@@ -70,27 +70,31 @@ export function renderSidebar(folders) {
       // Persist this selection
       chrome.storage.local.set({ lastFolderId: folderId });
 
-      // fetch direct children of this folder
+      // fetch direct children and their grandchildren for nested view
       const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
-      const children = list || [];
+      let children = list || [];
+      // enrich subfolders with grandchildren
+      children = await Promise.all(children.map(async child => {
+        if (!child.url) {
+          const subs = await new Promise(res => chrome.bookmarks.getChildren(child.id, res));
+          child.children = subs || [];
+        }
+        return child;
+      }));
       console.log('Sidebar click:', { folderId, childrenLength: children.length, children });
-      // update grid context
+      // update grid context attributes
       const grid = document.getElementById('bookmark-grid');
       grid.dataset.parentId = folderId;
       grid.dataset.depth = '1';
-      document.getElementById('folder-title').textContent = item.querySelector('.group-name').textContent;
-      // Pass folder object to render function, ensure folderObj always defined
-      let folderObj = folders.find(f => f.id === folderId);
-      if (!folderObj) {
-        // create a temporary folder object for nested view
-        folderObj = {
-          id: folderId,
-          title: item.querySelector('.group-name')?.textContent || '',
-          children: children
-        };
-      } else {
-        folderObj.children = children;
-      }
+      document.getElementById('folder-title').textContent =
+        item.querySelector('.group-name').textContent;
+      // Build enriched folder object
+      let folderObj = folders.find(f => f.id === folderId) || {
+        id: folderId,
+        title: item.querySelector('.group-name')?.textContent || '',
+        children: []
+      };
+      folderObj.children = children;
       console.log('About to call renderBookmarkGrid with:', { depth: 1, folderObj, items: children });
       renderBookmarkGrid(children, 1, folderObj);
     });
