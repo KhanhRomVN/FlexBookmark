@@ -1,0 +1,23 @@
+/* ==========================================================================
+   newtab variables
+   ========================================================================== */
+
+/* Default theme variables */
+:root {
+  --bg-body: #f8fafc;
+  --bg-sidebar: #fff;
+  --bg-header: #fff;
+  --bg-group-card: #fff;
+  --bg-bookmark-card: #fff;
+  --text-color: #000;
+}
+
+/* Dark theme variable overrides */
+[data-theme="dark"] {
+  --bg-body: #202126;
+  --bg-sidebar: #24252a;
+  --bg-header: #24252a;
+  --bg-group-card: #1e1f24;
+  --bg-bookmark-card: #25262b;
+  --text-color: #ffffff;
+}

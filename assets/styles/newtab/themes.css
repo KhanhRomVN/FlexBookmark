@@ -1,0 +1,90 @@
+/* ==========================================================================
+   newtab theme overrides
+   ========================================================================== */
+
+/* Dark‐theme sidebar text & hide color squares */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .sidebar * {
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .group-color {
+  display: none !important;
+}
+
+/* Dark‐theme sidebar item hover/focus */
+html[data-theme="dark"] .group-item:hover {
+  background: #2f2f38 !important;
+}
+html[data-theme="dark"] .group-item:focus,
+html[data-theme="dark"] .group-item.active {
+  background: #2a2a32 !important;
+}
+
+/* Dark‐theme badge */
+html[data-theme="dark"] .sidebar .group-count {
+  background: #4a4a55 !important;
+  color: #ffffff !important;
+}
+
+/* Dark‐theme cards & folder rows */
+html[data-theme="dark"] .bookmark-card,
+html[data-theme="dark"] .mini-group-card,
+html[data-theme="dark"] .temp-group-card {
+  background: #2a2a32 !important;
+  border: 1px solid #696969 !important;
+  color: #ffffff !important;
+}
+html[data-theme="dark"] .bookmark-card:hover {
+  background: #33323d !important;
+}
+html[data-theme="dark"] .bookmark-row,
+html[data-theme="dark"] .bookmark-row.nested {
+  background: #33323d !important;
+  color: #ffffff !important;
+}
+
+/* Light theme body */
+body.light-theme {
+  background-color: var(--bg-body);
+  color: var(--text-color);
+}
+
+/* Dark theme body */
+body.dark-theme {
+  background-color: #0f172a;
+  --sidebar-bg: #1e293b;
+  --hover-color: #334155;
+  color: #f1f5f9;
+}
+body.dark-theme .sidebar {
+  background-color: var(--sidebar-bg);
+}
+body.dark-theme .group-item:hover {
+  background: var(--hover-color);
+}
+
+/* Image theme */
+body.image-theme {
+  background-size: cover;
+  background-position: center;
+}
+body.image-theme .sidebar {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+body.image-theme .main-content {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Persistent border overrides */
+aside.sidebar,
+html[data-theme="dark"] aside.sidebar,
+body.light-theme .sidebar,
+body.dark-theme .sidebar {
+  border-right: 1px solid #696969 !important;
+}
+.main-header,
+html[data-theme="dark"] .main-header,
+body.light-theme .main-header,
+body.dark-theme .main-header {
+  border-bottom: 1px solid #696969 !important;
+}

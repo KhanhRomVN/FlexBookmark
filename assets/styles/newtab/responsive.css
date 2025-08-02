@@ -1,0 +1,88 @@
+/* ==========================================================================
+   newtab responsive
+   ========================================================================== */
+
+/* Nested grid responsive */
+@media (max-width: 768px) {
+  .bookmark-list {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .bookmark-list {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+}
+
+/* Root grid responsive */
+@media (max-width: 768px) {
+  .bookmarks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .bookmarks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    height: auto;
+  }
+  body {
+    height: auto;
+    overflow: auto;
+  }
+  .content-area {
+    padding: 16px;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #cbd5e1;
+    flex-direction: row;
+  }
+  .sidebar-header {
+    padding: 16px;
+    flex: 0 0 auto;
+  }
+  .groups-list {
+    display: flex;
+    overflow-x: auto;
+    padding: 8px;
+    gap: 8px;
+  }
+  .group-item {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    margin-right: 8px;
+  }
+  .main-header .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .search-input {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Smaller mobile tweaks */
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 20px;
+  }
+}
