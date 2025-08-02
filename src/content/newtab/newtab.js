@@ -1,30 +1,11 @@
-// Global drag-and-drop performance optimizations
-document.addEventListener('dragover', e => {
-  // Only prevent default if it's a valid drop target
-  if (
-    e.target.classList.contains('drop-target') ||
-    e.target.classList.contains('bookmark-card') ||
-    e.target.classList.contains('mini-group-card')
-  ) {
-    e.preventDefault();
-  }
-}, false);
-
-document.addEventListener('drop', e => {
-  // Prevent default drop behavior except on valid drop targets
-  if (
-    e.target.classList.contains('drop-target') ||
-    e.target.classList.contains('bookmark-card') ||
-    e.target.classList.contains('mini-group-card')
-  ) {
-    e.preventDefault();
-  }
-}, false);
-
 import { renderSidebar } from './components/Sidebar.js';
 import { renderBookmarkGrid } from './components/BookmarkGrid.js';
 import { setupAddBookmarkForm } from './components/AddBookmarkForm.js';
 import { md5 } from '../utils/helpers.js';
+
+console.log('newtab.js loaded');
+// Disable all dragging
+document.addEventListener('dragstart', e => e.preventDefault(), true);
 
 // Lấy thông tin user
 async function getUserInfo() {
@@ -87,6 +68,7 @@ chrome.storage.local.get(['theme', 'backgroundImage'], result => {
 
 // Khởi tạo ứng dụng
 async function init() {
+  console.log('init() called');
   // Fetch and display user info
   const userInfo = await getUserInfo();
   if (userInfo.email) {
@@ -103,10 +85,16 @@ async function init() {
   gridEl.dataset.parentId = root.id;
   gridEl.dataset.depth = '0';
   document.getElementById('folder-title').textContent = 'Tất cả bookmark';
-  renderBookmarkGrid(root.children);
+  // DEBUG: flatten tree to display all bookmark cards directly
+  const flatItems = flattenTree(root.children);
+  console.log('Flat bookmarks count=', flatItems.length);
+  renderBookmarkGrid(flatItems);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded event fired');
+init();
+  setupAddBookmarkForm();
   // Theme dropdown toggle
   document.body.addEventListener('click', () => {
     document.getElementById('theme-dropdown').classList.remove('active');
@@ -138,6 +126,4 @@ document.addEventListener('DOMContentLoaded', () => {
       renderSidebar(root.children);
     }
   });
-  init();
-  setupAddBookmarkForm();
 });

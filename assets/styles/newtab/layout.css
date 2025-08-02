@@ -42,3 +42,10 @@
   gap: 8px;
   margin-bottom: 16px;
 }
+/* Allow clicks on cards over the drop-target layer */
+.drop-target {
+  pointer-events: none;
+}
+.drop-target > * {
+  pointer-events: auto;
+}

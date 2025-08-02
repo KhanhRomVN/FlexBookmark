@@ -35,7 +35,6 @@ export function renderSidebar(folders) {
     const count = countUrls(folder);
     const element = document.createElement('div');
     element.className = 'group-item';
-    element.classList.add('drop-target');
     element.dataset.id = folder.id;
     element.innerHTML = `
       <div class="group-color" style="background-color: ${colors[Math.floor(Math.random() * colors.length)]}"></div>
@@ -60,6 +59,7 @@ export function renderSidebar(folders) {
   });
 
   // After rendering, restore last selected folder if any
+/*
   chrome.storage.local.get('lastFolderId', ({ lastFolderId }) => {
     if (lastFolderId) {
       const savedItem = sidebar.querySelector(`.group-item[data-id="${lastFolderId}"]`);
@@ -68,6 +68,7 @@ export function renderSidebar(folders) {
       }
     }
   });
+*/
 
   // Attach event handlers
   sidebar.querySelectorAll('.group-item').forEach(item => {

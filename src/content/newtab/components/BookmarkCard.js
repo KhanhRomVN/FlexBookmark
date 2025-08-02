@@ -1,5 +1,5 @@
 /**
- * Creates a bookmark card element with drag, delete, and edit functionality.
+ * Creates a bookmark card element with delete, edit, and click functionality.
  * @param {Object} item - Bookmark data (id, url, title).
  * @param {Function} renderBookmarkGrid - Callback to re-render the grid.
  * @param {Array} items - Current list of items for rerendering context.
@@ -8,68 +8,13 @@
 export function createBookmarkCard(item, renderBookmarkGrid, items) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
-  card.draggable = true;
+  card.draggable = false;
+  card.style.position = 'relative';
+  card.style.border = '1px solid transparent';
+  card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
+  card.dataset.id = item.id;
 
-  // Drag start: serialize data and add dragging class
-  card.addEventListener('dragstart', e => {
-    console.log('BookmarkCard: dragstart', item.id);
-    e.dataTransfer.setData(
-      'text/plain',
-      JSON.stringify({ type: 'bookmark', id: item.id, parentId: item.parentId })
-    );
-    e.dataTransfer.effectAllowed = 'move';
-    card.classList.add('dragging');
-  });
-
-  // Drag visual feedback
-  card.addEventListener('dragenter', e => {
-    console.log('BookmarkCard: dragenter', item.id);
-    e.preventDefault();
-    card.classList.add('drag-over');
-  });
-  card.addEventListener('dragover', e => {
-    console.log('BookmarkCard: dragover', item.id);
-    e.preventDefault();
-    card.classList.add('drag-over');
-  });
-  card.addEventListener('dragleave', () => {
-    card.classList.remove('drag-over');
-  });
-  card.addEventListener('drop', async e => {
-    console.log('BookmarkCard: drop event, types=', e.dataTransfer.types);
-    e.preventDefault();
-    card.classList.remove('drag-over');
-    
-    try {
-      const raw = e.dataTransfer.getData('text/plain') ||
-                 e.dataTransfer.getData('application/json');
-      console.log('BookmarkCard: drop data=', raw);
-      
-      const data = JSON.parse(raw);
-      console.log(`BookmarkCard: dropping ${data.type} ${data.id} onto bookmark ${item.id}`);
-      
-      // Prevent dropping onto itself
-      if (data.id === item.id) {
-        console.log('Cannot drop onto itself');
-        return;
-      }
-      
-      // Get current parent folder
-      const grid = document.getElementById('bookmark-grid');
-      const parentId = grid.dataset.parentId || null;
-      
-      // Move the bookmark
-      await chrome.bookmarks.move(data.id, { parentId });
-      
-      // Re-render the grid
-      renderBookmarkGrid();
-    } catch (err) {
-      console.error('Invalid drop data on bookmark card', err);
-    }
-  });
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging', 'drag-over');
-  });
+  console.log(`Creating bookmark card for: ${item.title} (${item.id})`);
 
   // Card content
   card.innerHTML = `
@@ -83,22 +28,102 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     </div>
   `;
 
-  // Delete bookmark
-  const deleteBtn = card.querySelector('.delete-btn');
-  deleteBtn.addEventListener('click', async e => {
-    e.stopPropagation();
-    await chrome.bookmarks.remove(item.id);
-    card.remove();
+  // Insert menu button into header
+  const headerEl = card.querySelector('.bookmark-header');
+  const menuBtn = document.createElement('button');
+  menuBtn.style.display = 'none';
+  menuBtn.className = 'menu-btn';
+  menuBtn.textContent = '⋯';
+  headerEl.append(menuBtn);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'menu-dropdown';
+  dropdown.innerHTML =
+    '<button class="menu-edit">Edit</button>' +
+    '<button class="menu-delete">Delete</button>';
+  headerEl.append(dropdown);
+  console.log(`DEBUG: menuBtn appended for bookmark ${item.id}`, menuBtn, dropdown);
+
+  // Hover handlers for border and menu visibility
+  card.addEventListener('mouseenter', () => {
+    card.style.borderColor = '#3b82f6';
+    menuBtn.style.display = 'block';
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.borderColor = 'transparent';
+    menuBtn.style.display = 'none';
+    dropdown.classList.remove('show');
   });
 
-  // Edit bookmark
-  const editBtn = card.querySelector('.edit-btn');
-  editBtn.addEventListener('click', async e => {
+  // Toggle dropdown on menu click
+  menuBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.classList.toggle('show');
+  });
+
+  // Edit & Delete from dropdown
+  dropdown.querySelector('.menu-edit')?.addEventListener('click', async e => {
     e.stopPropagation();
     const newUrl = prompt('URL mới', item.url) || item.url;
     const newTitle = prompt('Title mới', item.title) || item.title;
     await chrome.bookmarks.update(item.id, { url: newUrl, title: newTitle });
-    renderBookmarkGrid(items);
+    const titleEl = card.querySelector('.bookmark-title');
+    titleEl.textContent = newTitle;
+    titleEl.title = newTitle;
+    const iconEl = card.querySelector('.bookmark-icon');
+    iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
+    dropdown.classList.remove('show');
+  });
+
+  dropdown.querySelector('.menu-delete')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (confirm('Delete this bookmark?')) {
+      await chrome.bookmarks.remove(item.id);
+      card.remove();
+    }
+    dropdown.classList.remove('show');
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', () => {
+    dropdown.classList.remove('show');
+  });
+
+  // Click anywhere on card (except menu or actions) to open URL
+  card.addEventListener('click', e => {
+    console.log(`BookmarkCard clicked: id=${item.id}, url=${item.url}`, e.target);
+    if (!e.target.closest('.action-btn') && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) {
+      console.log(`Opening URL: ${item.url}`);
+      try {
+        chrome.tabs.create({ url: item.url });
+      } catch (err) {
+        console.error('chrome.tabs.create error:', err);
+      }
+    }
+  });
+
+  // Delete via original delete button (hidden by default)
+  const deleteBtn = card.querySelector('.delete-btn');
+  deleteBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    console.log(`Deleting bookmark: ${item.id}`);
+    await chrome.bookmarks.remove(item.id);
+    card.remove();
+  });
+
+  // Edit via original edit button (hidden by default)
+  const editBtn = card.querySelector('.edit-btn');
+  editBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    console.log(`Editing bookmark: ${item.id}`);
+    const newUrl = prompt('URL mới', item.url) || item.url;
+    const newTitle = prompt('Title mới', item.title) || item.title;
+    await chrome.bookmarks.update(item.id, { url: newUrl, title: newTitle });
+    const titleEl = card.querySelector('.bookmark-title');
+    titleEl.textContent = newTitle;
+    titleEl.title = newTitle;
+    const iconEl = card.querySelector('.bookmark-icon');
+    iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
   });
 
   return card;
