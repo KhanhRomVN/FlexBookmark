@@ -73,14 +73,25 @@ export function renderSidebar(folders) {
       // fetch direct children of this folder
       const list = await new Promise(res => chrome.bookmarks.getChildren(folderId, res));
       const children = list || [];
+      console.log('Sidebar click:', { folderId, childrenLength: children.length, children });
       // update grid context
       const grid = document.getElementById('bookmark-grid');
       grid.dataset.parentId = folderId;
       grid.dataset.depth = '1';
       document.getElementById('folder-title').textContent = item.querySelector('.group-name').textContent;
-      // Pass folder object to render function
-      const folderObj = folders.find(f => f.id === folderId);
-      if (folderObj) folderObj.children = children;
+      // Pass folder object to render function, ensure folderObj always defined
+      let folderObj = folders.find(f => f.id === folderId);
+      if (!folderObj) {
+        // create a temporary folder object for nested view
+        folderObj = {
+          id: folderId,
+          title: item.querySelector('.group-name')?.textContent || '',
+          children: children
+        };
+      } else {
+        folderObj.children = children;
+      }
+      console.log('About to call renderBookmarkGrid with:', { depth: 1, folderObj, items: children });
       renderBookmarkGrid(children, 1, folderObj);
     });
 

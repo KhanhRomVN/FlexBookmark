@@ -8,14 +8,12 @@ import { createFolderCard } from './FolderCard.js';
  * Renders the bookmark grid showing folder and bookmark cards.
  * @param {Array} items - List of bookmark items.
  * @param {number} depth - Current folder depth.
+ * @param {Object|null} folder - Current folder object context.
  */
 export function renderBookmarkGrid(items, depth = 0, folder = null) {
   const container = document.getElementById('bookmark-grid');
   const parentId = container.dataset.parentId || null;
-  // update dataset depth for nested creation logic
   container.dataset.depth = depth.toString();
-
-  // Clear existing content
   container.innerHTML = '';
 
   // Header
@@ -23,19 +21,9 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   container.append(header);
 
   // Title & breadcrumb
-  const groupTitle = container.dataset.groupTitle || '';
+  const groupTitle = folder && folder.title ? folder.title : container.dataset.groupTitle || '';
+  container.dataset.groupTitle = groupTitle;
   updateGridTitle(depth, groupTitle);
-
-  // If viewing a single folder detail, render that folder card and return
-  if (folder) {
-    const detailGrid = document.createElement('div');
-    detailGrid.className = depth === 0 ? 'bookmarks-grid' : 'bookmark-list';
-    detailGrid.classList.add('drop-target');
-    const detailCard = createFolderCard(folder, () => renderBookmarkGrid(folder.children, depth + 1, folder));
-    detailGrid.append(detailCard);
-    container.append(detailGrid);
-    return;
-  }
 
   // Empty state
   if (!items || items.length === 0) {
@@ -43,45 +31,57 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     return;
   }
 
-  // Create grid container
-  const grid = document.createElement('div');
-  grid.className = depth === 0 ? 'bookmarks-grid' : 'bookmark-list';
-  grid.classList.add('drop-target');
+  // Depth 0: top-level grid view
+  if (depth === 0) {
+    const grid = document.createElement('div');
+    grid.className = 'bookmarks-grid drop-target';
 
-  // Separate folders and bookmarks
-  const folders = items.filter(item => !item.url);
-  const bookmarks = items.filter(item => item.url);
+    const folders = items.filter(item => !item.url);
+    const bookmarks = items.filter(item => item.url);
 
-  // Create temporary group for top-level bookmarks
-  if (depth === 0 && bookmarks.length > 0) {
-    const tempGroup = {
-      id: 'temp-group',
-      title: 'Temp',
-      children: bookmarks
-    };
-    const tempCard = createFolderCard(
-      tempGroup,
-      () => renderBookmarkGrid(tempGroup.children, depth + 1, tempGroup)
-    );
-    grid.append(tempCard);
+    // Top-level: bookmarks group
+    if (bookmarks.length > 0) {
+      const tempGroup = { id: 'temp-group', title: 'Bookmarks', children: bookmarks };
+      const tempCard = createFolderCard(tempGroup);
+      grid.append(tempCard);
+    }
+
+    // Render folder cards
+    folders.forEach(childFolder => {
+      const card = createFolderCard(childFolder);
+      grid.append(card);
+    });
+
+    container.append(grid);
+    return;
   }
 
-  // Render folder cards
-  folders.forEach(folder => {
-    const card = createFolderCard(
-      folder,
-      () => renderBookmarkGrid(folder.children, depth + 1, folder)
-    );
-    grid.append(card);
+  // Depth >=1: list and subfolder view
+  const gridList = document.createElement('div');
+  gridList.className = 'bookmark-list drop-target';
+
+  // Direct bookmarks (level1)
+  const bookmarksLevel1 = items.filter(item => item.url);
+
+  // Subfolders (level2)
+  const level2Folders = items.filter(item => !item.url);
+
+  // Group all level1 bookmarks into "Temp"
+  if (bookmarksLevel1.length > 0) {
+    const tempGroup = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
+    const tempCard = createFolderCard(tempGroup);
+    gridList.append(tempCard);
+  }
+
+  // For each subfolder, group its direct bookmarks
+  level2Folders.forEach(subFolder => {
+    const childUrls = subFolder.children ? subFolder.children.filter(c => c.url) : [];
+    if (childUrls.length > 0) {
+      const group = { id: subFolder.id, title: subFolder.title, children: childUrls };
+      const card = createFolderCard(group);
+      gridList.append(card);
+    }
   });
 
-  // Render individual bookmark cards at any subpage (depth>0)
-  if (depth > 0 && bookmarks.length > 0) {
-    bookmarks.forEach(item => {
-      const bc = createBookmarkCard(item, renderBookmarkGrid, bookmarks);
-      grid.append(bc);
-    });
-  }
-
-  container.append(grid);
+  container.append(gridList);
 }

@@ -39,6 +39,32 @@
   align-items: center;
   margin-bottom: 8px;
 }
+.menu-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 16px;
+}
+.menu-dropdown {
+  display: none;
+  position: absolute;
+  top: 28px;
+  right: 8px;
+  background: var(--bg-group-card);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-direction: column;
+  padding: 4px 0;
+  z-index: 30;
+}
+.menu-dropdown.show {
+  display: flex;
+}
 .bookmark-icon {
   width: 16px;
   height: 16px;
@@ -49,22 +75,6 @@
   font-weight: 500;
   color: #374151;
   cursor: pointer;
-}
-.bookmark-actions {
-  display: flex;
-  gap: 4px;
-}
-.action-btn {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 4px;
-  color: #6b7280;
-}
-.action-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
 }
 
 /* Mini-group cards */
@@ -201,17 +211,6 @@
   margin-right: 8px;
   font-size: 16px;
 }
-.bookmark-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-/* Override nested-list grid to flex for visibility */
-.bookmark-list {
-  display: flex !important;
-  flex-wrap: wrap;
-  gap: 12px !important;
-}
 .bookmark-card-container {
   position: relative;
   z-index: 10;
@@ -232,6 +231,9 @@
   padding: 12px;
   transition: all 0.2s;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  margin: 8px;
 }
 .folder-card:hover {
   border-color: #3b82f6;
@@ -253,6 +255,8 @@
 }
 .folder-body {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
   grid-template-columns: 1fr;
   gap: 4px;
 }
@@ -338,4 +342,19 @@
 /* Bring hovered card above siblings to display dropdown without overlap */
 .bookmark-card-container:hover {
   z-index: 1000 !important;
+}
+/* Nested list styling for folder view */
+.nested-bookmark .bookmark-icon {
+  display: none;
+}
+.nested-bookmark {
+  display: block;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+.nested-bookmark:hover {
+  background: var(--hover-bg, rgba(241, 245, 249, 0.5));
+}
+.nested-bookmark .bookmark-title {
+  margin: 0;
 }

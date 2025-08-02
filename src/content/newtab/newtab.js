@@ -81,12 +81,22 @@ async function init() {
   const tree = await getBookmarks();
   const root = tree[0];
   renderSidebar(root.children);
-  const gridEl = document.getElementById('bookmark-grid');
-  gridEl.dataset.parentId = root.id;
-  gridEl.dataset.depth = '0';
-  document.getElementById('folder-title').textContent = 'Tất cả bookmark';
-  // Render folder and bookmark cards (grouping folders and top-level bookmarks)
-  renderBookmarkGrid(root.children, 0);
+  chrome.storage.local.get(['lastFolderId'], async result => {
+    const lastId = result.lastFolderId;
+    if (lastId) {
+      const item = document.querySelector(`#sidebar .group-item[data-id="${lastId}"]`);
+      if (item) {
+        item.click();
+        return;
+      }
+    }
+    // Default view: all bookmarks
+    const gridEl = document.getElementById('bookmark-grid');
+    gridEl.dataset.parentId = root.id;
+    gridEl.dataset.depth = '0';
+    document.getElementById('folder-title').textContent = 'Tất cả bookmark';
+    renderBookmarkGrid(root.children, 0);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

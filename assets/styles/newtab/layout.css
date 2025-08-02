@@ -48,8 +48,8 @@
 }
 .drop-target > * {
   pointer-events: auto;
+}
 /* Allow all nested bookmark cards and folder items to be clickable */
 .drop-target * {
   pointer-events: auto !important;
-}
 }

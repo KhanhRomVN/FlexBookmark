@@ -108,16 +108,5 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   });
 
   
-  // also listen on container wrapper to ensure clicks open URL when nested
-  container.addEventListener('click', e => {
-    if (!e.target.closest('.action-btn') && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) {
-      try {
-        chrome.tabs.create({ url: item.url });
-      } catch (err) {
-        console.error('Container click chrome.tabs.create error:', err);
-      }
-    }
-  });
-  
   return container;
 }
