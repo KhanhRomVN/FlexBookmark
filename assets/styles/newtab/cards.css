@@ -5,7 +5,7 @@
 .bookmark-card {
   background: var(--bg-bookmark-card);
   color: var(--text-color);
-  border: 1px solid #696969;
+  border: 1px solid #d1d5db;
 }
 .bookmark-card:hover {
   border-color: #3b82f6;
@@ -58,7 +58,7 @@
 .mini-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #696969;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -87,7 +87,7 @@
 .temp-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #696969;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 12px;
   width: 100%;

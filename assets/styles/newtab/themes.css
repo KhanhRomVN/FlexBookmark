@@ -65,7 +65,7 @@ html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
   background: #2a2a32 !important;
-  border: 1px solid #696969 !important;
+  border: 1px solid #d1d5db !important;
   color: #ffffff !important;
 }
 html[data-theme="dark"] .bookmark-card:hover {
@@ -121,4 +121,53 @@ html[data-theme="dark"] .main-header,
 body.light-theme .main-header,
 body.dark-theme .main-header {
   border-bottom: 1px solid #696969 !important;
+}
+/* Dark‐theme folder card titles */
+html[data-theme="dark"] .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* Dark‐theme bookmark card titles */
+html[data-theme="dark"] .bookmark-card .bookmark-title {
+  color: #ffffff !important;
+}
+/* Dark‐theme group card titles */
+html[data-theme="dark"] .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* Dark‐theme card and group titles should use light text */
+html[data-theme="dark"] .bookmark-card .bookmark-title,
+html[data-theme="dark"] .mini-group-header,
+html[data-theme="dark"] .temp-group-card .mini-group-header {
+  color: #ffffff !important;
+}
+/* Dark‐theme bookmark titles in mini & temp group cards */
+html[data-theme="dark"] .mini-group-card .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-title {
+  color: #ffffff !important;
+}
+/* Dark‐theme bookmark‐row titles in group cards */
+html[data-theme="dark"] .bookmark-row .bookmark-title,
+html[data-theme="dark"] .bookmark-row.nested .bookmark-title {
+  color: #ffffff !important;
+}
+/* Dark‐theme group card bookmark titles */
+html[data-theme="dark"] .mini-group-card .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-title,
+html[data-theme="dark"] .mini-group-card .bookmark-row .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-row .bookmark-title {
+  color: #ffffff !important;
+}
+/* Dark‐theme: force all bookmark titles white inside group cards */
+html[data-theme="dark"] .mini-group-card .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-title,
+html[data-theme="dark"] .mini-group-card .bookmark-row .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-row .bookmark-title {
+  color: #ffffff !important;
+}
+/* === Final override: ensure all bookmark titles in group cards are white in dark theme === */
+html[data-theme="dark"] .mini-group-card .bookmark-title,
+html[data-theme="dark"] .temp-group-card .bookmark-title {
+  color: #ffffff !important;
 }

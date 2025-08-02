@@ -41,9 +41,6 @@ export function renderSidebar(folders) {
       <div class="group-color" style="background-color: ${colors[Math.floor(Math.random() * colors.length)]}"></div>
       <span class="group-name">${folder.title}</span>
       <span class="group-count">${count}</span>
-      <div class="group-actions">
-        <button class="group-action-btn" title="Chỉnh sửa">✏️</button>
-      </div>
     `;
     sidebar.appendChild(element);
 
