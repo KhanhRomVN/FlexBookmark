@@ -15,6 +15,10 @@
   background: var(--bg-bookmark-card);
   color: var(--text-color);
   border: 1px solid #d1d5db;
+  padding: 12px 16px;
+  border-radius: 8px;
+  min-height: 56px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .bookmark-card:hover {
   border-color: #3b82f6;
@@ -211,6 +215,7 @@
 .bookmark-card-container {
   position: relative;
   z-index: 10;
+  overflow: visible !important;
 }
 
 .folder-card .bookmark-card-container {
@@ -269,27 +274,31 @@
   /* Bookmark card menu button and dropdown */
   .menu-btn {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 12px;
+    right: 12px;
     background: none;
     border: none;
-    font-size: 16px;
+    font-size: 18px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    z-index: 20;
-    display: none;
+    z-index: 50;
   }
   .menu-dropdown {
     display: none;
     position: absolute;
-    top: 28px;
-    right: 8px;
+    top: 44px;
+    right: 12px;
     flex-direction: column;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 4px 0;
-    z-index: 30;
+    z-index: 1000;
   }
   .menu-dropdown.show {
     display: flex;
@@ -325,4 +334,8 @@
 .bookmark-card-container:hover .menu-btn,
 .bookmark-card:hover .menu-btn {
   display: block !important;
+}
+/* Bring hovered card above siblings to display dropdown without overlap */
+.bookmark-card-container:hover {
+  z-index: 1000 !important;
 }

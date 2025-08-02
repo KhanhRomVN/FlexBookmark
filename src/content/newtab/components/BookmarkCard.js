@@ -26,10 +26,6 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     <div class="bookmark-header">
       <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}" alt="">
       <div class="bookmark-title" title="${item.title}">${item.title}</div>
-      <div class="bookmark-actions">
-        <button class="action-btn delete-btn" data-id="${item.id}" title="Xóa">🗑️</button>
-        <button class="action-btn edit-btn" data-id="${item.id}" title="Chỉnh sửa">✏️</button>
-      </div>
     </div>
   `;
 
@@ -38,7 +34,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   const menuBtn = document.createElement('button');
   menuBtn.style.display = 'none';
   menuBtn.className = 'menu-btn';
-  menuBtn.textContent = '⋯';
+  menuBtn.textContent = '⋮';
   headerEl.append(menuBtn);
 
   const dropdown = document.createElement('div');
@@ -111,29 +107,6 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     }
   });
 
-  // Delete via original delete button (hidden by default)
-  const deleteBtn = card.querySelector('.delete-btn');
-  deleteBtn.addEventListener('click', async e => {
-    e.stopPropagation();
-    console.log(`Deleting bookmark: ${item.id}`);
-    await chrome.bookmarks.remove(item.id);
-    card.remove();
-  });
-
-  // Edit via original edit button (hidden by default)
-  const editBtn = card.querySelector('.edit-btn');
-  editBtn.addEventListener('click', async e => {
-    e.stopPropagation();
-    console.log(`Editing bookmark: ${item.id}`);
-    const newUrl = prompt('URL mới', item.url) || item.url;
-    const newTitle = prompt('Title mới', item.title) || item.title;
-    await chrome.bookmarks.update(item.id, { url: newUrl, title: newTitle });
-    const titleEl = card.querySelector('.bookmark-title');
-    titleEl.textContent = newTitle;
-    titleEl.title = newTitle;
-    const iconEl = card.querySelector('.bookmark-icon');
-    iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
-  });
   
   // also listen on container wrapper to ensure clicks open URL when nested
   container.addEventListener('click', e => {
