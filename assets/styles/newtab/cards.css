@@ -1,7 +1,11 @@
-/* DEBUG: outline and background for visibility */
-.bookmark-card {
-  outline: 2px dashed red !important;
-  background-color: #ffffff !important;
+/* Ensure nested folder items are clickable */
+.folder-card, 
+.folder-card * {
+  pointer-events: auto !important;
+}
+/* Allow nested bookmark cards inside folders to receive pointer events */
+.drop-target .bookmark-card-container {
+  pointer-events: auto !important;
 }
 /* ==========================================================================
    newtab cards
@@ -203,4 +207,122 @@
   display: flex !important;
   flex-wrap: wrap;
   gap: 12px !important;
+}
+.bookmark-card-container {
+  position: relative;
+  z-index: 10;
+}
+
+.folder-card .bookmark-card-container {
+  border: none !important;
+  box-shadow: none !important;
+}
+/* ==========================================================================
+   Folder Cards
+   ========================================================================== */
+.folder-card {
+  background: var(--bg-group-card);
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.folder-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.folder-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.folder-icon {
+  font-size: 24px;
+  margin-right: 8px;
+}
+.folder-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-color);
+}
+.folder-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.nested-bookmark {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+.nested-bookmark:hover {
+  background: rgba(241, 245, 249, 0.5);
+}
+.mini-bookmark-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
+  /* Bookmark card menu button and dropdown */
+  .menu-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 20;
+    display: none;
+  }
+  .menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 28px;
+    right: 8px;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 4px 0;
+    z-index: 30;
+  }
+  .menu-dropdown.show {
+    display: flex;
+  }
+  .menu-dropdown button {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    text-align: left;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-color);
+  }
+  .menu-dropdown button:hover {
+    background: #f3f4f6;
+  }
+/* Ensure menu button appears on hover */
+.bookmark-card-container:hover .menu-btn {
+  display: block;
+}
+/* Extra rule: show menu button on both container and card hover */
+.bookmark-card:hover .menu-btn,
+.bookmark-card-container:hover .menu-btn {
+  display: block !important;
+}
+/* Show menu button on bookmark card hover */
+.bookmark-card-container:hover .menu-btn,
+.bookmark-card:hover .menu-btn {
+  display: block !important;
+}
+/* Force show menu button on bookmark card hover */
+.bookmark-card-container:hover .menu-btn,
+.bookmark-card:hover .menu-btn {
+  display: block !important;
 }

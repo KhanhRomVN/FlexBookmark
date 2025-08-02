@@ -23,7 +23,7 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
 
   // Create new folder
   addGroupBtn.addEventListener('click', async () => {
-    if (depth >= 2) {
+    if (depth >= 1) {
       alert('Không thể tạo nhóm con quá cấp 2');
       return;
     }

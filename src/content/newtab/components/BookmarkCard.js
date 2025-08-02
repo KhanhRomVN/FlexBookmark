@@ -14,6 +14,11 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
   card.dataset.id = item.id;
 
+  // wrap in container for layering and hover isolation
+  const container = document.createElement('div');
+  container.className = 'bookmark-card-container';
+  container.appendChild(card);
+
   console.log(`Creating bookmark card for: ${item.title} (${item.id})`);
 
   // Card content
@@ -46,11 +51,15 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
 
   // Hover handlers for border and menu visibility
   card.addEventListener('mouseenter', () => {
-    card.style.borderColor = '#3b82f6';
+    if (!card.closest('.folder-card')) {
+      card.style.borderColor = '#3b82f6';
+    }
     menuBtn.style.display = 'block';
   });
   card.addEventListener('mouseleave', () => {
-    card.style.borderColor = 'transparent';
+    if (!card.closest('.folder-card')) {
+      card.style.borderColor = 'transparent';
+    }
     menuBtn.style.display = 'none';
     dropdown.classList.remove('show');
   });
@@ -125,6 +134,17 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     const iconEl = card.querySelector('.bookmark-icon');
     iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
   });
-
-  return card;
+  
+  // also listen on container wrapper to ensure clicks open URL when nested
+  container.addEventListener('click', e => {
+    if (!e.target.closest('.action-btn') && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) {
+      try {
+        chrome.tabs.create({ url: item.url });
+      } catch (err) {
+        console.error('Container click chrome.tabs.create error:', err);
+      }
+    }
+  });
+  
+  return container;
 }

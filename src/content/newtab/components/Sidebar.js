@@ -58,17 +58,6 @@ export function renderSidebar(folders) {
     });
   });
 
-  // After rendering, restore last selected folder if any
-/*
-  chrome.storage.local.get('lastFolderId', ({ lastFolderId }) => {
-    if (lastFolderId) {
-      const savedItem = sidebar.querySelector(`.group-item[data-id="${lastFolderId}"]`);
-      if (savedItem) {
-        savedItem.click();
-      }
-    }
-  });
-*/
 
   // Attach event handlers
   sidebar.querySelectorAll('.group-item').forEach(item => {
@@ -89,7 +78,10 @@ export function renderSidebar(folders) {
       grid.dataset.parentId = folderId;
       grid.dataset.depth = '1';
       document.getElementById('folder-title').textContent = item.querySelector('.group-name').textContent;
-      renderBookmarkGrid(children);
+      // Pass folder object to render function
+      const folderObj = folders.find(f => f.id === folderId);
+      if (folderObj) folderObj.children = children;
+      renderBookmarkGrid(children, 1, folderObj);
     });
 
     // Drag-and-drop handlers for sidebar folder items
@@ -123,7 +115,15 @@ export function renderSidebar(folders) {
         }
         await chrome.bookmarks.move(data.id, { parentId: folderIdDrop });
         const list = await new Promise(res => chrome.bookmarks.getChildren(folderIdDrop, res));
-        renderBookmarkGrid(list);
+        const childrenDrop = list || [];
+        // Find or build folder object for drop context
+        let folderObjDrop = folders.find(f => f.id === folderIdDrop);
+        if (!folderObjDrop) {
+          folderObjDrop = { id: folderIdDrop, title: item.querySelector('.group-name')?.textContent || '', children: childrenDrop };
+        } else {
+          folderObjDrop.children = childrenDrop;
+        }
+        renderBookmarkGrid(childrenDrop, 1, folderObjDrop);
       } catch (err) {
         console.error('Drop to sidebar folder failed', err);
       }

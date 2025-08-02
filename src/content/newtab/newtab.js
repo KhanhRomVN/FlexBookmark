@@ -85,10 +85,8 @@ async function init() {
   gridEl.dataset.parentId = root.id;
   gridEl.dataset.depth = '0';
   document.getElementById('folder-title').textContent = 'Tất cả bookmark';
-  // DEBUG: flatten tree to display all bookmark cards directly
-  const flatItems = flattenTree(root.children);
-  console.log('Flat bookmarks count=', flatItems.length);
-  renderBookmarkGrid(flatItems);
+  // Render folder and bookmark cards (grouping folders and top-level bookmarks)
+  renderBookmarkGrid(root.children, 0);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
