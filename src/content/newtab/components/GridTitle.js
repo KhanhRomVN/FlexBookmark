@@ -9,13 +9,13 @@ export function updateGridTitle(depth, groupTitle) {
 
   if (depth === 0) {
     titleEl.textContent = 'Tất cả bookmark';
-    breadcrumbEl.textContent = 'Trang chủ';
+    if (breadcrumbEl) breadcrumbEl.textContent = 'Trang chủ';
   } else if (depth === 1) {
     // Hide first-level folder title and breadcrumb
     titleEl.textContent = '';
-    breadcrumbEl.textContent = '';
+    if (breadcrumbEl) breadcrumbEl.textContent = '';
   } else {
     titleEl.textContent = groupTitle;
-    breadcrumbEl.textContent = groupTitle;
+    if (breadcrumbEl) breadcrumbEl.textContent = groupTitle;
   }
 }

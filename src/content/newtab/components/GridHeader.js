@@ -57,12 +57,12 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
             // At top after walking, append current folder title and update UI
             if (level === 0 && folderItem.title !== 'Other Bookmarks') {
               parts.push(folderItem.title);
-              breadcrumbEl.textContent = parts.join(' › ');
+              if (breadcrumbEl) breadcrumbEl.textContent = parts.join(' › ');
             }
           });
         } else if (level === 0 && folderItem.title !== 'Other Bookmarks') {
           parts.push(folderItem.title);
-          breadcrumbEl.textContent = parts.join(' › ');
+          if (breadcrumbEl) breadcrumbEl.textContent = parts.join(' › ');
         }
       })(folderItem, 0);
     });
