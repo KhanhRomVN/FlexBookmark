@@ -10,7 +10,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   card.className = 'bookmark-card';
   card.draggable = false;
   card.style.position = 'relative';
-  card.style.border = '1px solid transparent';
+  // card.style.border = '1px solid transparent'; // border removed to disable hover border
   card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
   card.dataset.id = item.id;
 
@@ -67,13 +67,13 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   // Hover handlers for border and menu visibility
   card.addEventListener('mouseenter', () => {
     if (!card.closest('.folder-card')) {
-      card.style.borderColor = '#3b82f6';
+      // card.style.borderColor = '#3b82f6'; // disabled hover border effect
     }
     menuBtn.style.display = 'block';
   });
   card.addEventListener('mouseleave', () => {
     if (!card.closest('.folder-card')) {
-      card.style.borderColor = 'transparent';
+      // card.style.borderColor = 'transparent'; // disabled hover border reset
     }
     menuBtn.style.display = 'none';
     dropdown.classList.remove('show');

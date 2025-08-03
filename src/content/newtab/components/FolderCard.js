@@ -42,13 +42,14 @@ export function createFolderCard(folder) {
   });
   card.addEventListener('mouseleave', () => {
     menuBtn.style.display = 'none';
-    dropdown.classList.remove('show');
   });
 
   // Toggle dropdown on click
   menuBtn.addEventListener('click', e => {
     e.stopPropagation();
-    dropdown.classList.toggle('show');
+    const showing = dropdown.classList.toggle('show');
+    dropdown.style.display = showing ? 'flex' : 'none';
+    dropdown.style.flexDirection = 'column';
   });
 
   // Rename action
@@ -70,9 +71,11 @@ export function createFolderCard(folder) {
     dropdown.classList.remove('show');
   });
 
-  // Close dropdown if clicking elsewhere
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('show');
+  // Close dropdown when clicking outside this folder card
+  document.addEventListener('click', e => {
+    if (!card.contains(e.target)) {
+      dropdown.classList.remove('show');
+    }
   });
 
   card.append(header);
