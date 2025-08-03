@@ -45,5 +45,32 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
     renderBookmarkGrid(children);
   });
 
+// Improved breadcrumb with folder validation
+  const breadcrumbEl = document.getElementById('breadcrumb');
+  if (parentId) {
+    chrome.bookmarks.get(parentId, ([folderItem]) => {
+      if (!folderItem) return;
+      const parts = [];
+      // Walk up max 2 levels
+      (function buildCrumb(node, level) {
+        if (node.parentId && node.parentId !== '0' && level < 2) {
+          chrome.bookmarks.get(node.parentId, ([parent]) => {
+            if (parent) {
+              parts.unshift(parent.title);
+              buildCrumb(parent, level + 1);
+            }
+            // At top after walking, append current folder title and update UI
+            if (level === 0 && folderItem.title !== 'Other Bookmarks') {
+              parts.push(folderItem.title);
+              breadcrumbEl.textContent = parts.join(' › ');
+            }
+          });
+        } else if (level === 0 && folderItem.title !== 'Other Bookmarks') {
+          parts.push(folderItem.title);
+          breadcrumbEl.textContent = parts.join(' › ');
+        }
+      })(folderItem, 0);
+    });
+  }
   return header;
 }

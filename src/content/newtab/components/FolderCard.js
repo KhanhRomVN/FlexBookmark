@@ -1,4 +1,5 @@
 import { createBookmarkCard } from './BookmarkCard.js';
+import { showToast } from '../../utils/helpers.js';
 
 /**
  * Creates a folder card element with nested bookmarks/subfolders,
@@ -39,6 +40,13 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   });
 
   card.addEventListener('drop', async e => {
+    e.stopPropagation();
+    console.log('FolderCard drop handler start', {
+      folderId: folder.id,
+      depth,
+      gridParentId: document.getElementById('bookmark-grid').dataset.parentId,
+      gridDepth: document.getElementById('bookmark-grid').dataset.depth
+    });
     console.log('FolderCard drop event for folder', folder.id);
     e.preventDefault();
     card.classList.remove('drop-target');
@@ -48,7 +56,12 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     let data;
     try {
       data = JSON.parse(raw);
-      console.log('FolderCard parsed drop data:', data);
+      console.log('FolderCard parsed drop data:', data, {
+        depth,
+        folderId: folder.id,
+        gridParentId: document.getElementById('bookmark-grid').dataset.parentId,
+        gridDepth: document.getElementById('bookmark-grid').dataset.depth
+      });
     } catch (err) {
       console.error('FolderCard drop JSON parse error:', err);
       return;
@@ -74,41 +87,49 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     
     // Handle dropping a folder into this folder (move/ nest folder)
     if (data.type === 'folder') {
-      // Prevent moving a folder into itself
+      // Prevent nesting beyond level 2
+      if (depth >= 1) {
+        console.log('Cannot nest folders beyond level 2');
+        showToast('Cannot nest folders beyond level 2', 'error');
+        return;
+      }
+      // Prevent moving folder into itself
       if (data.id === folder.id) {
         console.warn('Cannot move folder into itself');
-      } else {
-        console.log(`Moving folder ${data.id} into folder ${folder.id}`);
-        try {
-          await chrome.bookmarks.move(data.id, { parentId: folder.id });
-          console.log('Folder move successful');
-        } catch (err) {
-          console.error('Error moving folder:', err);
-        }
-        console.log('Fetching children of folder', folder.id);
-        chrome.bookmarks.getChildren(folder.id, (children) => {
-          console.log('Fetched children count after folder move:', children.length);
-          // Also update nested body of this folder-card so it shows the new subfolder
-          const body = card.querySelector('.folder-body');
-          if (body) {
-            body.innerHTML = '';
-            // Fetch subtree to get updated children list
-            chrome.bookmarks.getSubTree(folder.id, (trees) => {
-              const updated = (trees[0] && trees[0].children) || [];
-              updated.forEach(child => {
-                if (child.url) {
-                  const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, updated, 1, folder);
-                  bookmarkCard.classList.add('nested-bookmark');
-                  body.append(bookmarkCard);
-                } else {
-                  const subFolderCard = createFolderCard(child, renderBookmarkGrid, 1);
-                  body.append(subFolderCard);
-                }
-              });
-            });
-          }
-        });
+        showToast('Cannot move folder into itself', 'error');
+        return;
       }
+      // Proceed with folder move
+      console.log(`Moving folder ${data.id} into folder ${folder.id}`);
+      try {
+        await chrome.bookmarks.move(data.id, { parentId: folder.id });
+        console.log('Folder move successful');
+      } catch (err) {
+        console.error('Error moving folder:', err);
+      }
+      console.log('Fetching children of folder', folder.id);
+      chrome.bookmarks.getChildren(folder.id, (children) => {
+        console.log('Fetched children count after folder move:', children.length);
+        // Also update nested body of this folder-card so it shows the new subfolder
+        const body = card.querySelector('.folder-body');
+        if (body) {
+          body.innerHTML = '';
+          // Fetch subtree to get updated children list
+          chrome.bookmarks.getSubTree(folder.id, (trees) => {
+            const updated = (trees[0] && trees[0].children) || [];
+            updated.forEach(child => {
+              if (child.url) {
+                const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, updated, 1, folder);
+                bookmarkCard.classList.add('nested-bookmark');
+                body.append(bookmarkCard);
+              } else {
+                const subFolderCard = createFolderCard(child, renderBookmarkGrid, 1);
+                body.append(subFolderCard);
+              }
+            });
+          });
+        }
+      });
     }
     // Refresh current grid view to reflect moved folder
     const container = document.getElementById('bookmark-grid');
@@ -190,9 +211,26 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   // Body grid of nested items
   const body = document.createElement('div');
   body.className = 'folder-body';
-  body.style.display = 'grid';
+  // Limit nesting in UI
+  if (depth >= 1) {
+    body.style.display = 'block';
+    body.style.gridTemplateColumns = '1fr';
+  } else {
+    body.style.display = 'grid';
+  }
 
-  (folder.children || []).forEach(child => {
+  // Filter children to prevent invalid nesting
+  const validChildren = (folder.children || []).filter(child => {
+    // Only allow bookmarks at level 2
+    if (depth >= 1) return !!child.url;
+    // For level 1, allow folders but limit their children
+    if (child.children) {
+      child.children = child.children.filter(grandchild => !!grandchild.url);
+    }
+    return true;
+  });
+
+  validChildren.forEach(child => {
     if (child.url) {
       const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, folder.children, depth + 1, folder);
       bookmarkCard.classList.add('nested-bookmark');

@@ -53,3 +53,15 @@ export async function md5(str) {
   const array = Array.from(new Uint8Array(buffer));
   return array.map(b => b.toString(16).padStart(2, '0')).join('');
 }
+// Toast notification utility
+export function showToast(message, type = 'error') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}

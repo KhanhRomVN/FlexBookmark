@@ -5,6 +5,8 @@
  * @param {Array} items - Current list of items for rerendering context.
  * @returns {HTMLElement}
  */
+import { showToast } from '../../utils/helpers.js';
+
 export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, folder = null) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
@@ -155,8 +157,15 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
   });
   card.addEventListener('drop', async e => {
     e.stopPropagation();
-    console.log('BookmarkCard drop event', { itemId: item.id, parentFolder: folder && folder.id });
+    console.log('BookmarkCard drop handler start', {
+      itemId: item.id,
+      depth,
+      parentFolder: folder && folder.id,
+      gridParentId: document.getElementById('bookmark-grid').dataset.parentId,
+      gridDepth: document.getElementById('bookmark-grid').dataset.depth
+    });
     const raw = e.dataTransfer.getData('text/plain');
+    console.log('BookmarkCard raw drop data:', raw);
     console.log('BookmarkCard drop data raw:', raw);
     const data = JSON.parse(raw);
     e.preventDefault();
@@ -173,15 +182,21 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
 
     // Handle folder drop onto bookmark card
     if (data.type === 'folder') {
+      // Prevent dropping folders into nested items
+      if (depth >= 1) {
+        console.log('Cannot drop folders into nested items');
+        showToast('Cannot drop folders into nested items', 'error');
+        return;
+      }
       console.log('BookmarkCard handling folder drop', item.id, 'into folder', data.id);
       // Move this bookmark into the dropped folder
       await chrome.bookmarks.move(item.id, { parentId: data.id });
-      // Re-render current view
-      const container = document.getElementById('bookmark-grid');
-      const parentId = container.dataset.parentId;
-      const depthValue = parseInt(container.dataset.depth || '0');
-      chrome.bookmarks.getChildren(parentId, (children) => {
-        renderBookmarkGrid(children, depthValue);
+      // Re-render source folder instead of current view
+      const sourceContainer = document.getElementById('bookmark-grid');
+      const sourceParentId = sourceContainer.dataset.parentId;
+      const sourceDepth = parseInt(sourceContainer.dataset.depth || '0');
+      chrome.bookmarks.getChildren(sourceParentId, (children) => {
+        renderBookmarkGrid(children, sourceDepth);
       });
     }
   });
