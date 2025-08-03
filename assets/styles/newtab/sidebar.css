@@ -1,3 +1,7 @@
+/* Hide color squares in sidebar */
+.sidebar .group-color {
+  display: none !important;
+}
 /* ==========================================================================
    newtab sidebar
    ========================================================================== */
@@ -16,7 +20,7 @@
   align-items: center;
   justify-content: flex-start;
   padding: 16px 20px;
-  height: 70px;
+  height: 52.5px;
   border-bottom: 1px solid #696969;
 }
 

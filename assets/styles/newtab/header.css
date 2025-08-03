@@ -5,9 +5,11 @@
 .main-header {
   background: var(--bg-header);
   color: var(--text-color);
-  padding: 16px 24px;
-  height: 70px;
+  padding: 0 24px;
+  height: 52.5px;
   border-bottom: 1px solid #696969;
+  display: flex;
+  align-items: center;
 }
 
 .header-top {
@@ -15,7 +17,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .header-title {

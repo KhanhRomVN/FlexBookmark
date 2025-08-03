@@ -44,6 +44,11 @@ html[data-theme="dark"] .sidebar * {
 html[data-theme="dark"] .group-color {
   display: none !important;
 }
+/* Hide color squares in light theme */
+html[data-theme="light"] .group-color,
+body.light-theme .group-color {
+  display: none !important;
+}
 
 /* Dark‐theme sidebar item hover/focus */
 html[data-theme="dark"] .group-item:hover {
