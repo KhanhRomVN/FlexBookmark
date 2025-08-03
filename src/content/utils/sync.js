@@ -19,7 +19,6 @@ export async function syncWithGoogle() {
     const remoteTree = await getBookmarks();
     
     if (!deepEqual(localTree, remoteTree)) {
-      console.log('Syncing bookmarks with Google...');
       await chrome.storage.local.set({ bookmarkTree: remoteTree });
       chrome.runtime.sendMessage({ action: 'bookmarksUpdated' });
     }

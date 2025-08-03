@@ -12,9 +12,35 @@ import { createFolderCard } from './FolderCard.js';
  */
 export function renderBookmarkGrid(items, depth = 0, folder = null) {
   const container = document.getElementById('bookmark-grid');
-  const parentId = container.dataset.parentId || null;
+  // Update current parent folder ID so drops and re-renders use correct folder context
+  container.dataset.parentId = folder && folder.id ? folder.id : container.dataset.parentId || null;
+  const parentId = container.dataset.parentId;
   container.dataset.depth = depth.toString();
   container.innerHTML = '';
+
+  // Enable drop on grid container
+  container.classList.add('drop-target');
+  container.addEventListener('dragover', e => {
+    console.log('BookmarkGrid dragover');
+    e.preventDefault();
+    container.classList.add('drop-target-highlight');
+  });
+  container.addEventListener('dragleave', () => {
+    container.classList.remove('drop-target-highlight');
+  });
+  container.addEventListener('drop', async e => {
+    e.preventDefault();
+    container.classList.remove('drop-target-highlight');
+    
+    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    // Handle drop into grid (move bookmark to this folder or root)
+    if (data.type === 'bookmark') {
+      await chrome.bookmarks.move(data.id, { parentId: parentId });
+      chrome.bookmarks.getChildren(parentId, (children) => {
+        renderBookmarkGrid(children, depth);
+      });
+    }
+  });
 
   // Header
   const header = renderGridHeader(depth, parentId, renderBookmarkGrid);
@@ -42,13 +68,13 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     // Top-level: bookmarks group
     if (bookmarks.length > 0) {
       const tempGroup = { id: 'temp-group', title: 'Bookmarks', children: bookmarks };
-      const tempCard = createFolderCard(tempGroup);
+      const tempCard = createFolderCard(tempGroup, renderBookmarkGrid, depth);
       grid.append(tempCard);
     }
 
     // Render folder cards
     folders.forEach(childFolder => {
-      const card = createFolderCard(childFolder);
+      const card = createFolderCard(childFolder, renderBookmarkGrid, depth);
       grid.append(card);
     });
 
@@ -64,13 +90,13 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   const bookmarksLevel1 = items.filter(item => item.url);
   if (bookmarksLevel1.length > 0) {
     const tempGroup = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
-    gridList.append(createFolderCard(tempGroup));
+    gridList.append(createFolderCard(tempGroup, renderBookmarkGrid, depth));
   }
 
   // Render subfolder cards with their enriched children
   const level2Folders = items.filter(item => !item.url);
   level2Folders.forEach(subFolder => {
-    gridList.append(createFolderCard(subFolder));
+    gridList.append(createFolderCard(subFolder, renderBookmarkGrid, depth));
   });
 
   container.append(gridList);

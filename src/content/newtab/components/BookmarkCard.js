@@ -5,7 +5,7 @@
  * @param {Array} items - Current list of items for rerendering context.
  * @returns {HTMLElement}
  */
-export function createBookmarkCard(item, renderBookmarkGrid, items) {
+export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, folder = null) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
   card.draggable = true;
@@ -38,8 +38,8 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   const dropdown = document.createElement('div');
   dropdown.className = 'menu-dropdown';
   dropdown.innerHTML =
-    '<button class="menu-edit">Edit</button>' +
-    '<button class="menu-delete">Delete</button>';
+    '<button class="menu-edit">✏️ Edit</button>' +
+    '<button class="menu-delete">🗑️ Delete</button>';
   headerEl.append(dropdown);
 
   // Ensure modal dialog overlay exists
@@ -76,7 +76,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
       // card.style.borderColor = 'transparent'; // disabled hover border reset
     }
     menuBtn.style.display = 'none';
-    dropdown.classList.remove('show');
+    // dropdown stays open until outside click; do not auto-close on leave
   });
 
   // Toggle dropdown on menu click
@@ -122,13 +122,19 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     dropdown.classList.remove('show');
   });
 
-  // Close dropdown when clicking outside
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('show');
+  // Close dropdown when clicking outside only if click outside menu
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.menu-dropdown') && !e.target.closest('.menu-btn')) {
+      dropdown.classList.remove('show');
+    }
   });
 
-  // Drag-and-drop support
-  card.addEventListener('dragstart', e => {
+  if (typeof renderBookmarkGrid === 'function') {
+    // Drag-and-drop support
+    card.addEventListener('dragstart', e => {
+        // Prevent parent folder from also initiating drag
+        e.stopPropagation();
+      console.log('BookmarkCard dragstart');
     e.dataTransfer.setData('text/plain', JSON.stringify({
       id: item.id,
       type: 'bookmark',
@@ -140,6 +146,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     card.classList.remove('dragging');
   });
   card.addEventListener('dragover', e => {
+    console.log('BookmarkCard dragover', item.id);
     e.preventDefault();
     card.classList.add('drop-target');
   });
@@ -147,14 +154,38 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     card.classList.remove('drop-target');
   });
   card.addEventListener('drop', async e => {
+    e.stopPropagation();
+    console.log('BookmarkCard drop event', { itemId: item.id, parentFolder: folder && folder.id });
+    const raw = e.dataTransfer.getData('text/plain');
+    console.log('BookmarkCard drop data raw:', raw);
+    const data = JSON.parse(raw);
     e.preventDefault();
     card.classList.remove('drop-target');
-    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+    // Handle bookmark drop onto bookmark card
     if (data.type === 'bookmark') {
-      await chrome.bookmarks.move(data.id, { parentId: item.parentId });
-      renderBookmarkGrid(items, depth, folder);
+      console.log('BookmarkCard handling bookmark drop', data.id, 'into folder', folder && folder.id);
+      await chrome.bookmarks.move(data.id, { parentId: folder.id });
+      const d = typeof depth !== 'undefined' ? depth : 0;
+      const f = typeof folder !== 'undefined' ? folder : null;
+      renderBookmarkGrid(items, d, f);
+    }
+
+    // Handle folder drop onto bookmark card
+    if (data.type === 'folder') {
+      console.log('BookmarkCard handling folder drop', item.id, 'into folder', data.id);
+      // Move this bookmark into the dropped folder
+      await chrome.bookmarks.move(item.id, { parentId: data.id });
+      // Re-render current view
+      const container = document.getElementById('bookmark-grid');
+      const parentId = container.dataset.parentId;
+      const depthValue = parseInt(container.dataset.depth || '0');
+      chrome.bookmarks.getChildren(parentId, (children) => {
+        renderBookmarkGrid(children, depthValue);
+      });
     }
   });
+ }
 
   // Click anywhere on card to open URL in a new tab next to current
   card.addEventListener('click', e => {

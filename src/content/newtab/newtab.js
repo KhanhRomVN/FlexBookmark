@@ -3,10 +3,6 @@ import { renderBookmarkGrid } from './components/BookmarkGrid.js';
 import { setupAddBookmarkForm } from './components/AddBookmarkForm.js';
 import { md5 } from '../utils/helpers.js';
 
-console.log('newtab.js loaded');
-// Removed global drag prevention to enable drag-and-drop on cards
-// document.addEventListener('dragstart', e => e.preventDefault(), true);
-
 // Lấy thông tin user
 async function getUserInfo() {
   return new Promise(resolve => {
@@ -85,7 +81,6 @@ function showToast(message, type = 'success') {
 
 // Khởi tạo ứng dụng
 async function init() {
-  console.log('init() called');
   await showLoading();
   // Fetch and display user info
   const userInfo = await getUserInfo();
@@ -118,7 +113,6 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOMContentLoaded event fired');
 init();
   setupAddBookmarkForm();
   // Theme dropdown toggle

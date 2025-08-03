@@ -9,7 +9,6 @@ chrome.bookmarks.onChildrenReordered.addListener(syncBookmarks);
 async function syncBookmarks() {
   const tree = await chrome.bookmarks.getTree();
   chrome.storage.local.set({ bookmarkTree: tree }, () => {
-    console.log("Bookmarks updated");
   });
 }
 syncBookmarks();

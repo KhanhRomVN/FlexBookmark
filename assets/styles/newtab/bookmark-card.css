@@ -238,3 +238,8 @@
   border: none !important;
   box-shadow: none !important;
 }
+/* Drop target highlight for drag-and-drop */
+.drop-target-highlight {
+  border: 2px dashed var(--primary-color) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}

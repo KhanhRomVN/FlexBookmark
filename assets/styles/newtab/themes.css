@@ -184,3 +184,11 @@ html[data-theme="dark"] .bookmark-row:hover,
 html[data-theme="dark"] .bookmark-row.nested:hover {
   background: transparent !important;
 }
+/* Dark‐theme dropdowns for folder menus */
+html[data-theme="dark"] .folder-dropdown {
+  background: var(--bg-group-card) !important;
+  color: var(--text-color) !important;
+}
+html[data-theme="dark"] .folder-dropdown button {
+  color: var(--text-color) !important;
+}

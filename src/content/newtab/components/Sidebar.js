@@ -81,7 +81,6 @@ export function renderSidebar(folders) {
         }
         return child;
       }));
-      console.log('Sidebar click:', { folderId, childrenLength: children.length, children });
       // update grid context attributes
       const grid = document.getElementById('bookmark-grid');
       grid.dataset.parentId = folderId;
@@ -95,18 +94,15 @@ export function renderSidebar(folders) {
         children: []
       };
       folderObj.children = children;
-      console.log('About to call renderBookmarkGrid with:', { depth: 1, folderObj, items: children });
       renderBookmarkGrid(children, 1, folderObj);
     });
 
     // Drag-and-drop handlers for sidebar folder items
     item.addEventListener('dragenter', e => {
-      console.log('Sidebar: dragenter on folder', item.dataset.id);
       e.preventDefault();
       item.classList.add('drag-over');
     });
     item.addEventListener('dragover', e => {
-      console.log('Sidebar: dragover on folder', item.dataset.id);
       e.preventDefault();
       item.classList.add('drag-over');
     });
@@ -114,18 +110,15 @@ export function renderSidebar(folders) {
       item.classList.remove('drag-over');
     });
     item.addEventListener('drop', async e => {
-      console.log('Sidebar: drop event, types=', e.dataTransfer.types);
       e.preventDefault();
       item.classList.remove('drag-over');
       e.stopPropagation();
       const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
-      console.log('Sidebar: drop data=', raw);
       try {
         const data = JSON.parse(raw);
         if (!data || !data.id) return;
         const folderIdDrop = item.dataset.id;
         if (data.type === 'folder' && data.id === folderIdDrop) {
-          console.log('Cannot drop folder into itself');
           return;
         }
         await chrome.bookmarks.move(data.id, { parentId: folderIdDrop });

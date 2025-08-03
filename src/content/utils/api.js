@@ -1,8 +1,6 @@
 export async function getBookmarks() {
-  console.log('getBookmarks called');
   return new Promise((resolve) => {
     chrome.bookmarks.getTree((tree) => {
-      console.log('getBookmarks response tree:', tree);
       resolve(tree || []);
     });
   });

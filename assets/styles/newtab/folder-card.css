@@ -15,7 +15,8 @@
 /* Folder card menu button and dropdown enhancements */
 .folder-card .menu-btn {
   position: absolute;
-  top: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   right: 8px;
   display: none;
   background: none;
@@ -39,6 +40,10 @@
   padding: 4px 0px;
 }
 .folder-card .folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
   font-weight: bold;
   padding: 4px 8px;
   border-bottom: 1px solid var(--border-color);
