@@ -13,18 +13,20 @@ import { showToast } from '../../utils/helpers.js';
  */
 export function renderBookmarkGrid(items, depth = 0, folder = null) {
   // Filter out temporary and invalid items
-  const realItems = items.filter(item => !item.id.startsWith('temp-') && (item.url || item.children));
+  // Filter out only temporary placeholders; keep all real folders and bookmarks
+  const realItems = items.filter(item => !item.id.startsWith('temp-'));
   const container = document.getElementById('bookmark-grid');
-  // Update current parent folder ID so drops and re-renders use correct folder context
-  container.dataset.parentId = folder && folder.id ? folder.id : container.dataset.parentId || null;
-  const parentId = container.dataset.parentId;
-  container.dataset.depth = depth.toString();
-  container.innerHTML = '';
 
-  // Enable drop on grid container
+  // Update current parent folder ID
+  // On root depth, ensure parentId defaults to '0' (chrome bookmarks root)
+  container.dataset.parentId = folder && folder.id ? folder.id : container.dataset.parentId || '0';
+  const parentId = container.dataset.parentId;
+  container.dataset.depth = String(depth);
+
+  // Clear and set up drop area
+  container.innerHTML = '';
   container.classList.add('drop-target');
   container.addEventListener('dragover', e => {
-    console.log('BookmarkGrid dragover');
     e.preventDefault();
     container.classList.add('drop-target-highlight');
   });
@@ -32,70 +34,57 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     container.classList.remove('drop-target-highlight');
   });
   container.addEventListener('drop', async e => {
-      console.log('BookmarkGrid drop handler start', {
-        parentId,
-        depth,
-        gridParentId: container.dataset.parentId,
-        gridDepth: container.dataset.depth
-      });
-      e.preventDefault();
-      container.classList.remove('drop-target-highlight');
+    e.preventDefault();
+    container.classList.remove('drop-target-highlight');
+    let data;
+    try {
+      data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    } catch {
+      return;
+    }
 
-      const raw = e.dataTransfer.getData('text/plain');
-      console.log('BookmarkGrid raw drop data:', raw);
-      const data = JSON.parse(raw);
-    // Handle drop into grid (move bookmark to this folder or root)
     if (data.type === 'bookmark') {
-      console.log('BookmarkGrid moving bookmark', data.id, 'into', parentId);
       try {
-        await chrome.bookmarks.move(data.id, { parentId: parentId });
-        console.log('BookmarkGrid bookmark move successful');
+        await chrome.bookmarks.move(data.id, { parentId });
       } catch (err) {
         console.error('BookmarkGrid error moving bookmark:', err);
       }
-      chrome.bookmarks.getChildren(parentId, (children) => {
+      chrome.bookmarks.getChildren(parentId, children => {
         chrome.bookmarks.get(parentId, ([parentFolder]) => {
-          console.log('BookmarkGrid re-rendering after bookmark move', parentFolder);
           renderBookmarkGrid(children, depth, parentFolder);
         });
       });
     }
-    // Handle folder drop into grid
+
     if (data.type === 'folder') {
-      // Prevent dropping folders into nested grids
       if (depth >= 1) {
-        console.log('Cannot drop folders into nested grids');
         showToast('Cannot drop folders into nested grids', 'error');
         return;
       }
-      console.log('BookmarkGrid moving folder', data.id, 'into', parentId);
       try {
-        await chrome.bookmarks.move(data.id, { parentId: parentId });
-        console.log('BookmarkGrid folder move successful');
+        await chrome.bookmarks.move(data.id, { parentId });
       } catch (err) {
         console.error('BookmarkGrid error moving folder:', err);
       }
-      chrome.bookmarks.getChildren(parentId, (children) => {
-        const realChildren = children.filter(item => !item.id.startsWith('temp-'));
+      chrome.bookmarks.getChildren(parentId, children => {
+        const filtered = children.filter(item => !item.id.startsWith('temp-'));
         chrome.bookmarks.get(parentId, ([parentFolder]) => {
-          console.log('BookmarkGrid re-rendering after folder move', parentFolder);
-          renderBookmarkGrid(realChildren, depth, parentFolder);
+          renderBookmarkGrid(filtered, depth, parentFolder);
         });
       });
     }
+    // restore interactions by removing drop-target class
+    container.classList.remove('drop-target');
   });
 
-  // Header
-  const header = renderGridHeader(depth, parentId, renderBookmarkGrid);
-  container.append(header);
-
-  // Title & breadcrumb
-  const groupTitle = folder && folder.title ? folder.title : container.dataset.groupTitle || '';
-  container.dataset.groupTitle = groupTitle;
-  updateGridTitle(depth, groupTitle);
+  // Header & breadcrumb
+  container.append(renderGridHeader(depth, parentId, renderBookmarkGrid));
+  const title = folder && folder.title ? folder.title : container.dataset.groupTitle || '';
+  container.dataset.groupTitle = title;
+  updateGridTitle(depth, title);
 
   // Empty state
-  if (!realItems || realItems.length === 0) {
+  if (!realItems.length) {
     container.append(createEmptyState());
     return;
   }
@@ -105,27 +94,31 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     const grid = document.createElement('div');
     grid.className = 'bookmarks-grid drop-target';
 
-    // Use filtered items
     const folders = realItems.filter(item => !item.url);
     const bookmarks = realItems.filter(item => item.url);
 
-    // Top-level: bookmarks group
-    if (bookmarks.length > 0) {
-      const tempGroup = { id: 'temp-group', title: 'Bookmarks', children: bookmarks };
-      const tempCard = createFolderCard(tempGroup, renderBookmarkGrid, depth);
-      grid.append(tempCard);
+    // Bookmarks temp-group
+    if (bookmarks.length) {
+      grid.append(
+        createFolderCard(
+          { id: 'temp-group', title: 'Bookmarks', children: bookmarks },
+          renderBookmarkGrid,
+          depth
+        )
+      );
     }
 
-    // Render folder cards with proper children filtering
-    folders.forEach(childFolder => {
-      // Skip nested beyond level 2 by filtering grandchildren
-      if (childFolder.children) {
-        childFolder.children = childFolder.children.filter(child =>
-          !child.children || child.children.every(grandchild => grandchild.url)
-        );
-      }
-      const card = createFolderCard(childFolder, renderBookmarkGrid, depth);
-      grid.append(card);
+    // Folder cards
+    folders.forEach(folderItem => {
+      const childrenFiltered = folderItem.children
+        ? folderItem.children.filter(child =>
+            !child.children || child.children.every(gc => gc.url)
+          )
+        : undefined;
+      const folderData = childrenFiltered
+        ? { ...folderItem, children: childrenFiltered }
+        : folderItem;
+      grid.append(createFolderCard(folderData, renderBookmarkGrid, depth));
     });
 
     container.append(grid);
@@ -133,21 +126,21 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   }
 
   // Depth >=1: list and subfolder view
-  const gridList = document.createElement('div');
-  gridList.className = 'bookmark-list drop-target';
+  const list = document.createElement('div');
+  list.className = 'bookmark-list drop-target';
 
-  // Direct bookmarks (level1)
+  // Direct bookmarks at this depth
   const bookmarksLevel1 = realItems.filter(item => item.url);
-  if (bookmarksLevel1.length > 0) {
-    const tempGroup = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
-    gridList.append(createFolderCard(tempGroup, renderBookmarkGrid, depth));
+  if (bookmarksLevel1.length) {
+    bookmarksLevel1.forEach(bm => {
+      list.append(createBookmarkCard(bm, renderBookmarkGrid, realItems, depth, folder));
+    });
   }
 
-  // Render subfolder cards with their enriched children
-  const level2Folders = realItems.filter(item => !item.url);
-  level2Folders.forEach(subFolder => {
-    gridList.append(createFolderCard(subFolder, renderBookmarkGrid, depth));
+  const subfolders = realItems.filter(item => !item.url);
+  subfolders.forEach(sub => {
+    list.append(createFolderCard(sub, renderBookmarkGrid, depth));
   });
 
-  container.append(gridList);
+  container.append(list);
 }

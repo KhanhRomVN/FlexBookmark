@@ -244,27 +244,36 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     body.style.display = 'grid';
   }
 
-  // Filter children to prevent invalid nesting
-  const validChildren = (folder.children || []).filter(child => {
-    // Only allow bookmarks at level 2
-    if (depth >= 1) return !!child.url;
-    // For level 1, allow folders but limit their children
-    if (child.children) {
-      child.children = child.children.filter(grandchild => !!grandchild.url);
-    }
-    return true;
-  });
-
-  validChildren.forEach(child => {
-    if (child.url) {
-      const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, folder.children, depth + 1, folder);
-      bookmarkCard.classList.add('nested-bookmark');
-      body.append(bookmarkCard);
-    } else {
-      const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-      body.append(subFolderCard);
-    }
-  });
+  // Render synthetic temp groups directly without chrome API
+  if (folder.id.startsWith('temp')) {
+    body.innerHTML = '';
+    (folder.children || []).forEach(child => {
+      if (child.url) {
+        const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, folder.children, depth + 1, folder);
+        bookmarkCard.classList.add('nested-bookmark');
+        body.append(bookmarkCard);
+      } else {
+        const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+        body.append(subFolderCard);
+      }
+    });
+  } else {
+    // Dynamically load children to always reflect current folder state
+    chrome.bookmarks.getChildren(folder.id, (children) => {
+      const realChildren = children.filter(child => !child.id.startsWith('temp-'));
+      body.innerHTML = '';
+      realChildren.forEach(child => {
+        if (child.url) {
+          const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, realChildren, depth + 1, folder);
+          bookmarkCard.classList.add('nested-bookmark');
+          body.append(bookmarkCard);
+        } else {
+          const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+          body.append(subFolderCard);
+        }
+      });
+    });
+  }
 
   card.append(body);
   return card;

@@ -175,9 +175,12 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     if (data.type === 'bookmark') {
       console.log('BookmarkCard handling bookmark drop', data.id, 'into folder', folder && folder.id);
       await chrome.bookmarks.move(data.id, { parentId: folder.id });
-      const d = typeof depth !== 'undefined' ? depth : 0;
-      const f = typeof folder !== 'undefined' ? folder : null;
-      renderBookmarkGrid(items, d, f);
+      // After moving, reload children of current folder for updated nested view
+      chrome.bookmarks.getChildren(folder.id, (children) => {
+        chrome.bookmarks.get(folder.id, ([parentFolder]) => {
+          renderBookmarkGrid(children, depth, parentFolder);
+        });
+      });
     }
 
     // Handle folder drop onto bookmark card
