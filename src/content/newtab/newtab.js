@@ -1,6 +1,5 @@
 import { renderSidebar } from './components/Sidebar.js';
 import { renderBookmarkGrid } from './components/BookmarkGrid.js';
-import { setupAddBookmarkForm } from './components/AddBookmarkForm.js';
 import { md5 } from '../utils/helpers.js';
 
 // Lấy thông tin user
@@ -114,7 +113,6 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', () => {
 init();
-  setupAddBookmarkForm();
   // Theme dropdown toggle
   document.body.addEventListener('click', () => {
     document.getElementById('theme-dropdown').classList.remove('active');

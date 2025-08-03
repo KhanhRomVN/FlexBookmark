@@ -1,4 +1,5 @@
-import { createFolder, createBookmark } from '../../utils/api.js';
+import { createFolder } from '../../utils/api.js';
+import { showBookmarkForm } from './AddBookmarkForm.js';
 
 /**
  * Renders the header section with Add Group and Add Bookmark buttons.
@@ -34,15 +35,9 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
     renderBookmarkGrid(list);
   });
 
-  // Create new bookmark
-  addBookmarkBtn.addEventListener('click', async () => {
-    const title = prompt('Tiêu đề bookmark');
-    const url = prompt('URL bookmark');
-    if (!title || !url) return;
-    await createBookmark({ title, url, parentId });
-    const subtree = await new Promise(res => chrome.bookmarks.getSubTree(parentId, res));
-    const children = (subtree[0] && subtree[0].children) || [];
-    renderBookmarkGrid(children);
+  // Show Add Bookmark form
+  addBookmarkBtn.addEventListener('click', () => {
+    showBookmarkForm({ parentId, renderBookmarkGrid, depth });
   });
 
 // Improved breadcrumb with folder validation

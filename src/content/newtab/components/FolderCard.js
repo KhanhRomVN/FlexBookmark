@@ -205,6 +205,24 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     dropdown.style.flexDirection = 'column';
   });
 
+  // Add Bookmark action
+  dropdown.insertAdjacentHTML(
+    'beforeend',
+    '<button class="menu-add-bookmark">➕ Thêm bookmark</button>'
+  );
+  dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', e => {
+    e.stopPropagation();
+    import('./AddBookmarkForm.js').then(mod => {
+      mod.showBookmarkForm({
+        parentId: folder.id,
+        renderBookmarkGrid,
+        depth,
+        folder
+      });
+    });
+    dropdown.classList.remove('show');
+  });
+
   // Rename action
   dropdown.querySelector('.menu-rename')?.addEventListener('click', async e => {
     e.stopPropagation();

@@ -15,8 +15,7 @@
 /* Folder card menu button and dropdown enhancements */
 .folder-card .menu-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 20px;
   right: 8px;
   display: none;
   background: none;
@@ -45,7 +44,7 @@
   justify-content: flex-start;
   gap: 4px;
   font-weight: bold;
-  padding: 4px 8px;
+  padding: 8px 8px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -198,7 +197,7 @@
   box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 .drop-target {
-  border: 2px dashed var(--primary-color) !important;
+  /* dashed border removed */
   background-color: rgba(59, 130, 246, 0.1) !important;
 }
 

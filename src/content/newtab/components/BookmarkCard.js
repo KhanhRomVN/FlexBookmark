@@ -6,6 +6,7 @@
  * @returns {HTMLElement}
  */
 import { showToast } from '../../utils/helpers.js';
+import { showBookmarkForm } from './AddBookmarkForm.js';
 
 export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, folder = null) {
   const card = document.createElement('div');
@@ -44,27 +45,6 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     '<button class="menu-delete">🗑️ Delete</button>';
   headerEl.append(dropdown);
 
-  // Ensure modal dialog overlay exists
-  let overlay = document.querySelector('.edit-dialog-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'edit-dialog-overlay';
-    overlay.innerHTML = `
-      <div class="edit-dialog">
-        <input type="text" class="dialog-title-input" placeholder="Title" />
-        <input type="text" class="dialog-url-input" placeholder="URL" />
-        <div class="dialog-buttons">
-          <button class="save-btn">Save</button>
-          <button class="cancel-btn">Cancel</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  }
-  const titleInput = overlay.querySelector('.dialog-title-input');
-  const urlInput = overlay.querySelector('.dialog-url-input');
-  const saveBtn = overlay.querySelector('.save-btn');
-  const cancelBtn = overlay.querySelector('.cancel-btn');
 
   // Hover handlers for border and menu visibility
   card.addEventListener('mouseenter', () => {
@@ -87,32 +67,19 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     dropdown.classList.toggle('show');
   });
 
-  // Edit via custom modal
+  // Edit bookmark via form
   dropdown.querySelector('.menu-edit')?.addEventListener('click', e => {
     e.stopPropagation();
-    titleInput.value = item.title;
-    urlInput.value = item.url;
-    overlay.classList.add('show');
-  });
-
-  saveBtn.addEventListener('click', async () => {
-    const newTitle = titleInput.value.trim() || item.title;
-    const newUrl = urlInput.value.trim() || item.url;
-    await chrome.bookmarks.update(item.id, { title: newTitle, url: newUrl });
-    const titleEl = card.querySelector('.bookmark-title');
-    titleEl.textContent = newTitle;
-    titleEl.title = newTitle;
-    const iconEl = card.querySelector('.bookmark-icon');
-    iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
-    overlay.classList.remove('show');
+    showBookmarkForm({
+      parentId: (folder && folder.id) || document.getElementById('bookmark-grid').dataset.parentId,
+      renderBookmarkGrid,
+      depth,
+      folder,
+      bookmark: item
+    });
     dropdown.classList.remove('show');
   });
 
-  cancelBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    overlay.classList.remove('show');
-    dropdown.classList.remove('show');
-  });
 
   // Delete from dropdown
   dropdown.querySelector('.menu-delete')?.addEventListener('click', async e => {

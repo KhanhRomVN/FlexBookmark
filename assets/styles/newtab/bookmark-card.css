@@ -53,8 +53,6 @@
 }
 .menu-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
   right: 8px;
   background: none;
   border: none;
@@ -240,6 +238,5 @@
 }
 /* Drop target highlight for drag-and-drop */
 .drop-target-highlight {
-  border: 2px dashed var(--primary-color) !important;
-  background-color: rgba(59, 130, 246, 0.1) !important;
+  /* dashed border removed */
 }
