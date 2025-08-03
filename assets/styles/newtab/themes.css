@@ -106,10 +106,13 @@ body.image-theme {
   background-position: center;
 }
 body.image-theme .sidebar {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 body.image-theme .main-content {
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+body.image-theme .header-common {
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Persistent border overrides */
@@ -196,4 +199,16 @@ html[data-theme="dark"] .folder-dropdown {
 }
 html[data-theme="dark"] .folder-dropdown button {
   color: var(--text-color) !important;
+}
+/* Image theme card transparency */
+body.image-theme .folder-card,
+body.image-theme .mini-group-card,
+body.image-theme .temp-group-card {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+body.image-theme .bookmark-card,
+body.image-theme .bookmark-row,
+body.image-theme .nested-bookmark {
+  background-color: rgba(0, 0, 0, 0.1) !important;
 }

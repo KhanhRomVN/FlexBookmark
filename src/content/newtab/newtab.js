@@ -33,19 +33,37 @@ function flattenTree(nodes) {
 // Apply theme
 function applyTheme(theme) {
   const root = document.documentElement;
+  // Set HTML data-theme
   if (theme === 'light') {
     root.removeAttribute('data-theme');
   } else {
     root.setAttribute('data-theme', theme);
   }
+  // Manage body classes for theme-based styling
+  document.body.classList.remove('light-theme', 'dark-theme', 'image-theme');
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+  } else if (theme === 'dark') {
+    document.body.classList.add('dark-theme');
+  } else if (theme === 'image') {
+    document.body.classList.add('image-theme');
+  }
+  // Handle image theme background and persistence
   if (theme === 'image') {
-    const imageUrl = prompt('Nhập URL hình ảnh:');
-    if (imageUrl) {
-      document.body.style.backgroundImage = `url(${imageUrl})`;
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-      chrome.storage.local.set({ backgroundImage: imageUrl });
-    }
+    chrome.storage.local.get('backgroundImage', result => {
+      let imageUrl = result.backgroundImage;
+      if (!imageUrl) {
+        imageUrl = prompt('Nhập URL hình ảnh:');
+        if (imageUrl) {
+          chrome.storage.local.set({ backgroundImage: imageUrl });
+        }
+      }
+      if (imageUrl) {
+        document.body.style.backgroundImage = `url(${imageUrl})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+      }
+    });
   } else {
     document.body.style.backgroundImage = '';
   }
