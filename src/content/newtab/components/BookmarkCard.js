@@ -23,7 +23,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   card.innerHTML = `
     <div class="bookmark-header">
       <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}" alt="">
-      <div class="bookmark-title" title="${item.title}">${item.title}</div>
+      <div class="bookmark-title">${item.title}</div>
     </div>
   `;
 

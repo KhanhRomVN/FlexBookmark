@@ -68,9 +68,7 @@ html[data-theme="dark"] .temp-group-card {
   border: 1px solid #d1d5db !important;
   color: #ffffff !important;
 }
-html[data-theme="dark"] .bookmark-card:hover {
-  background: #33323d !important;
-}
+/* Removed hover background change for bookmark cards */
 html[data-theme="dark"] .bookmark-row,
 html[data-theme="dark"] .bookmark-row.nested {
   background: #33323d !important;
@@ -120,6 +118,7 @@ body.dark-theme .sidebar {
 html[data-theme="dark"] .main-header,
 body.light-theme .main-header,
 body.dark-theme .main-header {
+
   border-bottom: 1px solid #696969 !important;
 }
 /* Dark‐theme folder card titles */
@@ -170,4 +169,18 @@ html[data-theme="dark"] .temp-group-card .bookmark-row .bookmark-title {
 html[data-theme="dark"] .mini-group-card .bookmark-title,
 html[data-theme="dark"] .temp-group-card .bookmark-title {
   color: #ffffff !important;
+}
+/* Override bookmark-row hover to remove grey background */
+html[data-theme="dark"] .bookmark-row:hover,
+html[data-theme="dark"] .bookmark-row.nested:hover,
+.bookmark-row:hover,
+.bookmark-row.nested:hover {
+  background: transparent !important;
+}
+/* Remove hover background on bookmark rows */
+.bookmark-row:hover,
+.bookmark-row.nested:hover,
+html[data-theme="dark"] .bookmark-row:hover,
+html[data-theme="dark"] .bookmark-row.nested:hover {
+  background: transparent !important;
 }
