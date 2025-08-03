@@ -21,7 +21,7 @@ export function showBookmarkForm({
   modal.innerHTML = `
     <div class="edit-dialog-overlay show">
       <div class="edit-dialog">
-        <h2>${isEdit ? 'Chỉnh sửa bookmark' : 'Thêm bookmark mới'}</h2>
+        <h2>${isEdit ? 'Chỉnh sửa bookmark' : 'New bookmark'}</h2>
         <form id="bookmark-form">
           <input type="text" id="form-title" placeholder="Tiêu đề" required value="${bookmark ? bookmark.title : ''}" />
           <input type="url" id="form-url" placeholder="URL" required value="${bookmark ? bookmark.url : ''}" />

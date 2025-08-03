@@ -24,6 +24,24 @@
     cursor: pointer;
     z-index: 1000;
   }
+
+  /* Hide dropdown by default and position it */
+  .folder-card .folder-dropdown {
+    display: none;
+    position: absolute;
+    top: 32px;
+    right: 8px;
+    background: #2e2e2e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    z-index: 1000;
+  }
+
+/* Dark hover background and light text */
+.folder-card .folder-dropdown button:hover {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
   
   .folder-card .folder-dropdown.show {
     display: flex !important;
@@ -180,6 +198,11 @@
     cursor: pointer;
     border: none;
     border-radius: 4px;
+/* FolderCard dropdown hover fix */
+.folder-card .folder-dropdown.show button:hover {
+  background-color: #4b5563 !important;
+  color: #f9fafb !important;
+}
   }
   .edit-dialog .dialog-buttons .save-btn {
     background: #3b82f6;

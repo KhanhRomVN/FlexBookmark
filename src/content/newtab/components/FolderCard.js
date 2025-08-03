@@ -208,6 +208,11 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   `;
   header.append(dropdown);
 
+  // Prevent clicks inside dropdown from closing it
+  dropdown.addEventListener('click', e => {
+    e.stopPropagation();
+  });
+
   // Show/hide menu on hover
   card.addEventListener('mouseenter', () => {
     menuBtn.style.display = 'block';
@@ -216,18 +221,22 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     menuBtn.style.display = 'none';
   });
 
-  // Toggle dropdown on click
-  menuBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    const showing = dropdown.classList.toggle('show');
-    dropdown.style.display = showing ? 'flex' : 'none';
-    dropdown.style.flexDirection = 'column';
-  });
+    // Toggle dropdown on click
+    menuBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      // Close other open dropdowns
+      document.querySelectorAll('.folder-dropdown.show').forEach(dd => {
+        if (dd !== dropdown) dd.classList.remove('show');
+      });
+      // Toggle this dropdown
+      dropdown.classList.toggle('show');
+    });
+ 
 
   // Add Bookmark action
   dropdown.insertAdjacentHTML(
     'beforeend',
-    '<button class="menu-add-bookmark">➕ Thêm bookmark</button>'
+    '<button class="menu-add-bookmark">➕ New bookmark</button>'
   );
   dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', e => {
     e.stopPropagation();
@@ -261,12 +270,15 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     dropdown.classList.remove('show');
   });
 
-  // Close dropdown when clicking outside this folder card
-  document.addEventListener('click', e => {
-    if (!card.contains(e.target)) {
-      dropdown.classList.remove('show');
-    }
-  });
+    // Close dropdown when clicking outside its folder card
+    document.addEventListener('click', e => {
+      document.querySelectorAll('.folder-dropdown.show').forEach(dd => {
+        const parentCard = dd.closest('.folder-card');
+        if (parentCard && !parentCard.contains(e.target)) {
+          dd.classList.remove('show');
+        }
+      });
+    });
 
   card.append(header);
 

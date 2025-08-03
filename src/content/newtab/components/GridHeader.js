@@ -14,21 +14,21 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
 
   const addGroupBtn = document.createElement('button');
   addGroupBtn.className = 'add-group-btn-grid';
-  addGroupBtn.textContent = '+ Thêm nhóm';
+  addGroupBtn.textContent = '+ New Folder';
 
   const addBookmarkBtn = document.createElement('button');
   addBookmarkBtn.className = 'add-bookmark-btn-grid';
-  addBookmarkBtn.textContent = '+ Thêm bookmark';
+  addBookmarkBtn.textContent = '+ New bookmark';
 
   header.append(addGroupBtn, addBookmarkBtn);
 
   // Create new folder
   addGroupBtn.addEventListener('click', async () => {
     if (depth >= 1) {
-      alert('Không thể tạo nhóm con quá cấp 2');
+      alert('Cannot create folder beyond level 2');
       return;
     }
-    const name = prompt('Tên nhóm mới');
+    const name = prompt('New Title Folder');
     if (!name) return;
     await createFolder({ title: name, parentId });
     const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
