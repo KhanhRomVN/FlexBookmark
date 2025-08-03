@@ -132,9 +132,8 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   // Direct bookmarks at this depth
   const bookmarksLevel1 = realItems.filter(item => item.url);
   if (bookmarksLevel1.length) {
-    bookmarksLevel1.forEach(bm => {
-      list.append(createBookmarkCard(bm, renderBookmarkGrid, realItems, depth, folder));
-    });
+    const tempFolder = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
+    list.append(createFolderCard(tempFolder, renderBookmarkGrid, depth));
   }
 
   const subfolders = realItems.filter(item => !item.url);
