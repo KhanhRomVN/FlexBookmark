@@ -48,7 +48,6 @@
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
 }
 .add-group-btn:hover {
   background: #2563eb;
@@ -62,7 +61,6 @@
   margin-bottom: 0.25rem;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: all 0.2s ease;
   position: relative;
   animation: fadeIn 0.3s ease forwards;
 }
@@ -102,7 +100,6 @@
 /* Group actions */
 .group-actions {
   opacity: 0;
-  transition: opacity 0.2s;
 }
 .group-item:hover .group-actions {
   opacity: 1;

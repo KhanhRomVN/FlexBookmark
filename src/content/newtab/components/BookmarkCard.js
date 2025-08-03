@@ -13,7 +13,6 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
   card.className = 'bookmark-card';
   card.draggable = true;
   card.style.position = 'relative';
-  // card.style.border = '1px solid transparent'; // border removed to disable hover border
   card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
   card.dataset.id = item.id;
 
