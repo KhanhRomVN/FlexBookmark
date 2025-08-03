@@ -6,9 +6,14 @@
 export function updateGridTitle(depth, groupTitle) {
   const titleEl = document.getElementById('folder-title');
   const breadcrumbEl = document.getElementById('breadcrumb');
+
   if (depth === 0) {
     titleEl.textContent = 'Tất cả bookmark';
     breadcrumbEl.textContent = 'Trang chủ';
+  } else if (depth === 1) {
+    // Hide first-level folder title and breadcrumb
+    titleEl.textContent = '';
+    breadcrumbEl.textContent = '';
   } else {
     titleEl.textContent = groupTitle;
     breadcrumbEl.textContent = groupTitle;

@@ -17,12 +17,12 @@
   border: 1px solid #d1d5db;
   padding: 12px 16px;
   border-radius: 8px;
-  min-height: 56px;
+  /* Removed fixed min-height for flexible height */
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .bookmark-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: transparent;
+  box-shadow: none;
 }
 .bookmark-card .bookmark-url {
   display: none;
@@ -267,15 +267,13 @@
 }
 .folder-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px; /* reduced size */
   color: var(--text-color);
 }
 .folder-body {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
-  grid-template-columns: 1fr;
-  gap: 4px;
 }
 .nested-bookmark {
   display: flex;
@@ -374,4 +372,57 @@
 }
 .nested-bookmark .bookmark-title {
   margin: 0;
+}
+/* ===== Edit Dialog Overlay Styles ===== */
+.edit-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.edit-dialog-overlay.show {
+  display: flex;
+}
+.edit-dialog {
+  background: var(--bg-bookmark-card);
+  color: var(--text-color);
+  padding: 16px;
+  border-radius: 8px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.edit-dialog input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-color);
+}
+.edit-dialog .dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.edit-dialog .dialog-buttons button {
+  padding: 8px 12px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+}
+.edit-dialog .dialog-buttons .save-btn {
+  background: #3b82f6;
+  color: white;
+}
+.edit-dialog .dialog-buttons .cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
 }

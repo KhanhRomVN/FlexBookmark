@@ -24,14 +24,16 @@
 .bookmarks-grid {
   display: grid;
   align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* Wider cards: use 320px min width */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
 }
 
 .bookmark-list {
   display: grid;
   align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* Wider list items: use 320px min width */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
 }
 

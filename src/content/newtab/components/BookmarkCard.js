@@ -19,9 +19,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   container.className = 'bookmark-card-container';
   container.appendChild(card);
 
-  console.log(`Creating bookmark card for: ${item.title} (${item.id})`);
-
-  // Card content
+  // Card content with favicon icon
   card.innerHTML = `
     <div class="bookmark-header">
       <img class="bookmark-icon" src="https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}" alt="">
@@ -29,7 +27,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     </div>
   `;
 
-  // Insert menu button into header
+  // Menu button setup
   const headerEl = card.querySelector('.bookmark-header');
   const menuBtn = document.createElement('button');
   menuBtn.style.display = 'none';
@@ -43,7 +41,28 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     '<button class="menu-edit">Edit</button>' +
     '<button class="menu-delete">Delete</button>';
   headerEl.append(dropdown);
-  console.log(`DEBUG: menuBtn appended for bookmark ${item.id}`, menuBtn, dropdown);
+
+  // Ensure modal dialog overlay exists
+  let overlay = document.querySelector('.edit-dialog-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'edit-dialog-overlay';
+    overlay.innerHTML = `
+      <div class="edit-dialog">
+        <input type="text" class="dialog-title-input" placeholder="Title" />
+        <input type="text" class="dialog-url-input" placeholder="URL" />
+        <div class="dialog-buttons">
+          <button class="save-btn">Save</button>
+          <button class="cancel-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+  const titleInput = overlay.querySelector('.dialog-title-input');
+  const urlInput = overlay.querySelector('.dialog-url-input');
+  const saveBtn = overlay.querySelector('.save-btn');
+  const cancelBtn = overlay.querySelector('.cancel-btn');
 
   // Hover handlers for border and menu visibility
   card.addEventListener('mouseenter', () => {
@@ -66,20 +85,34 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     dropdown.classList.toggle('show');
   });
 
-  // Edit & Delete from dropdown
-  dropdown.querySelector('.menu-edit')?.addEventListener('click', async e => {
+  // Edit via custom modal
+  dropdown.querySelector('.menu-edit')?.addEventListener('click', e => {
     e.stopPropagation();
-    const newUrl = prompt('URL mới', item.url) || item.url;
-    const newTitle = prompt('Title mới', item.title) || item.title;
-    await chrome.bookmarks.update(item.id, { url: newUrl, title: newTitle });
+    titleInput.value = item.title;
+    urlInput.value = item.url;
+    overlay.classList.add('show');
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const newTitle = titleInput.value.trim() || item.title;
+    const newUrl = urlInput.value.trim() || item.url;
+    await chrome.bookmarks.update(item.id, { title: newTitle, url: newUrl });
     const titleEl = card.querySelector('.bookmark-title');
     titleEl.textContent = newTitle;
     titleEl.title = newTitle;
     const iconEl = card.querySelector('.bookmark-icon');
     iconEl.src = `https://www.google.com/s2/favicons?sz=64&domain_url=${newUrl}`;
+    overlay.classList.remove('show');
     dropdown.classList.remove('show');
   });
 
+  cancelBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    overlay.classList.remove('show');
+    dropdown.classList.remove('show');
+  });
+
+  // Delete from dropdown
   dropdown.querySelector('.menu-delete')?.addEventListener('click', async e => {
     e.stopPropagation();
     if (confirm('Delete this bookmark?')) {
@@ -94,19 +127,15 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
     dropdown.classList.remove('show');
   });
 
-  // Click anywhere on card (except menu or actions) to open URL
+  // Click anywhere on card to open URL in a new tab next to current
   card.addEventListener('click', e => {
-    console.log(`BookmarkCard clicked: id=${item.id}, url=${item.url}`, e.target);
-    if (!e.target.closest('.action-btn') && !e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) {
-      console.log(`Opening URL: ${item.url}`);
-      try {
-        chrome.tabs.create({ url: item.url });
-      } catch (err) {
-        console.error('chrome.tabs.create error:', err);
-      }
+    if (!e.target.closest('.menu-btn') && !e.target.closest('.menu-dropdown')) {
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        const currentIndex = (tabs[0] && tabs[0].index) || 0;
+        chrome.tabs.create({ url: item.url, index: currentIndex + 1 });
+      });
     }
   });
 
-  
   return container;
 }
