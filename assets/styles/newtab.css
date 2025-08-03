@@ -5,6 +5,7 @@
 @import "./newtab/sidebar.css";
 @import "./newtab/header.css";
 @import "./newtab/buttons.css";
-@import "./newtab/cards.css";
+@import "./newtab/bookmark-card.css";
+@import "./newtab/folder-card.css";
 @import "./newtab/responsive.css";
 @import "./newtab/themes.css";
