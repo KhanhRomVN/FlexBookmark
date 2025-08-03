@@ -79,3 +79,23 @@
 .folder-menu-btn:hover {
   background: #f1f5f9;
 }
+/* Enhanced transitions and focus states */
+.add-bookmark-btn,
+.add-group-btn-grid,
+.add-bookmark-btn-grid,
+.icon-btn,
+.settings-btn,
+.group-action-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.add-bookmark-btn:focus,
+.add-group-btn-grid:focus,
+.add-bookmark-btn-grid:focus,
+.icon-btn:focus,
+.settings-btn:focus,
+.group-action-btn:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+}

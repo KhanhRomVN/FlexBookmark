@@ -4,8 +4,8 @@ import { setupAddBookmarkForm } from './components/AddBookmarkForm.js';
 import { md5 } from '../utils/helpers.js';
 
 console.log('newtab.js loaded');
-// Disable all dragging
-document.addEventListener('dragstart', e => e.preventDefault(), true);
+// Removed global drag prevention to enable drag-and-drop on cards
+// document.addEventListener('dragstart', e => e.preventDefault(), true);
 
 // Lấy thông tin user
 async function getUserInfo() {
@@ -65,10 +65,28 @@ chrome.storage.local.get(['theme', 'backgroundImage'], result => {
     }
   }
 });
+// Loading spinner
+async function showLoading() {
+  const grid = document.getElementById('bookmark-grid');
+  grid.innerHTML = '<div class="loading-spinner"></div>';
+}
+
+// Toast notifications
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 // Khởi tạo ứng dụng
 async function init() {
   console.log('init() called');
+  await showLoading();
   // Fetch and display user info
   const userInfo = await getUserInfo();
   if (userInfo.email) {

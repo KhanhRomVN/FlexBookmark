@@ -8,7 +8,7 @@
 export function createBookmarkCard(item, renderBookmarkGrid, items) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
-  card.draggable = false;
+  card.draggable = true;
   card.style.position = 'relative';
   // card.style.border = '1px solid transparent'; // border removed to disable hover border
   card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
@@ -125,6 +125,35 @@ export function createBookmarkCard(item, renderBookmarkGrid, items) {
   // Close dropdown when clicking outside
   document.addEventListener('click', () => {
     dropdown.classList.remove('show');
+  });
+
+  // Drag-and-drop support
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      id: item.id,
+      type: 'bookmark',
+      title: item.title
+    }));
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+  });
+  card.addEventListener('dragover', e => {
+    e.preventDefault();
+    card.classList.add('drop-target');
+  });
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('drop-target');
+  });
+  card.addEventListener('drop', async e => {
+    e.preventDefault();
+    card.classList.remove('drop-target');
+    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    if (data.type === 'bookmark') {
+      await chrome.bookmarks.move(data.id, { parentId: item.parentId });
+      renderBookmarkGrid(items, depth, folder);
+    }
   });
 
   // Click anywhere on card to open URL in a new tab next to current

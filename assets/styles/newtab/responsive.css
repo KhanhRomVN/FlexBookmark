@@ -2,87 +2,58 @@
    newtab responsive
    ========================================================================== */
 
-/* Nested grid responsive */
-@media (max-width: 768px) {
-  .bookmark-list {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
+/* Medium view (<1024px) adjust sidebar and grid */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
   }
-}
-@media (max-width: 480px) {
-  .bookmark-list {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
+  
+  .bookmarks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
 }
 
-/* Root grid responsive */
-@media (max-width: 768px) {
-  .bookmarks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-  }
-}
-@media (max-width: 480px) {
-  .bookmarks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-  }
-}
-
-/* Mobile layout adjustments */
+/* Tablet and small desktop (<768px) stack layout */
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
-    height: auto;
   }
-  body {
-    height: auto;
-    overflow: auto;
-  }
-  .content-area {
-    padding: 16px;
-  }
+  
   .sidebar {
     width: 100%;
     height: auto;
+    max-height: 300px;
     border-right: none;
-    border-bottom: 1px solid #cbd5e1;
-    flex-direction: row;
+    border-bottom: 1px solid var(--border-color);
   }
-  .sidebar-header {
-    padding: 16px;
-    flex: 0 0 auto;
-  }
-  .groups-list {
-    display: flex;
-    overflow-x: auto;
-    padding: 8px;
-    gap: 8px;
-  }
-  .group-item {
-    flex: 0 0 auto;
-    margin-bottom: 0;
-    margin-right: 8px;
-  }
-  .main-header .header-top {
+  
+  .header-top {
     flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+    align-items: flex-start;
   }
+  
   .header-actions {
     width: 100%;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 16px;
   }
-  .search-input {
-    width: 100%;
-    max-width: none;
+  
+  .search-box {
+    max-width: 100%;
   }
 }
 
-/* Smaller mobile tweaks */
+/* Mobile (<480px) fine-tune spacing */
 @media (max-width: 480px) {
+  .content-area {
+    padding: 1rem;
+  }
+  
+  .main-header {
+    padding: 1rem;
+  }
+  
   .header-title {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
 }

@@ -2,22 +2,36 @@
    newtab variables
    ========================================================================== */
 
-/* Default theme variables */
+/* Light theme variables */
 :root {
   --bg-body: #f8fafc;
-  --bg-sidebar: #fff;
-  --bg-header: #fff;
-  --bg-group-card: #fff;
-  --bg-bookmark-card: #fff;
-  --text-color: #000;
+  --bg-sidebar: #ffffff;
+  --bg-header: #ffffff;
+  --bg-group-card: #ffffff;
+  --bg-bookmark-card: #f9fafb;
+  --bg-input: #ffffff;
+  --border-color: #e2e8f0;
+  --text-color: #1e293b;
+  --text-secondary: #64748b;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --hover-bg: #f1f5f9;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* Dark theme variable overrides */
+/* Dark theme variables */
 [data-theme="dark"] {
-  --bg-body: #202126;
-  --bg-sidebar: #24252a;
-  --bg-header: #24252a;
-  --bg-group-card: #1e1f24;
-  --bg-bookmark-card: #25262b;
-  --text-color: #ffffff;
+  --bg-body: #0f172a;
+  --bg-sidebar: #1e293b;
+  --bg-header: #1e293b;
+  --bg-group-card: #1e293b;
+  --bg-bookmark-card: #1e293b;
+  --bg-input: #334155;
+  --border-color: #334155;
+  --text-color: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --primary-color: #60a5fa;
+  --primary-hover: #3b82f6;
+  --hover-bg: #334155;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
 }

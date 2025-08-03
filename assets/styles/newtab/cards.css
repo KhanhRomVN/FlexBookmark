@@ -452,3 +452,29 @@
   background: #e5e7eb;
   color: #374151;
 }
+/* Hiệu ứng drag-and-drop */
+.dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.drop-target {
+  border: 2px dashed var(--primary-color) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Hiệu ứng khi di chuyển */
+.bookmark-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bookmark-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.folder-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}

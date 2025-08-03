@@ -5,28 +5,36 @@
 .container {
   display: flex;
   height: 100vh;
+  flex-direction: column;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: visible;
-  border-left: 1px solid #696969;
+  overflow: hidden;
 }
 
 .content-area {
   flex: 1;
-  padding: 24px;
+  padding: 1.5rem;
   overflow-y: auto;
+}
+@media (min-width: 768px) {
+  .main-content {
+    border-left: 1px solid var(--border-color);
+  }
+}
+@media (min-width: 768px) {
+  .container {
+    flex-direction: row;
+  }
 }
 
 .bookmarks-grid {
   display: grid;
-  align-items: start;
-  /* Wider cards: use 320px min width */
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
 }
 
 .bookmark-list {
@@ -54,4 +62,11 @@
 /* Allow all nested bookmark cards and folder items to be clickable */
 .drop-target * {
   pointer-events: auto !important;
+}
+
+/* Tối ưu cho màn hình nhỏ */
+@media (max-width: 640px) {
+  .bookmarks-grid {
+    grid-template-columns: 1fr;
+  }
 }
