@@ -68,16 +68,35 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     }
 
     // Handle dropping a bookmark into this folder
+    const gridContainer = document.getElementById('bookmark-grid');
+// Synthetic temp folder drop: drop into Temp group should move to current grid parent folder
+    if (data.type === 'bookmark' && folder.id.startsWith('temp')) {
+      const gridContainer = document.getElementById('bookmark-grid');
+      const parentId = gridContainer.dataset.parentId;
+      try {
+        await chrome.bookmarks.move(data.id, { parentId });
+      } catch (err) {
+        console.error('Error moving bookmark to temp group:', err);
+      }
+      const depthVal = parseInt(gridContainer.dataset.depth || '0');
+      chrome.bookmarks.getChildren(parentId, (children) => {
+        chrome.bookmarks.get(parentId, ([parentFolder]) => {
+          renderBookmarkGrid(children, depthVal, parentFolder);
+        });
+      });
+      return;
+    }
+    const targetParentId = folder.id.startsWith('temp') ? gridContainer.dataset.parentId : folder.id;
     if (data.type === 'bookmark') {
       console.log(`Moving bookmark ${data.id} into folder ${folder.id}`);
       try {
-        await chrome.bookmarks.move(data.id, { parentId: folder.id });
+        await chrome.bookmarks.move(data.id, { parentId: targetParentId });
         console.log('Bookmark move successful');
       } catch (err) {
         console.error('Error moving bookmark:', err);
       }
       console.log('Updating folder card body for bookmark drop', folder.id);
-      chrome.bookmarks.getChildren(folder.id, (children) => {
+      chrome.bookmarks.getChildren(targetParentId, (children) => {
         const body = card.querySelector('.folder-body');
         if (body) {
           body.innerHTML = '';

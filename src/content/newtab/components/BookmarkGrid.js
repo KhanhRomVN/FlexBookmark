@@ -132,7 +132,14 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   // Direct bookmarks at this depth
   const bookmarksLevel1 = realItems.filter(item => item.url);
   if (bookmarksLevel1.length) {
-    const tempFolder = { id: 'temp', title: 'Temp', children: bookmarksLevel1 };
+    // Wrap level-1 bookmarks in a synthetic Temp folder, preserving original context
+    const tempFolder = {
+      id: 'temp',
+      title: 'Temp',
+      children: bookmarksLevel1,
+      originalParentId: parentId,
+      originalDepth: depth
+    };
     list.append(createFolderCard(tempFolder, renderBookmarkGrid, depth));
   }
 
