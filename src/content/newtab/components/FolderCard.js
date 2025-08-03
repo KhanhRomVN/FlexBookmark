@@ -76,13 +76,38 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
       } catch (err) {
         console.error('Error moving bookmark:', err);
       }
-      
-      console.log('Fetching children of folder', folder.id);
+      console.log('Updating folder card body for bookmark drop', folder.id);
       chrome.bookmarks.getChildren(folder.id, (children) => {
-        console.log('Fetched children count:', children.length);
-        // Cap depth to 1 to avoid third-level nesting
-        renderBookmarkGrid(children, 1, folder);
+        const body = card.querySelector('.folder-body');
+        if (body) {
+          body.innerHTML = '';
+          children.forEach(child => {
+            if (child.url) {
+              const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
+              bookmarkCard.classList.add('nested-bookmark');
+              body.append(bookmarkCard);
+            } else {
+              const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+              body.append(subFolderCard);
+            }
+          });
+        }
       });
+      // Re-render source grid to reflect removal from original location
+      const sourceContainer = document.getElementById('bookmark-grid');
+      const sourceParentId = sourceContainer.dataset.parentId;
+      const sourceDepth = parseInt(sourceContainer.dataset.depth || '0');
+      chrome.bookmarks.getChildren(sourceParentId, (siblings) => {
+        // Re-render grid with correct folder context for immediate UI update
+        if (sourceDepth > 0) {
+          chrome.bookmarks.get(sourceParentId, ([sourceFolder]) => {
+            renderBookmarkGrid(siblings, sourceDepth, sourceFolder);
+          });
+        } else {
+          renderBookmarkGrid(siblings, sourceDepth, null);
+        }
+      });
+      return;
     }
     
     // Handle dropping a folder into this folder (move/ nest folder)

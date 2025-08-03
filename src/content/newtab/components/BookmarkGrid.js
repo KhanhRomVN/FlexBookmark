@@ -46,9 +46,18 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
       const data = JSON.parse(raw);
     // Handle drop into grid (move bookmark to this folder or root)
     if (data.type === 'bookmark') {
-      await chrome.bookmarks.move(data.id, { parentId: parentId });
+      console.log('BookmarkGrid moving bookmark', data.id, 'into', parentId);
+      try {
+        await chrome.bookmarks.move(data.id, { parentId: parentId });
+        console.log('BookmarkGrid bookmark move successful');
+      } catch (err) {
+        console.error('BookmarkGrid error moving bookmark:', err);
+      }
       chrome.bookmarks.getChildren(parentId, (children) => {
-        renderBookmarkGrid(children, depth);
+        chrome.bookmarks.get(parentId, ([parentFolder]) => {
+          console.log('BookmarkGrid re-rendering after bookmark move', parentFolder);
+          renderBookmarkGrid(children, depth, parentFolder);
+        });
       });
     }
     // Handle folder drop into grid
@@ -59,10 +68,19 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
         showToast('Cannot drop folders into nested grids', 'error');
         return;
       }
-      await chrome.bookmarks.move(data.id, { parentId: parentId });
+      console.log('BookmarkGrid moving folder', data.id, 'into', parentId);
+      try {
+        await chrome.bookmarks.move(data.id, { parentId: parentId });
+        console.log('BookmarkGrid folder move successful');
+      } catch (err) {
+        console.error('BookmarkGrid error moving folder:', err);
+      }
       chrome.bookmarks.getChildren(parentId, (children) => {
         const realChildren = children.filter(item => !item.id.startsWith('temp-'));
-        renderBookmarkGrid(realChildren, depth);
+        chrome.bookmarks.get(parentId, ([parentFolder]) => {
+          console.log('BookmarkGrid re-rendering after folder move', parentFolder);
+          renderBookmarkGrid(realChildren, depth, parentFolder);
+        });
       });
     }
   });
