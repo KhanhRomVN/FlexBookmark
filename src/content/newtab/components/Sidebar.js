@@ -156,6 +156,15 @@ export function renderSidebar(folders) {
         activeEl.scrollIntoView({ block: 'nearest' });
         activeEl.click();
       }
+    } else {
+      // Default select "Bookmarks bar"
+      const defaultEl = Array.from(sidebar.querySelectorAll('.group-item'))
+        .find(el => el.querySelector('.group-name').textContent === 'Bookmarks bar');
+      if (defaultEl) {
+        defaultEl.classList.add('active');
+        defaultEl.scrollIntoView({ block: 'nearest' });
+        defaultEl.click();
+      }
     }
   });
 }

@@ -30,7 +30,7 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid, gridTitle)
 
   // Create new folder
   addGroupBtn.addEventListener('click', async () => {
-    if (depth >= 1) {
+    if (depth >= 2) {
       alert('Cannot create folder beyond level 2');
       return;
     }
@@ -38,7 +38,7 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid, gridTitle)
     if (!name) return;
     await createFolder({ title: name, parentId });
     const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-    renderBookmarkGrid(list);
+    renderBookmarkGrid(list, depth, { id: parentId, title: gridTitle });
   });
 
   // Show Add Bookmark form
