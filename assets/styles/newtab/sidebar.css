@@ -83,12 +83,16 @@
 
 .group-name {
   flex: 1;
+  font-size: 16px;
   font-weight: 500;
   color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .group-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
   background: var(--bg-group-card);
   padding: 2px 8px;

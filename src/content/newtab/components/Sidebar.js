@@ -96,6 +96,16 @@ export function renderSidebar(folders) {
       folderObj.children = children;
       renderBookmarkGrid(children, 1, folderObj);
     });
+// Keyboard “Delete” to remove a group with confirmation
+    item.addEventListener('keydown', async e => {
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        if (confirm('Are you sure you want to delete this folder and all its bookmarks?')) {
+          await chrome.bookmarks.removeTree(item.dataset.id);
+          item.remove();
+        }
+      }
+    });
 
     // Drag-and-drop handlers for sidebar folder items
     item.addEventListener('dragenter', e => {
