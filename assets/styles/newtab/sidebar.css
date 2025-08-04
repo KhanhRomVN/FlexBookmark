@@ -37,6 +37,13 @@
   flex: 1;
   padding: 16px;
   overflow-y: auto;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE 10+ */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera while keeping scroll functionality */
+.groups-list::-webkit-scrollbar {
+  display: none;
 }
 
 /* New group button */

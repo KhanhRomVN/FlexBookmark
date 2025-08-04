@@ -137,4 +137,15 @@ export function renderSidebar(folders) {
       }
     });
   });
+// Auto-select and scroll to the last active group on initial render
+  chrome.storage.local.get({ lastFolderId: null }, ({ lastFolderId }) => {
+    if (lastFolderId) {
+      const activeEl = sidebar.querySelector(`.group-item[data-id="${lastFolderId}"]`);
+      if (activeEl) {
+        activeEl.classList.add('active');
+        activeEl.scrollIntoView({ block: 'nearest' });
+        activeEl.click();
+      }
+    }
+  });
 }
