@@ -13,7 +13,8 @@
   }
   
   /* Folder card menu button and dropdown enhancements */
-  .folder-card .menu-btn {
+  .folder-card .folder-menu-btn {
+    color: var(--text-color);
     position: absolute;
     top: 20px;
     right: 8px;
@@ -95,7 +96,7 @@
   }
   
   /* Bookmark card menu button and dropdown (shared overrides) */
-  .menu-btn {
+  .folder-menu-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -139,14 +140,6 @@
   }
   
   
-  /* Hover interactions and overrides */
-  .bookmark-card-container:hover .menu-btn,
-  .bookmark-card:hover .menu-btn {
-    display: block !important;
-  }
-  .bookmark-card-container:hover {
-    z-index: 1000 !important;
-  }
   
   /* Nested list styling for folder view */
   .nested-bookmark {
@@ -218,8 +211,4 @@
     opacity: 0.7;
     transform: scale(0.98);
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  }
-  
-  .folder-card:hover {
-    transform: translateY(-3px);
   }

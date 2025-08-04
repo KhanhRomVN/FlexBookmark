@@ -33,7 +33,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
   const headerEl = card.querySelector('.bookmark-header');
   const menuBtn = document.createElement('button');
   menuBtn.style.display = 'none';
-  menuBtn.className = 'menu-btn';
+  menuBtn.className = 'bookmark-menu-btn';
   menuBtn.textContent = '⋮';
   headerEl.append(menuBtn);
 

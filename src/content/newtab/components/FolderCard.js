@@ -194,7 +194,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
 
   // Menu button (hidden until hover)
   const menuBtn = document.createElement('button');
-  menuBtn.className = 'menu-btn';
+  menuBtn.className = 'folder-menu-btn';
   menuBtn.style.display = 'none';
   menuBtn.textContent = '⋮';
   header.append(menuBtn);

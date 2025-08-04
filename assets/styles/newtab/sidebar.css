@@ -67,7 +67,6 @@
 }
 .group-item:hover {
   background: var(--hover-bg);
-  transform: translateX(4px);
 }
 .group-item.active {
   background: var(--hover-bg);
