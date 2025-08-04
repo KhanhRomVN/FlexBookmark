@@ -21,7 +21,7 @@
   background: var(--bg-bookmark-card);
   color: var(--text-color);
   border: 1px solid var(--border-color) !important;
-  padding: 4px 12px;
+  padding: 4px 8px 4px 12px;
   border-radius: 8px;
   height: 36px;
   display: flex;
@@ -59,15 +59,17 @@
 .bookmark-menu-btn {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 0px;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-color);
+  background: var(--bg-sidebar);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
-  padding: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 .menu-dropdown {
