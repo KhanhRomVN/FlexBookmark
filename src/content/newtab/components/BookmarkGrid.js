@@ -83,10 +83,10 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   });
 
   // Header & breadcrumb
-  container.append(renderGridHeader(depth, parentId, renderBookmarkGrid));
   const title = folder && folder.title ? folder.title : container.dataset.groupTitle || '';
   container.dataset.groupTitle = title;
   updateGridTitle(depth, title);
+  container.append(renderGridHeader(depth, parentId, renderBookmarkGrid, title));
 
   // Empty state
   if (!realItems.length) {

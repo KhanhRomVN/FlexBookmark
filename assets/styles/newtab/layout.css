@@ -48,7 +48,8 @@
   /* Grid header controls */
   .grid-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 8px;
     margin-bottom: 16px;
   }
@@ -70,3 +71,15 @@
       grid-template-columns: 1fr;
     }
   }
+/* Larger title on the left */
+.grid-header-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+/* Actions wrapper for grid header buttons */
+.grid-header-actions {
+  display: flex;
+  gap: 8px;
+}

@@ -8,7 +8,7 @@ import { showBookmarkForm } from './BookmarkForm.js';
  * @param {Function} renderBookmarkGrid - Callback to re-render the grid.
  * @returns {HTMLElement} Header container element.
  */
-export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
+export function renderGridHeader(depth, parentId, renderBookmarkGrid, gridTitle) {
   const header = document.createElement('div');
   header.className = 'grid-header';
 
@@ -20,7 +20,13 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid) {
   addBookmarkBtn.className = 'add-bookmark-btn-grid';
   addBookmarkBtn.textContent = '+ New bookmark';
 
-  header.append(addGroupBtn, addBookmarkBtn);
+  const titleEl = document.createElement('div');
+  titleEl.className = 'grid-header-title';
+  titleEl.textContent = gridTitle || '';
+  const actionsContainer = document.createElement('div');
+  actionsContainer.className = 'grid-header-actions';
+  actionsContainer.append(addBookmarkBtn, addGroupBtn);
+  header.append(titleEl, actionsContainer);
 
   // Create new folder
   addGroupBtn.addEventListener('click', async () => {
