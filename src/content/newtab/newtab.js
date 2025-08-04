@@ -131,19 +131,19 @@ document.addEventListener('DOMContentLoaded', () => {
 init();
   // Theme dropdown toggle
   document.body.addEventListener('click', () => {
-    document.getElementById('theme-dropdown').classList.remove('active');
+    document.getElementById('theme-dropdown').classList.remove('show');
   });
   document.getElementById('theme-btn').addEventListener('click', e => {
     e.stopPropagation();
     const dropdown = document.getElementById('theme-dropdown');
-    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    dropdown.classList.toggle('show');
   });
   document.querySelectorAll('#theme-dropdown button').forEach(button => {
     button.addEventListener('click', function() {
       const theme = this.dataset.theme;
       applyTheme(theme);
       chrome.storage.local.set({ theme });
-      document.getElementById('theme-dropdown').classList.remove('active');
+      document.getElementById('theme-dropdown').classList.remove('show');
     });
   });
 
