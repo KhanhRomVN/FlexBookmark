@@ -137,3 +137,7 @@
     min-width: 140px;
   }
 }
+/* Hide folder title while retaining DOM hooks */
+.header-title {
+  display: none;
+}

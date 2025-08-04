@@ -102,3 +102,15 @@ html[data-theme="light"] .main-header,
 html[data-theme="dark"] .main-header {
   border-bottom: 1px solid var(--border-color) !important;
 }
+/* Reveal body background-image under panels */
+body.image-theme .container,
+body.image-theme .sidebar,
+body.image-theme .main-content {
+  background-color: transparent !important;
+}
+/* Reveal body background-image under panels */
+body.image-theme .container,
+body.image-theme .sidebar,
+body.image-theme .main-content {
+  background-color: transparent !important;
+}
