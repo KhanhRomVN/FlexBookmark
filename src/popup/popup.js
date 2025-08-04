@@ -1,33 +1,57 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Theme handling
-  function applyTheme(theme, backgroundImage) {
-    const root = document.documentElement;
-    if (theme === 'light') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
+  // Theme toggle elements
+  const themeToggle = document.getElementById('theme-toggle');
+  const themeDropdown = document.getElementById('theme-dropdown');
+
+  // Apply and persist theme
+  function applyTheme(theme, bgImage) {
     document.body.classList.remove('theme-light', 'theme-dark', 'theme-image');
     document.body.classList.add(`theme-${theme}`);
-    if (theme === 'image' && backgroundImage) {
-      document.body.style.backgroundImage = `url(${backgroundImage})`;
+    if (theme === 'image' && bgImage) {
+      document.body.style.backgroundImage = `url(${bgImage})`;
     } else {
       document.body.style.backgroundImage = '';
     }
+    chrome.storage.local.set({ theme });
   }
-  chrome.storage.local.get(['theme', 'backgroundImage'], result => {
+
+  // Load saved theme
+  chrome.storage.local.get(['theme', 'backgroundImage'], (result) => {
     const theme = result.theme || 'light';
-    const bgImage = result.backgroundImage;
-    applyTheme(theme, bgImage);
+    applyTheme(theme, result.backgroundImage);
   });
 
-  // Auto-fill form from active tab
+  // Toggle dropdown visibility
+  themeToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    themeDropdown.classList.toggle('show');
+  });
+  document.addEventListener('click', (e) => {
+    if (!themeDropdown.contains(e.target) && e.target !== themeToggle) {
+      themeDropdown.classList.remove('show');
+    }
+  });
+
+  // Theme selection buttons
+  themeDropdown.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const selected = btn.dataset.theme;
+      chrome.storage.local.get('backgroundImage', (res) => {
+        applyTheme(selected, res.backgroundImage);
+      });
+      themeDropdown.classList.remove('show');
+    });
+  });
+
+  // Elements for form & folder tree
   const form = document.getElementById('bookmark-form');
   const titleInput = document.getElementById('bookmark-title');
   const urlInput = document.getElementById('bookmark-url');
+  const container = document.getElementById('folder-tree');
   let selectedFolderId = null;
 
-  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+  // Auto-fill from active tab
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
     if (tab) {
       titleInput.value = tab.title;
@@ -35,33 +59,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Build folder tree with expand/collapse
-  const container = document.getElementById('folder-tree');
-
-  function buildList(nodes) {
+  // Build nested folder list
+  function buildList(nodes, level = 0) {
     const ul = document.createElement('ul');
-    nodes.forEach(node => {
+    ul.style.paddingLeft = level > 0 ? '16px' : '0';
+    nodes.forEach((node) => {
       if (node.url) return;
       const li = document.createElement('li');
       li.textContent = node.title || 'Untitled';
       li.dataset.id = node.id;
       li.classList.add('folder');
-      // find subfolders
-      const children = (node.children || []).filter(c => !c.url);
+      const children = (node.children || []).filter((c) => !c.url);
+      if (!children.length) li.classList.add('leaf');
       if (children.length) {
-        const childUl = buildList(children);
+        const childUl = buildList(children, level + 1);
         childUl.style.display = 'none';
         li.appendChild(childUl);
-        li.addEventListener('click', e => {
+        li.addEventListener('click', (e) => {
+          if (e.target !== li) return;
           e.stopPropagation();
-          const isHidden = childUl.style.display === 'none';
-          childUl.style.display = isHidden ? 'block' : 'none';
-          li.classList.toggle('expanded', isHidden);
+          const hidden = childUl.style.display === 'none';
+          childUl.style.display = hidden ? 'block' : 'none';
+          li.classList.toggle('expanded', hidden);
           selectFolder(li, node.id);
         });
       } else {
-        li.classList.add('leaf');
-        li.addEventListener('click', e => {
+        li.addEventListener('click', (e) => {
           e.stopPropagation();
           selectFolder(li, node.id);
         });
@@ -71,22 +94,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return ul;
   }
 
+  // Mark selected folder
   function selectFolder(li, id) {
-    container.querySelectorAll('li.selected').forEach(el =>
-      el.classList.remove('selected')
-    );
+    container.querySelectorAll('li.selected').forEach((el) => el.classList.remove('selected'));
     li.classList.add('selected');
     selectedFolderId = id;
   }
 
-  chrome.bookmarks.getTree(tree => {
+  // Load and render bookmark folders
+  chrome.bookmarks.getTree((tree) => {
     container.innerHTML = '';
     const root = tree[0];
-    // flatten 'Other bookmarks' children to top level
     const nodes = [];
-    root.children.forEach(node => {
+    root.children.forEach((node) => {
       if (node.title === 'Other bookmarks' && node.children) {
-        node.children.filter(c => !c.url).forEach(child => nodes.push(child));
+        node.children.filter((c) => !c.url).forEach((c) => nodes.push(c));
       } else {
         nodes.push(node);
       }
@@ -100,21 +122,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Handle form submission
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!selectedFolderId) {
       alert('Please select a folder.');
       return;
     }
+    const btn = form.querySelector('.submit-btn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
     chrome.bookmarks.create(
-      {
-        parentId: selectedFolderId,
-        title: titleInput.value,
-        url: urlInput.value
-      },
-      () => {
-        window.close();
-      }
+      { parentId: selectedFolderId, title: titleInput.value, url: urlInput.value },
+      () => window.close()
     );
+  });
+
+  // Input focus effects
+  document.querySelectorAll('input').forEach((input) => {
+    input.addEventListener('focus', () => {
+      input.parentElement.style.boxShadow = '0 0 0 2px rgba(66,153,225,0.5)';
+    });
+    input.addEventListener('blur', () => {
+      input.parentElement.style.boxShadow = '';
+    });
   });
 });
