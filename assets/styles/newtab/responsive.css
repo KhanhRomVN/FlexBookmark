@@ -47,10 +47,7 @@
     max-width: 100%;
   }
 
-  .bookmarks-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
-    gap: 12px;
-  }
+  /* Removed small-screen grid override to preserve masonry columns from layout.css */
 
   .folder-card, .temp-group-card, .mini-group-card {
     margin-bottom: 12px;

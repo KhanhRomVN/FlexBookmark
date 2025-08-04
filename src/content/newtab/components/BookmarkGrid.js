@@ -102,7 +102,12 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     const folders = realItems.filter(item => !item.url);
     const bookmarks = realItems.filter(item => item.url);
 
-    // Bookmarks temp-group
+    // Tạo các folder card
+    folders.forEach(folderItem => {
+      grid.append(createFolderCard(folderItem, renderBookmarkGrid, depth));
+    });
+
+    // Tạo thẻ tạm cho bookmark nếu có
     if (bookmarks.length) {
       grid.append(
         createFolderCard(
@@ -112,19 +117,6 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
         )
       );
     }
-
-    // Folder cards
-    folders.forEach(folderItem => {
-      const childrenFiltered = folderItem.children
-        ? folderItem.children.filter(child =>
-            !child.children || child.children.every(gc => gc.url)
-          )
-        : undefined;
-      const folderData = childrenFiltered
-        ? { ...folderItem, children: childrenFiltered }
-        : folderItem;
-      grid.append(createFolderCard(folderData, renderBookmarkGrid, depth));
-    });
 
     container.append(grid);
     return;

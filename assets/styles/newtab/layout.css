@@ -31,20 +31,60 @@
     }
   }
   
+  /* ==========================================================================
+     newtab layout - UPDATED TO COLUMN MASONRY
+     ========================================================================== */
+
   /* Masonry layout for folder cards using CSS columns */
   .bookmarks-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    grid-auto-rows: minmax(100px, auto);
-    grid-gap: 1.25rem;
-    align-items: start;
+    columns: 280px auto; /* Tối thiểu 280px, tự động điều chỉnh số cột */
+    column-gap: 1.25rem;
+    max-width: 100%;
+    margin: 0 auto;
   }
-  /* Ensure cards wrap correctly and avoid splitting */
+
   /* Ensure cards wrap correctly and avoid splitting */
   .bookmarks-grid > * {
-    grid-row: span 1;
     break-inside: avoid;
-    margin-bottom: 0;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Giới hạn số cột tối đa */
+  @media (min-width: 1280px) {
+    .bookmarks-grid {
+      column-count: 5; /* Tối đa 5 cột cho màn hình rất lớn */
+    }
+  }
+
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .bookmarks-grid {
+      column-count: 4; /* 4 cột cho màn hình desktop */
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .bookmarks-grid {
+      column-count: 3; /* 3 cột cho tablet ngang */
+    }
+  }
+
+  @media (min-width: 640px) and (max-width: 767px) {
+    .bookmarks-grid {
+      column-count: 2; /* 2 cột cho tablet dọc */
+    }
+  }
+
+  @media (max-width: 639px) {
+    .bookmarks-grid {
+      column-count: 1; /* 1 cột cho mobile */
+    }
+  }
+
+  /* Tối ưu cho màn hình nhỏ */
+  @media (max-width: 640px) {
+    .bookmarks-grid {
+      column-gap: 0.5rem;
+    }
   }
 
   .folder-card {
@@ -53,19 +93,44 @@
   }
   /* Ensure each card flows properly in columns */
   
-  /* Masonry layout for folder list */
+  /* Masonry layout for bookmark list using CSS columns */
   .bookmark-list {
-    column-width: 320px;
-    column-gap: 16px;
+    columns: 320px auto; /* Min width 320px per column, auto-fit */
+    column-gap: 1.25rem;
+    max-width: 100%;
+    margin: 0 auto;
   }
-  /* Ensure each list item flows properly */
+  .bookmark-list > * {
+    break-inside: avoid;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Responsive column counts */
+  @media (min-width: 1280px) {
     .bookmark-list {
-      display: grid;
-      align-items: start;
-      /* Wider list items: use 320px min width */
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
+      column-count: 5;
     }
+  }
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .bookmark-list {
+      column-count: 4;
+    }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .bookmark-list {
+      column-count: 3;
+    }
+  }
+  @media (min-width: 640px) and (max-width: 767px) {
+    .bookmark-list {
+      column-count: 2;
+    }
+  }
+  @media (max-width: 639px) {
+    .bookmark-list {
+      column-count: 1;
+    }
+  }
   
   /* Grid header controls */
   .grid-header {

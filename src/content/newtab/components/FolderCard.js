@@ -13,6 +13,9 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   card.dataset.id = folder.id;
   card.style.position = 'relative';
   card.draggable = true; // Make folder draggable
+// Masonry layout styles
+  card.style.breakInside = 'avoid';
+  card.style.marginBottom = '1.25rem';
   if (folder.isSearchResult) {
     card.classList.add('search-result');
   }
