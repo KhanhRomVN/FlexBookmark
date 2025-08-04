@@ -20,24 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgImage = result.backgroundImage;
     applyTheme(theme, bgImage);
   });
-// Theme toggle UI
-const themeBtn = document.getElementById('theme-btn');
-const themeDropdown = document.getElementById('theme-dropdown');
-themeBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  themeDropdown.style.display = themeDropdown.style.display === 'block' ? 'none' : 'block';
-});
-document.addEventListener('click', () => {
-  themeDropdown.style.display = 'none';
-});
-themeDropdown.querySelectorAll('button[data-theme]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const t = btn.dataset.theme;
-    chrome.storage.local.set({ theme: t });
-    applyTheme(t);
-    themeDropdown.style.display = 'none';
-  });
-});
 
   // Auto-fill form from active tab
   const form = document.getElementById('bookmark-form');
@@ -78,6 +60,7 @@ themeDropdown.querySelectorAll('button[data-theme]').forEach(btn => {
           selectFolder(li, node.id);
         });
       } else {
+        li.classList.add('leaf');
         li.addEventListener('click', e => {
           e.stopPropagation();
           selectFolder(li, node.id);
@@ -99,7 +82,16 @@ themeDropdown.querySelectorAll('button[data-theme]').forEach(btn => {
   chrome.bookmarks.getTree(tree => {
     container.innerHTML = '';
     const root = tree[0];
-    const list = buildList(root.children || []);
+    // flatten 'Other bookmarks' children to top level
+    const nodes = [];
+    root.children.forEach(node => {
+      if (node.title === 'Other bookmarks' && node.children) {
+        node.children.filter(c => !c.url).forEach(child => nodes.push(child));
+      } else {
+        nodes.push(node);
+      }
+    });
+    const list = buildList(nodes);
     if (list && list.childElementCount) {
       container.appendChild(list);
     } else {

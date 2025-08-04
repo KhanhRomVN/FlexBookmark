@@ -6,21 +6,20 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- Theme toggle -->
-  <button class="theme-btn" id="theme-btn">🎨</button>
-  <div class="theme-dropdown" id="theme-dropdown">
-    <button data-theme="light">🌞 Light Theme</button>
-    <button data-theme="dark">🌙 Dark Theme</button>
-    <button data-theme="image">🖼️ Image Theme</button>
-  </div>
-  <h2>Add Bookmark</h2>
-  <form id="bookmark-form">
-    <label>Title:<input type="text" id="bookmark-title" /></label>
-    <label>URL:<input type="text" id="bookmark-url" /></label>
+  <form id="bookmark-form" class="bookmark-form">
+    <h2>Add Bookmark</h2>
+    <div class="form-group">
+      <label for="bookmark-title">Title</label>
+      <input type="text" id="bookmark-title" />
+    </div>
+    <div class="form-group">
+      <label for="bookmark-url">URL</label>
+      <input type="text" id="bookmark-url" />
+    </div>
+    <h2>Select Folder</h2>
+    <div id="folder-tree" class="folder-tree">Loading…</div>
     <button type="submit" class="submit-btn">Save Bookmark</button>
   </form>
-  <h2>Select Folder</h2>
-  <div id="folder-tree">Loading…</div>
   <script src="popup.js"></script>
 </body>
 </html>
