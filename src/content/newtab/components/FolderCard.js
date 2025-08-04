@@ -31,26 +31,22 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   });
   card.addEventListener('dragleave', () => card.classList.remove('folder-drop-target'));
 
-  // Simplified drop handler: move then full grid refresh
+  // Simplified drop handler: move then current grid refresh
   card.addEventListener('drop', async e => {
     e.preventDefault();
     e.stopPropagation();
     card.classList.remove('folder-drop-target');
-    const grid = document.getElementById('bookmark-grid');
-    grid.classList.remove('drop-target', 'drop-target-highlight');
-
+    
     let data;
     try {
       data = JSON.parse(e.dataTransfer.getData('text/plain'));
     } catch {
       return;
     }
-
-    // Decide new parent: for bookmark and folder
-    let newParent = null;
-    if (data.type === 'bookmark') {
-      newParent = folder.id;
-    } else if (data.type === 'folder') {
+    
+    // Decide new parent for bookmark or folder
+    let newParent = folder.id;
+    if (data.type === 'folder') {
       if (depth >= 1) {
         showToast('Cannot nest folders beyond level 2', 'error');
         return;
@@ -59,18 +55,18 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
         showToast('Cannot move folder into itself', 'error');
         return;
       }
-      newParent = folder.id;
-    } else {
+    } else if (data.type !== 'bookmark') {
       return;
     }
-
+    
     try {
       await chrome.bookmarks.move(data.id, { parentId: newParent });
     } catch (err) {
       console.error('Error moving item:', err);
     }
-
-    // Refresh root grid
+    
+    // Update current grid
+    const grid = document.getElementById('bookmark-grid');
     const pid = grid.dataset.parentId;
     const d = parseInt(grid.dataset.depth || '0');
     chrome.bookmarks.getChildren(pid, children => {

@@ -15,6 +15,9 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   // Filter out temporary and invalid items
   // Filter out only temporary placeholders; keep all real folders and bookmarks
   const realItems = items.filter(item => !item.id.startsWith('temp-'));
+  // Remove old event listeners by replacing the container node
+  const oldContainer = document.getElementById('bookmark-grid');
+  oldContainer.replaceWith(oldContainer.cloneNode(true));
   const container = document.getElementById('bookmark-grid');
 
   // Update current parent folder ID
