@@ -199,12 +199,13 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   menuBtn.textContent = '⋮';
   header.append(menuBtn);
 
-  // Dropdown with Rename/Delete
+  // Dropdown with actions: Rename, Delete, New Bookmark
   const dropdown = document.createElement('div');
-  dropdown.className = 'folder-dropdown';
+  dropdown.className = 'menu-dropdown';
   dropdown.innerHTML = `
-    <button class="menu-rename">Rename</button>
-    <button class="menu-delete">Delete</button>
+    <button class="menu-rename">✏️  Rename</button>
+    <button class="menu-delete">🗑️  Delete</button>
+    <button class="menu-add-bookmark">🔖  New bookmark</button>
   `;
   header.append(dropdown);
 
@@ -225,7 +226,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     menuBtn.addEventListener('click', e => {
       e.stopPropagation();
       // Close other open dropdowns
-      document.querySelectorAll('.folder-dropdown.show').forEach(dd => {
+      document.querySelectorAll('.menu-dropdown.show').forEach(dd => {
         if (dd !== dropdown) dd.classList.remove('show');
       });
       // Toggle this dropdown
@@ -233,11 +234,6 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     });
  
 
-  // Add Bookmark action
-  dropdown.insertAdjacentHTML(
-    'beforeend',
-    '<button class="menu-add-bookmark">➕ New bookmark</button>'
-  );
   dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', e => {
     e.stopPropagation();
     import('./BookmarkForm.js').then(mod => {
@@ -272,7 +268,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
 
     // Close dropdown when clicking outside its folder card
     document.addEventListener('click', e => {
-      document.querySelectorAll('.folder-dropdown.show').forEach(dd => {
+      document.querySelectorAll('.menu-dropdown.show').forEach(dd => {
         const parentCard = dd.closest('.folder-card');
         if (parentCard && !parentCard.contains(e.target)) {
           dd.classList.remove('show');
