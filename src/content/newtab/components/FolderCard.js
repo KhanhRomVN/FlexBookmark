@@ -239,7 +239,24 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     import('./BookmarkForm.js').then(mod => {
       mod.showBookmarkForm({
         parentId: folder.id,
-        renderBookmarkGrid,
+        renderBookmarkGrid: () => {
+          const body = card.querySelector('.folder-body');
+          if (body) {
+            body.innerHTML = '';
+            chrome.bookmarks.getChildren(folder.id, (children) => {
+              children.forEach(child => {
+                if (child.url) {
+                  const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
+                  bookmarkCard.classList.add('nested-bookmark');
+                  body.append(bookmarkCard);
+                } else {
+                  const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+                  body.append(subFolderCard);
+                }
+              });
+            });
+          }
+        },
         depth,
         folder
       });
