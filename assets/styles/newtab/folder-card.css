@@ -9,8 +9,9 @@
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    margin: 4px;
-  }
+    /* Use only bottom margin for proper column flow */
+    margin: 0 0 1.25rem 0;
+   }
   
   /* Folder card menu button and dropdown enhancements */
   .folder-card .folder-menu-btn {

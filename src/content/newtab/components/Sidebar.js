@@ -157,9 +157,8 @@ export function renderSidebar(folders) {
         activeEl.click();
       }
     } else {
-      // Default select "Bookmarks bar"
-      const defaultEl = Array.from(sidebar.querySelectorAll('.group-item'))
-        .find(el => el.querySelector('.group-name').textContent === 'Bookmarks bar');
+      // Default select Bookmark Bar by its id
+      const defaultEl = sidebar.querySelector('.group-item[data-id="1"]');
       if (defaultEl) {
         defaultEl.classList.add('active');
         defaultEl.scrollIntoView({ block: 'nearest' });

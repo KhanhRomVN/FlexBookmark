@@ -31,19 +31,41 @@
     }
   }
   
+  /* Masonry layout for folder cards using CSS columns */
   .bookmarks-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.25rem;
+    -webkit-column-width: 280px;
+    -moz-column-width: 280px;
+    column-width: 280px;
+    -webkit-column-gap: 1.25rem;
+    -moz-column-gap: 1.25rem;
+    column-gap: 1.25rem;
   }
+  /* Ensure cards wrap correctly and avoid splitting */
+  /* Ensure cards wrap correctly and avoid splitting */
+  .bookmarks-grid > * {
+    display: inline-block;
+    width: 100%;
+    margin-bottom: 1.25rem;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    -moz-column-break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Ensure each card flows properly in columns */
   
+  /* Masonry layout for folder list */
   .bookmark-list {
-    display: grid;
-    align-items: start;
-    /* Wider list items: use 320px min width */
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    column-width: 320px;
+    column-gap: 16px;
   }
+  /* Ensure each list item flows properly */
+    .bookmark-list {
+      display: grid;
+      align-items: start;
+      /* Wider list items: use 320px min width */
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
   
   /* Grid header controls */
   .grid-header {
@@ -67,9 +89,10 @@
   
   /* Tối ưu cho màn hình nhỏ */
   @media (max-width: 640px) {
-    .bookmarks-grid {
-      grid-template-columns: 1fr;
-    }
+      .bookmarks-grid {
+        column-width: auto;
+        column-gap: 0;
+      }
   }
 /* Larger title on the left */
 .grid-header-title {
