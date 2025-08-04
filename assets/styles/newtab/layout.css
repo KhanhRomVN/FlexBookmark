@@ -171,3 +171,12 @@
   display: flex;
   gap: 8px;
 }
+/* Masonry column wrapper drop zone styling */
+.masonry-col {
+  break-inside: avoid;
+  margin-bottom: 1.25rem;
+  border: 2px dashed transparent;
+}
+.masonry-col.drag-over {
+  border-color: var(--primary-color);
+}

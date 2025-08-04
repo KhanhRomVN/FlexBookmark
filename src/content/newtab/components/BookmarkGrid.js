@@ -94,29 +94,67 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     return;
   }
 
-  // Depth 0: top-level grid view
+  // Depth 0: top-level masonry column view
   if (depth === 0) {
     const grid = document.createElement('div');
-    grid.className = 'bookmarks-grid drop-target';
+    grid.className = 'bookmarks-grid';
 
-    const folders = realItems.filter(item => !item.url);
-    const bookmarks = realItems.filter(item => item.url);
+    // Determine column count by breakpoints
+    let colCount = 1;
+    if (window.matchMedia('(min-width: 1280px)').matches) colCount = 5;
+    else if (window.matchMedia('(min-width: 1024px)').matches) colCount = 4;
+    else if (window.matchMedia('(min-width: 768px)').matches) colCount = 3;
+    else if (window.matchMedia('(min-width: 640px)').matches) colCount = 2;
 
-    // Tạo các folder card
-    folders.forEach(folderItem => {
-      grid.append(createFolderCard(folderItem, renderBookmarkGrid, depth));
+    // Create column wrappers
+    const columns = Array.from({ length: colCount }, () => {
+      const col = document.createElement('div');
+      col.className = 'masonry-col drop-zone';
+      grid.append(col);
+      // Setup drop highlighting
+      col.addEventListener('dragover', e => {
+        e.preventDefault();
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', () => {
+        col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', e => {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        if (draggedCard) {
+          col.append(draggedCard);
+        }
+      });
+      return col;
     });
 
-    // Tạo thẻ tạm cho bookmark nếu có
-    if (bookmarks.length) {
-      grid.append(
-        createFolderCard(
-          { id: 'temp-group', title: 'Bookmarks', children: bookmarks },
-          renderBookmarkGrid,
-          depth
-        )
-      );
-    }
+    // Render cards into shortest column
+    let draggedCard = null;
+    const itemsToRender = [
+      ...realItems.filter(item => !item.url).map(item => createFolderCard(item, renderBookmarkGrid, depth)),
+      ...(realItems.filter(item => item.url).length
+        ? [createFolderCard({ id: 'temp-group', title: 'Bookmarks', children: realItems.filter(i => i.url) }, renderBookmarkGrid, depth)]
+        : [])
+    ];
+    itemsToRender.forEach(card => {
+      // Attach drag handlers
+      card.draggable = true;
+      card.addEventListener('dragstart', () => {
+        draggedCard = card;
+        // highlight all columns
+        columns.forEach(c => c.classList.add('drag-over'));
+      });
+      card.addEventListener('dragend', () => {
+        columns.forEach(c => c.classList.remove('drag-over'));
+        draggedCard = null;
+      });
+      // Place into shortest column
+      const target = columns.reduce((min, col) =>
+        col.scrollHeight < min.scrollHeight ? col : min
+      , columns[0]);
+      target.append(card);
+    });
 
     container.append(grid);
     return;
@@ -146,4 +184,29 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
   });
 
   container.append(list);
+
+  // Enable drag-and-drop reorder between columns in list view
+  let draggedCardList = null;
+  list.querySelectorAll('.folder-card').forEach(card => {
+    card.draggable = true;
+    card.addEventListener('dragstart', e => {
+      draggedCardList = card;
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      if (draggedCardList && draggedCardList !== card) {
+        list.insertBefore(draggedCardList, card);
+      }
+    });
+  });
+  // Append to end if dropped on empty space
+  list.addEventListener('drop', e => {
+    if (e.target === list && draggedCardList) {
+      list.append(draggedCardList);
+    }
+  });
 }
