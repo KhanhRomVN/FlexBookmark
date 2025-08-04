@@ -1,52 +1,57 @@
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlexBookmark</title>
-  <link rel="stylesheet" href="../../../assets/styles/main.css">
-  <link rel="stylesheet" href="../../../assets/styles/newtab.css">
-</head>
-<body>
-  <div class="container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header header-common">
-        <h1>FlexBookmark</h1>
-      </div>
-      <div class="groups-list" id="sidebar"></div>
-      <footer class="sidebar-footer">
-        <button class="add-group-btn" id="add-group-btn">+ New Group</button>
-      </footer>
-    </aside>
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="main-header header-common">
-        <div class="header-top">
-          <h2 class="header-title" id="folder-title">All bookmark</h2>
-          <div class="header-actions">
-            <div class="search-box">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="search-input" placeholder="Tìm kiếm bookmark..." id="searchInput">
-            </div>
-            <div class="header-buttons">
-              <div class="theme-container">
-                <button class="icon-btn" id="theme-btn">🎨</button>
-                <div class="theme-dropdown" id="theme-dropdown">
-                  <button data-theme="light">Light Theme</button>
-                  <button data-theme="dark">Dark Theme</button>
-                  <button data-theme="image">Image Theme</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlexBookmark</title>
+    <link rel="stylesheet" href="../../../assets/styles/main.css" />
+    <link rel="stylesheet" href="../../../assets/styles/newtab.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header header-common">
+          <h1>FlexBookmark</h1>
+        </div>
+        <div class="groups-list" id="sidebar"></div>
+        <footer class="sidebar-footer">
+          <button class="add-group-btn" id="add-group-btn">+ New Group</button>
+        </footer>
+      </aside>
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="main-header header-common">
+          <div class="header-top">
+            <h2 class="header-title" id="folder-title">All bookmark</h2>
+            <div class="header-actions">
+              <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input
+                  type="text"
+                  class="search-input"
+                  placeholder="Tìm kiếm bookmark..."
+                  id="searchInput"
+                />
+              </div>
+              <div class="header-buttons">
+                <div class="theme-container">
+                  <button class="icon-btn" id="theme-btn">🎨</button>
+                  <div class="theme-dropdown" id="theme-dropdown">
+                    <button data-theme="light">Light Theme</button>
+                    <button data-theme="dark">Dark Theme</button>
+                    <button data-theme="image">Image Theme</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="content-area" id="bookmark-grid"></div>
-    </main>
-  </div>
-  <!-- Add Bookmark Modal (injected by AddBookmarkForm.js) -->
-  <div id="add-bookmark-modal" class="modal"></div>
-  <script type="module" src="./newtab.js"></script>
-</body>
+        <div class="content-area" id="bookmark-grid"></div>
+      </main>
+    </div>
+    <!-- Add Bookmark Modal (injected by BookmarkForm.js) -->
+    <div id="add-bookmark-modal" class="modal"></div>
+    <script type="module" src="./newtab.js"></script>
+  </body>
 </html>

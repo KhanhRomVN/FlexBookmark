@@ -6,7 +6,7 @@
  * @returns {HTMLElement}
  */
 import { showToast } from '../../utils/helpers.js';
-import { showBookmarkForm } from './AddBookmarkForm.js';
+import { showBookmarkForm } from './BookmarkForm.js';
 
 export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, folder = null) {
   const card = document.createElement('div');

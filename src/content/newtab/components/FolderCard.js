@@ -240,7 +240,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   );
   dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', e => {
     e.stopPropagation();
-    import('./AddBookmarkForm.js').then(mod => {
+    import('./BookmarkForm.js').then(mod => {
       mod.showBookmarkForm({
         parentId: folder.id,
         renderBookmarkGrid,

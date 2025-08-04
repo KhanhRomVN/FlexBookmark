@@ -21,17 +21,18 @@ export function showBookmarkForm({
   modal.innerHTML = `
     <div class="edit-dialog-overlay show">
       <div class="edit-dialog">
-        <h2>${isEdit ? 'Chỉnh sửa bookmark' : 'New bookmark'}</h2>
+        <h2>${isEdit ? 'Edit bookmark' : 'New bookmark'}</h2>
         <form id="bookmark-form">
           <input type="text" id="form-title" placeholder="Tiêu đề" required value="${bookmark ? bookmark.title : ''}" />
           <input type="url" id="form-url" placeholder="URL" required value="${bookmark ? bookmark.url : ''}" />
           <div class="dialog-buttons">
-            <button type="submit" class="save-btn">${isEdit ? 'Cập nhật' : 'Lưu'}</button>
+            <button type="submit" class="save-btn">${isEdit ? 'Update' : 'Save'}</button>
             <button type="button" class="cancel-btn">Hủy</button>
           </div>
         </form>
       </div>
     </div>`;
+  modal.style.display = 'block';
 
   const form = document.getElementById('bookmark-form');
   const titleInput = document.getElementById('form-title');
@@ -52,10 +53,12 @@ export function showBookmarkForm({
     chrome.bookmarks.getChildren(parentId, (children) => {
       renderBookmarkGrid(children, depth, folder);
     });
+    modal.style.display = 'none';
     modal.innerHTML = '';
   });
 
   cancelBtn.addEventListener('click', () => {
+    modal.style.display = 'none';
     modal.innerHTML = '';
   });
 }

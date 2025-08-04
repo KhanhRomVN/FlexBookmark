@@ -1,5 +1,5 @@
 import { createFolder } from '../../utils/api.js';
-import { showBookmarkForm } from './AddBookmarkForm.js';
+import { showBookmarkForm } from './BookmarkForm.js';
 
 /**
  * Renders the header section with Add Group and Add Bookmark buttons.
