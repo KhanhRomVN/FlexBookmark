@@ -34,6 +34,8 @@ export function renderBookmarkGrid(items, depth = 0, folder = null) {
     container.classList.remove('drop-target-highlight');
   });
   container.addEventListener('drop', async e => {
+    // only handle drops directly on grid container, not on child elements
+    if (e.target !== container) return;
     e.preventDefault();
     container.classList.remove('drop-target-highlight');
     let data;

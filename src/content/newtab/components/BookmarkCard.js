@@ -7,6 +7,7 @@
  */
 import { showToast } from '../../utils/helpers.js';
 import { showBookmarkForm } from './BookmarkForm.js';
+import { createFolderCard } from './FolderCard.js';
 
 export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, folder = null) {
   const card = document.createElement('div');
@@ -122,6 +123,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     card.classList.remove('drop-target');
   });
   card.addEventListener('drop', async e => {
++    e.preventDefault();
     e.stopPropagation();
     console.log('BookmarkCard drop handler start', {
       itemId: item.id,
@@ -134,19 +136,44 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     console.log('BookmarkCard raw drop data:', raw);
     console.log('BookmarkCard drop data raw:', raw);
     const data = JSON.parse(raw);
-    e.preventDefault();
+-    e.preventDefault();
     card.classList.remove('drop-target');
+    // Restore main grid interactivity after drop on bookmark card
+    const mainGrid = document.getElementById('bookmark-grid');
+    mainGrid?.classList.remove('drop-target', 'drop-target-highlight');
 
     // Handle bookmark drop onto bookmark card
     if (data.type === 'bookmark') {
       console.log('BookmarkCard handling bookmark drop', data.id, 'into folder', folder && folder.id);
       await chrome.bookmarks.move(data.id, { parentId: folder.id });
-      // After moving, reload children of current folder for updated nested view
-      chrome.bookmarks.getChildren(folder.id, (children) => {
-        chrome.bookmarks.get(folder.id, ([parentFolder]) => {
-          renderBookmarkGrid(children, depth, parentFolder);
+      // Update nested folder card body if inside a folder card
+      if (folder) {
+        const folderCardEl = card.closest('.folder-card');
+        const body = folderCardEl?.querySelector('.folder-body');
+        if (body) {
+          body.innerHTML = '';
+          chrome.bookmarks.getChildren(folder.id, (children) => {
+            children.forEach(child => {
+              if (child.url) {
+                const bmCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
+                bmCard.classList.add('nested-bookmark');
+                body.append(bmCard);
+              } else {
+                const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+                body.append(subFolderCard);
+              }
+            });
+          });
+        }
+      } else {
+        // fallback to full grid render for top-level bookmarks
+        chrome.bookmarks.getChildren(parentId, (children) => {
+          chrome.bookmarks.get(parentId, ([parentFolder]) => {
+            renderBookmarkGrid(children, depth, parentFolder);
+          });
         });
-      });
+      }
+      return;
     }
 
     // Handle folder drop onto bookmark card
@@ -167,6 +194,7 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
       chrome.bookmarks.getChildren(sourceParentId, (children) => {
         renderBookmarkGrid(children, sourceDepth);
       });
+      return; // avoid falling back to grid's drop handler
     }
   });
  }

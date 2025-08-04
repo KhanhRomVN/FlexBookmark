@@ -32,11 +32,11 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   card.addEventListener('dragover', e => {
     console.log('FolderCard dragover');
     e.preventDefault();
-    card.classList.add('drop-target');
+    card.classList.add('folder-drop-target');
   });
 
   card.addEventListener('dragleave', () => {
-    card.classList.remove('drop-target');
+    card.classList.remove('folder-drop-target');
   });
 
   card.addEventListener('drop', async e => {
@@ -49,7 +49,12 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     });
     console.log('FolderCard drop event for folder', folder.id);
     e.preventDefault();
-    card.classList.remove('drop-target');
+    card.classList.remove('folder-drop-target');
+    // Ensure main grid interactivity is restored after drop
+    const mainGrid = document.getElementById('bookmark-grid');
+    if (mainGrid) {
+      mainGrid.classList.remove('drop-target', 'drop-target-highlight');
+    }
     
     const raw = e.dataTransfer.getData('text/plain');
     console.log('FolderCard drop raw data:', raw);
@@ -112,20 +117,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
           });
         }
       });
-      // Re-render source grid to reflect removal from original location
-      const sourceContainer = document.getElementById('bookmark-grid');
-      const sourceParentId = sourceContainer.dataset.parentId;
-      const sourceDepth = parseInt(sourceContainer.dataset.depth || '0');
-      chrome.bookmarks.getChildren(sourceParentId, (siblings) => {
-        // Re-render grid with correct folder context for immediate UI update
-        if (sourceDepth > 0) {
-          chrome.bookmarks.get(sourceParentId, ([sourceFolder]) => {
-            renderBookmarkGrid(siblings, sourceDepth, sourceFolder);
-          });
-        } else {
-          renderBookmarkGrid(siblings, sourceDepth, null);
-        }
-      });
+      // Source grid re-render removed: updating folder card body in place only
       return;
     }
     
@@ -174,6 +166,7 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
           });
         }
       });
+return; // Skip full grid refresh after folder drop on card
     }
     // Refresh current grid view to reflect moved folder
     const container = document.getElementById('bookmark-grid');
@@ -234,33 +227,43 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     });
  
 
-  dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', e => {
+  // Custom add-bookmark without full grid re-render
+  dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', async e => {
     e.stopPropagation();
-    import('./BookmarkForm.js').then(mod => {
-      mod.showBookmarkForm({
-        parentId: folder.id,
-        renderBookmarkGrid: () => {
-          const body = card.querySelector('.folder-body');
-          if (body) {
-            body.innerHTML = '';
-            chrome.bookmarks.getChildren(folder.id, (children) => {
-              children.forEach(child => {
-                if (child.url) {
-                  const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
-                  bookmarkCard.classList.add('nested-bookmark');
-                  body.append(bookmarkCard);
-                } else {
-                  const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-                  body.append(subFolderCard);
-                }
-              });
-            });
+    const title = prompt('Bookmark title');
+    const url = prompt('Bookmark URL');
+    if (!title || !url) {
+      showToast('Title and URL are required', 'error');
+      return;
+    }
+    try {
+      await chrome.bookmarks.create({ parentId: folder.id, title, url });
+      showToast('Bookmark added', 'success');
+    } catch (err) {
+      console.error('Error creating bookmark:', err);
+      showToast('Error creating bookmark', 'error');
+      return;
+    }
+    // Update this folder card body only
+    const body = card.querySelector('.folder-body');
+    if (body) {
+      body.innerHTML = '';
+      chrome.bookmarks.getChildren(folder.id, (children) => {
+        children.forEach(child => {
+          if (child.url) {
+            const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
+            bookmarkCard.classList.add('nested-bookmark');
+            body.append(bookmarkCard);
+          } else {
+            const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
+            body.append(subFolderCard);
           }
-        },
-        depth,
-        folder
+        });
       });
-    });
+    }
+    // Clear lingering drop classes and close menu
+    const mainGrid = document.getElementById('bookmark-grid');
+    mainGrid?.classList.remove('drop-target', 'drop-target-highlight');
     dropdown.classList.remove('show');
   });
 
