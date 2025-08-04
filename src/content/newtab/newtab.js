@@ -264,3 +264,18 @@ initSearch();
     }
   });
 });
+// Touch event feedback for mobile
+document.querySelectorAll('.bookmark-card, .folder-card').forEach(card => {
+  card.addEventListener('touchstart', () => {
+    card.classList.add('touch-active');
+  });
+  card.addEventListener('touchend', () => {
+    setTimeout(() => {
+      card.classList.remove('touch-active');
+    }, 200);
+  });
+});
+// Prevent unwanted zoom
+document.addEventListener('touchmove', (e) => {
+  if (e.scale !== 1) e.preventDefault();
+}, { passive: false });

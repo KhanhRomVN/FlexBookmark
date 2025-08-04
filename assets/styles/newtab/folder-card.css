@@ -213,3 +213,21 @@
     transform: scale(0.98);
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   }
+/* Mobile folder cards */
+@media (max-width: 768px) {
+  .folder-card {
+    margin-bottom: 16px;
+  }
+
+  .folder-header {
+    padding: 8px;
+  }
+
+  .folder-title {
+    font-size: 14px;
+  }
+
+  .folder-body {
+    grid-template-columns: 1fr;
+  }
+}

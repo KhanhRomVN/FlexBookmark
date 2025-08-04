@@ -160,3 +160,25 @@
   transform: translateY(-3px);
   box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
+/* Disable hover effects on mobile */
+@media (hover: none) {
+  .bookmark-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .folder-card:hover {
+    border-color: var(--border-color);
+    box-shadow: none;
+  }
+}
+
+/* Touch feedback */
+.bookmark-card.touch-active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.folder-card.touch-active {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}

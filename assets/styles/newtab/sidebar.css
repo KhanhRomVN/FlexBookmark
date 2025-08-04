@@ -128,3 +128,31 @@
 .sidebar-footer .add-group-btn {
   margin: 0;
 }
+/* Mobile sidebar */
+@media (max-width: 768px) {
+  .sidebar-header {
+    padding: 12px;
+    height: auto;
+  }
+
+  .sidebar-header h1 {
+    font-size: 20px;
+  }
+
+  .groups-list {
+    padding: 8px;
+  }
+
+  .group-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+
+  .group-name {
+    font-size: 14px;
+  }
+
+  .sidebar-footer {
+    padding: 12px;
+  }
+}
