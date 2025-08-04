@@ -1,16 +1,17 @@
+/* ==========================================================================
+   newtab sidebar - UPDATED FOR DARK THEME
+   ========================================================================== */
+
 /* Hide color squares in sidebar */
 .sidebar .group-color {
   display: none !important;
 }
-/* ==========================================================================
-   newtab sidebar
-   ========================================================================== */
 
 .sidebar {
   width: 280px;
   background: var(--bg-sidebar);
   color: var(--text-color);
-  border-right: 1px solid #696969;
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
 }
@@ -21,13 +22,13 @@
   justify-content: flex-start;
   padding: 16px 20px;
   height: 52.5px;
-  border-bottom: 1px solid #696969;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-header h1 {
   font-size: 20px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-color);
   margin: 0;
 }
 
@@ -42,15 +43,15 @@
 .add-group-btn {
   width: 100%;
   padding: 10px;
-  background: #3b82f6;
-  color: white;
+  background: var(--primary-color);
+  color: var(--bg-header);
   border: none;
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
 }
 .add-group-btn:hover {
-  background: #2563eb;
+  background: var(--primary-hover);
 }
 
 /* Individual group items */
@@ -74,24 +75,16 @@
   font-weight: 600;
 }
 
-.group-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
-
 .group-name {
   flex: 1;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-color);
 }
 
 .group-count {
   font-size: 12px;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-secondary);
+  background: var(--bg-group-card);
   padding: 2px 8px;
   border-radius: 12px;
   margin-right: 8px;
@@ -110,12 +103,12 @@
   padding: 4px;
   cursor: pointer;
   border-radius: 4px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-left: 4px;
 }
 .group-action-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--hover-bg);
+  color: var(--text-color);
 }
 
 /* Sidebar footer */
@@ -124,17 +117,4 @@
 }
 .sidebar-footer .add-group-btn {
   margin: 0;
-}
-
-/* Feedback overrides */
-.sidebar-header {
-  justify-content: flex-start !important;
-  padding-left: 20px !important;
-}
-.sidebar-footer {
-  padding-bottom: 20px !important;
-}
-.sidebar-footer .add-group-btn {
-  width: 100% !important;
-  margin-top: 16px !important;
 }

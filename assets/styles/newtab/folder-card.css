@@ -3,7 +3,7 @@
    ========================================================================== */
    .folder-card {
     background: var(--bg-group-card);
-    border: 1px solid #8a8a8a;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 4px;
     cursor: pointer;
@@ -31,8 +31,8 @@
     position: absolute;
     top: 32px;
     right: 8px;
-    background: #2e2e2e;
-    border: 1px solid #444;
+    background: var(--bg-group-card) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 4px;
     z-index: 1000;
   }

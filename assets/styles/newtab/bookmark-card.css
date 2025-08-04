@@ -1,5 +1,5 @@
 /* Ensure nested folder items are clickable */
-.folder-card, 
+.folder-card,
 .folder-card * {
   pointer-events: auto !important;
 }
@@ -13,14 +13,14 @@
   min-width: 0;
 }
 /* ==========================================================================
-   newtab cards
+   newtab cards - UPDATED FOR DARK THEME
    ========================================================================== */
 
 .bookmark-card {
   background: var(--bg-bookmark-card);
   color: var(--text-color);
-  border: 1px solid transparent !important; /* no visible border */
-  padding: 4px 12px; /* tighter vertical padding for height fit */
+  border: 1px solid var(--border-color) !important;
+  padding: 4px 12px;
   border-radius: 8px;
   height: 36px;
   display: flex;
@@ -32,6 +32,7 @@
 .bookmark-card .bookmark-url {
   display: none;
 }
+
 .bookmark-card .bookmark-title {
   display: block;
   flex: 1 1 0;
@@ -41,6 +42,7 @@
   text-overflow: ellipsis;
   line-height: 24px;
   font-size: 14px;
+  color: var(--text-color);
 }
 
 .bookmark-header {
@@ -49,44 +51,49 @@
   height: 100%;
   display: flex;
   align-items: center;
-  margin-bottom: 0; /* no extra bottom space */
+  margin-bottom: 0;
 }
+
 .menu-btn {
   position: absolute;
   right: 8px;
   background: none;
   border: none;
-  color: #ffffff;
+  color: var(--text-color);
   cursor: pointer;
   font-size: 16px;
 }
+
 .menu-dropdown {
   display: none;
   position: absolute;
   top: 28px;
   right: 8px;
-  background: var(--bg-bookmark-card) !important; /* dark background for bookmark dropdown */
-  border: 1px solid #e2e8f0;
+  background: var(--bg-bookmark-card) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   flex-direction: column;
   padding: 4px 0;
   z-index: 30;
 }
+
 .menu-dropdown.show {
   display: flex;
 }
+
 .bookmark-icon {
   width: 16px;
   height: 16px;
   margin-right: 8px;
-  display: inline-block !important; /* ensure favicon always visible */
+  display: inline-block !important;
 }
+
 .bookmark-title {
   min-width: 0;
   flex: 1;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-color);
   cursor: pointer;
 }
 
@@ -94,7 +101,7 @@
 .mini-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -107,11 +114,11 @@
 }
 .mini-group-header {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-color);
 }
 .mini-group-body {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -121,122 +128,16 @@
 .temp-group-card {
   background: var(--bg-group-card);
   color: var(--text-color);
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
   width: 100%;
 }
 .temp-group-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--primary-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .temp-group-card .mini-group-header {
   font-weight: 600;
-  color: #1e293b;
-}
-.temp-group-card .temp-group-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-/* Folder dropdown menu */
-.folder-dropdown {
-  display: none;
-  position: absolute;
-  top: 32px;
-  right: 8px;
-  flex-direction: column;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 4px 0;
-  z-index: 30;
-  min-width: 120px;
-}
-.folder-dropdown.show {
-  display: flex !important; /* ensure folder dropdown appears */
-  flex-direction: column;
-}
-.folder-dropdown button {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 14px;
-  cursor: pointer;
-}
-.folder-dropdown button:hover {
-  background: #f1f5f9;
-}
-
-/* Bookmark rows */
-.bookmark-row {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  overflow: hidden;
-  min-width: 0;
-}
-.bookmark-row .bookmark-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-}
-.bookmark-row .bookmark-title {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.bookmark-row.nested {
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.bookmark-row.nested .mini-bookmark-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 4px;
-}
-.bookmark-row.nested .bookmark-title {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Mini bookmark icons */
-.mini-bookmark-icon {
-  margin: 0 4px 4px 0;
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  vertical-align: middle;
-}
-.mini-group-icon {
-  margin-right: 8px;
-  font-size: 16px;
-}
-.bookmark-card-container {
-  position: relative;
-  z-index: 10;
-  overflow: visible !important;
-}
-
-.folder-card .bookmark-card-container {
-  border: none !important;
-  box-shadow: none !important;
-}
-/* Drop target highlight for drag-and-drop */
-.drop-target-highlight {
-  /* dashed border removed */
+  color: var(--text-color);
 }

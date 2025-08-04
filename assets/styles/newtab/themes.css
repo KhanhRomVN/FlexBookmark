@@ -1,83 +1,63 @@
 /* ==========================================================================
-   newtab theme overrides
+   newtab theme overrides - UPDATED FOR NEW COLOR PALETTE
    ========================================================================== */
-/* Theme picker dropdown */
-.theme-container {
-  position: relative;
-  display: inline-block;
-}
-.theme-dropdown {
-   display: none; /* hidden by default until toggled */
-   position: absolute;
-   top: 100%;      /* just below the button */
-   right: 0;
-   margin-top: 4px;
-   background: #ffffff;
-   border: 1px solid #e2e8f0;
-   border-radius: 8px;
-   padding: 8px 0;
-   min-width: 160px;
-   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-   z-index: 100;
-}
 
-.theme-dropdown.active {
-  display: block !important;
-}
-.theme-dropdown button {
-  width: 100%;
-  padding: 8px 16px;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.theme-dropdown button:hover {
-  background: #f1f5f9;
-}
-
-/* Dark‐theme sidebar text & hide color squares */
+/* Dark‐theme sidebar text */
 html[data-theme="dark"] .sidebar,
 html[data-theme="dark"] .sidebar * {
-  color: #ffffff !important;
-}
-html[data-theme="dark"] .group-color {
-  display: none !important;
-}
-/* Hide color squares in light theme */
-html[data-theme="light"] .group-color,
-body.light-theme .group-color {
-  display: none !important;
+  color: var(--text-color) !important;
 }
 
-/* Dark‐theme sidebar item hover/focus */
-html[data-theme="dark"] .group-item:hover {
-  background: #2f2f38 !important;
-}
-html[data-theme="dark"] .group-item:focus,
-html[data-theme="dark"] .group-item.active {
-  background: #2a2a32 !important;
-}
-
-/* Dark‐theme badge */
-html[data-theme="dark"] .sidebar .group-count {
-  background: #4a4a55 !important;
-  color: #ffffff !important;
-}
-
-/* Dark‐theme cards & folder rows */
+/* Dark‐theme cards */
 html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
-  background: #2a2a32 !important;
-  border: 1px solid #d1d5db !important;
-  color: #ffffff !important;
+  background: var(--bg-bookmark-card) !important;
+  color: var(--text-color) !important;
 }
-/* Removed hover background change for bookmark cards */
-html[data-theme="dark"] .bookmark-row,
-html[data-theme="dark"] .bookmark-row.nested {
-  background: #33323d !important;
+
+/* Image theme transparency */
+body.image-theme .sidebar {
+  background-color: var(--bg-sidebar) !important;
+  backdrop-filter: blur(5px);
+}
+
+body.image-theme .main-header {
+  background-color: var(--bg-header) !important;
+  backdrop-filter: blur(5px);
+}
+
+body.image-theme .folder-card,
+body.image-theme .mini-group-card,
+body.image-theme .temp-group-card {
+  background-color: var(--bg-group-card) !important;
+  backdrop-filter: blur(3px);
+}
+
+/* Ensure text remains visible in image theme */
+body.image-theme,
+body.image-theme .bookmark-title,
+body.image-theme .folder-title,
+body.image-theme .header-title {
   color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Fix dropdown colors in dark theme */
+html[data-theme="dark"] .folder-dropdown,
+html[data-theme="dark"] .menu-dropdown {
+  background: var(--bg-group-card) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .folder-dropdown button,
+html[data-theme="dark"] .menu-dropdown button {
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] .folder-dropdown button:hover,
+html[data-theme="dark"] .menu-dropdown button:hover {
+  background: var(--hover-bg) !important;
 }
 
 /* Light theme body */
@@ -87,17 +67,17 @@ body.light-theme {
 }
 
 /* Dark theme body */
-body.dark-theme {
-  background-color: #0f172a;
-  --sidebar-bg: #1e293b;
-  --hover-color: #334155;
-  color: #f1f5f9;
+html[data-theme="dark"] {
+  background-color: var(--bg-body) !important;
+  color: var(--text-color) !important;
 }
-body.dark-theme .sidebar {
-  background-color: var(--sidebar-bg);
+
+html[data-theme="dark"] .sidebar {
+  background: var(--bg-sidebar) !important;
 }
-body.dark-theme .group-item:hover {
-  background: var(--hover-color);
+
+html[data-theme="dark"] .group-item:hover {
+  background: var(--hover-bg) !important;
 }
 
 /* Image theme */
@@ -105,110 +85,20 @@ body.image-theme {
   background-size: cover;
   background-position: center;
 }
-body.image-theme .sidebar {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-}
+
 body.image-theme .main-content {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-}
-body.image-theme .header-common {
-  background-color: rgba(0, 0, 0, 0.5) !important;
+  background-color: var(--bg-input) !important;
 }
 
 /* Persistent border overrides */
 aside.sidebar,
-html[data-theme="dark"] aside.sidebar,
-body.light-theme .sidebar,
-body.dark-theme .sidebar {
-  border-right: 1px solid #696969 !important;
+html[data-theme="light"] .sidebar,
+html[data-theme="dark"] .sidebar {
+  border-right: 1px solid var(--border-color) !important;
 }
+
 .main-header,
-html[data-theme="dark"] .main-header,
-body.light-theme .main-header,
-body.dark-theme .main-header {
-
-  border-bottom: 1px solid #696969 !important;
-}
-/* Dark‐theme folder card titles */
-html[data-theme="dark"] .mini-group-header,
-html[data-theme="dark"] .temp-group-card .mini-group-header {
-  color: #ffffff !important;
-}
-/* Dark‐theme bookmark card titles */
-html[data-theme="dark"] .bookmark-card .bookmark-title {
-  color: #ffffff !important;
-}
-/* Dark‐theme group card titles */
-html[data-theme="dark"] .mini-group-header,
-html[data-theme="dark"] .temp-group-card .mini-group-header {
-  color: #ffffff !important;
-}
-/* Dark‐theme card and group titles should use light text */
-html[data-theme="dark"] .bookmark-card .bookmark-title,
-html[data-theme="dark"] .mini-group-header,
-html[data-theme="dark"] .temp-group-card .mini-group-header {
-  color: #ffffff !important;
-}
-/* Dark‐theme bookmark titles in mini & temp group cards */
-html[data-theme="dark"] .mini-group-card .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-title {
-  color: #ffffff !important;
-}
-/* Dark‐theme bookmark‐row titles in group cards */
-html[data-theme="dark"] .bookmark-row .bookmark-title,
-html[data-theme="dark"] .bookmark-row.nested .bookmark-title {
-  color: #ffffff !important;
-}
-/* Dark‐theme group card bookmark titles */
-html[data-theme="dark"] .mini-group-card .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-title,
-html[data-theme="dark"] .mini-group-card .bookmark-row .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-row .bookmark-title {
-  color: #ffffff !important;
-}
-/* Dark‐theme: force all bookmark titles white inside group cards */
-html[data-theme="dark"] .mini-group-card .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-title,
-html[data-theme="dark"] .mini-group-card .bookmark-row .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-row .bookmark-title {
-  color: #ffffff !important;
-}
-/* === Final override: ensure all bookmark titles in group cards are white in dark theme === */
-html[data-theme="dark"] .mini-group-card .bookmark-title,
-html[data-theme="dark"] .temp-group-card .bookmark-title {
-  color: #ffffff !important;
-}
-/* Override bookmark-row hover to remove grey background */
-html[data-theme="dark"] .bookmark-row:hover,
-html[data-theme="dark"] .bookmark-row.nested:hover,
-.bookmark-row:hover,
-.bookmark-row.nested:hover {
-  background: transparent !important;
-}
-/* Remove hover background on bookmark rows */
-.bookmark-row:hover,
-.bookmark-row.nested:hover,
-html[data-theme="dark"] .bookmark-row:hover,
-html[data-theme="dark"] .bookmark-row.nested:hover {
-  background: transparent !important;
-}
-/* Dark‐theme dropdowns for folder menus */
-html[data-theme="dark"] .folder-dropdown {
-  background: var(--bg-group-card) !important;
-  color: var(--text-color) !important;
-}
-html[data-theme="dark"] .folder-dropdown button {
-  color: var(--text-color) !important;
-}
-/* Image theme card transparency */
-body.image-theme .folder-card,
-body.image-theme .mini-group-card,
-body.image-theme .temp-group-card {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-}
-
-body.image-theme .bookmark-card,
-body.image-theme .bookmark-row,
-body.image-theme .nested-bookmark {
-  background-color: rgba(0, 0, 0, 0.1) !important;
+html[data-theme="light"] .main-header,
+html[data-theme="dark"] .main-header {
+  border-bottom: 1px solid var(--border-color) !important;
 }

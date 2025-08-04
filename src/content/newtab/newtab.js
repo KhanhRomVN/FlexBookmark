@@ -43,8 +43,6 @@ function applyTheme(theme) {
   document.body.classList.remove('light-theme', 'dark-theme', 'image-theme');
   if (theme === 'light') {
     document.body.classList.add('light-theme');
-  } else if (theme === 'dark') {
-    document.body.classList.add('dark-theme');
   } else if (theme === 'image') {
     document.body.classList.add('image-theme');
   }
