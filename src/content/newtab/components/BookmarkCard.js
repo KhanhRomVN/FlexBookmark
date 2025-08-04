@@ -99,6 +99,8 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
   if (typeof renderBookmarkGrid === 'function') {
     // Drag-and-drop support
     card.addEventListener('dragstart', e => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setDragImage(card, 0, 0);
       // Prevent parent folder from also initiating drag
       e.stopPropagation();
       console.log('BookmarkCard dragstart');

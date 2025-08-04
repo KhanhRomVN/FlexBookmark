@@ -149,3 +149,14 @@
   font-weight: 600;
   color: var(--text-color);
 }
+.search-match-count {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+/* Search result hover effect */
+.folder-card.search-result:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}

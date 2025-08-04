@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Enhanced drag & drop effects
+   ========================================================================== */
+.dragging {
+  transform: scale(0.95);
+  opacity: 0.8;
+  z-index: 100;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.drop-target {
+  position: relative;
+}
+
+.drop-target::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  border: 2px dashed var(--primary-color);
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.drop-target-highlight::before {
+  opacity: 1;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+.folder-drop-target {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color) !important;
+}
+/* Disable dashed border highlight for drop targets */
+.drop-target::before,
+.drop-target-highlight::before {
+  border: none !important;
+  opacity: 0 !important;
+}

@@ -1,6 +1,7 @@
 import { renderSidebar } from './components/Sidebar.js';
 import { renderBookmarkGrid } from './components/BookmarkGrid.js';
 import { md5 } from '../utils/helpers.js';
+import { createFolderCard } from './components/FolderCard.js';
 
 // Lấy thông tin user
 async function getUserInfo() {
@@ -28,6 +29,107 @@ function flattenTree(nodes) {
     if (node.children) result = result.concat(flattenTree(node.children));
   });
   return result;
+}
+
+// Thêm hàm tìm kiếm
+async function performSearch(query) {
+  const allBookmarks = await new Promise(resolve => {
+    chrome.bookmarks.search(query, resolve);
+  });
+  
+  // Nhóm kết quả theo folder cha
+  const folderResults = new Map();
+  
+  for (const item of allBookmarks) {
+    if (!item.url) continue; // Bỏ qua folder
+    
+    // Tìm folder cha cấp 1
+    let parentId = item.parentId;
+    let folder;
+    while (parentId) {
+      const [parent] = await new Promise(resolve =>
+        chrome.bookmarks.get(parentId, resolve)
+      );
+      if (!parent) break;
+      
+      if (!parent.parentId || parent.parentId === '0') {
+        folder = parent;
+        break;
+      }
+      parentId = parent.parentId;
+    }
+    
+    if (folder) {
+      if (!folderResults.has(folder.id)) {
+        folderResults.set(folder.id, {
+          folder,
+          bookmarks: []
+        });
+      }
+      folderResults.get(folder.id).bookmarks.push(item);
+    }
+  }
+  
+  // Chuyển thành mảng và sắp xếp theo số lượng
+  const results = Array.from(folderResults.values());
+  results.sort((a, b) => b.bookmarks.length - a.bookmarks.length);
+  
+  return results;
+}
+
+function renderSearchResults(results) {
+  const grid = document.getElementById('bookmark-grid');
+  grid.innerHTML = '';
+  
+  if (results.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No bookmarks found</div>';
+    return;
+  }
+  
+  const title = document.createElement('h2');
+  title.className = 'grid-header-title';
+  title.textContent = `Search results for "${document.getElementById('searchInput').value}"`;
+  grid.appendChild(title);
+  
+  const gridContainer = document.createElement('div');
+  gridContainer.className = 'bookmarks-grid';
+  
+  for (const result of results) {
+    const folderCard = createFolderCard({
+      ...result.folder,
+      children: result.bookmarks,
+      isSearchResult: true
+    }, renderBookmarkGrid, 0);
+    gridContainer.appendChild(folderCard);
+  }
+  
+  grid.appendChild(gridContainer);
+}
+
+function initSearch() {
+  const searchInput = document.getElementById('searchInput');
+  let searchTimeout;
+  
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const query = searchInput.value.trim();
+    
+    if (!query) {
+      // Khôi phục view ban đầu
+      chrome.storage.local.get(['lastFolderId'], async result => {
+        const lastId = result.lastFolderId || '0';
+        chrome.bookmarks.getChildren(lastId, children => {
+          renderBookmarkGrid(children, 0);
+        });
+      });
+      return;
+    }
+    
+    searchTimeout = setTimeout(async () => {
+      const results = await performSearch(query);
+      renderSearchResults(results);
+    }, 300);
+  });
 }
 
 // Apply theme
@@ -129,6 +231,7 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', () => {
 init();
+initSearch();
   // Theme dropdown toggle
   document.body.addEventListener('click', () => {
     document.getElementById('theme-dropdown').classList.remove('show');

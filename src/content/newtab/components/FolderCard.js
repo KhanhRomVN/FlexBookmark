@@ -13,6 +13,9 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   card.dataset.id = folder.id;
   card.style.position = 'relative';
   card.draggable = true; // Make folder draggable
+  if (folder.isSearchResult) {
+    card.classList.add('search-result');
+  }
 
   // Drag-and-drop support for folders
   card.addEventListener('dragstart', e => {
@@ -28,14 +31,34 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   card.addEventListener('dragover', e => {
     e.preventDefault();
     card.classList.add('folder-drop-target');
+
+    // Compute drop position
+    const rect = card.getBoundingClientRect();
+    const isTopHalf = e.clientY < rect.top + rect.height / 2;
+
+    if (isTopHalf) {
+      card.style.borderTop = '2px solid var(--primary-color)';
+      card.style.borderBottom = 'none';
+    } else {
+      card.style.borderBottom = '2px solid var(--primary-color)';
+      card.style.borderTop = 'none';
+    }
   });
-  card.addEventListener('dragleave', () => card.classList.remove('folder-drop-target'));
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('folder-drop-target');
+    card.style.borderTop = 'none';
+    card.style.borderBottom = 'none';
+  });
 
   // Simplified drop handler: move then current grid refresh
   card.addEventListener('drop', async e => {
     e.preventDefault();
     e.stopPropagation();
     card.classList.remove('folder-drop-target');
+    
+    // Reset border styles
+    card.style.borderTop = 'none';
+    card.style.borderBottom = 'none';
     
     let data;
     try {
@@ -106,6 +129,19 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
   body.className = 'folder-body';
   body.style.display = depth >= 1 ? 'block' : 'grid';
   // Synthetic temp group support
+  if (folder.isSearchResult) {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'mini-group-header';
+    titleEl.innerHTML = `${folder.title} <span class="search-match-count">(${folder.children.length} matches)</span>`;
+    header.innerHTML = '';
+    header.appendChild(titleEl);
+
+    body.innerHTML = '';
+    folder.children.forEach(child => {
+      const bm = createBookmarkCard(child, null, 0, folder);
+      body.appendChild(bm);
+    });
+  } else
   if (folder.id.startsWith('temp')) {
     body.innerHTML = '';
     (folder.children || []).forEach(child => {

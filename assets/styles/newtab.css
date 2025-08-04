@@ -1,4 +1,5 @@
 /* newtab.css — modular imports */
+@import "./newtab/drag-effects.css";
 @import "./newtab/variables.css";
 @import "./newtab/base.css";
 @import "./newtab/layout.css";
