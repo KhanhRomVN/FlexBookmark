@@ -103,14 +103,19 @@ export function createBookmarkCard(item, renderBookmarkGrid, items, depth = 0, f
     card.addEventListener('dragstart', e => {
         // Prevent parent folder from also initiating drag
         e.stopPropagation();
-      console.log('BookmarkCard dragstart');
-    e.dataTransfer.setData('text/plain', JSON.stringify({
-      id: item.id,
-      type: 'bookmark',
-      title: item.title
-    }));
-    card.classList.add('dragging');
-  });
+        console.log('BookmarkCard dragstart');
+        const grid = document.getElementById('bookmark-grid');
+        const sourceParent = (folder && folder.id) || grid.dataset.parentId;
+        const sourceDepth = depth;
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          id: item.id,
+          type: 'bookmark',
+          title: item.title,
+          sourceParentId: sourceParent,
+          sourceDepth: sourceDepth
+        }));
+        card.classList.add('dragging');
+    });
   card.addEventListener('dragend', () => {
     card.classList.remove('dragging');
   });

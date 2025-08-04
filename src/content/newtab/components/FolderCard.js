@@ -16,7 +16,6 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
 
   // Drag-and-drop support for folders
   card.addEventListener('dragstart', e => {
-    console.log('FolderCard dragstart');
     e.dataTransfer.setData('text/plain', JSON.stringify({
       id: folder.id,
       type: 'folder',
@@ -24,156 +23,60 @@ export function createFolderCard(folder, renderBookmarkGrid, depth = 0) {
     }));
     card.classList.add('dragging');
   });
-
-  card.addEventListener('dragend', () => {
-    card.classList.remove('dragging');
-  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
 
   card.addEventListener('dragover', e => {
-    console.log('FolderCard dragover');
     e.preventDefault();
     card.classList.add('folder-drop-target');
   });
+  card.addEventListener('dragleave', () => card.classList.remove('folder-drop-target'));
 
-  card.addEventListener('dragleave', () => {
-    card.classList.remove('folder-drop-target');
-  });
-
+  // Simplified drop handler: move then full grid refresh
   card.addEventListener('drop', async e => {
-    e.stopPropagation();
-    console.log('FolderCard drop handler start', {
-      folderId: folder.id,
-      depth,
-      gridParentId: document.getElementById('bookmark-grid').dataset.parentId,
-      gridDepth: document.getElementById('bookmark-grid').dataset.depth
-    });
-    console.log('FolderCard drop event for folder', folder.id);
     e.preventDefault();
+    e.stopPropagation();
     card.classList.remove('folder-drop-target');
-    // Ensure main grid interactivity is restored after drop
-    const mainGrid = document.getElementById('bookmark-grid');
-    if (mainGrid) {
-      mainGrid.classList.remove('drop-target', 'drop-target-highlight');
-    }
-    
-    const raw = e.dataTransfer.getData('text/plain');
-    console.log('FolderCard drop raw data:', raw);
+    const grid = document.getElementById('bookmark-grid');
+    grid.classList.remove('drop-target', 'drop-target-highlight');
+
     let data;
     try {
-      data = JSON.parse(raw);
-      console.log('FolderCard parsed drop data:', data, {
-        depth,
-        folderId: folder.id,
-        gridParentId: document.getElementById('bookmark-grid').dataset.parentId,
-        gridDepth: document.getElementById('bookmark-grid').dataset.depth
-      });
-    } catch (err) {
-      console.error('FolderCard drop JSON parse error:', err);
+      data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    } catch {
       return;
     }
 
-    // Handle dropping a bookmark into this folder
-    const gridContainer = document.getElementById('bookmark-grid');
-// Synthetic temp folder drop: drop into Temp group should move to current grid parent folder
-    if (data.type === 'bookmark' && folder.id.startsWith('temp')) {
-      const gridContainer = document.getElementById('bookmark-grid');
-      const parentId = gridContainer.dataset.parentId;
-      try {
-        await chrome.bookmarks.move(data.id, { parentId });
-      } catch (err) {
-        console.error('Error moving bookmark to temp group:', err);
-      }
-      const depthVal = parseInt(gridContainer.dataset.depth || '0');
-      chrome.bookmarks.getChildren(parentId, (children) => {
-        chrome.bookmarks.get(parentId, ([parentFolder]) => {
-          renderBookmarkGrid(children, depthVal, parentFolder);
-        });
-      });
-      return;
-    }
-    const targetParentId = folder.id.startsWith('temp') ? gridContainer.dataset.parentId : folder.id;
+    // Decide new parent: for bookmark and folder
+    let newParent = null;
     if (data.type === 'bookmark') {
-      console.log(`Moving bookmark ${data.id} into folder ${folder.id}`);
-      try {
-        await chrome.bookmarks.move(data.id, { parentId: targetParentId });
-        console.log('Bookmark move successful');
-      } catch (err) {
-        console.error('Error moving bookmark:', err);
-      }
-      console.log('Updating folder card body for bookmark drop', folder.id);
-      chrome.bookmarks.getChildren(targetParentId, (children) => {
-        const body = card.querySelector('.folder-body');
-        if (body) {
-          body.innerHTML = '';
-          children.forEach(child => {
-            if (child.url) {
-              const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
-              bookmarkCard.classList.add('nested-bookmark');
-              body.append(bookmarkCard);
-            } else {
-              const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-              body.append(subFolderCard);
-            }
-          });
-        }
-      });
-      // Source grid re-render removed: updating folder card body in place only
-      return;
-    }
-    
-    // Handle dropping a folder into this folder (move/ nest folder)
-    if (data.type === 'folder') {
-      // Prevent nesting beyond level 2
+      newParent = folder.id;
+    } else if (data.type === 'folder') {
       if (depth >= 1) {
-        console.log('Cannot nest folders beyond level 2');
         showToast('Cannot nest folders beyond level 2', 'error');
         return;
       }
-      // Prevent moving folder into itself
       if (data.id === folder.id) {
-        console.warn('Cannot move folder into itself');
         showToast('Cannot move folder into itself', 'error');
         return;
       }
-      // Proceed with folder move
-      console.log(`Moving folder ${data.id} into folder ${folder.id}`);
-      try {
-        await chrome.bookmarks.move(data.id, { parentId: folder.id });
-        console.log('Folder move successful');
-      } catch (err) {
-        console.error('Error moving folder:', err);
-      }
-      console.log('Fetching children of folder', folder.id);
-      chrome.bookmarks.getChildren(folder.id, (children) => {
-        console.log('Fetched children count after folder move:', children.length);
-        // Also update nested body of this folder-card so it shows the new subfolder
-        const body = card.querySelector('.folder-body');
-        if (body) {
-          body.innerHTML = '';
-          // Fetch subtree to get updated children list
-          chrome.bookmarks.getSubTree(folder.id, (trees) => {
-            const updated = (trees[0] && trees[0].children) || [];
-            updated.forEach(child => {
-              if (child.url) {
-                const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, updated, 1, folder);
-                bookmarkCard.classList.add('nested-bookmark');
-                body.append(bookmarkCard);
-              } else {
-                const subFolderCard = createFolderCard(child, renderBookmarkGrid, 1);
-                body.append(subFolderCard);
-              }
-            });
-          });
-        }
-      });
-return; // Skip full grid refresh after folder drop on card
+      newParent = folder.id;
+    } else {
+      return;
     }
-    // Refresh current grid view to reflect moved folder
-    const container = document.getElementById('bookmark-grid');
-    const parentId = container.dataset.parentId;
-    const depthVal = parseInt(container.dataset.depth || '0');
-    chrome.bookmarks.getChildren(parentId, (children) => {
-      renderBookmarkGrid(children, depthVal);
+
+    try {
+      await chrome.bookmarks.move(data.id, { parentId: newParent });
+    } catch (err) {
+      console.error('Error moving item:', err);
+    }
+
+    // Refresh root grid
+    const pid = grid.dataset.parentId;
+    const d = parseInt(grid.dataset.depth || '0');
+    chrome.bookmarks.getChildren(pid, children => {
+      chrome.bookmarks.get(pid, ([parentFolder]) => {
+        renderBookmarkGrid(children, d, parentFolder);
+      });
     });
   });
 
@@ -185,49 +88,62 @@ return; // Skip full grid refresh after folder drop on card
     <div class="folder-title">${folder.title}</div>
   `;
 
-  // Menu button (hidden until hover)
+  // Menu button & dropdown
   const menuBtn = document.createElement('button');
   menuBtn.className = 'folder-menu-btn';
-  menuBtn.style.display = 'none';
   menuBtn.textContent = '⋮';
   header.append(menuBtn);
 
-  // Dropdown with actions: Rename, Delete, New Bookmark
   const dropdown = document.createElement('div');
   dropdown.className = 'menu-dropdown';
   dropdown.innerHTML = `
-    <button class="menu-rename">✏️  Rename</button>
-    <button class="menu-delete">🗑️  Delete</button>
-    <button class="menu-add-bookmark">🔖  New bookmark</button>
+    <button class="menu-rename">✏️ Rename</button>
+    <button class="menu-delete">🗑️ Delete</button>
+    <button class="menu-add-bookmark">🔖 New bookmark</button>
   `;
   header.append(dropdown);
 
-  // Prevent clicks inside dropdown from closing it
-  dropdown.addEventListener('click', e => {
-    e.stopPropagation();
-  });
+  card.append(header);
 
-  // Show/hide menu on hover
-  card.addEventListener('mouseenter', () => {
-    menuBtn.style.display = 'block';
-  });
-  card.addEventListener('mouseleave', () => {
-    menuBtn.style.display = 'none';
-  });
-
-    // Toggle dropdown on click
-    menuBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      // Close other open dropdowns
-      document.querySelectorAll('.menu-dropdown.show').forEach(dd => {
-        if (dd !== dropdown) dd.classList.remove('show');
-      });
-      // Toggle this dropdown
-      dropdown.classList.toggle('show');
+  // Render body
+  const body = document.createElement('div');
+  body.className = 'folder-body';
+  body.style.display = depth >= 1 ? 'block' : 'grid';
+  // Synthetic temp group support
+  if (folder.id.startsWith('temp')) {
+    body.innerHTML = '';
+    (folder.children || []).forEach(child => {
+      if (child.url) {
+        const bm = createBookmarkCard(child, renderBookmarkGrid, folder.children, depth + 1, folder);
+        bm.classList.add('nested-bookmark');
+        body.append(bm);
+      } else {
+        body.append(createFolderCard(child, renderBookmarkGrid, depth + 1));
+      }
     });
- 
+  } else {
+    chrome.bookmarks.getChildren(folder.id, (children) => {
+    const real = children.filter(c => !c.id.startsWith('temp-'));
+    body.innerHTML = '';
+    real.forEach(child => {
+      if (child.url) {
+        const bm = createBookmarkCard(child, renderBookmarkGrid, real, depth + 1, folder);
+        bm.classList.add('nested-bookmark');
+        body.append(bm);
+      } else {
+        body.append(createFolderCard(child, renderBookmarkGrid, depth + 1));
+      }
+    });
+  });
+}
+  card.append(body);
 
-  // Custom add-bookmark without full grid re-render
+  // -- Actions --
+  menuBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.classList.toggle('show');
+  });
+
   dropdown.querySelector('.menu-add-bookmark')?.addEventListener('click', async e => {
     e.stopPropagation();
     const title = prompt('Bookmark title');
@@ -239,35 +155,21 @@ return; // Skip full grid refresh after folder drop on card
     try {
       await chrome.bookmarks.create({ parentId: folder.id, title, url });
       showToast('Bookmark added', 'success');
-    } catch (err) {
-      console.error('Error creating bookmark:', err);
+    } catch {
       showToast('Error creating bookmark', 'error');
-      return;
     }
-    // Update this folder card body only
-    const body = card.querySelector('.folder-body');
-    if (body) {
-      body.innerHTML = '';
-      chrome.bookmarks.getChildren(folder.id, (children) => {
-        children.forEach(child => {
-          if (child.url) {
-            const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, children, depth + 1, folder);
-            bookmarkCard.classList.add('nested-bookmark');
-            body.append(bookmarkCard);
-          } else {
-            const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-            body.append(subFolderCard);
-          }
-        });
-      });
-    }
-    // Clear lingering drop classes and close menu
-    const mainGrid = document.getElementById('bookmark-grid');
-    mainGrid?.classList.remove('drop-target', 'drop-target-highlight');
     dropdown.classList.remove('show');
+    // refresh grid
+    const gridEl = document.getElementById('bookmark-grid');
+    const pid2 = gridEl.dataset.parentId;
+    const d2 = parseInt(gridEl.dataset.depth || '0');
+    chrome.bookmarks.getChildren(pid2, children2 => {
+      chrome.bookmarks.get(pid2, ([pf]) => {
+        renderBookmarkGrid(children2, d2, pf);
+      });
+    });
   });
 
-  // Rename action
   dropdown.querySelector('.menu-rename')?.addEventListener('click', async e => {
     e.stopPropagation();
     const newTitle = prompt('New folder name', folder.title) || folder.title;
@@ -276,7 +178,6 @@ return; // Skip full grid refresh after folder drop on card
     dropdown.classList.remove('show');
   });
 
-  // Delete action
   dropdown.querySelector('.menu-delete')?.addEventListener('click', async e => {
     e.stopPropagation();
     if (confirm('Delete this folder and all its contents?')) {
@@ -286,60 +187,10 @@ return; // Skip full grid refresh after folder drop on card
     dropdown.classList.remove('show');
   });
 
-    // Close dropdown when clicking outside its folder card
-    document.addEventListener('click', e => {
-      document.querySelectorAll('.menu-dropdown.show').forEach(dd => {
-        const parentCard = dd.closest('.folder-card');
-        if (parentCard && !parentCard.contains(e.target)) {
-          dd.classList.remove('show');
-        }
-      });
-    });
+  // Close dropdown on outside click
+  document.addEventListener('click', () => {
+    dropdown.classList.remove('show');
+  });
 
-  card.append(header);
-
-  // Body grid of nested items
-  const body = document.createElement('div');
-  body.className = 'folder-body';
-  // Limit nesting in UI
-  if (depth >= 1) {
-    body.style.display = 'block';
-    body.style.gridTemplateColumns = '1fr';
-  } else {
-    body.style.display = 'grid';
-  }
-
-  // Render synthetic temp groups directly without chrome API
-  if (folder.id.startsWith('temp')) {
-    body.innerHTML = '';
-    (folder.children || []).forEach(child => {
-      if (child.url) {
-        const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, folder.children, depth + 1, folder);
-        bookmarkCard.classList.add('nested-bookmark');
-        body.append(bookmarkCard);
-      } else {
-        const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-        body.append(subFolderCard);
-      }
-    });
-  } else {
-    // Dynamically load children to always reflect current folder state
-    chrome.bookmarks.getChildren(folder.id, (children) => {
-      const realChildren = children.filter(child => !child.id.startsWith('temp-'));
-      body.innerHTML = '';
-      realChildren.forEach(child => {
-        if (child.url) {
-          const bookmarkCard = createBookmarkCard(child, renderBookmarkGrid, realChildren, depth + 1, folder);
-          bookmarkCard.classList.add('nested-bookmark');
-          body.append(bookmarkCard);
-        } else {
-          const subFolderCard = createFolderCard(child, renderBookmarkGrid, depth + 1);
-          body.append(subFolderCard);
-        }
-      });
-    });
-  }
-
-  card.append(body);
   return card;
 }
