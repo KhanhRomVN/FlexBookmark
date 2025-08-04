@@ -1,15 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlexBookmark Popup</title>
-  <link rel="stylesheet" href="../../assets/styles/main.css" />
+  <meta charset="utf-8" />
+  <title>Add Bookmark</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div id="popup-root">
-    <h1>FlexBookmark Popup</h1>
-    <p>This is a stub popup.</p>
+  <!-- Theme toggle -->
+  <button class="theme-btn" id="theme-btn">🎨</button>
+  <div class="theme-dropdown" id="theme-dropdown">
+    <button data-theme="light">🌞 Light Theme</button>
+    <button data-theme="dark">🌙 Dark Theme</button>
+    <button data-theme="image">🖼️ Image Theme</button>
   </div>
+  <h2>Add Bookmark</h2>
+  <form id="bookmark-form">
+    <label>Title:<input type="text" id="bookmark-title" /></label>
+    <label>URL:<input type="text" id="bookmark-url" /></label>
+    <button type="submit" class="submit-btn">Save Bookmark</button>
+  </form>
+  <h2>Select Folder</h2>
+  <div id="folder-tree">Loading…</div>
+  <script src="popup.js"></script>
 </body>
 </html>

@@ -9,6 +9,7 @@
   "permissions": [
     "bookmarks",
     "storage",
+    "tabs",
     "identity"
   ],
   "host_permissions": [
