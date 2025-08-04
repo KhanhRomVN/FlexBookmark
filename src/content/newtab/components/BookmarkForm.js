@@ -23,11 +23,17 @@ export function showBookmarkForm({
       <div class="edit-dialog">
         <h2>${isEdit ? 'Edit bookmark' : 'New bookmark'}</h2>
         <form id="bookmark-form">
-          <input type="text" id="form-title" placeholder="Tiêu đề" required value="${bookmark ? bookmark.title : ''}" />
-          <input type="url" id="form-url" placeholder="URL" required value="${bookmark ? bookmark.url : ''}" />
+          <div class="form-group">
+            <label for="form-title">Tiêu đề</label>
+            <input type="text" id="form-title" placeholder="Tiêu đề" required value="${bookmark ? bookmark.title : ''}" />
+          </div>
+          <div class="form-group">
+            <label for="form-url">URL</label>
+            <input type="url" id="form-url" placeholder="URL" required value="${bookmark ? bookmark.url : ''}" />
+          </div>
           <div class="dialog-buttons">
             <button type="submit" class="save-btn">${isEdit ? 'Update' : 'Save'}</button>
-            <button type="button" class="cancel-btn">Hủy</button>
+            <button type="button" class="cancel-btn">Cancel</button>
           </div>
         </form>
       </div>

@@ -7,7 +7,7 @@ export function createEmptyState() {
   wrapper.className = 'empty-state';
   wrapper.innerHTML = `
     <div class="empty-icon">📚</div>
-    <p>Chưa có bookmark nào trong thư mục này</p>
+    <p>There are no bookmarks in this folder.</p>
   `;
   return wrapper;
 }

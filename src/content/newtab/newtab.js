@@ -150,7 +150,7 @@ init();
 // Add new group button handler
   const addGroupBtn = document.getElementById('add-group-btn');
   addGroupBtn.addEventListener('click', async () => {
-    const groupName = prompt('Tên nhóm mới:');
+    const groupName = prompt('New Folder:');
     if (groupName) {
       // create new bookmark folder at root
       await new Promise(res => chrome.bookmarks.create({ title: groupName }, res));

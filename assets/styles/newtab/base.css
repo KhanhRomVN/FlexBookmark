@@ -65,3 +65,13 @@
       transform: translateY(20px);
     }
   }
+/* Form group spacing */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
