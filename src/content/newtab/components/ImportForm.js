@@ -17,7 +17,7 @@ export function showImportForm({ parentId, renderBookmarkGrid, depth, gridTitle 
         <form id="import-form">
           <div class="form-group">
             <label for="import-text">Enter title, url, title, url, ...</label>
-            <textarea id="import-text" rows="4" placeholder="e.g. Example, https://example.com, Foo, https://foo.com"></textarea>
+            <textarea id="import-text" rows="4" placeholder="e.g. Example, https://example.com, Foo, https://foo.com" required autofocus></textarea>
           </div>
           <div class="dialog-buttons">
             <button type="submit" class="save-btn">Import</button>

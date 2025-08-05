@@ -283,6 +283,15 @@
       background: var(--bg-input);
       color: var(--text-color);
     }
+    .edit-dialog textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--bg-input);
+      color: var(--text-color);
+      resize: vertical;
+    }
     .edit-dialog .dialog-buttons {
       display: flex;
       justify-content: flex-end;
