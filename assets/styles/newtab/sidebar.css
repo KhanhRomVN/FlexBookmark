@@ -16,6 +16,18 @@
   flex-direction: column;
 }
 
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: #333333 !important;
+  backdrop-filter: blur(5px);
+}
+/* Image-theme sidebar override: dark translucent */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: #333333 !important;
+  backdrop-filter: blur(5px);
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -26,8 +38,8 @@
 }
 
 .sidebar-header h1 {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-color);
   margin: 0;
 }
@@ -83,7 +95,7 @@
 
 .group-name {
   flex: 1;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--text-color);
   white-space: nowrap;
@@ -155,4 +167,47 @@
   .sidebar-footer {
     padding: 12px;
   }
+}
+/* Image theme: darker sidebar backgrounds for hover, focus, active */
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus {
+  background-color: rgba(19, 19, 19, 0.5) !important;
+}
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(19, 19, 19, 0.7) !important;
+}
+/* Image-theme sidebar override: dark translucent */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: #333333 !important;
+}
+/* Image theme sidebar override: dark translucent background */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: #333333 !important;
+  backdrop-filter: blur(5px);
+}
+/* ==========================================================================
+   Image-theme sidebar overrides (dark translucent + stronger hover/focus)
+   ========================================================================== */
+
+/* Dark translucent sidebar background */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: #333333 !important;
+  backdrop-filter: blur(5px);
+}
+
+/* Stronger hover & focus for sidebar items */
+html[data-theme="image"] .sidebar .group-item:hover,
+html[data-theme="image"] .sidebar .group-item:focus,
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus {
+  background-color: #333333 !important;
+}
+
+/* Active folder background */
+html[data-theme="image"] .sidebar .group-item.active,
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(0, 0, 0, 0.7) !important;
 }

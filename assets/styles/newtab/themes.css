@@ -4,6 +4,10 @@
 
 /* Dark‐theme sidebar text */
 html[data-theme="dark"] .sidebar,
+/* Image‐theme sidebar background override */
+html[data-theme="image"] .sidebar {
+  background-color: rgba(19, 19, 19, 0.6) !important;
+}
 html[data-theme="dark"] .sidebar * {
   color: var(--text-color) !important;
 }
@@ -18,8 +22,16 @@ html[data-theme="dark"] .temp-group-card {
 
 /* Image theme transparency */
 body.image-theme .sidebar {
-  background-color: var(--bg-sidebar) !important;
+  background: rgba(19, 19, 19, 0.6) !important;
   backdrop-filter: blur(5px);
+}
+/* Image theme sidebar hover/focus and active backgrounds */
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus {
+  background-color: rgba(19, 19, 19, 0.5) !important;
+}
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(19, 19, 19, 0.7) !important;
 }
 
 body.image-theme .main-header {
@@ -85,6 +97,10 @@ body.image-theme {
   background-size: cover;
   background-position: center;
 }
+body.image-theme .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(5px);
+}
 
 body.image-theme .main-content {
   background-color: var(--bg-input) !important;
@@ -104,13 +120,51 @@ html[data-theme="dark"] .main-header {
 }
 /* Reveal body background-image under panels */
 body.image-theme .container,
-body.image-theme .sidebar,
 body.image-theme .main-content {
   background-color: transparent !important;
 }
 /* Reveal body background-image under panels */
 body.image-theme .container,
-body.image-theme .sidebar,
 body.image-theme .main-content {
   background-color: transparent !important;
+}
+/* Image‐theme sidebar override (dark translucent) */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+/* Image theme: ensure sidebar dark translucent background */
+body.image-theme .sidebar {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+/* Image theme sidebar override (final) */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(5px);
+}
+/* Image theme sidebar override: dark translucent background */
+html[data-theme="image"] .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(5px);
+}
+/* Final override: image-theme sidebar dark translucent background */
+body.image-theme .sidebar,
+html[data-theme="image"] .sidebar {
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(5px);
+}
+/* ===== Image‐theme sidebar final override ===== */
+body.image-theme .sidebar,
+html[data-theme="image"] .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+/* Final image-theme sidebar override: dark translucent background */
+html[data-theme="image"] .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+/* Image theme sidebar final override */
+body.image-theme .sidebar,
+html[data-theme="image"] .sidebar {
+  background-color: rgba(0, 0, 0, 0.6) !important;
 }

@@ -38,10 +38,16 @@
                 <div class="theme-container">
                   <button class="icon-btn" id="theme-btn">🎨</button>
                   <div class="theme-dropdown" id="theme-dropdown">
-                    <button data-theme="light">🌞 Light Theme</button>
-                    <button data-theme="dark">🌙 Dark Theme</button>
-                    <button data-theme="image">🖼️ Image Theme</button>
-                  </div>
+                            <button data-theme="light">🌞 Light Theme</button>
+                            <button data-theme="dark">🌙 Dark Theme</button>
+                            <button data-theme="image">🖼️ Image Theme</button>
+                            <!-- Image URL editor -->
+                            <button id="change-image-btn" class="icon-btn">✏️ Change Image URL</button>
+                            <div id="image-url-container" style="display:none; padding:8px;">
+                              <input type="text" id="image-url-input" placeholder="Enter image URL" style="width:100%; margin-bottom:4px;" />
+                              <button id="save-image-url-btn">Save</button>
+                            </div>
+                          </div>
                 </div>
               </div>
             </div>

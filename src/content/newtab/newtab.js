@@ -250,6 +250,23 @@ initSearch();
     });
   });
 
+  // Change Image URL via browser prompt (works on all themes)
+  const changeImageBtn = document.getElementById('change-image-btn');
+  changeImageBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    chrome.storage.local.get('backgroundImage', result => {
+      const current = result.backgroundImage || '';
+      const url = prompt('Nhập URL hình ảnh mới:', current);
+      if (url) {
+        chrome.storage.local.set({ backgroundImage: url }, () => {
+          document.body.style.backgroundImage = `url(${url})`;
+          showToast('Background image updated', 'success');
+        });
+      }
+      document.getElementById('theme-dropdown').classList.remove('show');
+    });
+  });
+
 // Add new group button handler
   const addGroupBtn = document.getElementById('add-group-btn');
   addGroupBtn.addEventListener('click', async () => {
