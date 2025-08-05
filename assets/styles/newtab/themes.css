@@ -225,3 +225,65 @@ html[data-theme="image"] .sidebar-header,
 body.image-theme .sidebar-header {
   color: var(--text-secondary) !important;
 }
+/* Image theme: transparent dropdown menus to avoid underlying content shine-through */
+body.image-theme .menu-dropdown,
+html[data-theme="image"] .menu-dropdown {
+  background: rgba(50, 50, 50, 0.95) !important;
+  backdrop-filter: blur(5px) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+ /* Image theme: header theme selector dropdown */
+ body.image-theme .theme-dropdown,
+ html[data-theme="image"] .theme-dropdown {
+   background: rgba(50, 50, 50, 0.95) !important;
+   backdrop-filter: blur(5px) !important;
+   border: 1px solid var(--border-color) !important;
+ }
+/* ===== Theme-specific Button Colors ===== */
+/* Light Theme: Modern Ocean Blue */
+body.light-theme .add-group-btn,
+body.light-theme .menu-add-bookmark,
+body.light-theme .add-bookmark-btn-grid,
+body.light-theme .add-group-btn-grid,
+html[data-theme="light"] .add-group-btn,
+html[data-theme="light"] .menu-add-bookmark,
+html[data-theme="light"] .add-bookmark-btn-grid,
+html[data-theme="light"] .add-group-btn-grid {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* Dark Theme: Modern Red */
+html[data-theme="dark"] .add-group-btn,
+html[data-theme="dark"] .menu-add-bookmark,
+html[data-theme="dark"] .add-bookmark-btn-grid,
+html[data-theme="dark"] .add-group-btn-grid {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Image Theme: Translucent Black */
+body.image-theme .add-group-btn,
+body.image-theme .menu-add-bookmark,
+body.image-theme .add-bookmark-btn-grid,
+body.image-theme .add-group-btn-grid,
+body.image-theme .add-group-btn-grid,
+html[data-theme="image"] .add-group-btn,
+html[data-theme="image"] .menu-add-bookmark,
+html[data-theme="image"] .add-bookmark-btn-grid,
+html[data-theme="image"] .add-group-btn-grid {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  color: #ffffff !important;
+}
+/* Image-theme dropdown and menu transparency enhancements */
+body.image-theme .menu-dropdown,
+html[data-theme="image"] .menu-dropdown,
+body.image-theme .folder-dropdown,
+html[data-theme="image"] .folder-dropdown,
+body.image-theme .theme-dropdown,
+html[data-theme="image"] .theme-dropdown {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(59, 130, 246, 0.6) !important; /* semi-transparent blue */
+  backdrop-filter: blur(5px) !important;
+}

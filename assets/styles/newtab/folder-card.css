@@ -24,7 +24,13 @@
     border: none;
     font-size: 18px;
     cursor: pointer;
-    z-index: 1000;
+    z-index: 100000 !important;
+    transform: none !important; /* Override inherited translation */
+  }
+  
+  /* Show folder menu button on hover */
+  .folder-card:hover .folder-menu-btn {
+    display: block !important;
   }
 
   /* Hide dropdown by default and position it */
@@ -51,7 +57,12 @@
   }
   
   .folder-card:hover {
-    border-color: #3b82f6;
+      border-color: #3b82f6;
+  }
+  
+  /* Show folder menu button on hover */
+  .folder-card:hover .folder-menu-btn {
+      display: block;
   }
   
   .folder-card .folder-header {
