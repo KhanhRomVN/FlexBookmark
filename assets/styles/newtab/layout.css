@@ -96,13 +96,13 @@
   /* Masonry layout for bookmark list using CSS columns */
   .bookmark-list {
     columns: 320px auto; /* Min width 320px per column, auto-fit */
-    column-gap: 1.25rem;
+    column-gap: 0.01953125rem;
     max-width: 100%;
     margin: 0 auto;
   }
   .bookmark-list > * {
     break-inside: avoid;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.01953125rem;
   }
 
   /* Responsive column counts */

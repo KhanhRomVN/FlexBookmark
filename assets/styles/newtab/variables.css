@@ -35,3 +35,16 @@ html[data-theme="dark"] {
   --hover-bg: #2d2d2d;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
 }
+/* Image theme variables – dark translucent with muted gray text */
+html[data-theme="image"] {
+  --bg-body: transparent;
+  --bg-sidebar: rgba(19, 19, 19, 0.3);
+  --bg-header: rgba(19, 19, 19, 0.3);
+  --bg-group-card: rgba(19, 19, 19, 0.4);
+  --bg-bookmark-card: rgba(19, 19, 19, 0.4);
+  --bg-input: rgba(19, 19, 19, 0.5);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-color: #a0a0a0;
+  --text-secondary: #7f7f7f;
+  --hover-bg: rgba(255, 255, 255, 0.05);
+}

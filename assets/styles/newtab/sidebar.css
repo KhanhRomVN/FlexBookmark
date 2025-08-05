@@ -18,14 +18,16 @@
 
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(10px);
+  color: var(--text-secondary) !important;
 }
 /* Image-theme sidebar override: dark translucent */
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(10px);
+  color: var(--text-secondary) !important;
 }
 
 .sidebar-header {
@@ -179,11 +181,11 @@ body.image-theme .sidebar .group-item.active {
 /* Image-theme sidebar override: dark translucent */
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 /* Image theme sidebar override: dark translucent background */
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(10px);
 }

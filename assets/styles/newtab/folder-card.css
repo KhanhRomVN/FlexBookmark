@@ -54,10 +54,6 @@
     border-color: #3b82f6;
   }
   
-  .folder-card .folder-body {
-    display: block !important;
-    padding: 4px 0px;
-  }
   .folder-card .folder-header {
     display: flex;
     align-items: center;
@@ -84,9 +80,11 @@
     font-size: 14px; /* reduced size */
     color: var(--text-color);
   }
-  .folder-body {
-    display: grid;
+  .folder-card .folder-body {
+    display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0px;
+    padding: 4px 0px;
   }
   
   .mini-bookmark-icon {
@@ -142,9 +140,9 @@
   
   
   /* Nested list styling for folder view */
-  .nested-bookmark {
+  .folder-card .nested-bookmark {
     display: block;
-    padding: 4px 8px;
+    padding: 2px 4px !important; /* halved spacing and enforced specificity */
   }
   
   /* Edit Dialog Overlay Styles */
