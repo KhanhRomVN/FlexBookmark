@@ -5,7 +5,8 @@
 /* Primary buttons */
 .add-bookmark-btn,
 .add-group-btn-grid,
-.add-bookmark-btn-grid {
+.add-bookmark-btn-grid,
+.import-btn-grid {
   padding: 8px 16px;
   background: #3b82f6;
   color: white;
@@ -17,7 +18,8 @@
 }
 .add-bookmark-btn:hover,
 .add-group-btn-grid:hover,
-.add-bookmark-btn-grid:hover {
+.add-bookmark-btn-grid:hover,
+.import-btn-grid:hover {
   background: #2563eb;
 }
 
@@ -91,6 +93,7 @@
 .add-bookmark-btn:focus,
 .add-group-btn-grid:focus,
 .add-bookmark-btn-grid:focus,
+.import-btn-grid:focus,
 .icon-btn:focus,
 .settings-btn:focus,
 .group-action-btn:focus {

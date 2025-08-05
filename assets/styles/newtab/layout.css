@@ -143,11 +143,12 @@
   
   /* Grid header controls */
   .grid-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
   }
   /* Allow clicks on cards over the drop-target layer */
   .drop-target {

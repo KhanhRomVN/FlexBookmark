@@ -118,6 +118,40 @@ body.image-theme .theme-dropdown button:hover,
 body.image-theme .theme-dropdown button:focus {
   background-color: rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Import dropdown container */
+.import-dropdown {
+  display: none;
+  position: absolute;
+  top: 32px;
+  right: 0;
+  background: var(--bg-group-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  z-index: 1000;
+}
+.import-dropdown button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-color);
+}
+.import-dropdown button:hover {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
+
+.import-dropdown.show {
+  display: flex;
+}
+
 /* Mobile header */
 @media (max-width: 768px) {
   .main-header {
@@ -150,4 +184,4 @@ body.image-theme .theme-dropdown button:focus {
 /* Image‐theme: ensure dropdown appears above all panels */
 body.image-theme .theme-dropdown {
   z-index: 999999 !important;
-}
+  }

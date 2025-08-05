@@ -1,5 +1,6 @@
 import { createFolder } from '../../utils/api.js';
 import { showBookmarkForm } from './BookmarkForm.js';
+import { showImportForm } from './ImportForm.js';
 
 /**
  * Renders the header section with Add Group and Add Bookmark buttons.
@@ -19,14 +20,44 @@ export function renderGridHeader(depth, parentId, renderBookmarkGrid, gridTitle)
   const addBookmarkBtn = document.createElement('button');
   addBookmarkBtn.className = 'add-bookmark-btn-grid';
   addBookmarkBtn.textContent = '+ New bookmark';
+  
+    // Import button and dropdown
+    const importBtn = document.createElement('button');
+    importBtn.className = 'import-btn-grid';
+    importBtn.textContent = '+ Import';
+  
+    const importDropdown = document.createElement('div');
+    importDropdown.className = 'import-dropdown';
+    importDropdown.style.display = 'none';
+    importDropdown.style.position = 'absolute';
+    importDropdown.style.top = '100%';
+    importDropdown.style.right = '0';
+    importDropdown.style.zIndex = '1000';
+    importDropdown.innerHTML = `
+      <button data-import="text">Text</button>
+    `;
+  
+    // Toggle dropdown visibility
+    importBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      importDropdown.style.display = importDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+  
+    // Handle Text import option
+    const textOptionBtn = importDropdown.querySelector('[data-import="text"]');
+    textOptionBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      showImportForm({ parentId, renderBookmarkGrid, depth, gridTitle });
+      importDropdown.style.display = 'none';
+    });
 
   const titleEl = document.createElement('div');
   titleEl.className = 'grid-header-title';
   titleEl.textContent = gridTitle || '';
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'grid-header-actions';
-  actionsContainer.append(addBookmarkBtn, addGroupBtn);
-  header.append(titleEl, actionsContainer);
+  actionsContainer.append(addBookmarkBtn, addGroupBtn, importBtn);
+  header.append(titleEl, actionsContainer, importDropdown);
 
   // Create new folder
   addGroupBtn.addEventListener('click', async () => {

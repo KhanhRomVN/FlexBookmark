@@ -250,6 +250,7 @@ initSearch();
     });
   });
 
+
   // Change Image URL via browser prompt (works on all themes)
   const changeImageBtn = document.getElementById('change-image-btn');
   changeImageBtn.addEventListener('click', e => {
