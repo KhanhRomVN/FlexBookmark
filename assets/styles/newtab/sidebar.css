@@ -137,7 +137,7 @@ body.image-theme .sidebar {
 
 /* Sidebar footer */
 .sidebar-footer {
-  padding: 16px 20px 40px;
+  padding: 16px 20px 16px;
 }
 .sidebar-footer .add-group-btn {
   margin: 1rem 0 0 0; /* move down slightly */

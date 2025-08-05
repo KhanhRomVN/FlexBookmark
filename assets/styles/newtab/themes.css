@@ -287,3 +287,35 @@ html[data-theme="image"] .theme-dropdown {
   border: 1px solid rgba(59, 130, 246, 0.6) !important; /* semi-transparent blue */
   backdrop-filter: blur(5px) !important;
 }
+/* Dropdown menu item hover & focus enhancements (image theme) */
+body.image-theme .menu-dropdown button:hover,
+html[data-theme="image"] .menu-dropdown button:hover,
+body.image-theme .menu-dropdown button:focus,
+html[data-theme="image"] .menu-dropdown button:focus,
+body.image-theme .folder-dropdown button:hover,
+html[data-theme="image"] .folder-dropdown button:hover,
+body.image-theme .folder-dropdown button:focus,
+html[data-theme="image"] .folder-dropdown button:focus,
+body.image-theme .theme-dropdown button:hover,
+html[data-theme="image"] .theme-dropdown button:hover,
+body.image-theme .theme-dropdown button:focus,
+html[data-theme="image"] .theme-dropdown button:focus {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border-left: 4px solid rgba(59, 130, 246, 0.8) !important; /* semi-transparent blue */
+}
+/* Image-theme dropdown container hover & focus (border-hover and background focus choice) */
+body.image-theme .menu-dropdown:hover,
+html[data-theme="image"] .menu-dropdown:hover,
+body.image-theme .theme-dropdown:hover,
+html[data-theme="image"] .theme-dropdown:hover,
+body.image-theme .folder-dropdown:hover,
+html[data-theme="image"] .folder-dropdown:hover,
+body.image-theme .menu-dropdown:focus-within,
+html[data-theme="image"] .menu-dropdown:focus-within,
+body.image-theme .theme-dropdown:focus-within,
+html[data-theme="image"] .theme-dropdown:focus-within,
+body.image-theme .folder-dropdown:focus-within,
+html[data-theme="image"] .folder-dropdown:focus-within {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(59, 130, 246, 0.8) !important;
+}
