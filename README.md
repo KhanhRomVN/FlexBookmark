@@ -1,57 +1,77 @@
-# FlexBookmark - Chrome Extension
+# 🚀 FlexBookmark - Chrome Extension
 
-![FlexBookmark Logo](assets/icons/icon128.png)
+![FlexBookmark Logo](assets/icons/icon.png)
 
-Một extension Chrome để quản lý bookmark mạnh mẽ với đồng bộ tài khoản Google.
+**FlexBookmark** is a powerful and lightweight Chrome extension for managing bookmarks in a structured, visual, and customizable way — with seamless Google account sync.
 
-## Tính năng chính
+---
 
-- 📁 Hiển thị bookmark dạng cây thư mục trong sidebar
-- 🚀 Thêm/xóa bookmark nhanh chóng
-- 🔄 Tự động đồng bộ với tài khoản Google
-- 🎨 Giao diện New Tab tùy biến
-- ⚡ Tối ưu hiệu suất với Service Worker
+## 📌 Features
 
-## Cài đặt
+- 📁 Tree-structured sidebar to visualize your bookmarks
+- ➕ Quick add/remove bookmark functionality
+- 🔄 Auto-sync with your Google account
+- 🎨 Customizable new tab interface
+- ⚡ Optimized performance using Service Worker (Manifest V3)
 
-1. Clone repository:
+---
+
+## 📦 Installation
+
+1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/flexbookmark.git
+   git clone https://github.com/KhanhRomVN/flexbookmark.git
+   cd flexbookmark
    ```
-2. Mở Chrome và truy cập `chrome://extensions`
-3. Bật **Developer mode**
-4. Click **Load unpacked** và chọn thư mục dự án
 
-## Cấu trúc dự án
+````
+
+2. Open Chrome and go to `chrome://extensions`
+3. Enable **Developer mode** (top right corner)
+4. Click **Load unpacked** and select the project directory
+
+---
+
+## 📂 Project Structure
 
 ```
 flexbookmark/
-├── assets/          # Tài nguyên tĩnh
-├── src/             # Source code chính
-│   ├── background/  # Xử lý nền
-│   ├── content/     # Giao diện người dùng
-│   └── popup/       # Popup (nếu có)
-└── manifest.json    # Cấu hình extension
+├── assets/          # Static assets (icons, logos, etc.)
+├── src/             # Main source code
+│   ├── background/  # Service worker and background scripts
+│   ├── content/     # Sidebar and new tab UI
+│   └── popup/       # Optional popup interface
+└── manifest.json    # Chrome extension configuration (Manifest V3)
 ```
 
-## Công nghệ sử dụng
+---
 
-- Chrome Extension API (Manifest V3)
-- ES6 Modules
-- Service Workers
-- CSS Variables
+## 🛠️ Tech Stack
 
-## Hướng phát triển
+* Chrome Extensions API (Manifest V3)
+* ES6 JavaScript Modules
+* Service Workers
+* CSS Variables for theming
 
-- [ ] Thêm tính năng kéo thả sắp xếp bookmark
-- [ ] Hỗ trợ tag và tìm kiếm nâng cao
-- [ ] Dark mode
+---
 
-## License
+## 🌱 Future Improvements
 
-MIT
+* [ ] Drag-and-drop bookmark sorting
+* [ ] Tagging system & advanced search
+* [ ] Dark mode support
+* [ ] Multiple account sync management
 
-- sửa lỗi khi hover vào option của dropdown menu FolderCard sẽ có bacground nền tối xám trên text sáng. ngoài ra khi tôi click vào vùng bên ngoài hay tác động thứ khác thì lỗi dropdown menu FolderCard vẫn ko ẩn đi mà vẫn hiển thị
-- lỗi icon Menu của BookmarkCard lệch xuống dưới 1 chút -> đưa lên trên 1 chút. Ngoài ra thêm backgroundColorButton cho icon màu xám xám với icon trắng cho dễ nhìn. ngoài ra cho dropdown menu sát lại gần tới button Icon menu để tránh việc chưa di chuột tới mà dropdow menu đã ẩn đi
-- giảm size 2 icon trên headerMainContent và căn về phải. ngoài ra cũng áp theme cho dropdown menu của icon Theme.
-- xóa path trên headerMainContent, xóa icon Setting trên headerMainContent. áp theme cho searcbbar
+---
+
+## 📧 Contact
+
+* 📩 Email: [khanhromvn@gmail.com](mailto:khanhromvn@gmail.com)
+* 🌐 GitHub: [https://github.com/KhanhRomVN](https://github.com/KhanhRomVN)
+* 🌍 Country: Vietnam 🇻🇳
+
+---
+
+## ⚖️ License
+This project is licensed under the [MIT License](LICENSE).
+````

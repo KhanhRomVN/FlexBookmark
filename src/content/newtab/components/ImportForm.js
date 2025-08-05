@@ -1,7 +1,9 @@
 import { createBookmark } from '../../utils/api.js';
 
 /**
- * Shows a modal dialog for importing bookmarks via comma-separated text.
+ * Shows a modal dialog for importing bookmarks via structured text segments.
+ * Format: "Folder: title, url, title, url; AnotherFolder: ...".
+ * Automatically creates or reuses subfolders under parentId.
  * @param {Object} options
  * @param {string|null} options.parentId - ID of the folder to add bookmarks into.
  * @param {Function} options.renderBookmarkGrid - Callback to refresh the grid.
@@ -16,8 +18,9 @@ export function showImportForm({ parentId, renderBookmarkGrid, depth, gridTitle 
         <h2>Import Bookmarks</h2>
         <form id="import-form">
           <div class="form-group">
-            <label for="import-text">Enter title, url, title, url, ...</label>
-            <textarea id="import-text" rows="4" placeholder="e.g. Example, https://example.com, Foo, https://foo.com" required autofocus></textarea>
+            <textarea id="import-text" rows="4"
+              placeholder="e.g. Work: Docs, https://docs.com, Blog, https://blog.com; Example: Example, https://example.com, Foo, https://foo.com"
+              required autofocus></textarea>
           </div>
           <div class="dialog-buttons">
             <button type="submit" class="save-btn">Import</button>
@@ -34,18 +37,36 @@ export function showImportForm({ parentId, renderBookmarkGrid, depth, gridTitle 
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const value = textInput.value.trim();
-    if (!value) return;
-    const parts = value.split(',').map(s => s.trim()).filter(Boolean);
-    for (let i = 0; i < parts.length; i += 2) {
-      const title = parts[i];
-      const url = parts[i + 1];
-      if (title && url) {
-        await createBookmark({ parentId, title, url });
+    const rawSegments = textInput.value.trim().split(';').map(s => s.trim()).filter(Boolean);
+    const getChildren = id => new Promise(res => chrome.bookmarks.getChildren(id, res));
+
+    for (const segment of rawSegments) {
+      const [folderName, bookmarkStr = ''] = segment.split(/:(.*)/s).map(s => s.trim());
+      let targetParent = parentId;
+
+      if (folderName) {
+        const children = await getChildren(parentId);
+        const existing = children.find(c => !c.url && c.title === folderName);
+        if (existing) {
+          targetParent = existing.id;
+        } else {
+          const newFolder = await chrome.bookmarks.create({ parentId, title: folderName });
+          targetParent = newFolder.id;
+        }
+      }
+
+      const items = bookmarkStr.split(',').map(s => s.trim()).filter(Boolean);
+      for (let i = 0; i < items.length; i += 2) {
+        const title = items[i];
+        const url = items[i + 1];
+        if (title && url) {
+          await createBookmark({ parentId: targetParent, title, url });
+        }
       }
     }
-    const list = await new Promise(res => chrome.bookmarks.getChildren(parentId, res));
-    renderBookmarkGrid(list, depth, { id: parentId, title: gridTitle });
+
+    const updated = await getChildren(parentId);
+    renderBookmarkGrid(updated, depth, { id: parentId, title: gridTitle });
     modal.style.display = 'none';
     modal.innerHTML = '';
   });
