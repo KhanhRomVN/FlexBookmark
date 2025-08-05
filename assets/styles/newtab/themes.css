@@ -6,29 +6,28 @@
 html[data-theme="dark"] .sidebar,
 /* Image‐theme sidebar background override */
 html[data-theme="image"] .sidebar {
-  background-color: rgba(19, 19, 19, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 html[data-theme="dark"] .sidebar * {
   color: var(--text-color) !important;
 }
 
 /* Dark‐theme cards */
-html[data-theme="dark"] .bookmark-card,
 html[data-theme="dark"] .mini-group-card,
 html[data-theme="dark"] .temp-group-card {
-  background: var(--bg-bookmark-card) !important;
+  background: var(--bg-group-card) !important;
   color: var(--text-color) !important;
 }
 
 /* Image theme transparency */
 body.image-theme .sidebar {
-  background: rgba(19, 19, 19, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(5px);
 }
 /* Image theme sidebar hover/focus and active backgrounds */
 body.image-theme .sidebar .group-item:hover,
 body.image-theme .sidebar .group-item:focus {
-  background-color: rgba(19, 19, 19, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 body.image-theme .sidebar .group-item.active {
   background-color: rgba(19, 19, 19, 0.7) !important;
@@ -52,7 +51,7 @@ body.image-theme .bookmark-title,
 body.image-theme .folder-title,
 body.image-theme .header-title {
   color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 
 /* Fix dropdown colors in dark theme */
@@ -98,7 +97,7 @@ body.image-theme {
   background-position: center;
 }
 body.image-theme .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(5px);
 }
 
@@ -131,40 +130,98 @@ body.image-theme .main-content {
 /* Image‐theme sidebar override (dark translucent) */
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background: rgba(0, 0, 0, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 /* Image theme: ensure sidebar dark translucent background */
 body.image-theme .sidebar {
-  background: rgba(0, 0, 0, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 /* Image theme sidebar override (final) */
 html[data-theme="image"] .sidebar,
 body.image-theme .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(5px);
 }
 /* Image theme sidebar override: dark translucent background */
 html[data-theme="image"] .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(5px);
 }
 /* Final override: image-theme sidebar dark translucent background */
 body.image-theme .sidebar,
 html[data-theme="image"] .sidebar {
-  background: rgba(0, 0, 0, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(5px);
 }
 /* ===== Image‐theme sidebar final override ===== */
 body.image-theme .sidebar,
 html[data-theme="image"] .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 /* Final image-theme sidebar override: dark translucent background */
 html[data-theme="image"] .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 /* Image theme sidebar final override */
 body.image-theme .sidebar,
 html[data-theme="image"] .sidebar {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+/* ===== Custom Image-Theme Sidebar Overrides ===== */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px) !important;
+}
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus,
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+/* ===== Final Custom Image-Theme Sidebar Override ===== */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background: rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(20px) !important;
+}
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus,
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+/* ===== Ultimate Image-Theme Sidebar Override ===== */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar {
+  background: rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(4px) !important;
+}
+body.image-theme .sidebar .group-item:hover,
+body.image-theme .sidebar .group-item:focus,
+body.image-theme .sidebar .group-item.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+/* ===== Image-Theme Header Override ===== */
+html[data-theme="image"] .main-header,
+body.image-theme .main-header,
+html[data-theme="image"] .sidebar-header,
+body.image-theme .sidebar-header {
+  background: rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(4px) !important;
+}
+/* ===== Image-Theme Card & Text Overrides ===== */
+/* Folder cards get subtle blur */
+html[data-theme="image"] .folder-card,
+body.image-theme .folder-card {
+  background: rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(4px) !important;
+  color: var(--text-secondary) !important;
+}
+/* Sidebar & headers use gray text */
+html[data-theme="image"] .sidebar,
+body.image-theme .sidebar,
+html[data-theme="image"] .main-header,
+body.image-theme .main-header,
+html[data-theme="image"] .sidebar-header,
+body.image-theme .sidebar-header {
+  color: var(--text-secondary) !important;
 }

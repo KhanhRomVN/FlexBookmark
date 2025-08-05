@@ -18,9 +18,9 @@
 
 .bookmark-card {
   position: relative;
-  background: var(--bg-bookmark-card);
+  background: transparent !important;
   color: var(--text-color);
-  border: 1px solid var(--border-color) !important;
+  border: none !important;
   padding: 4px 8px 4px 12px;
   border-radius: 8px;
   height: 36px;
