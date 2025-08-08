@@ -7,8 +7,12 @@ chrome.bookmarks.onChildrenReordered.addListener(syncBookmarks);
 
 // Đồng bộ dữ liệu với storage
 async function syncBookmarks() {
-    const tree = await chrome.bookmarks.getTree();
-    chrome.storage.local.set({ bookmarkTree: tree });
+    try {
+        const tree = await chrome.bookmarks.getTree();
+        await chrome.storage.local.set({ bookmarkTree: tree });
+    } catch (error) {
+        console.error('Error syncing bookmarks:', error);
+    }
 }
 
 // Gửi dữ liệu khi new tab mở
@@ -22,4 +26,4 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 });
 
 // Khởi tạo đồng bộ
-syncBookmarks();
+chrome.runtime.onInstalled.addListener(syncBookmarks);

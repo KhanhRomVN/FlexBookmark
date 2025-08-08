@@ -10,27 +10,31 @@ const BookmarkManagerPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    setLoading(true);
     const loadBookmarks = async () => {
       try {
         const tree = await getBookmarks();
-        setBookmarks(tree[0]?.children || []);
+        const rootChildren = tree[0]?.children || [];
+        setBookmarks(rootChildren);
+
+        const getStorage = async (): Promise<string | null> => {
+          if (typeof chrome !== "undefined" && chrome.storage?.local) {
+            return new Promise((resolve) => {
+              chrome.storage.local.get("lastFolderId", (data) => {
+                resolve(data.lastFolderId || null);
+              });
+            });
+          } else {
+            return localStorage.getItem("lastFolderId");
+          }
+        };
+
+        const lastFolderId = await getStorage();
+        const initial = lastFolderId || rootChildren[0]?.id || null;
+        setSelectedFolder(initial);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
-      }
-
-      // Load last selected folder
-      if (window.chrome?.storage?.local?.get) {
-        window.chrome.storage.local.get("lastFolderId", (result) => {
-          if (result?.lastFolderId) {
-            setSelectedFolder(result.lastFolderId);
-          }
-          setLoading(false);
-        });
-      } else {
-        const last = window.localStorage.getItem("lastFolderId");
-        if (last) {
-          setSelectedFolder(last);
-        }
+      } finally {
         setLoading(false);
       }
     };

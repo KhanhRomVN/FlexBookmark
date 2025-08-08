@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "FlexBookmark",
+  "version": "1.1.0",
+  "description": "Advanced bookmark management with modern UI",
+  "icons": {
+    "128": "assets/icons/icon.png"
+  },
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "identity"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "bookmark_manager": "bookmark_manager.html"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content/newtab/*.js",
+        "src/content/newtab/components/*.js",
+        "src/content/utils/*.js",
+        "assets/styles/*.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

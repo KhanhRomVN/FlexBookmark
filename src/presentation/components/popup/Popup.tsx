@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PopupForm from "./PopupForm";
 import FolderTree from "./FolderTree";
-import { getBookmarks } from "../../utils/api";
+import { getBookmarks } from "../../../utils/api";
 
 const Popup: React.FC = () => {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
