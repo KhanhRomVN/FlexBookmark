@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base colors */
+    --primary: #3686ff;
+    --primary-foreground: #ffffff;
+    --primary-hover: #2563eb;
+    
+    /* Background colors */
+    --background-primary: #ffffff;
+    --background-secondary: #f8fafc;
+    --background-tertiary: #f1f5f9;
+    
+    /* Text colors - Enhanced */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-disabled: #94a3b8;
+    --text-success: #15803d;
+    --text-warning: #b45309;
+    --text-error: #b91c1c;
+    --text-info: #1d4ed8;
+    
+    /* Border colors - Enhanced */
+    --border-primary: #e2e8f0;
+    --border-secondary: #f1f5f9;
+    --border-focus: #3686ff;
+    --border-error: #fecaca;
+    --border-success: #bbf7d0;
+    
+    /* Card colors - Enhanced */
+    --card-background: #ffffff;
+    --card-header: #f8fafc;
+    --card-footer: #f8fafc;
+    --card-border: #e2e8f0;
+    --card-hover: #f8fafc;
+    --card-shadow: rgba(0, 0, 0, 0.1);
+    --card-selected: #f1f5f9;
+    
+    /* Input colors - Enhanced */
+    --input-background: #ffffff;
+    --input-border: #e2e8f0;
+    --input-text: #0f172a;
+    --input-placeholder: #94a3b8;
+    --input-focus: #3686ff;
+    --input-disabled-bg: #f1f5f9;
+    --input-disabled-text: #94a3b8;
+    --input-error: #fee2e2;
+    --input-success: #dcfce7;
+    
+    /* Button colors - Enhanced */
+    --button-primary: #3686ff;
+    --button-primary-hover: #2563eb;
+    --button-secondary: #f1f5f9;
+    --button-secondary-hover: #e2e8f0;
+    --button-disabled: #e2e8f0;
+    --button-disabled-text: #94a3b8;
+    --button-danger: #ef4444;
+    --button-danger-hover: #dc2626;
+    --button-success: #22c55e;
+    --button-success-hover: #16a34a;
+    
+    /* Dialog colors - New */
+    --dialog-background: #ffffff;
+    --dialog-border: #e2e8f0;
+    --dialog-shadow: rgba(0, 0, 0, 0.1);
+    --dialog-overlay: rgba(0, 0, 0, 0.5);
+    --dialog-header: #f8fafc;
+    --dialog-footer: #f8fafc;
+    
+    /* Dropdown colors - New */
+    --dropdown-background: #ffffff;
+    --dropdown-border: #e2e8f0;
+    --dropdown-shadow: rgba(0, 0, 0, 0.1);
+    --dropdown-hover: #f1f5f9;
+    --dropdown-selected: #e2e8f0;
+    
+    /* Toast/Alert colors - New */
+    --toast-background: #ffffff;
+    --toast-border: #e2e8f0;
+    --toast-shadow: rgba(0, 0, 0, 0.1);
+    --toast-success: #dcfce7;
+    --toast-error: #fee2e2;
+    --toast-warning: #fef3c7;
+    --toast-info: #dbeafe;
+    
+    /* Table colors */
+    --table-header-bg: #f8fafc;
+    --table-header-text: #0f172a;
+    --table-header-border: #e2e8f0;
+    --table-row-bg: #ffffff;
+    --table-row-alt-bg: #f8fafc;
+    --table-row-hover: #f1f5f9;
+    --table-cell-border: #e2e8f0;
+    --table-footer-bg: #f8fafc;
+    --table-footer-text: #64748b;
+    --table-selected: #e2e8f0;
+
+    /* Tooltip colors - New */
+    --tooltip-background: #0f172a;
+    --tooltip-text: #ffffff;
+    --tooltip-arrow: #0f172a;
+  }
+
+  .dark {
+    /* Base colors */
+    --primary: #3686ff;
+    --primary-foreground: #ffffff;
+    --primary-hover: #60a5fa;
+    
+    /* Background colors */
+    --background-primary: #121212;
+    --background-secondary: #1e1e1e;
+    --background-tertiary: #2d2d2d;
+    
+    /* Text colors - Enhanced */
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --text-disabled: #52525b;
+    --text-success: #4ade80;
+    --text-warning: #fbbf24;
+    --text-error: #f87171;
+    --text-info: #60a5fa;
+    
+    /* Border colors - Enhanced */
+    --border-primary: #2d2d2d;
+    --border-secondary: #1e1e1e;
+    --border-focus: #3686ff;
+    --border-error: #7f1d1d;
+    --border-success: #166534;
+    
+    /* Card colors - Enhanced */
+    --card-background: #1e1e1e;
+    --card-header: #2d2d2d;
+    --card-footer: #2d2d2d;
+    --card-border: #2d2d2d;
+    --card-hover: #262626;
+    --card-shadow: rgba(0, 0, 0, 0.3);
+    --card-selected: #404040;
+    
+    /* Input colors - Enhanced */
+    --input-background: #1e1e1e;
+    --input-border: #2d2d2d;
+    --input-text: #ffffff;
+    --input-placeholder: #71717a;
+    --input-focus: #3686ff;
+    --input-disabled-bg: #262626;
+    --input-disabled-text: #52525b;
+    --input-error: #7f1d1d;
+    --input-success: #166534;
+    
+    /* Button colors - Enhanced */
+    --button-primary: #3686ff;
+    --button-primary-hover: #60a5fa;
+    --button-secondary: #2d2d2d;
+    --button-secondary-hover: #404040;
+    --button-disabled: #262626;
+    --button-disabled-text: #52525b;
+    --button-danger: #dc2626;
+    --button-danger-hover: #b91c1c;
+    --button-success: #16a34a;
+    --button-success-hover: #15803d;
+    
+    /* Dialog colors - New */
+    --dialog-background: #1e1e1e;
+    --dialog-border: #2d2d2d;
+    --dialog-shadow: rgba(0, 0, 0, 0.5);
+    --dialog-overlay: rgba(0, 0, 0, 0.8);
+    --dialog-header: #2d2d2d;
+    --dialog-footer: #2d2d2d;
+    
+    /* Dropdown colors - New */
+    --dropdown-background: #1e1e1e;
+    --dropdown-border: #2d2d2d;
+    --dropdown-shadow: rgba(0, 0, 0, 0.5);
+    --dropdown-hover: #2d2d2d;
+    --dropdown-selected: #404040;
+    
+    /* Toast/Alert colors - New */
+    --toast-background: #1e1e1e;
+    --toast-border: #2d2d2d;
+    --toast-shadow: rgba(0, 0, 0, 0.5);
+    --toast-success: #166534;
+    --toast-error: #7f1d1d;
+    --toast-warning: #854d0e;
+    --toast-info: #1e40af;
+    
+    /* Table colors */
+    --table-header-bg: #1e1e1e;
+    --table-header-text: #ffffff;
+    --table-header-border: #2d2d2d;
+    --table-row-bg: #121212;
+    --table-row-alt-bg: #1e1e1e;
+    --table-row-hover: #2d2d2d;
+    --table-cell-border: #2d2d2d;
+    --table-footer-bg: #1e1e1e;
+    --table-footer-text: #71717a;
+    --table-selected: #404040;
+
+    /* Tooltip colors - New */
+    --tooltip-background: #ffffff;
+    --tooltip-text: #0f172a;
+    --tooltip-arrow: #ffffff;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background-primary text-text-primary;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 1px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-gray-400::-webkit-scrollbar-thumb {
+    background-color: #9ca3af;
+    border-radius: 6px;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  
+  .scrollbar-thumb-gray-500:hover::-webkit-scrollbar-thumb {
+    background-color: #6b7280;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+}
