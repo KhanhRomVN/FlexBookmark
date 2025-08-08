@@ -8,28 +8,20 @@ interface BookmarkGridProps {
   folders: any[];
 }
 
-const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId }) => {
+const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
   const [items, setItems] = useState<any[]>([]);
   const [folder, setFolder] = useState<any>(null);
 
   useEffect(() => {
-    const loadItems = async () => {
-      if (!folderId) return;
-
-      const folderItems = await new Promise<any[]>((resolve) =>
-        chrome.bookmarks.getChildren(folderId, resolve)
-      );
-
-      const folderData = await new Promise<any>((resolve) =>
-        chrome.bookmarks.get(folderId, ([folder]) => resolve(folder))
-      );
-
-      setItems(folderItems || []);
-      setFolder(folderData);
-    };
-
-    loadItems();
-  }, [folderId]);
+    if (!folderId) {
+      setItems([]);
+      setFolder(null);
+      return;
+    }
+    const selected = folders.find((f) => f.id === folderId);
+    setItems(selected?.children || []);
+    setFolder(selected || null);
+  }, [folderId, folders]);
 
   if (!folderId) {
     return (

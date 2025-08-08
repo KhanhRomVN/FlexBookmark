@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "../../components/common/Sidebar";
-import BookmarkGrid from "./components/BookmarkGrid";
-import Header from "../../components/common/Header";
-import { getBookmarks } from "../../../utils/api";
+import Sidebar from "../components/common/Sidebar";
+import BookmarkGrid from "../components/BookmarkManager/BookmarkGrid";
+import Header from "../components/common/Header";
+import { getBookmarks } from "../../utils/api";
 
 const BookmarkManagerPage: React.FC = () => {
   const [bookmarks, setBookmarks] = useState<any[]>([]);

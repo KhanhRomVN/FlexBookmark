@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createFolder } from "../../../../utils/api";
+import { createFolder } from "../../../utils/api";
 
 interface GridHeaderProps {
   folderId: string;

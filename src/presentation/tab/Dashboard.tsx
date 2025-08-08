@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import ThemeSelector from "../../components/common/ThemeSelector";
-import { getBookmarks } from "../../../utils/api";
-
-interface BookmarkNode {
-  id: string;
-  title: string;
-  url?: string;
-  children?: BookmarkNode[];
-}
+import ThemeSelector from "../components/common/ThemeSelector";
+import { getBookmarks } from "../../utils/api";
 
 const Dashboard: React.FC = () => {
+  interface BookmarkNode {
+    id: string;
+    title: string;
+    url?: string;
+    children?: BookmarkNode[];
+  }
+
   const [time, setTime] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [weather, setWeather] = useState<{
@@ -98,7 +98,9 @@ const Dashboard: React.FC = () => {
           <div className="text-4xl font-mono">{time}</div>
           <div className="text-lg mt-1">{date}</div>
         </div>
-        <ThemeSelector />
+        <div className="flex items-center gap-4">
+          <ThemeSelector />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

@@ -1,4 +1,5 @@
 import path from "path"
+import { resolve } from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
@@ -7,6 +8,11 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 export default defineConfig({
   build: {
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        popup: resolve(__dirname, 'popup.html'),
+        serviceWorker: resolve(__dirname, 'src/background/service-worker.ts')
+      },
       output: {
         entryFileNames: "[name].js",
         chunkFileNames: "[name].js",
@@ -19,10 +25,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         { src: 'manifest.json', dest: '.' },
-        { src: 'extension_temp/src/background/service-worker.js', dest: '.' },
-        { src: 'extension_temp/src/content/newtab/newtab.html', dest: '.', rename: 'bookmark_manager.html' },
-        { src: 'extension_temp/src/popup/popup.html', dest: '.', rename: 'popup.html' },
-        { src: 'index.html', dest: '.', rename: 'dashboard.html' }
+        { src: 'src/assets/icons/icon.png', dest: 'assets/icons' }
       ]
     })
   ],

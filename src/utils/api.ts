@@ -1,23 +1,39 @@
 // Chrome Bookmarks API wrapper
 
 export const getBookmarks = async (): Promise<chrome.bookmarks.BookmarkTreeNode[]> => {
-    try {
-        if (typeof window !== 'undefined' && window.chrome?.bookmarks?.getTree) {
-            const tree = await new Promise<chrome.bookmarks.BookmarkTreeNode[]>((resolve) =>
-                window.chrome.bookmarks.getTree((t) => resolve(t || []))
-            );
-            try {
-                localStorage.setItem('bookmarkTree', JSON.stringify(tree));
-            } catch { }
-            return tree;
+    // Sử dụng cả chrome.storage và localStorage như fallback
+    return new Promise((resolve) => {
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+            chrome.runtime.sendMessage({ action: "getBookmarks" }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.warn('Runtime error, using fallback:', chrome.runtime.lastError);
+                    resolve(getBookmarksFallback());
+                } else {
+                    try {
+                        chrome.storage.local.set({ bookmarkTree: response });
+                    } catch { }
+                    resolve(response);
+                }
+            });
+        } else {
+            resolve(getBookmarksFallback());
         }
-    } catch (e) {
-        console.warn('chrome.bookmarks.getTree failed, falling back to cache', e);
-    }
-    const stored = localStorage.getItem('bookmarkTree') || '[]';
+    });
+};
+
+const getBookmarksFallback = async (): Promise<chrome.bookmarks.BookmarkTreeNode[]> => {
     try {
+        if (typeof chrome !== "undefined" && chrome.storage?.local) {
+            return new Promise(resolve => {
+                chrome.storage.local.get('bookmarkTree', (data) => {
+                    resolve(data.bookmarkTree || []);
+                });
+            });
+        }
+        const stored = localStorage.getItem('bookmarkTree') || '[]';
         return JSON.parse(stored);
-    } catch {
+    } catch (error) {
+        console.error('Bookmark fallback error:', error);
         return [];
     }
 };
