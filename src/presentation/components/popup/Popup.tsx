@@ -9,8 +9,15 @@ const Popup: React.FC = () => {
 
   useEffect(() => {
     const loadBookmarks = async () => {
-      const tree = await getBookmarks();
-      setBookmarks(tree[0]?.children || []);
+      try {
+        const tree = await getBookmarks();
+        console.debug("[Popup] fetched tree:", tree);
+        const children = tree[0]?.children || [];
+        console.debug("[Popup] children:", children);
+        setBookmarks(children);
+      } catch (error) {
+        console.error("[Popup] error fetching bookmarks:", error);
+      }
     };
     loadBookmarks();
   }, []);

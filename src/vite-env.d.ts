@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="chrome" />
+/// <reference types="chrome-types" />
 declare module 'vite-plugin-static-copy';
 
 declare global {

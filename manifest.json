@@ -9,15 +9,17 @@
   "permissions": [
     "bookmarks",
     "storage",
-    "tabs",
-    "identity"
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "service-worker.js",
+    "service_worker": "src/background/service-worker.ts",
     "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "chrome_url_overrides": {
     "bookmark_manager": "bookmark_manager.html"

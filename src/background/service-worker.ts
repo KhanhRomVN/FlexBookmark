@@ -10,6 +10,8 @@ async function syncBookmarks() {
     try {
         const tree = await chrome.bookmarks.getTree();
         await chrome.storage.local.set({ bookmarkTree: tree });
+        // Notify UI that bookmarks have updated
+        chrome.runtime.sendMessage({ action: "bookmarksUpdated" });
     } catch (error) {
         console.error('Error syncing bookmarks:', error);
     }

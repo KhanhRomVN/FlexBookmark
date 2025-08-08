@@ -14,7 +14,9 @@ const BookmarkManagerPage: React.FC = () => {
     const loadBookmarks = async () => {
       try {
         const tree = await getBookmarks();
+        console.debug("[BookmarkManager] fetched tree:", tree);
         const rootChildren = tree[0]?.children || [];
+        console.debug("[BookmarkManager] rootChildren:", rootChildren);
         setBookmarks(rootChildren);
 
         const getStorage = async (): Promise<string | null> => {
@@ -30,7 +32,12 @@ const BookmarkManagerPage: React.FC = () => {
         };
 
         const lastFolderId = await getStorage();
+        console.debug(
+          "[BookmarkManager] lastFolderId from storage:",
+          lastFolderId
+        );
         const initial = lastFolderId || rootChildren[0]?.id || null;
+        console.debug("[BookmarkManager] initial selected folder:", initial);
         setSelectedFolder(initial);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
@@ -39,7 +46,22 @@ const BookmarkManagerPage: React.FC = () => {
       }
     };
 
+    // Initial load and background-sync listener
     loadBookmarks();
+    const runtime = typeof chrome !== "undefined" ? chrome.runtime : undefined;
+    const messageHandler = (msg: any) => {
+      if (msg?.action === "bookmarksUpdated") {
+        loadBookmarks();
+      }
+    };
+    if (runtime) {
+      runtime.onMessage.addListener(messageHandler);
+    }
+    return () => {
+      if (runtime) {
+        runtime.onMessage.removeListener(messageHandler);
+      }
+    };
   }, []);
 
   const handleSelectFolder = (id: string) => {
