@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { getBookmarks } from "../../utils/api";
+import Clock from "../components/Dashboard/Clock";
+import WeatherWidget from "../components/Dashboard/WeatherWidget";
+import SearchBar from "../components/common/SearchBar";
+import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
 
-interface BookmarkNode {
+export interface BookmarkNode {
   id: string;
   title: string;
   url?: string;
@@ -9,84 +13,62 @@ interface BookmarkNode {
 }
 
 const Dashboard: React.FC = () => {
-  const [time, setTime] = useState<string>("");
-  const [date, setDate] = useState<string>("");
   const [weather, setWeather] = useState<{
     temperature: number;
     weathercode: number;
     description: string;
   } | null>(null);
   const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // Update clock and date every second
-  useEffect(() => {
-    const updateDateTime = () => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString("en-GB", { hour12: false }));
-      setDate(
-        now.toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      );
-    };
-
-    updateDateTime();
-    const timer = setInterval(updateDateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
+  const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
 
   // Weather code mapping
-  const getWeatherDescription = (code: number): string => {
+  const getWeatherDescription = useCallback((code: number): string => {
     const weatherCodes: Record<number, string> = {
       0: "Clear sky",
-      1: "Mainly clear",
+      1: "Mostly sunny",
       2: "Partly cloudy",
       3: "Overcast",
-      45: "Fog",
-      48: "Depositing rime fog",
+      45: "Foggy",
+      48: "Rime fog",
       51: "Light drizzle",
       53: "Moderate drizzle",
-      55: "Dense drizzle",
+      55: "Heavy drizzle",
       56: "Light freezing drizzle",
-      57: "Dense freezing drizzle",
-      61: "Slight rain",
+      57: "Heavy freezing drizzle",
+      61: "Light rain",
       63: "Moderate rain",
       65: "Heavy rain",
       66: "Light freezing rain",
       67: "Heavy freezing rain",
-      71: "Slight snow fall",
-      73: "Moderate snow fall",
-      75: "Heavy snow fall",
+      71: "Light snow",
+      73: "Moderate snow",
+      75: "Heavy snow",
       77: "Snow grains",
-      80: "Slight rain showers",
-      81: "Moderate rain showers",
-      82: "Violent rain showers",
-      85: "Slight snow showers",
+      80: "Light showers",
+      81: "Moderate showers",
+      82: "Violent showers",
+      85: "Light snow showers",
       86: "Heavy snow showers",
       95: "Thunderstorm",
       96: "Thunderstorm with hail",
-      99: "Heavy thunderstorm with hail",
+      99: "Severe thunderstorm",
     };
 
     return weatherCodes[code] || `Weather code: ${code}`;
-  };
+  }, []);
 
-  // Fetch weather using browser geolocation and open-meteo API
+  // Fetch weather
   const fetchWeather = useCallback(async () => {
-    if (!navigator.geolocation) {
-      console.log("Geolocation not supported");
-      return;
-    }
+    if (!navigator.geolocation) return;
 
     try {
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000,
+          });
         }
       );
 
@@ -109,9 +91,9 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       console.error("Weather fetch error:", err);
     }
-  }, []);
+  }, [getWeatherDescription]);
 
-  // Load bookmarks from "Bookmarks bar" folder
+  // Load bookmarks
   const loadBookmarks = useCallback(async () => {
     try {
       const tree = await getBookmarks();
@@ -126,24 +108,13 @@ const Dashboard: React.FC = () => {
       setBookmarks(barFolder?.children || []);
     } catch (err) {
       console.error("Bookmarks load error:", err);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   // Initial data loading
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        await Promise.all([fetchWeather(), loadBookmarks()]);
-      } catch (error) {
-        console.error("Initialization error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    fetchWeather();
+    loadBookmarks();
   }, [fetchWeather, loadBookmarks]);
 
   // Handle search submission
@@ -158,118 +129,52 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter bookmarks based on search query
-  const filteredBookmarks = bookmarks.filter(
+  // Filter bookmarks
+  const filteredBookmarks = (currentFolder?.children || bookmarks).filter(
     (bm) =>
       bm.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       bm.url?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background-primary dark:bg-background-secondary">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Open folder view
+  const openFolder = (folder: BookmarkNode) => {
+    setFolderHistory([...folderHistory, folder]);
+    setCurrentFolder(folder);
+  };
+
+  // Navigate back to previous folder
+  const goBack = () => {
+    if (folderHistory.length > 0) {
+      const newHistory = [...folderHistory];
+      const prevFolder = newHistory.pop();
+      setFolderHistory(newHistory);
+      setCurrentFolder(prevFolder || null);
+    } else {
+      setCurrentFolder(null);
+    }
+  };
 
   return (
-    <div className="min-h-screen p-6 bg-background-primary text-text-primary dark:bg-background-secondary dark:text-text-secondary">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-        <div>
-          <div className="text-4xl md:text-5xl font-mono font-medium">
-            {time}
-          </div>
-          <div className="text-lg md:text-xl mt-1 opacity-90">{date}</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="p-6 card bg-card-background border border-card-border rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-semibold mb-4">Weather</h3>
-          {weather ? (
-            <div className="flex items-center gap-4">
-              <div className="text-5xl font-light">
-                {weather.temperature.toFixed(1)}°C
-              </div>
-              <div className="flex flex-col">
-                <div className="text-lg capitalize">{weather.description}</div>
-                <div className="text-sm opacity-80 mt-1">
-                  {weather.weathercode} -{" "}
-                  {getWeatherDescription(weather.weathercode)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-lg">Weather data unavailable</div>
-          )}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+      <div className="w-full max-w-6xl flex flex-col items-center">
+        <div className="w-full max-w-2xl flex flex-col items-center mb-8">
+          <Clock />
+          <WeatherWidget weather={weather} />
         </div>
 
-        <div className="p-6 card bg-card-background border border-card-border rounded-xl shadow-sm hover:shadow-md transition-shadow">
-          <h3 className="text-xl font-semibold mb-4">Search</h3>
-          <form onSubmit={handleSearch}>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
-                🔍
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search web or bookmarks..."
-                className="input-field w-full pl-10 pr-4 py-3 rounded-lg bg-input-background border border-input-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-md hover:bg-opacity-90 transition-colors"
-              >
-                Go
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearch}
+        />
 
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-2xl md:text-3xl font-semibold">Bookmarks Bar</h3>
-          <div className="text-sm opacity-80">
-            {filteredBookmarks.length} of {bookmarks.length} items
-          </div>
-        </div>
-
-        {filteredBookmarks.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filteredBookmarks.map((bm) => (
-              <a
-                key={bm.id}
-                href={bm.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-4 card bg-card-background border border-card-border rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center group"
-              >
-                <div className="bg-gray-200 dark:bg-gray-700 w-12 h-12 rounded-full mb-3 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                  {bm.title?.charAt(0) || "🔗"}
-                </div>
-                <div className="font-medium truncate w-full">
-                  {bm.title || "Untitled"}
-                </div>
-                {bm.url && (
-                  <div className="text-xs opacity-70 mt-1 truncate w-full">
-                    {new URL(bm.url).hostname.replace("www.", "")}
-                  </div>
-                )}
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-card-background rounded-xl border border-card-border">
-            <div className="text-xl opacity-80">
-              No bookmarks match your search
-            </div>
-            <div className="mt-2 opacity-60">Try a different search term</div>
-          </div>
-        )}
+        <BookmarkGrid
+          bookmarks={filteredBookmarks}
+          currentFolder={currentFolder}
+          folderHistory={folderHistory}
+          openFolder={openFolder}
+          goBack={goBack}
+        />
       </div>
     </div>
   );

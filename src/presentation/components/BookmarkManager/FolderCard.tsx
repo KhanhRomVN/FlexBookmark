@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { EllipsisVertical } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import BookmarkCard from "./BookmarkCard";
 
 interface FolderCardProps {
@@ -32,7 +32,10 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   }, []);
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={false}
+      transition={{ duration: 0.2 }}
       className={`group bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
         !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
       }`}
@@ -58,28 +61,36 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
       </div>
 
       <motion.div
-        layout
+        layout="position"
         className="folder-body p-2 relative overflow-hidden"
-        style={{ maxHeight: isOpen ? "none" : "20rem" }}
       >
         {children.length === 0 ? (
           <div className="text-center py-4 text-gray-500">No bookmarks</div>
         ) : (
-          <div className={`${depth > 0 ? "p-0" : ""}`}>
-            {(isOpen ? children : children.slice(0, 5)).map((item) =>
-              item.url ? (
-                <BookmarkCard key={item.id} item={item} depth={depth + 1} />
-              ) : (
-                <FolderCard key={item.id} folder={item} depth={depth + 1} />
-              )
-            )}
-          </div>
+          <AnimatePresence initial={false}>
+            <motion.div
+              layout
+              className={`${depth > 0 ? "p-0" : ""}`}
+              initial={{ height: 0 }}
+              animate={{ height: "auto" }}
+              exit={{ height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {(isOpen ? children : children.slice(0, 5)).map((item) =>
+                item.url ? (
+                  <BookmarkCard key={item.id} item={item} depth={depth + 1} />
+                ) : (
+                  <FolderCard key={item.id} folder={item} depth={depth + 1} />
+                )
+              )}
+            </motion.div>
+          </AnimatePresence>
         )}
         {!isOpen && children.length > 5 && (
           <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-card-header to-transparent pointer-events-none"></div>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 

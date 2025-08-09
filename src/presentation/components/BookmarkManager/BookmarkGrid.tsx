@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { motion } from "framer-motion";
 import FolderCard from "./FolderCard";
 import BookmarkCard from "./BookmarkCard";
 import EmptyState from "./EmptyState";
@@ -130,6 +131,33 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
         ]
       : []),
   ];
+  const [columnCount, setColumnCount] = useState<number>(4);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateColumnCount = () => {
+      const width = gridRef.current?.clientWidth || window.innerWidth;
+      let count = 4;
+      if (width < 640) count = 1;
+      else if (width < 768) count = 2;
+      else if (width < 1024) count = 3;
+      setColumnCount(count);
+    };
+    updateColumnCount();
+    window.addEventListener("resize", updateColumnCount);
+    return () => window.removeEventListener("resize", updateColumnCount);
+  }, []);
+
+  const columns = useMemo<BookmarkNode[][]>(() => {
+    const result: BookmarkNode[][] = Array.from(
+      { length: columnCount },
+      () => []
+    );
+    displayItems.forEach((item, index) => {
+      result[index % columnCount].push(item);
+    });
+    return result;
+  }, [displayItems, columnCount]);
 
   return (
     <div
@@ -144,22 +172,28 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
       {displayItems.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-x-4 gap-y-4 mt-4">
-          {displayItems.map((item) => (
-            <div
-              key={item.id}
-              draggable
-              onDragStart={() => handleDragStart(item)}
-              onDragEnd={handleDragEnd}
-              className={`mb-4 break-inside-avoid ${
-                dragged?.id === item.id ? "opacity-50" : ""
-              }`}
-            >
-              {item.url ? (
-                <BookmarkCard key={item.id} item={item} depth={0} />
-              ) : (
-                <FolderCard folder={item} depth={0} />
-              )}
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4"
+        >
+          {columns.map((column: BookmarkNode[], colIndex: number) => (
+            <div key={colIndex} className="flex flex-col gap-4">
+              {column.map((item: BookmarkNode) => (
+                <motion.div
+                  layout
+                  key={item.id}
+                  draggable
+                  onDragStart={() => handleDragStart(item)}
+                  onDragEnd={handleDragEnd}
+                  className={`${dragged?.id === item.id ? "opacity-50" : ""}`}
+                >
+                  {item.url ? (
+                    <BookmarkCard key={item.id} item={item} depth={0} />
+                  ) : (
+                    <FolderCard folder={item} depth={0} />
+                  )}
+                </motion.div>
+              ))}
             </div>
           ))}
         </div>
