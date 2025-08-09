@@ -35,7 +35,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
     <motion.div
       layout
       initial={false}
-      transition={{ duration: 0.2 }}
+      transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
       className={`group bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
         !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
       }`}
@@ -61,7 +61,9 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
       </div>
 
       <motion.div
-        layout="position"
+        layout
+        initial={false}
+        transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
         className="folder-body p-2 relative overflow-hidden"
       >
         {children.length === 0 ? (

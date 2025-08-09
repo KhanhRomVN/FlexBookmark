@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getBookmarks } from "../../utils/api";
 import MainLayout from "../components/layout/MainLayout";
-import BookmarkGrid from "../components/BookmarkManager/BookmarkGrid";
+import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
 
 interface BookmarkNode {
   id: string;
@@ -81,7 +81,7 @@ const BookmarkManagerPage: React.FC = () => {
 
   return (
     <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
-      <BookmarkGrid folderId={selectedFolder} folders={bookmarks} />
+      <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
     </MainLayout>
   );
 };

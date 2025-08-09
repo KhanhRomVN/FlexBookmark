@@ -12,7 +12,7 @@ interface BookmarkNode {
   children?: BookmarkNode[];
 }
 
-interface BookmarkGridProps {
+interface BookmarkLayoutProps {
   folderId: string | null;
   folders: BookmarkNode[];
 }
@@ -21,7 +21,10 @@ interface BookmarkGridProps {
  * React implementation of bookmark grid with dynamic fetching,
  * depth-based layout (masonry at depth 0), and drag-and-drop support.
  */
-const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
+const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
+  folderId,
+  folders,
+}) => {
   const [items, setItems] = useState<BookmarkNode[]>([]);
   const [folder, setFolder] = useState<BookmarkNode | null>(null);
   const [dragged, setDragged] = useState<BookmarkNode | null>(null);
@@ -202,4 +205,4 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
   );
 };
 
-export default BookmarkGrid;
+export default BookmarkLayout;
