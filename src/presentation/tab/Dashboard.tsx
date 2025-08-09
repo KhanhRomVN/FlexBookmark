@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-background-primary text-text-primary dark:bg-background-secondary dark:text-text-secondary">
+    <div className="min-h-screen p-6 bg-background-primary text-text-primary dark:bg-background-secondary dark:text-text-secondary bg-red-500">
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="text-4xl font-mono">{time}</div>
@@ -131,9 +131,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div>
-        <h3 className="text-5xl font-semibold mb-4 text-red-500">
-          Bookmarks Bar
-        </h3>
+        <h3 className="text-5xl font-semibold mb-4">Bookmarks Bar</h3>
         <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-4 overflow-x-auto pb-4">
           {bookmarks.map((bm) => (
             <a

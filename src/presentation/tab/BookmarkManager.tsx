@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "../components/common/Sidebar";
-import BookmarkGrid from "../components/BookmarkManager/BookmarkGrid";
-import Header from "../components/common/Header";
 import { getBookmarks } from "../../utils/api";
+import MainLayout from "../components/layout/MainLayout";
+import BookmarkGrid from "../components/BookmarkManager/BookmarkGrid";
+
+interface BookmarkNode {
+  id: string;
+  title: string;
+  url?: string;
+  children?: BookmarkNode[];
+}
 
 const BookmarkManagerPage: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -16,7 +22,6 @@ const BookmarkManagerPage: React.FC = () => {
         const tree = await getBookmarks();
         console.debug("[BookmarkManager] fetched tree:", tree);
         const rootChildren = tree[0]?.children || [];
-        console.debug("[BookmarkManager] rootChildren:", rootChildren);
         setBookmarks(rootChildren);
 
         const getStorage = async (): Promise<string | null> => {
@@ -32,12 +37,7 @@ const BookmarkManagerPage: React.FC = () => {
         };
 
         const lastFolderId = await getStorage();
-        console.debug(
-          "[BookmarkManager] lastFolderId from storage:",
-          lastFolderId
-        );
         const initial = lastFolderId || rootChildren[0]?.id || null;
-        console.debug("[BookmarkManager] initial selected folder:", initial);
         setSelectedFolder(initial);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
@@ -46,7 +46,6 @@ const BookmarkManagerPage: React.FC = () => {
       }
     };
 
-    // Initial load and background-sync listener
     loadBookmarks();
     const runtime = typeof chrome !== "undefined" ? chrome.runtime : undefined;
     const messageHandler = (msg: any) => {
@@ -81,19 +80,9 @@ const BookmarkManagerPage: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar folders={bookmarks} onSelectFolder={handleSelectFolder} />
-
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
-
-        <main className="flex-1 overflow-y-auto p-4">
-          <div className="container mx-auto">
-            <BookmarkGrid folderId={selectedFolder} folders={bookmarks} />
-          </div>
-        </main>
-      </div>
-    </div>
+    <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
+      <BookmarkGrid folderId={selectedFolder} folders={bookmarks} />
+    </MainLayout>
   );
 };
 

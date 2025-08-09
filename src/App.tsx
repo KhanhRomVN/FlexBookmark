@@ -42,15 +42,11 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <div className="min-h-screen flex flex-col">
+          <div className="min-h-screen flex flex-col ">
             <Tabs
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as any)}
             >
-              <TabsList className="hidden">
-                <TabsTrigger value="dashboard">Dashboard (1)</TabsTrigger>
-                <TabsTrigger value="manager">Bookmarks (2)</TabsTrigger>
-              </TabsList>
               <TabsContent value="dashboard" className="flex-1 overflow-auto">
                 <Dashboard />
               </TabsContent>

@@ -240,3 +240,7 @@
     width: 6px;
   }
 }
+/* Remove unwanted top margin on tab panels */
+[role="tabpanel"] {
+  margin-top: 0 !important;
+}

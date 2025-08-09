@@ -12,8 +12,6 @@ const Header: React.FC = () => {
   return (
     <header className="main-header bg-background-primary border-b border-border-primary p-4">
       <div className="header-top flex items-center justify-between">
-        <h2 className="header-title text-xl font-bold">FlexBookmark</h2>
-
         <div className="header-actions flex items-center gap-4">
           <div className="search-box relative flex-1 max-w-md">
             <span className="search-icon absolute left-3 top-1/2 transform -translate-y-1/2">

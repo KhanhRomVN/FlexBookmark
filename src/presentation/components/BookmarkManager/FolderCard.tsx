@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BookmarkCard from "./BookmarkCard";
 
 interface FolderCardProps {
@@ -11,6 +11,10 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   const [children, setChildren] = useState<any[]>([]);
 
   const loadChildren = async () => {
+    if (folder.children) {
+      setChildren(folder.children);
+      return;
+    }
     const folderChildren = await new Promise<any[]>((resolve) =>
       chrome.bookmarks.getChildren(folder.id, resolve)
     );
@@ -23,6 +27,11 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
     }
     setIsOpen(!isOpen);
   };
+
+  useEffect(() => {
+    loadChildren();
+    setIsOpen(true);
+  }, []);
 
   return (
     <div className="folder-card">
@@ -48,8 +57,9 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
             <div className="text-center py-4 text-gray-500">No bookmarks</div>
           ) : (
             <div className={`${depth > 0 ? "pl-4" : ""}`}>
+              {/* Render direct bookmarks */}
               {children
-                .filter((child) => child.url)
+                .filter((child) => !!child.url)
                 .map((bookmark) => (
                   <BookmarkCard
                     key={bookmark.id}
@@ -58,6 +68,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
                   />
                 ))}
 
+              {/* Render subfolders */}
               {children
                 .filter((child) => !child.url)
                 .map((subfolder) => (
