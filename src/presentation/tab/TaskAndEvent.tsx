@@ -88,19 +88,27 @@ const TaskAndEvent: React.FC = () => {
   }, [checkAuth, fetchData]);
 
   // Trigger interactive Firebase login
-  const handleLogin = async () => {
+  const handleLogin = () => {
     setAuthStatus("loading");
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      setToken(idToken);
-      setAuthStatus("authenticated");
-      fetchData();
-    } catch (err: any) {
-      console.error("Sign-in error:", err);
-      setAuthStatus("unauthenticated");
-      setError(err.message || "Đăng nhập thất bại");
-    }
+    chrome.runtime.sendMessage(
+      { type: "getToken", interactive: true },
+      (response: { token?: string; error?: string }) => {
+        if (chrome.runtime.lastError || !response.token) {
+          console.error(
+            "Sign-in error:",
+            chrome.runtime.lastError || response.error
+          );
+          setAuthStatus("unauthenticated");
+          setError(
+            response.error || "Authentication failed. Please try again."
+          );
+        } else {
+          setToken(response.token);
+          setAuthStatus("authenticated");
+          fetchData();
+        }
+      }
+    );
   };
 
   // Select item handlers

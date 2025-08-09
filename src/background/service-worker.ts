@@ -22,7 +22,7 @@ async function syncBookmarks() {
     }
 }
 
-// Gửi dữ liệu khi new tab mở
+// Handle messages from UI scripts
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action === "getBookmarks") {
         chrome.storage.local.get("bookmarkTree", (data) => {
@@ -30,15 +30,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         });
         return true;
     }
-});
-
-// Khởi tạo đồng bộ
-chrome.runtime.onInstalled.addListener(syncBookmarks);
-
-// Handle token requests from UI scripts
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type === "getToken") {
-        const { interactive } = message;
+    if (request.type === "getToken") {
+        const { interactive } = request;
         chrome.identity.getAuthToken({ interactive }, (token) => {
             if (chrome.runtime.lastError || !token) {
                 sendResponse({ error: chrome.runtime.lastError?.message || "Failed to get token" });
@@ -46,6 +39,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 sendResponse({ token });
             }
         });
-        return true; // keep channel open for async response
+        return true;
     }
 });
+
+// Khởi tạo đồng bộ khi cài đặt
+chrome.runtime.onInstalled.addListener(syncBookmarks);

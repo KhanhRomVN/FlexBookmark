@@ -13,7 +13,9 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig)
 const auth = getAuth(firebaseApp)
-const provider = new GoogleAuthProvider()
+const provider = new GoogleAuthProvider();
+provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
 
 onAuthStateChanged(auth, () => {
 });
