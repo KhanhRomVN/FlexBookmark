@@ -151,7 +151,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
               draggable
               onDragStart={() => handleDragStart(item)}
               onDragEnd={handleDragEnd}
-              className={`masonry-item mb-4 break-inside-avoid ${
+              className={`mb-4 break-inside-avoid ${
                 dragged?.id === item.id ? "opacity-50" : ""
               }`}
             >

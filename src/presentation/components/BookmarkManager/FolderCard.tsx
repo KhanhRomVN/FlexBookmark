@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { EllipsisVertical } from "lucide-react";
+import { motion } from "framer-motion";
 import BookmarkCard from "./BookmarkCard";
 
 interface FolderCardProps {
@@ -32,9 +33,11 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
 
   return (
     <div
-      className={`bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
+      className={`group bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
         !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
       }`}
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
     >
       <div
         className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header"
@@ -54,7 +57,8 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
         </div>
       </div>
 
-      <div
+      <motion.div
+        layout
         className="folder-body p-2 relative overflow-hidden"
         style={{ maxHeight: isOpen ? "none" : "20rem" }}
       >
@@ -74,7 +78,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
         {!isOpen && children.length > 5 && (
           <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-card-header to-transparent pointer-events-none"></div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
