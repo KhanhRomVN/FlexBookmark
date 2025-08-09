@@ -18,11 +18,13 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   // drag+drop handlers
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     e.preventDefault();
     onDropTargetChange(item.id);
     e.dataTransfer.dropEffect = "move";
   };
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     e.preventDefault();
     onDropTargetChange(null);
     try {

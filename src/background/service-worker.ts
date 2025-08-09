@@ -34,3 +34,18 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
 // Khởi tạo đồng bộ
 chrome.runtime.onInstalled.addListener(syncBookmarks);
+
+// Handle token requests from UI scripts
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "getToken") {
+        const { interactive } = message;
+        chrome.identity.getAuthToken({ interactive }, (token) => {
+            if (chrome.runtime.lastError || !token) {
+                sendResponse({ error: chrome.runtime.lastError?.message || "Failed to get token" });
+            } else {
+                sendResponse({ token });
+            }
+        });
+        return true; // keep channel open for async response
+    }
+});

@@ -87,6 +87,8 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     e.preventDefault();
     setDropTarget(null);
     const data = JSON.parse(e.dataTransfer.getData("application/json"));
+    // Only handle bookmarks at layout level, ignore folders
+    if (!data.url) return;
     if (data.id === folderId) return;
 
     try {

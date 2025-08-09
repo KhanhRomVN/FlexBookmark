@@ -39,16 +39,20 @@ const FolderCard: React.FC<FolderCardProps> = ({
   }, []);
   // Drag-and-drop handlers for folders
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     e.preventDefault();
     onDropTargetChange(folder.id);
     e.dataTransfer.dropEffect = "move";
   };
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     e.preventDefault();
     onDropTargetChange(null);
     try {
       const data = JSON.parse(e.dataTransfer.getData("application/json"));
-      // Prevent invalid moves
+      // Only handle bookmarks (items with a URL). Ignore folder drops to prevent depth > 2.
+      if (!data.url) return;
+      // Prevent invalid moves (self or circular)
       if (data.id === folder.id || isDescendant(folder, data.id)) return;
       await chrome.bookmarks.move(data.id, {
         parentId: folder.id,
