@@ -22,19 +22,19 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   };
 
   const toggleFolder = () => {
-    if (!isOpen && children.length === 0) {
-      loadChildren();
-    }
     setIsOpen(!isOpen);
   };
 
   useEffect(() => {
     loadChildren();
-    setIsOpen(true);
   }, []);
 
   return (
-    <div className="folder-card w-full">
+    <div
+      className={`folder-card w-full border rounded-md ${
+        !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
+      }`}
+    >
       <div
         className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header"
         onClick={toggleFolder}
@@ -44,44 +44,34 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
           <div className="folder-title font-medium">{folder.title}</div>
         </div>
         <div className="flex items-center">
-          <span className="text-xs mr-2">{children.length || 0} items</span>
+          {/* removed count indicator */}
           <button className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
             ⋮
           </button>
         </div>
       </div>
 
-      {isOpen && (
-        <div className="folder-body p-2">
-          {children.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">No bookmarks</div>
-          ) : (
-            <div className={`${depth > 0 ? "pl-4" : ""}`}>
-              {/* Render direct bookmarks */}
-              {children
-                .filter((child) => !!child.url)
-                .map((bookmark) => (
-                  <BookmarkCard
-                    key={bookmark.id}
-                    item={bookmark}
-                    depth={depth + 1}
-                  />
-                ))}
-
-              {/* Render subfolders */}
-              {children
-                .filter((child) => !child.url)
-                .map((subfolder) => (
-                  <FolderCard
-                    key={subfolder.id}
-                    folder={subfolder}
-                    depth={depth + 1}
-                  />
-                ))}
-            </div>
-          )}
-        </div>
-      )}
+      <div
+        className="folder-body p-2 relative overflow-hidden"
+        style={{ maxHeight: isOpen ? "none" : "20rem" }}
+      >
+        {children.length === 0 ? (
+          <div className="text-center py-4 text-gray-500">No bookmarks</div>
+        ) : (
+          <div className={`${depth > 0 ? "pl-4" : ""}`}>
+            {(isOpen ? children : children.slice(0, 5)).map((item) =>
+              item.url ? (
+                <BookmarkCard key={item.id} item={item} depth={depth + 1} />
+              ) : (
+                <FolderCard key={item.id} folder={item} depth={depth + 1} />
+              )
+            )}
+          </div>
+        )}
+        {!isOpen && children.length > 5 && (
+          <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-card-header to-transparent pointer-events-none"></div>
+        )}
+      </div>
     </div>
   );
 };
