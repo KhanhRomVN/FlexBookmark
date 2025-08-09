@@ -10,23 +10,26 @@
     "bookmarks",
     "storage",
     "tabs",
-    "identity",
-    "https://www.googleapis.com/*"
+    "identity"
   ],
   "oauth2": {
+    "client_id": "661697300169-6smulak345u6sk708oe9em5vd4pvup6e.apps.googleusercontent.com",
     "scopes": [
+      "openid",
+      "email",
+      "profile",
       "https://www.googleapis.com/auth/calendar.readonly",
       "https://www.googleapis.com/auth/tasks.readonly"
     ]
   },
   "host_permissions": [
-    "<all_urls>"
-  ],
+    "https://www.googleapis.com/*"
+  ],  
   "background": {
     "service_worker": "service-worker.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval' https://apis.google.com https://www.googleapis.com https://accounts.google.com; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://www.googleapis.com;"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"
