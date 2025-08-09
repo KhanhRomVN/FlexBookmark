@@ -30,6 +30,13 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [dragged, setDragged] = useState<BookmarkNode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const dragSource = useRef<{
+    id: string;
+    parentId: string;
+    index: number;
+  } | null>(null);
+
   // Fetch children for selected folder whenever folderId changes
   useEffect(() => {
     if (!folderId) {
@@ -63,51 +70,69 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     })();
   }, [folderId, folders]);
 
-  // Setup drag-and-drop on grid container
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const onDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      container.classList.add("drop-target-highlight");
-    };
-    const onDragLeave = () => {
-      container.classList.remove("drop-target-highlight");
-    };
-    const onDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      container.classList.remove("drop-target-highlight");
-      if (!dragged) return;
-      const parentId = folderId || "0";
-      try {
-        await chrome.bookmarks.move(dragged.id, { parentId });
-      } catch (err) {
-        console.error("Error moving bookmark/folder:", err);
-      }
-      // refresh view
-      const children: chrome.bookmarks.BookmarkTreeNode[] = await new Promise(
-        (res) => chrome.bookmarks.getChildren(parentId, res)
-      );
-      setItems(children as BookmarkNode[]);
-      setDragged(null);
-    };
+  // Container drag-and-drop handlers
+  const handleContainerDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDropTarget("layout");
+    e.dataTransfer.dropEffect = "move";
+  };
 
-    container.addEventListener("dragover", onDragOver);
-    container.addEventListener("dragleave", onDragLeave);
-    container.addEventListener("drop", onDrop);
-    return () => {
-      container.removeEventListener("dragover", onDragOver);
-      container.removeEventListener("dragleave", onDragLeave);
-      container.removeEventListener("drop", onDrop);
-    };
-  }, [dragged, folderId]);
+  const handleContainerDragLeave = () => {
+    if (dropTarget === "layout") {
+      setDropTarget(null);
+    }
+  };
+
+  const handleContainerDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDropTarget(null);
+    const data = JSON.parse(e.dataTransfer.getData("application/json"));
+    if (data.id === folderId) return;
+
+    try {
+      await chrome.bookmarks.move(data.id, {
+        parentId: folderId || "0",
+        index: data.index,
+      });
+
+      setItems((prev) => {
+        const newItems = [...prev];
+        if (
+          dragSource.current &&
+          dragSource.current.parentId === (folderId || "0")
+        ) {
+          newItems.splice(dragSource.current.index, 1);
+        }
+        if ((folderId || "0") === data.parentId && dragged) {
+          newItems.splice(data.index, 0, dragged);
+        }
+        return newItems;
+      });
+    } catch (err) {
+      console.error("Error moving item:", err);
+    }
+    setDragged(null);
+  };
 
   // Handlers for individual item drag start/end
-  const handleDragStart = (item: BookmarkNode) => {
-    setDragged(item);
+  const handleDragStart = (
+    e: React.MouseEvent<HTMLDivElement> & { dataTransfer: DataTransfer },
+    item: BookmarkNode,
+    index: number
+  ) => {
+    const parentId = folderId || "0";
+    dragSource.current = { id: item.id, parentId, index };
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ ...item, parentId, index })
+    );
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(() => setDragged(item), 0);
   };
+
   const handleDragEnd = () => {
     setDragged(null);
+    setDropTarget(null);
   };
 
   // If no folder selected show empty state
@@ -166,9 +191,14 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     <div
       ref={containerRef}
       id="bookmark-grid"
-      className="bookmark-grid drop-target"
+      className={`bookmark-grid ${
+        dropTarget === "layout" ? "ring-2 ring-primary" : ""
+      }`}
       data-parent-id={folderId}
       data-depth="0"
+      onDragOver={handleContainerDragOver}
+      onDragLeave={handleContainerDragLeave}
+      onDrop={handleContainerDrop}
     >
       <GridHeader folderId={folderId} folder={folder} depth={0} />
 
@@ -181,19 +211,31 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
         >
           {columns.map((column: BookmarkNode[], colIndex: number) => (
             <div key={colIndex} className="flex flex-col gap-4">
-              {column.map((item: BookmarkNode) => (
+              {column.map((item: BookmarkNode, index: number) => (
                 <motion.div
                   layout
                   key={item.id}
                   draggable
-                  onDragStart={() => handleDragStart(item)}
+                  onDragStart={(e) => handleDragStart(e as any, item, index)}
                   onDragEnd={handleDragEnd}
-                  className={`${dragged?.id === item.id ? "opacity-50" : ""}`}
+                  className={`${
+                    dragged?.id === item.id ? "opacity-50 scale-95" : ""
+                  } transition-all duration-200`}
                 >
                   {item.url ? (
-                    <BookmarkCard key={item.id} item={item} depth={0} />
+                    <BookmarkCard
+                      item={item}
+                      depth={0}
+                      isDropTarget={dropTarget === item.id}
+                      onDropTargetChange={(id) => setDropTarget(id)}
+                    />
                   ) : (
-                    <FolderCard folder={item} depth={0} />
+                    <FolderCard
+                      folder={item}
+                      depth={0}
+                      isDropTarget={dropTarget === item.id}
+                      onDropTargetChange={(id) => setDropTarget(id)}
+                    />
                   )}
                 </motion.div>
               ))}

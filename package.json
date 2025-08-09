@@ -16,7 +16,7 @@
     "postbuild": "tsc src/background/service-worker.ts --outDir dist --esModuleInterop",
     "watchbuild": "node watchbuild.js",
     "toggle-watchbuild": "node toggle-watchbuild.js"
-    },
+  },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
     "@codemirror/lang-go": "^6.0.1",
@@ -77,6 +77,7 @@
     "embla-carousel-react": "^8.1.8",
     "firebase": "^10.12.5",
     "framer-motion": "^11.3.24",
+    "googleapis": "^155.0.1",
     "howler": "^2.2.4",
     "imagekitio-react": "^4.2.0",
     "jwt-decode": "^4.0.0",

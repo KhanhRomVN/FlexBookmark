@@ -6,9 +6,16 @@ import BookmarkCard from "./BookmarkCard";
 interface FolderCardProps {
   folder: any;
   depth: number;
+  isDropTarget: boolean;
+  onDropTargetChange: (id: string | null) => void;
 }
 
-const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
+const FolderCard: React.FC<FolderCardProps> = ({
+  folder,
+  depth,
+  isDropTarget,
+  onDropTargetChange,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<any[]>([]);
 
@@ -30,6 +37,38 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   useEffect(() => {
     loadChildren();
   }, []);
+  // Drag-and-drop handlers for folders
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    onDropTargetChange(folder.id);
+    e.dataTransfer.dropEffect = "move";
+  };
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    onDropTargetChange(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("application/json"));
+      // Prevent invalid moves
+      if (data.id === folder.id || isDescendant(folder, data.id)) return;
+      await chrome.bookmarks.move(data.id, {
+        parentId: folder.id,
+        index: 0, // Add to top
+      });
+      // Optimistically update UI
+      setChildren((prev) => [{ ...data }, ...prev]);
+    } catch (err) {
+      console.error("Folder drop error:", err);
+    }
+  };
+  // Utility to prevent circular moves
+  const isDescendant = (parent: any, targetId: string): boolean => {
+    if (!parent.children) return false;
+    if (parent.children.some((child: any) => child.id === targetId))
+      return true;
+    return parent.children.some(
+      (child: any) => child.children && isDescendant(child, targetId)
+    );
+  };
 
   return (
     <motion.div
@@ -80,9 +119,21 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
             >
               {(isOpen ? children : children.slice(0, 5)).map((item) =>
                 item.url ? (
-                  <BookmarkCard key={item.id} item={item} depth={depth + 1} />
+                  <BookmarkCard
+                    key={item.id}
+                    item={item}
+                    depth={depth + 1}
+                    isDropTarget={false}
+                    onDropTargetChange={() => {}}
+                  />
                 ) : (
-                  <FolderCard key={item.id} folder={item} depth={depth + 1} />
+                  <FolderCard
+                    key={item.id}
+                    folder={item}
+                    depth={depth + 1}
+                    isDropTarget={false}
+                    onDropTargetChange={() => {}}
+                  />
                 )
               )}
             </motion.div>

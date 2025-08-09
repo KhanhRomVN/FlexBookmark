@@ -4,10 +4,38 @@ import { EllipsisVertical as LucideMenu } from "lucide-react";
 interface BookmarkCardProps {
   item: any;
   depth: number;
+  isDropTarget: boolean;
+  onDropTargetChange: (id: string | null) => void;
 }
 
-const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
+const BookmarkCard: React.FC<BookmarkCardProps> = ({
+  item,
+  depth,
+  isDropTarget,
+  onDropTargetChange,
+}) => {
   const [showMenu, setShowMenu] = useState(false);
+
+  // drag+drop handlers
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    onDropTargetChange(item.id);
+    e.dataTransfer.dropEffect = "move";
+  };
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    onDropTargetChange(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("application/json"));
+      if (data.id === item.id) return;
+      await chrome.bookmarks.move(data.id, {
+        parentId: item.parentId || "",
+        index: data.index,
+      });
+    } catch (err) {
+      console.error("Drop error:", err);
+    }
+  };
 
   const handleClick = () => {
     chrome.tabs.create({ url: item.url });
@@ -20,10 +48,19 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
 
   return (
     <div
-      className={`bookmark-card group flex items-center p-2 ${
-        depth > 1 ? "ml-4" : ""
-      }`}
+      className={`bookmark-card group flex items-center p-2 rounded-md transition-all
+        ${depth > 1 ? "ml-4" : ""}
+        ${
+          isDropTarget
+            ? "bg-blue-100 dark:bg-blue-900 border border-primary"
+            : ""
+        }
+      `}
       onClick={handleClick}
+      draggable
+      onDragOver={handleDragOver}
+      onDragLeave={() => onDropTargetChange(null)}
+      onDrop={handleDrop}
     >
       <img
         src={`https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}`}

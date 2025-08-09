@@ -130,7 +130,7 @@
     --sidebar-focus: #d1d5db;
 
     /* Custom background image */
-    background-image: url('/images/theme-bg.jpg');
+    background-image: url('../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg');
     background-size: cover;
     background-position: center;
   }

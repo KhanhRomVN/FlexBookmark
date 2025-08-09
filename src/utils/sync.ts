@@ -31,7 +31,22 @@ function deepEqual(obj1: any, obj2: any): boolean {
     return JSON.stringify(obj1) === JSON.stringify(obj2);
 }
 
-// Lắng nghe thay đổi từ các tab khác
+// Debounce helper to batch rapid bookmark events
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+    let timer: number;
+    return (...args: Parameters<T>) => {
+        clearTimeout(timer);
+        timer = window.setTimeout(() => fn(...args), delay);
+    };
+}
+
+// Listen for bookmark events to trigger sync
+chrome.bookmarks.onCreated.addListener(debounce(syncWithGoogle, 1000));
+chrome.bookmarks.onRemoved.addListener(debounce(syncWithGoogle, 1000));
+chrome.bookmarks.onChanged.addListener(debounce(syncWithGoogle, 1000));
+chrome.bookmarks.onMoved.addListener(debounce(syncWithGoogle, 1000));
+
+// Listen for updates from runtime messages (fallback for other contexts)
 chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'bookmarksUpdated') {
         window.location.reload();
