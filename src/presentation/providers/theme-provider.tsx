@@ -41,7 +41,7 @@ export function ThemeProvider({
     root.classList.remove("light", "dark", "image");
 
     if (theme === "image") {
-      root.classList.add("image-theme");
+      root.classList.add("image");
       if (bgImageRef.current) {
         document.body.style.backgroundImage = `url(${bgImageRef.current})`;
         document.body.style.backgroundSize = "cover";

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { EllipsisVertical } from "lucide-react";
 import BookmarkCard from "./BookmarkCard";
 
 interface FolderCardProps {
@@ -31,7 +32,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
 
   return (
     <div
-      className={`folder-card w-full border rounded-md ${
+      className={`bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
         !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
       }`}
     >
@@ -44,9 +45,11 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
           <div className="folder-title font-medium">{folder.title}</div>
         </div>
         <div className="flex items-center">
-          {/* removed count indicator */}
-          <button className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
-            ⋮
+          <button
+            className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 invisible group-hover:visible"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <EllipsisVertical size={16} />
           </button>
         </div>
       </div>
@@ -58,7 +61,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
         {children.length === 0 ? (
           <div className="text-center py-4 text-gray-500">No bookmarks</div>
         ) : (
-          <div className={`${depth > 0 ? "pl-4" : ""}`}>
+          <div className={`${depth > 0 ? "p-0" : ""}`}>
             {(isOpen ? children : children.slice(0, 5)).map((item) =>
               item.url ? (
                 <BookmarkCard key={item.id} item={item} depth={depth + 1} />

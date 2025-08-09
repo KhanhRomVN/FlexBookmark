@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { EllipsisVertical as LucideMenu } from "lucide-react";
 
 interface BookmarkCardProps {
   item: any;
@@ -19,8 +20,8 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
 
   return (
     <div
-      className={`bookmark-card flex items-center p-2 ${
-        depth > 0 ? "ml-4" : ""
+      className={`bookmark-card group flex items-center p-2 ${
+        depth > 1 ? "ml-4" : ""
       }`}
       onClick={handleClick}
     >
@@ -38,10 +39,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
 
       <div className="relative">
         <button
-          className="bookmark-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+          className="bookmark-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 invisible group-hover:visible"
           onClick={handleMenuClick}
         >
-          ⋮
+          <LucideMenu size={16} />
         </button>
 
         {showMenu && (

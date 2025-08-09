@@ -144,7 +144,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
       {displayItems.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-x-4 gap-y-4 mt-4">
           {displayItems.map((item) => (
             <div
               key={item.id}

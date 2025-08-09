@@ -10,7 +10,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="main-header bg-background-primary border-b border-border-primary p-4">
+    <header className="main-header bg-sidebar-background border-b border-sidebar-border p-2">
       <div className="header-top flex items-center justify-between">
         <div className="header-actions flex items-center gap-4">
           <div className="search-box relative flex-1 max-w-md">
