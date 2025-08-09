@@ -34,7 +34,7 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   }, []);
 
   return (
-    <div className="folder-card">
+    <div className="folder-card w-full">
       <div
         className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header"
         onClick={toggleFolder}

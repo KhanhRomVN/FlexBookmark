@@ -22,7 +22,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-4">
-          <div className="container mx-auto">{children}</div>
+          {/* Allow full width content to accommodate wider cards */}
+          <div className="mx-auto w-full max-w-none">{children}</div>
         </main>
       </div>
     </div>

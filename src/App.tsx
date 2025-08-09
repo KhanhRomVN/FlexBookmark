@@ -37,6 +37,18 @@ const App: React.FC = () => {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+  // Load persisted activeTab
+  useEffect(() => {
+    const stored = window.localStorage.getItem("activeTab");
+    if (stored === "dashboard" || stored === "manager") {
+      setActiveTab(stored);
+    }
+  }, []);
+
+  // Persist activeTab in localStorage
+  useEffect(() => {
+    window.localStorage.setItem("activeTab", activeTab);
+  }, [activeTab]);
 
   return (
     <QueryClientProvider client={queryClient}>
