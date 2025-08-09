@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 
-type Theme = "dark" | "light" | "system";
+type Theme = "dark" | "light" | "system" | "image";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -11,11 +11,15 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  setBackgroundImage: (url: string) => void;
+  backgroundImage: string | null;
 };
 
 const initialState: ThemeProviderState = {
   theme: "system",
   setTheme: () => null,
+  setBackgroundImage: () => null,
+  backgroundImage: null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -30,22 +34,46 @@ export function ThemeProvider({
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   );
 
-  useEffect(() => {
+  const bgImageRef = useRef<string | null>(null);
+
+  const applyTheme = () => {
     const root = window.document.documentElement;
+    root.classList.remove("light", "dark", "image");
 
-    root.classList.remove("light", "dark");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
+    if (theme === "image") {
+      root.classList.add("image-theme");
+      if (bgImageRef.current) {
+        document.body.style.backgroundImage = `url(${bgImageRef.current})`;
+        document.body.style.backgroundSize = "cover";
+        document.body.style.backgroundPosition = "center";
+      }
+    } else {
+      document.body.style.backgroundImage = "";
+      const systemTheme =
+        theme === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : theme;
       root.classList.add(systemTheme);
-      return;
+    }
+  };
+
+  const setBackgroundImage = (url: string) => {
+    bgImageRef.current = url;
+    localStorage.setItem("backgroundImage", url);
+    if (theme === "image") {
+      applyTheme();
+    }
+  };
+
+  useEffect(() => {
+    const storedBgImage = localStorage.getItem("backgroundImage");
+    if (storedBgImage) {
+      bgImageRef.current = storedBgImage;
     }
 
-    root.classList.add(theme);
+    applyTheme();
   }, [theme]);
 
   const value = {
@@ -54,6 +82,8 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
     },
+    setBackgroundImage,
+    backgroundImage: bgImageRef.current,
   };
 
   return (

@@ -19,7 +19,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
 
   return (
     <div
-      className={`bookmark-card flex items-center p-3 rounded-lg mb-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+      className={`bookmark-card flex items-center p-2 ${
         depth > 0 ? "ml-4" : ""
       }`}
       onClick={handleClick}
@@ -31,11 +31,8 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
       />
 
       <div className="flex-1 min-w-0">
-        <div className="bookmark-title truncate text-gray-800 dark:text-gray-200">
+        <div className="bookmark-title truncate text-sm font-medium">
           {item.title}
-        </div>
-        <div className="text-xs text-gray-500 truncate">
-          {new URL(item.url).hostname}
         </div>
       </div>
 
@@ -50,10 +47,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({ item, depth }) => {
         {showMenu && (
           <div className="menu-dropdown absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700">
             <button className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-              Edit
+              ✏️ Edit
             </button>
             <button className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500">
-              Delete
+              🗑️ Delete
             </button>
           </div>
         )}

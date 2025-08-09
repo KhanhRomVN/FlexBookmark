@@ -38,11 +38,16 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({ folderId, folders }) => {
       {items.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+        <div className="masonry-grid columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 mt-4">
           {items
             .filter((item) => !item.url)
             .map((folder) => (
-              <FolderCard key={folder.id} folder={folder} depth={0} />
+              <div
+                key={folder.id}
+                className="masonry-item mb-4 break-inside-avoid"
+              >
+                <FolderCard folder={folder} depth={0} />
+              </div>
             ))}
         </div>
       )}

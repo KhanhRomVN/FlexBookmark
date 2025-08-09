@@ -47,7 +47,7 @@ const App: React.FC = () => {
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as any)}
             >
-              <TabsList>
+              <TabsList className="hidden">
                 <TabsTrigger value="dashboard">Dashboard (1)</TabsTrigger>
                 <TabsTrigger value="manager">Bookmarks (2)</TabsTrigger>
               </TabsList>

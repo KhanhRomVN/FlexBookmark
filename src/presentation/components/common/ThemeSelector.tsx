@@ -1,58 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useTheme } from "@/presentation/providers/theme-provider";
 
 const ThemeSelector: React.FC = () => {
-  const [currentTheme, setCurrentTheme] = useState("light");
+  const { theme, setTheme, setBackgroundImage, backgroundImage } = useTheme();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showImageInput, setShowImageInput] = useState(false);
+  const [imageUrl, setImageUrl] = useState(backgroundImage || "");
 
-  // Use chrome.storage.local when available, else fallback to localStorage
-  const storage: any =
-    typeof chrome !== "undefined" && chrome.storage && chrome.storage.local
-      ? chrome.storage.local
-      : {
-          get: (keys: string[], cb: (result: any) => void) => {
-            const result: any = {};
-            keys.forEach((key) => {
-              result[key] = localStorage.getItem(key);
-            });
-            cb(result);
-          },
-          set: (items: Record<string, any>, cb?: () => void) => {
-            Object.entries(items).forEach(([key, val]) => {
-              localStorage.setItem(key, val);
-            });
-            cb && cb();
-          },
-        };
-
-  useEffect(() => {
-    storage.get(["theme", "backgroundImage"], (result: any) => {
-      if (result.theme) {
-        setCurrentTheme(result.theme);
-        applyTheme(result.theme, result.backgroundImage);
-      }
-    });
-  }, []);
-
-  const applyTheme = (theme: string, bgImage?: string) => {
-    document.documentElement.setAttribute("data-theme", theme);
-    document.body.className = `theme-${theme}`;
-
-    if (theme === "image" && bgImage) {
-      document.body.style.backgroundImage = `url(${bgImage})`;
-    } else {
-      document.body.style.backgroundImage = "";
-    }
+  const handleThemeChange = (selectedTheme: "light" | "dark" | "image") => {
+    setTheme(selectedTheme);
+    setShowDropdown(false);
   };
 
-  const handleThemeChange = (theme: string) => {
-    setCurrentTheme(theme);
-    setShowDropdown(false);
-
-    storage.get(["backgroundImage"], (result: any) => {
-      const bgImage = result.backgroundImage;
-      applyTheme(theme, bgImage);
-      storage.set({ theme });
-    });
+  const handleSaveImage = () => {
+    if (imageUrl) {
+      setBackgroundImage(imageUrl);
+      setShowImageInput(false);
+    }
   };
 
   return (
@@ -61,11 +25,7 @@ const ThemeSelector: React.FC = () => {
         className="theme-btn w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
         onClick={() => setShowDropdown(!showDropdown)}
       >
-        {currentTheme === "light"
-          ? "🌞"
-          : currentTheme === "dark"
-          ? "🌙"
-          : "🖼️"}
+        {theme === "light" ? "🌞" : theme === "dark" ? "🌙" : "🖼️"}
       </button>
 
       {showDropdown && (
@@ -88,6 +48,41 @@ const ThemeSelector: React.FC = () => {
           >
             🖼️ Image
           </button>
+
+          {theme === "image" && (
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onClick={() => setShowImageInput(!showImageInput)}
+            >
+              ✏️ Change Image
+            </button>
+          )}
+        </div>
+      )}
+
+      {showImageInput && (
+        <div className="image-url-container absolute right-0 top-16 bg-white dark:bg-gray-800 p-3 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700 w-64">
+          <input
+            type="text"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="Enter image URL"
+            className="w-full px-2 py-1 mb-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              className="px-2 py-1 text-sm bg-gray-200 dark:bg-gray-700 rounded"
+              onClick={() => setShowImageInput(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-2 py-1 text-sm bg-blue-600 text-white rounded"
+              onClick={handleSaveImage}
+            >
+              Save
+            </button>
+          </div>
         </div>
       )}
     </div>

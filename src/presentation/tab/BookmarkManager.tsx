@@ -88,7 +88,9 @@ const BookmarkManagerPage: React.FC = () => {
         <Header />
 
         <main className="flex-1 overflow-y-auto p-4">
-          <BookmarkGrid folderId={selectedFolder} folders={bookmarks} />
+          <div className="container mx-auto">
+            <BookmarkGrid folderId={selectedFolder} folders={bookmarks} />
+          </div>
         </main>
       </div>
     </div>

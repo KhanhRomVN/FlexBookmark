@@ -25,22 +25,21 @@ const FolderCard: React.FC<FolderCardProps> = ({ folder, depth }) => {
   };
 
   return (
-    <div
-      className={`folder-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden ${
-        depth > 0 ? "mb-2" : ""
-      }`}
-    >
+    <div className="folder-card">
       <div
-        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-gray-100 dark:bg-gray-700"
+        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header"
         onClick={toggleFolder}
       >
         <div className="flex items-center">
-          <div className="mr-2">{isOpen ? "📂" : "📁"}</div>
-          <div className="font-medium text-gray-800 dark:text-gray-200">
-            {folder.title}
-          </div>
+          <div className="folder-icon mr-2">{isOpen ? "📂" : "📁"}</div>
+          <div className="folder-title font-medium">{folder.title}</div>
         </div>
-        <div className="text-gray-500">{isOpen ? "▼" : "▶"}</div>
+        <div className="flex items-center">
+          <span className="text-xs mr-2">{children.length || 0} items</span>
+          <button className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
+            ⋮
+          </button>
+        </div>
       </div>
 
       {isOpen && (

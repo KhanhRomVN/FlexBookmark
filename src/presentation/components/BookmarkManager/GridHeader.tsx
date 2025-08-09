@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { createFolder } from "../../../utils/api";
+import ImportForm from "./ImportForm";
 
 interface GridHeaderProps {
   folderId: string;
@@ -9,6 +10,7 @@ interface GridHeaderProps {
 
 const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
   const [showImportDropdown, setShowImportDropdown] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
 
   const handleAddFolder = async () => {
     if (depth >= 2) {
@@ -57,7 +59,7 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
               <button
                 className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => {
-                  alert("Text import form will open here");
+                  setShowImportForm(true);
                   setShowImportDropdown(false);
                 }}
               >
@@ -67,6 +69,13 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
           )}
         </div>
       </div>
+      {showImportForm && (
+        <ImportForm
+          parentId={folderId}
+          onClose={() => setShowImportForm(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
     </div>
   );
 };
