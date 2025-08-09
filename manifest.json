@@ -3,6 +3,7 @@
   "name": "FlexBookmark",
   "version": "1.1.0",
   "description": "Advanced bookmark management with modern UI",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtzmVmUTqPAjo88uPIr5VMZGKgQzZ4oheHYeG0KmVPV1T46wcAdXhBxQPirUt6TJkZKsSoKmZJOvvcHrAGPqysCS9rGmxVhBCMLW5zr7bVx7Nudzjnfvcd/ClS74dHKW9mG+SwypJwbOrY+SnoOxRbJFshCtbzDykTNaEZdCU3GzgJ5GZajmAIm3pr3dUuAETXgy0xaJ/9xHNtsBNOmxLMzbXkSV4Ga/Bg9uOUi+uSbJsW+fMh6MWR6CVcxJgjtq0OGJ96CBpU9vvbTOzgFJ+ue9V8xaexXf8b3D+xFxI/k1qGghcw3IpsmkZJwGwEmZBoUPtjbJc1l28EMcaqKEP/QIDAQAB",
   "icons": {
     "128": "assets/icons/icon.png"
   },
@@ -13,7 +14,7 @@
     "identity"
   ],
   "oauth2": {
-    "client_id": "661697300169-6smulak345u6sk708oe9em5vd4pvup6e.apps.googleusercontent.com",
+    "client_id": "661697300169-fn99f3i4gnegds1qdruj4n3t0ib1sunp.apps.googleusercontent.com",
     "scopes": [
       "openid",
       "email",
@@ -23,13 +24,14 @@
     ]
   },
   "host_permissions": [
-    "https://www.googleapis.com/*"
-  ],  
+    "https://www.googleapis.com/*",
+    "https://api.open-meteo.com/*"
+  ],
   "background": {
     "service_worker": "service-worker.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://www.googleapis.com;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://www.googleapis.com https://api.open-meteo.com https://*.gstatic.com;"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"
