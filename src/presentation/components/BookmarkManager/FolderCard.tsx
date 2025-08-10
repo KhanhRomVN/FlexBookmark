@@ -1,21 +1,125 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDrag, useDrop } from "react-dnd";
+import type { DragSourceMonitor, DropTargetMonitor } from "react-dnd";
 import BookmarkCard from "./BookmarkCard";
+
+const ItemTypes = {
+  BOOKMARK: "bookmark",
+};
 
 interface FolderCardProps {
   folder: any;
+  index: number;
   depth: number;
   isDropTarget: boolean;
   onDropTargetChange: (id: string | null) => void;
+  disableNesting?: boolean;
+  onReorder: (dragIndex: number, hoverIndex: number) => void;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
   folder,
+  index,
   depth,
   isDropTarget,
   onDropTargetChange,
+  disableNesting = false,
+  onReorder,
 }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<number | null>(null);
+
+  const [{ isDragging }, dragRef] = useDrag(
+    () => ({
+      type: ItemTypes.BOOKMARK,
+      item: (monitor: DragSourceMonitor) => {
+        const initial = monitor.getInitialClientOffset();
+        console.log(
+          "[Drag Begin] FolderCard id=",
+          folder.id,
+          "index=",
+          index,
+          "initialOffset=",
+          initial
+        );
+        intervalRef.current = window.setInterval(() => {
+          const offset = monitor.getClientOffset();
+          console.log(
+            "[Dragging] FolderCard id=",
+            folder.id,
+            "currentOffset=",
+            offset
+          );
+        }, 1000);
+        return { id: folder.id, index };
+      },
+      collect: (monitor: DragSourceMonitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      end: (_item, monitor: DragSourceMonitor) => {
+        const didDrop = monitor.didDrop();
+        const final = monitor.getClientOffset();
+        console.log(
+          "[Drag End] FolderCard id=",
+          folder.id,
+          "didDrop=",
+          didDrop,
+          "finalOffset=",
+          final
+        );
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      },
+    }),
+    [folder.id, index]
+  );
+
+  const [, dropRef] = useDrop(
+    () => ({
+      accept: ItemTypes.BOOKMARK,
+      hover: (
+        dragged: { id: string; index: number },
+        monitor: DropTargetMonitor
+      ) => {
+        if (!ref.current) return;
+        const dragIndex = dragged.index;
+        const hoverIndex = index;
+        console.log(
+          "[Hover] FolderCard id=",
+          folder.id,
+          "dragIndex=",
+          dragIndex,
+          "hoverIndex=",
+          hoverIndex,
+          "offset=",
+          monitor.getClientOffset()
+        );
+        if (dragIndex === hoverIndex) return;
+        onReorder(dragIndex, hoverIndex);
+        dragged.index = hoverIndex;
+      },
+      drop: (
+        dragged: { id: string; index: number },
+        monitor: DropTargetMonitor
+      ) => {
+        console.log(
+          "[Drop] FolderCard id=",
+          folder.id,
+          "received dragged id=",
+          dragged.id,
+          "dropOffset=",
+          monitor.getClientOffset()
+        );
+      },
+    }),
+    [index, onReorder]
+  );
+
+  dragRef(dropRef(ref));
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<any[]>([]);
 
@@ -76,12 +180,13 @@ const FolderCard: React.FC<FolderCardProps> = ({
 
   return (
     <motion.div
-      layout
+      ref={ref}
       initial={false}
       transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
       className={`group bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
-        !isOpen ? "shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" : ""
-      }`}
+        isDropTarget ? "ring-2 ring-primary" : ""
+      } ${isDragging ? "opacity-50" : ""}`}
+      style={{ cursor: "move" }}
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
@@ -126,17 +231,21 @@ const FolderCard: React.FC<FolderCardProps> = ({
                   <BookmarkCard
                     key={item.id}
                     item={item}
+                    index={index}
                     depth={depth + 1}
                     isDropTarget={false}
                     onDropTargetChange={() => {}}
+                    onReorder={onReorder}
                   />
                 ) : (
                   <FolderCard
                     key={item.id}
                     folder={item}
+                    index={index}
                     depth={depth + 1}
                     isDropTarget={false}
                     onDropTargetChange={() => {}}
+                    onReorder={onReorder}
                   />
                 )
               )}

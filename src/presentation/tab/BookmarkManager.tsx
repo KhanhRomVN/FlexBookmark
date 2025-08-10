@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import { getBookmarks } from "../../utils/api";
 import MainLayout from "../components/layout/MainLayout";
 import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
@@ -80,9 +82,11 @@ const BookmarkManagerPage: React.FC = () => {
   }
 
   return (
-    <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
-      <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
-    </MainLayout>
+    <DndProvider backend={HTML5Backend}>
+      <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
+        <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
+      </MainLayout>
+    </DndProvider>
   );
 };
 

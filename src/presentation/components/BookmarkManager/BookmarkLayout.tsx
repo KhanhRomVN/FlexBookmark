@@ -72,24 +72,54 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
   // Container drag-and-drop handlers
   const handleContainerDragOver = (e: React.DragEvent) => {
+    console.log(
+      "[ContainerDragOver] types=",
+      e.dataTransfer.types,
+      "offset=",
+      e.nativeEvent
+    );
     e.preventDefault();
     setDropTarget("layout");
     e.dataTransfer.dropEffect = "move";
   };
 
   const handleContainerDragLeave = () => {
+    console.log("[ContainerDragLeave] current dropTarget=", dropTarget);
     if (dropTarget === "layout") {
       setDropTarget(null);
     }
   };
 
   const handleContainerDrop = async (e: React.DragEvent) => {
+    console.log(
+      "[ContainerDrop] types=",
+      e.dataTransfer.types,
+      "rawJSON=",
+      e.dataTransfer.getData("application/json")
+    );
     e.preventDefault();
     setDropTarget(null);
-    const data = JSON.parse(e.dataTransfer.getData("application/json"));
+    let raw = e.dataTransfer.getData("application/json");
+    console.log("[ContainerDrop] raw data string=", raw);
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      console.error("[ContainerDrop] JSON.parse error:", err, "raw=", raw);
+      return;
+    }
     // Only handle bookmarks at layout level, ignore folders
-    if (!data.url) return;
-    if (data.id === folderId) return;
+    if (!data.url) {
+      console.log("[ContainerDrop] skipped, no URL in data=", data);
+      return;
+    }
+    if (data.id === folderId) {
+      console.log(
+        "[ContainerDrop] skipped, dropped into same folder",
+        folderId
+      );
+      return;
+    }
 
     try {
       await chrome.bookmarks.move(data.id, {
@@ -116,16 +146,74 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     setDragged(null);
   };
 
+  // Handler to reorder items within the same container
+  const handleItemDrop = async (
+    targetId: string,
+    position: "above" | "below"
+  ) => {
+    console.log(
+      "[handleItemDrop] targetId=",
+      targetId,
+      "position=",
+      position,
+      "draggedId=",
+      dragged?.id
+    );
+    if (!dragged) return;
+
+    try {
+      const targetIndex = items.findIndex((item) => item.id === targetId);
+      if (targetIndex === -1) return;
+      const newIndex = position === "above" ? targetIndex : targetIndex + 1;
+
+      // Move via Chrome bookmarks API
+      await chrome.bookmarks.move(dragged.id, {
+        parentId: folderId || "0",
+        index: newIndex,
+      });
+
+      // Optimistic UI update
+      setItems((prev) => {
+        const filtered = prev.filter((item) => item.id !== dragged.id);
+        const newArr = [
+          ...filtered.slice(0, newIndex),
+          dragged,
+          ...filtered.slice(newIndex),
+        ];
+        console.log(
+          "[handleItemDrop] new items order:",
+          newArr.map((i) => i.id)
+        );
+        return newArr;
+      });
+    } catch (err) {
+      console.error("Reorder error:", err);
+    }
+  };
+
   // Handlers for individual item drag start/end
   const handleDragStart = (
-    e: React.MouseEvent<HTMLDivElement> & { dataTransfer: DataTransfer },
+    e: React.DragEvent<HTMLDivElement>,
     item: BookmarkNode,
     index: number
   ) => {
+    console.log(
+      "Bookmark dragStart:",
+      item.id,
+      "at index",
+      index,
+      "types:",
+      e.dataTransfer.types
+    );
     const parentId = folderId || "0";
     dragSource.current = { id: item.id, parentId, index };
     e.dataTransfer.setData(
       "application/json",
+      JSON.stringify({ ...item, parentId, index })
+    );
+    // also set plain text for broader drag support
+    e.dataTransfer.setData(
+      "text/plain",
       JSON.stringify({ ...item, parentId, index })
     );
     e.dataTransfer.effectAllowed = "move";
@@ -227,16 +315,31 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                   {item.url ? (
                     <BookmarkCard
                       item={item}
+                      index={index}
                       depth={0}
                       isDropTarget={dropTarget === item.id}
                       onDropTargetChange={(id) => setDropTarget(id)}
+                      onReorder={(dragIndex, hoverIndex) => {
+                        void handleItemDrop(
+                          item.id,
+                          dragIndex < hoverIndex ? "below" : "above"
+                        );
+                      }}
                     />
                   ) : (
                     <FolderCard
                       folder={item}
+                      index={index}
                       depth={0}
+                      disableNesting
                       isDropTarget={dropTarget === item.id}
                       onDropTargetChange={(id) => setDropTarget(id)}
+                      onReorder={(dragIndex, hoverIndex) =>
+                        handleItemDrop(
+                          item.id,
+                          dragIndex < hoverIndex ? "below" : "above"
+                        )
+                      }
                     />
                   )}
                 </motion.div>
