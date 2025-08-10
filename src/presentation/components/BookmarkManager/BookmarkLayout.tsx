@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useDrop } from "react-dnd";
+import type { DropTargetMonitor } from "react-dnd";
 import FolderCard from "./FolderCard";
 import BookmarkCard from "./BookmarkCard";
 import EmptyState from "./EmptyState";
@@ -29,6 +31,36 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [folder, setFolder] = useState<BookmarkNode | null>(null);
   const [dragged, setDragged] = useState<BookmarkNode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // React-DnD drop on layout container
+  const ItemTypes = { BOOKMARK: "bookmark" };
+  const [{ isOver: isOverLayout }, dropRef] = useDrop<
+    BookmarkNode,
+    void,
+    { isOver: boolean }
+  >(
+    () => ({
+      accept: ItemTypes.BOOKMARK,
+      collect: (monitor: DropTargetMonitor) => ({
+        isOver: monitor.isOver(),
+      }),
+      drop: (data: any) => {
+        chrome.bookmarks
+          .move(data.id, {
+            parentId: folderId || "0",
+            index: items.length,
+          })
+          .then(() =>
+            setItems((prev) => [
+              ...prev,
+              prev.find((item) => item.id === data.id)!,
+            ])
+          )
+          .catch((err) => console.error(err));
+        setDragged(null);
+      },
+    }),
+    [folderId, items]
+  );
 
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const dragSource = useRef<{
@@ -36,6 +68,18 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     parentId: string;
     index: number;
   } | null>(null);
+
+  // Callback when a bookmark is moved between folders
+  const handleBookmarkMoved = (
+    bookmarkId: string,
+    fromParentId: string,
+    toParentId: string
+  ) => {
+    // Remove bookmark from this folder's items if it was moved out
+    if (fromParentId === folderId) {
+      setItems((prev) => prev.filter((item) => item.id !== bookmarkId));
+    }
+  };
 
   // Fetch children for selected folder whenever folderId changes
   useEffect(() => {
@@ -69,82 +113,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       );
     })();
   }, [folderId, folders]);
-
-  // Container drag-and-drop handlers
-  const handleContainerDragOver = (e: React.DragEvent) => {
-    console.log(
-      "[ContainerDragOver] types=",
-      e.dataTransfer.types,
-      "offset=",
-      e.nativeEvent
-    );
-    e.preventDefault();
-    setDropTarget("layout");
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleContainerDragLeave = () => {
-    console.log("[ContainerDragLeave] current dropTarget=", dropTarget);
-    if (dropTarget === "layout") {
-      setDropTarget(null);
-    }
-  };
-
-  const handleContainerDrop = async (e: React.DragEvent) => {
-    console.log(
-      "[ContainerDrop] types=",
-      e.dataTransfer.types,
-      "rawJSON=",
-      e.dataTransfer.getData("application/json")
-    );
-    e.preventDefault();
-    setDropTarget(null);
-    let raw = e.dataTransfer.getData("application/json");
-    console.log("[ContainerDrop] raw data string=", raw);
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (err) {
-      console.error("[ContainerDrop] JSON.parse error:", err, "raw=", raw);
-      return;
-    }
-    // Only handle bookmarks at layout level, ignore folders
-    if (!data.url) {
-      console.log("[ContainerDrop] skipped, no URL in data=", data);
-      return;
-    }
-    if (data.id === folderId) {
-      console.log(
-        "[ContainerDrop] skipped, dropped into same folder",
-        folderId
-      );
-      return;
-    }
-
-    try {
-      await chrome.bookmarks.move(data.id, {
-        parentId: folderId || "0",
-        index: data.index,
-      });
-
-      setItems((prev) => {
-        const newItems = [...prev];
-        if (
-          dragSource.current &&
-          dragSource.current.parentId === (folderId || "0")
-        ) {
-          newItems.splice(dragSource.current.index, 1);
-        }
-        if ((folderId || "0") === data.parentId && dragged) {
-          newItems.splice(data.index, 0, dragged);
-        }
-        return newItems;
-      });
-    } catch (err) {
-      console.error("Error moving item:", err);
-    }
-    setDragged(null);
-  };
 
   // Handler to reorder items within the same container
   const handleItemDrop = async (
@@ -205,17 +173,16 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       "types:",
       e.dataTransfer.types
     );
-    const parentId = folderId || "0";
+    // Determine actual parentId (support temp folder)
+    let parentId = folderId || "0";
+    if (item.id === "temp" || item.url) {
+      parentId = "temp";
+    }
     dragSource.current = { id: item.id, parentId, index };
-    e.dataTransfer.setData(
-      "application/json",
-      JSON.stringify({ ...item, parentId, index })
-    );
+    const payload = { ...item, parentId, index };
+    e.dataTransfer.setData("application/json", JSON.stringify(payload));
     // also set plain text for broader drag support
-    e.dataTransfer.setData(
-      "text/plain",
-      JSON.stringify({ ...item, parentId, index })
-    );
+    e.dataTransfer.setData("text/plain", JSON.stringify(payload));
     e.dataTransfer.effectAllowed = "move";
     setTimeout(() => setDragged(item), 0);
   };
@@ -223,6 +190,29 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const handleDragEnd = () => {
     setDragged(null);
     setDropTarget(null);
+  };
+
+  // Callback when bookmark is moved between folders
+  const onBookmarkMoved = (
+    bookmarkId: string,
+    fromParentId: string,
+    toParentId: string
+  ) => {
+    setItems((prev) => {
+      // Remove moved bookmark from previous parent
+      const filtered = prev.filter((i) => i.id !== bookmarkId);
+      // If temp folder exists, remove bookmark from its children
+      return filtered.map((i) =>
+        i.id === "temp"
+          ? {
+              ...i,
+              children: (i.children || []).filter(
+                (c: any) => c.id !== bookmarkId
+              ),
+            }
+          : i
+      );
+    });
   };
 
   // If no folder selected show empty state
@@ -279,16 +269,11 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
   return (
     <div
-      ref={containerRef}
+      ref={dropRef}
       id="bookmark-grid"
-      className={`bookmark-grid ${
-        dropTarget === "layout" ? "ring-2 ring-primary" : ""
-      }`}
+      className={`bookmark-grid ${isOverLayout ? "ring-2 ring-primary" : ""}`}
       data-parent-id={folderId}
       data-depth="0"
-      onDragOver={handleContainerDragOver}
-      onDragLeave={handleContainerDragLeave}
-      onDrop={handleContainerDrop}
     >
       <GridHeader folderId={folderId} folder={folder} depth={0} />
 
@@ -315,6 +300,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                   {item.url ? (
                     <BookmarkCard
                       item={item}
+                      parentId={folderId || "0"}
                       index={index}
                       depth={0}
                       isDropTarget={dropTarget === item.id}
@@ -340,6 +326,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                           dragIndex < hoverIndex ? "below" : "above"
                         )
                       }
+                      onBookmarkMoved={onBookmarkMoved}
                     />
                   )}
                 </motion.div>

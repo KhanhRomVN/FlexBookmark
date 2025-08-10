@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import type { DragSourceMonitor, DropTargetMonitor } from "react-dnd";
 import { EllipsisVertical as LucideMenu } from "lucide-react";
@@ -9,6 +9,7 @@ const ItemTypes = {
 
 interface BookmarkCardProps {
   item: any;
+  parentId: string; // add parent folder ID
   index: number;
   depth: number;
   isDropTarget: boolean;
@@ -18,6 +19,7 @@ interface BookmarkCardProps {
 
 const BookmarkCard: React.FC<BookmarkCardProps> = ({
   item,
+  parentId,
   index,
   depth,
   isDropTarget,
@@ -36,6 +38,8 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         console.log(
           "[Drag Begin] BookmarkCard id=",
           item.id,
+          "parent=",
+          parentId,
           "index=",
           index,
           "initialOffset=",
@@ -46,11 +50,14 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
           console.log(
             "[Dragging] BookmarkCard id=",
             item.id,
+            "parent=",
+            parentId,
             "currentOffset=",
             offset
           );
         }, 1000);
-        return { id: item.id, index };
+        // include parentId, url, title for drop handlers
+        return { ...item, parentId, index };
       },
       collect: (monitor: DragSourceMonitor) => ({
         isDragging: monitor.isDragging(),
@@ -61,6 +68,8 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         console.log(
           "[Drag End] BookmarkCard id=",
           item.id,
+          "parent=",
+          parentId,
           "didDrop=",
           didDrop,
           "finalOffset=",
@@ -72,12 +81,15 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         }
       },
     }),
-    [item.id, index]
+    [item.id, parentId, index]
   );
 
-  const [, dropRef] = useDrop(
+  const [{ isOver }, dropRef] = useDrop(
     () => ({
       accept: ItemTypes.BOOKMARK,
+      collect: (monitor: DropTargetMonitor) => ({
+        isOver: monitor.isOver({ shallow: true }),
+      }),
       hover: (
         dragged: { id: string; index: number },
         monitor: DropTargetMonitor
@@ -85,16 +97,6 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         if (!ref.current) return;
         const dragIndex = dragged.index;
         const hoverIndex = index;
-        console.log(
-          "[Hover] BookmarkCard id=",
-          item.id,
-          "dragIndex=",
-          dragIndex,
-          "hoverIndex=",
-          hoverIndex,
-          "offset=",
-          monitor.getClientOffset()
-        );
         if (dragIndex === hoverIndex) return;
         onReorder(dragIndex, hoverIndex);
         dragged.index = hoverIndex;
@@ -119,28 +121,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
   // attach both drag and drop refs to the node
   dragRef(dropRef(ref));
 
-  // HTML5 drag+drop handlers for fallback
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDropTargetChange(item.id);
-    e.dataTransfer.dropEffect = "move";
-  };
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDropTargetChange(null);
-    try {
-      const data = JSON.parse(e.dataTransfer.getData("application/json"));
-      if (data.id === item.id) return;
-      await chrome.bookmarks.move(data.id, {
-        parentId: item.parentId || "",
-        index: data.index,
-      });
-    } catch (err) {
-      console.error("Drop error:", err);
-    }
-  };
+  // notify parent layout of drop-target changes
+  useEffect(() => {
+    onDropTargetChange(isOver ? item.id : null);
+  }, [isOver, item.id, onDropTargetChange]);
 
   const handleClick = () => {
     chrome.tabs.create({ url: item.url });
@@ -153,7 +137,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   return (
     <div
-      ref={ref}
+      ref={(node) => dragRef(dropRef(node))}
       style={{ opacity: isDragging ? 0.5 : 1, cursor: "move" }}
       className={`bookmark-card group flex items-center p-2 rounded-md transition-all
         ${depth > 1 ? "ml-4" : ""}
@@ -164,16 +148,6 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         }
       `}
       onClick={handleClick}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      draggable
-      onDragStart={(e) =>
-        e.dataTransfer.setData(
-          "application/json",
-          JSON.stringify({ ...item, index })
-        )
-      }
-      onDragEnd={() => onDropTargetChange(null)}
     >
       <img
         src={`https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}`}

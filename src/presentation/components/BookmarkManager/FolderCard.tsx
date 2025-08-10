@@ -17,6 +17,12 @@ interface FolderCardProps {
   onDropTargetChange: (id: string | null) => void;
   disableNesting?: boolean;
   onReorder: (dragIndex: number, hoverIndex: number) => void;
+  // Callback when a bookmark is moved between folders
+  onBookmarkMoved?: (
+    bookmarkId: string,
+    fromParentId: string,
+    toParentId: string
+  ) => void;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
@@ -27,6 +33,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   onDropTargetChange,
   disableNesting = false,
   onReorder,
+  onBookmarkMoved,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number | null>(null);
@@ -78,9 +85,12 @@ const FolderCard: React.FC<FolderCardProps> = ({
     [folder.id, index]
   );
 
-  const [, dropRef] = useDrop(
+  const [{ isOver }, dropRef] = useDrop(
     () => ({
       accept: ItemTypes.BOOKMARK,
+      collect: (monitor: DropTargetMonitor) => ({
+        isOver: monitor.isOver(), // include nested children for hover detection
+      }),
       hover: (
         dragged: { id: string; index: number },
         monitor: DropTargetMonitor
@@ -88,36 +98,43 @@ const FolderCard: React.FC<FolderCardProps> = ({
         if (!ref.current) return;
         const dragIndex = dragged.index;
         const hoverIndex = index;
-        console.log(
-          "[Hover] FolderCard id=",
-          folder.id,
-          "dragIndex=",
-          dragIndex,
-          "hoverIndex=",
-          hoverIndex,
-          "offset=",
-          monitor.getClientOffset()
-        );
         if (dragIndex === hoverIndex) return;
         onReorder(dragIndex, hoverIndex);
         dragged.index = hoverIndex;
       },
-      drop: (
-        dragged: { id: string; index: number },
+      drop: async (
+        dragged: { id: string; parentId: string; index: number; url?: string },
         monitor: DropTargetMonitor
       ) => {
-        console.log(
-          "[Drop] FolderCard id=",
-          folder.id,
-          "received dragged id=",
-          dragged.id,
-          "dropOffset=",
-          monitor.getClientOffset()
-        );
+        try {
+          // only handle real bookmarks
+          if (!dragged.url) return;
+          // prevent invalid moves
+          if (dragged.id === folder.id || isDescendant(folder, dragged.id))
+            return;
+          // move in Chrome bookmarks
+          await chrome.bookmarks.move(dragged.id, {
+            parentId: folder.id,
+            index: 0, // add to top
+          });
+          // optimistic UI update
+          setChildren((prev) => [{ ...dragged }, ...prev]);
+          // notify parent layout
+          if (onBookmarkMoved) {
+            onBookmarkMoved(dragged.id, dragged.parentId, folder.id);
+          }
+        } catch (err) {
+          console.error("Folder drop error:", err);
+        }
       },
     }),
     [index, onReorder]
   );
+
+  // notify parent layout of drop-target changes
+  useEffect(() => {
+    onDropTargetChange(isOver ? folder.id : null);
+  }, [isOver, folder.id, onDropTargetChange]);
 
   dragRef(dropRef(ref));
   const [isOpen, setIsOpen] = useState(false);
@@ -141,35 +158,14 @@ const FolderCard: React.FC<FolderCardProps> = ({
   useEffect(() => {
     loadChildren();
   }, []);
-  // Drag-and-drop handlers for folders
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDropTargetChange(folder.id);
-    e.dataTransfer.dropEffect = "move";
-  };
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onDropTargetChange(null);
-    try {
-      const data = JSON.parse(e.dataTransfer.getData("application/json"));
-      // Only handle bookmarks (items with a URL). Ignore folder drops to prevent depth > 2.
-      if (!data.url) return;
-      // Prevent invalid moves (self or circular)
-      if (data.id === folder.id || isDescendant(folder, data.id)) return;
-      await chrome.bookmarks.move(data.id, {
-        parentId: folder.id,
-        index: 0, // Add to top
-      });
-      // Optimistically update UI
-      setChildren((prev) => [{ ...data }, ...prev]);
-    } catch (err) {
-      console.error("Folder drop error:", err);
-    }
-  };
   // Utility to prevent circular moves
   const isDescendant = (parent: any, targetId: string): boolean => {
+    console.log(
+      "[FolderCard] isDescendant check parent=",
+      parent.id,
+      "targetId=",
+      targetId
+    );
     if (!parent.children) return false;
     if (parent.children.some((child: any) => child.id === targetId))
       return true;
@@ -231,6 +227,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                   <BookmarkCard
                     key={item.id}
                     item={item}
+                    parentId={folder.id}
                     index={index}
                     depth={depth + 1}
                     isDropTarget={false}
