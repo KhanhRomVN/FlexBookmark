@@ -106,7 +106,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       ? [
           {
             id: "temp",
-            title: "Bookmarks",
+            title: "Temp",
             children: bookmarksOnly,
           },
         ]
@@ -147,16 +147,15 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
           })
         );
 
-        // Update UI state
-        setItems((prev) => {
-          // Map new order to original items structure
-          const reorderedItems = newItems
-            .filter((item) => item.id !== "temp")
-            .concat(
-              newItems.find((item) => item.id === "temp")?.children || []
-            );
-
-          return reorderedItems;
+        // Update UI state, preserving Temp’s new position
+        setItems(() => {
+          // Flatten newItems, expanding 'temp' node in-place
+          return newItems.reduce<BookmarkNode[]>((acc, entry) => {
+            if (entry.id === "temp") {
+              return acc.concat(entry.children || []);
+            }
+            return acc.concat(entry);
+          }, []);
         });
       }
     } catch (error) {
