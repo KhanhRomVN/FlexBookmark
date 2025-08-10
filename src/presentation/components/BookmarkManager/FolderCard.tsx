@@ -89,7 +89,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
     () => ({
       accept: ItemTypes.BOOKMARK,
       collect: (monitor: DropTargetMonitor) => ({
-        isOver: monitor.isOver(), // include nested children for hover detection
+        isOver: monitor.isOver(), // highlight including nested children
       }),
       hover: (
         dragged: { id: string; index: number },
@@ -179,9 +179,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
       ref={ref}
       initial={false}
       transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
-      className={`group bg-card-background border border-card-border hover:border-primary w-full rounded-md ${
-        isDropTarget ? "ring-2 ring-primary" : ""
-      } ${isDragging ? "opacity-50" : ""}`}
+      className={`group bg-card-background w-full rounded-md transition-all border border-border-default hover:border-border-hover`}
       style={{ cursor: "move" }}
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
