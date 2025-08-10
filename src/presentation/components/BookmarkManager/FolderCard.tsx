@@ -179,26 +179,36 @@ const FolderCard: React.FC<FolderCardProps> = ({
       ref={ref}
       initial={false}
       transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
-      className={`group bg-card-background w-full rounded-md transition-all border border-border-default hover:border-border-hover`}
+      className={`group relative bg-card-background w-full rounded-md transition-all border ${
+        isOver
+          ? "border-border-hover"
+          : "border-border-default hover:border-border-hover"
+      }`}
       style={{ cursor: "move" }}
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
       <div
-        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header"
+        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
         onClick={toggleFolder}
       >
         <div className="flex items-center">
           <div className="folder-icon mr-2">{isOpen ? "📂" : "📁"}</div>
-          <div className="folder-title font-medium">{folder.title}</div>
+          <div className="folder-title font-medium text-lg">{folder.title}</div>
         </div>
         <div className="flex items-center">
-          <button
-            className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 invisible group-hover:visible"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <EllipsisVertical size={16} />
-          </button>
+          {!isOpen && children.length > 0 ? (
+            <div className="border border-border-default text-text-secondary text-xs font-semibold px-2 py-0.5 rounded-sm">
+              {children.length}
+            </div>
+          ) : (
+            <button
+              className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 invisible group-hover:visible"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <EllipsisVertical size={16} />
+            </button>
+          )}
         </div>
       </div>
 

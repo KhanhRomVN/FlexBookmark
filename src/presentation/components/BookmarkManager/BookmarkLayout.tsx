@@ -271,7 +271,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     <div
       ref={dropRef}
       id="bookmark-grid"
-      className={`bookmark-grid ${isOverLayout ? "ring-2 ring-primary" : ""}`}
+      className="bookmark-grid"
       data-parent-id={folderId}
       data-depth="0"
     >
