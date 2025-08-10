@@ -1,130 +1,56 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useDrag, useDrop } from "react-dnd";
-import type { DragSourceMonitor, DropTargetMonitor } from "react-dnd";
+import React, { useState } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical as LucideMenu } from "lucide-react";
-
-const ItemTypes = {
-  BOOKMARK: "bookmark",
-};
 
 interface BookmarkCardProps {
   item: any;
-  parentId: string; // add parent folder ID
-  index: number;
+  parentId: string;
   depth: number;
-  isDropTarget: boolean;
-  onDropTargetChange: (id: string | null) => void;
-  onReorder: (dragIndex: number, hoverIndex: number) => void;
+  isDragging?: boolean;
+  onBookmarkMoved?: (
+    bookmarkId: string,
+    fromParentId: string,
+    toParentId: string
+  ) => void;
+  onDrop?: (item: any) => void;
 }
 
 const BookmarkCard: React.FC<BookmarkCardProps> = ({
   item,
   parentId,
-  index,
   depth,
-  isDropTarget,
-  onDropTargetChange,
-  onReorder,
+  isDragging = false,
+  onBookmarkMoved,
+  onDrop,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [isOver, setIsOver] = useState(false);
 
-  const [{ isDragging }, dragRef] = useDrag(
-    () => ({
-      type: ItemTypes.BOOKMARK,
-      item: (monitor: DragSourceMonitor) => {
-        const initial = monitor.getInitialClientOffset();
-        console.log(
-          "[Drag Begin] BookmarkCard id=",
-          item.id,
-          "parent=",
-          parentId,
-          "index=",
-          index,
-          "initialOffset=",
-          initial
-        );
-        intervalRef.current = window.setInterval(() => {
-          const offset = monitor.getClientOffset();
-          console.log(
-            "[Dragging] BookmarkCard id=",
-            item.id,
-            "parent=",
-            parentId,
-            "currentOffset=",
-            offset
-          );
-        }, 1000);
-        // include parentId, url, title for drop handlers
-        return { ...item, parentId, index };
-      },
-      collect: (monitor: DragSourceMonitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-      end: (_dragged, monitor: DragSourceMonitor) => {
-        const didDrop = monitor.didDrop();
-        const final = monitor.getClientOffset();
-        console.log(
-          "[Drag End] BookmarkCard id=",
-          item.id,
-          "parent=",
-          parentId,
-          "didDrop=",
-          didDrop,
-          "finalOffset=",
-          final
-        );
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      },
-    }),
-    [item.id, parentId, index]
-  );
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    transform,
+  } = useDraggable({
+    id: item.id,
+    data: {
+      type: "bookmark",
+      item,
+      parentId,
+    },
+  });
 
-  const [{ isOver }, dropRef] = useDrop(
-    () => ({
-      accept: ItemTypes.BOOKMARK,
-      collect: (monitor: DropTargetMonitor) => ({
-        isOver: monitor.isOver({ shallow: true }),
-      }),
-      hover: (
-        dragged: { id: string; index: number },
-        monitor: DropTargetMonitor
-      ) => {
-        if (!ref.current) return;
-        const dragIndex = dragged.index;
-        const hoverIndex = index;
-        if (dragIndex === hoverIndex) return;
-        onReorder(dragIndex, hoverIndex);
-        dragged.index = hoverIndex;
-      },
-      drop: (
-        dragged: { id: string; index: number },
-        monitor: DropTargetMonitor
-      ) => {
-        console.log(
-          "[Drop] BookmarkCard id=",
-          item.id,
-          "received dragged id=",
-          dragged.id,
-          "dropOffset=",
-          monitor.getClientOffset()
-        );
-      },
-    }),
-    [index, onReorder]
-  );
+  const { setNodeRef: setDropRef } = useDroppable({
+    id: `bookmark-drop-${item.id}`,
+    data: { accepts: ["bookmark"] },
+  });
 
-  // attach both drag and drop refs to the node
-  dragRef(dropRef(ref));
-
-  // notify parent layout of drop-target changes
-  useEffect(() => {
-    onDropTargetChange(isOver ? item.id : null);
-  }, [isOver, item.id, onDropTargetChange]);
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : 1,
+  };
 
   const handleClick = () => {
     chrome.tabs.create({ url: item.url });
@@ -135,25 +61,43 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
     setShowMenu(!showMenu);
   };
 
+  // Handle delete bookmark
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await chrome.bookmarks.remove(item.id);
+      if (onBookmarkMoved) {
+        onBookmarkMoved(item.id, parentId, "");
+      }
+    } catch (error) {
+      console.error("Error deleting bookmark:", error);
+    }
+  };
+
   return (
     <div
-      ref={(node) => dragRef(dropRef(node))}
-      style={{ opacity: isDragging ? 0.5 : 1, cursor: "move" }}
+      ref={(node) => {
+        setDragRef(node);
+        setDropRef(node);
+      }}
+      style={style}
+      {...attributes}
+      {...listeners}
       className={`bookmark-card group flex items-center p-2 rounded-md transition-all
         ${depth > 1 ? "ml-4" : ""}
-        ${
-          isDropTarget
-            ? "bg-blue-100 dark:bg-blue-900 border border-primary"
-            : ""
-        }
+        ${isOver ? "bg-blue-100 dark:bg-blue-900 border border-primary" : ""}
       `}
       onClick={handleClick}
+      onMouseEnter={() => setIsOver(true)}
+      onMouseLeave={() => setIsOver(false)}
     >
-      <img
-        src={`https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}`}
-        alt="Favicon"
-        className="w-5 h-5 mr-3"
-      />
+      {item.url && (
+        <img
+          src={`https://www.google.com/s2/favicons?sz=64&domain_url=${item.url}`}
+          alt="Favicon"
+          className="w-5 h-5 mr-3"
+        />
+      )}
 
       <div className="flex-1 min-w-0">
         <div className="bookmark-title truncate text-sm font-medium">
@@ -174,7 +118,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
             <button className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
               ✏️ Edit
             </button>
-            <button className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500">
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500"
+              onClick={handleDelete}
+            >
               🗑️ Delete
             </button>
           </div>

@@ -1,184 +1,158 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDrag, useDrop } from "react-dnd";
-import type { DragSourceMonitor, DropTargetMonitor } from "react-dnd";
+import {
+  useDraggable,
+  useDroppable,
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
 import BookmarkCard from "./BookmarkCard";
-
-const ItemTypes = {
-  BOOKMARK: "bookmark",
-};
+import { CSS } from "@dnd-kit/utilities";
 
 interface FolderCardProps {
   folder: any;
-  index: number;
   depth: number;
-  isDropTarget: boolean;
-  onDropTargetChange: (id: string | null) => void;
   disableNesting?: boolean;
-  onReorder: (dragIndex: number, hoverIndex: number) => void;
-  // Callback when a bookmark is moved between folders
+  isDragging?: boolean;
   onBookmarkMoved?: (
     bookmarkId: string,
     fromParentId: string,
     toParentId: string
   ) => void;
+  // (removed duplicate onDrop)
+  onDrop?: (item: any) => void;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
   folder,
-  index,
   depth,
-  isDropTarget,
-  onDropTargetChange,
   disableNesting = false,
-  onReorder,
+  isDragging = false,
   onBookmarkMoved,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<number | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [children, setChildren] = useState<any[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isOver, setIsOver] = useState(false);
 
-  const [{ isDragging }, dragRef] = useDrag(
-    () => ({
-      type: ItemTypes.BOOKMARK,
-      item: (monitor: DragSourceMonitor) => {
-        const initial = monitor.getInitialClientOffset();
-        console.log(
-          "[Drag Begin] FolderCard id=",
-          folder.id,
-          "index=",
-          index,
-          "initialOffset=",
-          initial
-        );
-        intervalRef.current = window.setInterval(() => {
-          const offset = monitor.getClientOffset();
-          console.log(
-            "[Dragging] FolderCard id=",
-            folder.id,
-            "currentOffset=",
-            offset
-          );
-        }, 1000);
-        return { id: folder.id, index };
-      },
-      collect: (monitor: DragSourceMonitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-      end: (_item, monitor: DragSourceMonitor) => {
-        const didDrop = monitor.didDrop();
-        const final = monitor.getClientOffset();
-        console.log(
-          "[Drag End] FolderCard id=",
-          folder.id,
-          "didDrop=",
-          didDrop,
-          "finalOffset=",
-          final
-        );
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
       },
     }),
-    [folder.id, index]
+    useSensor(KeyboardSensor)
   );
 
-  const [{ isOver }, dropRef] = useDrop(
-    () => ({
-      accept: ItemTypes.BOOKMARK,
-      collect: (monitor: DropTargetMonitor) => ({
-        isOver: monitor.isOver(), // highlight including nested children
-      }),
-      hover: (
-        dragged: { id: string; index: number },
-        monitor: DropTargetMonitor
-      ) => {
-        if (!ref.current) return;
-        const dragIndex = dragged.index;
-        const hoverIndex = index;
-        if (dragIndex === hoverIndex) return;
-        onReorder(dragIndex, hoverIndex);
-        dragged.index = hoverIndex;
-      },
-      drop: async (
-        dragged: { id: string; parentId: string; index: number; url?: string },
-        monitor: DropTargetMonitor
-      ) => {
-        try {
-          // only handle real bookmarks
-          if (!dragged.url) return;
-          // prevent invalid moves
-          if (dragged.id === folder.id || isDescendant(folder, dragged.id))
-            return;
-          // move in Chrome bookmarks
-          await chrome.bookmarks.move(dragged.id, {
-            parentId: folder.id,
-            index: 0, // add to top
-          });
-          // optimistic UI update
-          setChildren((prev) => [{ ...dragged }, ...prev]);
-          // notify parent layout
-          if (onBookmarkMoved) {
-            onBookmarkMoved(dragged.id, dragged.parentId, folder.id);
-          }
-        } catch (err) {
-          console.error("Folder drop error:", err);
+  const { setNodeRef, attributes, listeners, transform } = useDraggable({
+    id: folder.id,
+    data: { type: "folder", folder },
+  });
+
+  const { setNodeRef: setDropRef } = useDroppable({
+    id: `folder-drop-${folder.id}`,
+    data: { accepts: ["bookmark", "folder"] },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : 1,
+  };
+
+  // Load children
+  useEffect(() => {
+    const loadChildren = async () => {
+      try {
+        if (folder.children) {
+          setChildren(folder.children);
+          return;
         }
-      },
-    }),
-    [index, onReorder]
-  );
 
-  // notify parent layout of drop-target changes
-  useEffect(() => {
-    onDropTargetChange(isOver ? folder.id : null);
-  }, [isOver, folder.id, onDropTargetChange]);
-  // listen for external moved events to prune children
-  useEffect(() => {
-    const handleBookmarkMoved = (id: string, moveInfo: any) => {
-      if (moveInfo.oldParentId === folder.id) {
-        setChildren((prev) => prev.filter((child) => child.id !== id));
+        const folderChildren = await new Promise<any[]>((resolve) =>
+          chrome.bookmarks.getChildren(folder.id, resolve)
+        );
+
+        setChildren(folderChildren || []);
+      } catch (error) {
+        console.error("Error loading folder children:", error);
       }
     };
 
-    chrome.bookmarks.onMoved.addListener(handleBookmarkMoved);
-    return () => {
-      chrome.bookmarks.onMoved.removeListener(handleBookmarkMoved);
-    };
-  }, [folder.id]);
+    loadChildren();
+  }, [folder]);
 
-  dragRef(dropRef(ref));
-  const [isOpen, setIsOpen] = useState(false);
-  const [children, setChildren] = useState<any[]>([]);
+  // Handle drop on folder
+  const handleDrop = async (item: any) => {
+    if (!item || !onBookmarkMoved) return;
 
-  const loadChildren = async () => {
-    if (folder.children) {
-      setChildren(folder.children);
+    try {
+      // Prevent invalid moves
+      if (item.id === folder.id || isDescendant(folder, item.id)) return;
+
+      // Move bookmark
+      await chrome.bookmarks.move(item.id, {
+        parentId: folder.id,
+        index: 0,
+      });
+
+      // Update UI
+      setChildren((prev) => [item, ...prev]);
+
+      // Notify parent
+      onBookmarkMoved(item.id, item.parentId, folder.id);
+    } catch (error) {
+      console.error("Error dropping on folder:", error);
+    }
+  };
+
+  // Handle drag end inside folder
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    // Prevent moves when indexes are invalid
+    const oldIndex = children.findIndex((child) => child.id === active.id);
+    const newIndex = over
+      ? children.findIndex((child) => child.id === over.id)
+      : -1;
+    if (oldIndex < 0 || newIndex < 0) {
+      setActiveId(null);
       return;
     }
-    const folderChildren = await new Promise<any[]>((resolve) =>
-      chrome.bookmarks.getChildren(folder.id, resolve)
-    );
-    setChildren(folderChildren || []);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = children.findIndex((child) => child.id === active.id);
+      const newIndex = children.findIndex((child) => child.id === over.id);
+
+      if (oldIndex !== newIndex) {
+        const newChildren = arrayMove(children, oldIndex, newIndex);
+        setChildren(newChildren);
+
+        // Update order in Chrome
+        chrome.bookmarks.move(active.id as string, {
+          parentId: folder.id,
+          index: newIndex,
+        });
+      }
+    }
+
+    setActiveId(null);
   };
 
-  const toggleFolder = () => {
-    setIsOpen(!isOpen);
-  };
-
-  useEffect(() => {
-    loadChildren();
-  }, []);
-  // Utility to prevent circular moves
+  // Check if target is descendant
   const isDescendant = (parent: any, targetId: string): boolean => {
-    console.log(
-      "[FolderCard] isDescendant check parent=",
-      parent.id,
-      "targetId=",
-      targetId
-    );
     if (!parent.children) return false;
     if (parent.children.some((child: any) => child.id === targetId))
       return true;
@@ -187,19 +161,22 @@ const FolderCard: React.FC<FolderCardProps> = ({
     );
   };
 
+  // Toggle folder open/closed
+  const toggleFolder = () => {
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <motion.div
-      ref={ref}
-      initial={false}
-      transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       className={`group relative bg-card-background w-full rounded-md transition-all border ${
         isOver
           ? "border-border-hover"
           : "border-border-default hover:border-border-hover"
-      }`}
-      style={{ cursor: "move" }}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      } ${isDragging ? "shadow-lg" : ""}`}
     >
       <div
         className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
@@ -225,12 +202,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         </div>
       </div>
 
-      <motion.div
-        layout
-        initial={false}
-        transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
-        className="folder-body p-2 relative overflow-hidden"
-      >
+      <motion.div layout className="folder-body p-2 relative overflow-hidden">
         {children.length === 0 ? (
           <div className="text-center py-4 text-gray-500">No bookmarks</div>
         ) : (
@@ -243,30 +215,69 @@ const FolderCard: React.FC<FolderCardProps> = ({
               exit={{ height: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {(isOpen ? children : children.slice(0, 5)).map((item) =>
-                item.url ? (
-                  <BookmarkCard
-                    key={item.id}
-                    item={item}
-                    parentId={folder.id}
-                    index={index}
-                    depth={depth + 1}
-                    isDropTarget={false}
-                    onDropTargetChange={() => {}}
-                    onReorder={onReorder}
-                  />
-                ) : (
-                  <FolderCard
-                    key={item.id}
-                    folder={item}
-                    index={index}
-                    depth={depth + 1}
-                    isDropTarget={false}
-                    onDropTargetChange={() => {}}
-                    onReorder={onReorder}
-                  />
-                )
-              )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={(event) => setActiveId(event.active.id as string)}
+                onDragEnd={handleDragEnd}
+              >
+                <div
+                  ref={setDropRef}
+                  onMouseEnter={() => setIsOver(true)}
+                  onMouseLeave={() => setIsOver(false)}
+                  className={`min-h-12 ${
+                    isOver ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                  }`}
+                  onClickCapture={(e) => e.stopPropagation()}
+                >
+                  <SortableContext
+                    items={children.map((child) => child.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {(isOpen ? children : children.slice(0, 5)).map((item) =>
+                      item.url ? (
+                        <BookmarkCard
+                          key={item.id}
+                          item={item}
+                          parentId={folder.id}
+                          depth={depth + 1}
+                          onBookmarkMoved={onBookmarkMoved}
+                          onDrop={handleDrop}
+                        />
+                      ) : (
+                        <FolderCard
+                          key={item.id}
+                          folder={item}
+                          depth={depth + 1}
+                          onBookmarkMoved={onBookmarkMoved}
+                          onDrop={handleDrop}
+                        />
+                      )
+                    )}
+                  </SortableContext>
+                </div>
+
+                <DragOverlay>
+                  {activeId ? (
+                    children.find((child) => child.id === activeId)?.url ? (
+                      <BookmarkCard
+                        item={children.find((child) => child.id === activeId)!}
+                        parentId={folder.id}
+                        depth={depth + 1}
+                        isDragging
+                      />
+                    ) : (
+                      <FolderCard
+                        folder={
+                          children.find((child) => child.id === activeId)!
+                        }
+                        depth={depth + 1}
+                        isDragging
+                      />
+                    )
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </motion.div>
           </AnimatePresence>
         )}
@@ -274,7 +285,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
           <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-card-header to-transparent pointer-events-none"></div>
         )}
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
 
