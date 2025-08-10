@@ -135,6 +135,19 @@ const FolderCard: React.FC<FolderCardProps> = ({
   useEffect(() => {
     onDropTargetChange(isOver ? folder.id : null);
   }, [isOver, folder.id, onDropTargetChange]);
+  // listen for external moved events to prune children
+  useEffect(() => {
+    const handleBookmarkMoved = (id: string, moveInfo: any) => {
+      if (moveInfo.oldParentId === folder.id) {
+        setChildren((prev) => prev.filter((child) => child.id !== id));
+      }
+    };
+
+    chrome.bookmarks.onMoved.addListener(handleBookmarkMoved);
+    return () => {
+      chrome.bookmarks.onMoved.removeListener(handleBookmarkMoved);
+    };
+  }, [folder.id]);
 
   dragRef(dropRef(ref));
   const [isOpen, setIsOpen] = useState(false);

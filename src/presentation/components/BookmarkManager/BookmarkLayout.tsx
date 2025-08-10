@@ -199,18 +199,16 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     toParentId: string
   ) => {
     setItems((prev) => {
-      // Remove moved bookmark from previous parent
-      const filtered = prev.filter((i) => i.id !== bookmarkId);
-      // If temp folder exists, remove bookmark from its children
-      return filtered.map((i) =>
-        i.id === "temp"
-          ? {
-              ...i,
-              children: (i.children || []).filter(
-                (c: any) => c.id !== bookmarkId
-              ),
-            }
-          : i
+      // recursively remove bookmark from matching folder node
+      const removeFromFolder = (node: BookmarkNode): BookmarkNode => ({
+        ...node,
+        children: node.children
+          ?.filter((child) => child.id !== bookmarkId)
+          .map((child) => (child.children ? removeFromFolder(child) : child)),
+      });
+
+      return prev.map((node) =>
+        node.id === fromParentId ? removeFromFolder(node) : node
       );
     });
   };
