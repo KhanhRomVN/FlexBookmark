@@ -1,5 +1,3 @@
-// FlexBookmark/src/presentation/components/BookmarkManager/BookmarkLayout.tsx
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   DndContext,
@@ -29,19 +27,16 @@ interface BookmarkNode {
   url?: string;
   children?: BookmarkNode[];
 }
-
 interface FolderModel {
   id: string;
   title: string;
   parentId?: string;
   bookmarks: BookmarkNode[];
 }
-
 interface BookmarkLayoutProps {
   folderId: string | null; // root parent id for current view
   folders: BookmarkNode[]; // initial folder nodes
 }
-
 const TEMP_FOLDER_ID = "temp";
 
 const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
@@ -52,7 +47,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
   const [dragPayload, setDragPayload] = useState<any | null>(null);
-
   const [columnCount, setColumnCount] = useState<number>(4);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,7 +166,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     if (!pointerCoordinates) return [];
     const { x, y } = pointerCoordinates;
     const collisions: Collision[] = [];
-
     for (const [id, rect] of droppableRects.entries()) {
       if (
         x >= rect.left &&
@@ -183,7 +176,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
         collisions.push({ id });
       }
     }
-
     // prioritize bookmark droppables
     const bookmarkCollision = collisions.find((c) =>
       String(c.id).startsWith("bookmark-")
@@ -210,9 +202,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     setHighlightFolderId(null);
     setHighlightColumn(null);
     setInsertHint(null);
-
     if (!over) return;
-
     const overData = (over.data as any).current;
     console.debug("[BookmarkLayout] dragOver", {
       active: active.id,
@@ -220,14 +210,12 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       overData,
     });
     if (!overData) return;
-
     if ((active.data as any).current?.type === "bookmark") {
       if (overData.zone === "folder-head" || overData.zone === "folder-body") {
         setHighlightFolderId(overData.folderId);
       }
       return;
     }
-
     if ((active.data as any).current?.type === "folder") {
       if (overData.type === "gap") {
         setHighlightColumn(overData.column);
@@ -254,44 +242,33 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       setInsertHint(null);
       return;
     }
-
     // cleanup UI hints
     setHighlightFolderId(null);
     setHighlightColumn(null);
-
+    const payload = (active.data as any).current.payload as BookmarkNode;
+    const fromParent = payload.parentId || "";
     if (!over) {
-      const payload = (active.data as any).current.payload as BookmarkNode;
-      const fromParent = payload.parentId || "";
+      // Sửa tại đây: Sử dụng folderId thay vì TEMP_FOLDER_ID
       console.log(
-        "[BookmarkLayout] bookmark dropped empty -> move to TEMP",
+        "[BookmarkLayout] bookmark dropped empty -> move to ROOT FOLDER",
         payload.id
       );
-      await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
+      await moveBookmark(payload.id, fromParent, folderId!);
       setActiveId(null);
       setActiveType(null);
       setDragPayload(null);
       setInsertHint(null);
       return;
     }
-
     const overData = (over.data as any).current;
-
     if ((active.data as any).current?.type === "bookmark") {
-      const payload = (active.data as any).current.payload as BookmarkNode;
-      const fromParent = payload.parentId || "";
-      if (
-        overData?.zone === "folder-head" ||
-        overData?.zone === "folder-body"
-      ) {
-        const toFolder = overData.folderId as string;
-        if (toFolder !== fromParent) {
-          await moveBookmark(payload.id, fromParent, toFolder);
-        }
-      } else {
-        await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
-      }
-    }
+      let toParentRaw = TEMP_FOLDER_ID;
 
+      if (overData?.folderId) {
+        toParentRaw = overData.folderId as string;
+      }
+      await moveBookmark(payload.id, fromParent, toParentRaw);
+    }
     setActiveId(null);
     setActiveType(null);
     setDragPayload(null);
@@ -305,26 +282,30 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     toParent: string
   ) => {
     if (fromParent === toParent) return;
-
+    // Sửa tại đây: Chuyển đổi TEMP_FOLDER_ID thành folderId thực
+    const realToParent = toParent === TEMP_FOLDER_ID ? folderId! : toParent;
     try {
       if (typeof chrome !== "undefined" && chrome.bookmarks) {
         await new Promise((res, rej) =>
-          chrome.bookmarks.move(bookmarkId, { parentId: toParent }, (node) => {
-            if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
-            else res(node);
-          })
+          chrome.bookmarks.move(
+            bookmarkId,
+            { parentId: realToParent },
+            (node) => {
+              if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
+              else res(node);
+            }
+          )
         );
       }
     } catch (err) {
       console.warn("[BookmarkLayout] chrome move error", err);
     }
-
+    // Cập nhật state (vẫn giữ nguyên logic state)
     setFoldersList((prev) => {
       const copy = prev.map((p) => ({
         ...p,
         bookmarks: [...p.bookmarks],
       }));
-
       // remove from source folder
       const sourceFolder = copy.find((c) => c.id === fromParent);
       if (sourceFolder) {
@@ -332,7 +313,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
           (b) => b.id !== bookmarkId
         );
       }
-
       // determine moved bookmark
       const movedBookmark: BookmarkNode =
         dragPayload?.id === bookmarkId
@@ -341,15 +321,23 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
               id: bookmarkId,
               title: "Untitled",
               url: undefined,
-              parentId: toParent,
+              parentId: realToParent,
             };
-
       // add to target folder
       const targetFolder = copy.find((c) => c.id === toParent);
       if (targetFolder) {
         targetFolder.bookmarks = [movedBookmark, ...targetFolder.bookmarks];
       }
-
+      // Nếu target là TEMP_FOLDER_ID, cập nhật folderId thực tế cho cho movedBookmark
+      if (toParent === TEMP_FOLDER_ID) {
+        const rootFolder = copy.find((c) => c.id === TEMP_FOLDER_ID);
+        if (rootFolder) {
+          rootFolder.bookmarks = [
+            movedBookmark,
+            ...rootFolder.bookmarks.filter((b) => b.id !== bookmarkId),
+          ];
+        }
+      }
       return copy;
     });
   };
