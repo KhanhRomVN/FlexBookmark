@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import { getBookmarks } from "../../utils/api";
 import MainLayout from "../components/layout/MainLayout";
 import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
 
 interface BookmarkNode {
+  parentId: string;
   id: string;
   title: string;
   url?: string;
@@ -23,7 +22,14 @@ const BookmarkManagerPage: React.FC = () => {
       try {
         const tree = await getBookmarks();
         console.debug("[BookmarkManager] fetched tree:", tree);
-        const rootChildren = tree[0]?.children || [];
+        const rawChildren = tree[0]?.children || [];
+        const rootId = tree[0]?.id || "";
+        const rootChildren = rawChildren.map((c) => ({
+          parentId: rootId,
+          id: c.id,
+          title: c.title,
+          url: c.url,
+        }));
         setBookmarks(rootChildren);
 
         const getStorage = async (): Promise<string | null> => {
@@ -67,9 +73,11 @@ const BookmarkManagerPage: React.FC = () => {
 
   const handleSelectFolder = (id: string) => {
     setSelectedFolder(id);
-    window.localStorage.setItem("lastFolderId", id);
-    if (window.chrome?.storage?.local?.set) {
-      window.chrome.storage.local.set({ lastFolderId: id });
+    // Persist last opened folder
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.set({ lastFolderId: id });
+    } else {
+      localStorage.setItem("lastFolderId", id);
     }
   };
 
@@ -82,11 +90,9 @@ const BookmarkManagerPage: React.FC = () => {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
-        <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
-      </MainLayout>
-    </DndProvider>
+    <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
+      <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
+    </MainLayout>
   );
 };
 
