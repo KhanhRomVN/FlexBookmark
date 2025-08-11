@@ -370,20 +370,32 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
           )}
           {columns.map((col, colIndex) => (
             <div key={colIndex} className="flex flex-col space-y-4">
-              {col.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  columnIndex={colIndex}
-                  folderIndex={foldersList.findIndex((f) => f.id === folder.id)}
-                  isHighlighted={folder.id === highlightFolderId}
-                  onBookmarkMoveRequested={(bookmarkId, fromParentId) =>
-                    moveBookmark(bookmarkId, fromParentId, folder.id)
-                  }
-                />
-              ))}
+              {col.map((folder) => {
+                // Ẩn FolderCard Temp nếu không có bookmark
+                if (
+                  folder.id === TEMP_FOLDER_ID &&
+                  folder.bookmarks.length === 0
+                ) {
+                  return null;
+                }
+                return (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    columnIndex={colIndex}
+                    folderIndex={foldersList.findIndex(
+                      (f) => f.id === folder.id
+                    )}
+                    isHighlighted={folder.id === highlightFolderId}
+                    onBookmarkMoveRequested={(bookmarkId, fromParentId) =>
+                      moveBookmark(bookmarkId, fromParentId, folder.id)
+                    }
+                  />
+                );
+              })}
             </div>
           ))}
+
           <DragOverlay>
             {activeType === "bookmark" && dragPayload ? (
               <BookmarkCard
