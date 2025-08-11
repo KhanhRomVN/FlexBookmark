@@ -79,9 +79,9 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
       {...attributes}
       {...listeners}
       style={style}
-      className={`bookmark-card group flex items-center p-2 rounded-md transition-all ${
+      className={`group flex items-center p-2 rounded-md transition-all ${
         depth > 1 ? "ml-4" : ""
-      } cursor-grab bg-white border border-gray-100`}
+      } cursor-grab`}
       onClick={handleClick}
       draggable
     >
