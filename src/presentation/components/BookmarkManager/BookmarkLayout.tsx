@@ -113,12 +113,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       // temp container for bookmarks in this folder
       const directBookmarks: BookmarkNode[] =
         selected.children?.filter((c) => c.url) || [];
-      const tempModel: FolderModel = {
-        id: TEMP_FOLDER_ID,
-        title: "Temp",
-        parentId: folderId,
-        bookmarks: directBookmarks,
-      };
       // subfolders under selected
       const subfolders: BookmarkNode[] =
         selected.children?.filter((c) => !c.url) || [];
@@ -128,7 +122,20 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
         parentId: folderId,
         bookmarks: s.children?.filter((c) => c.url) || [],
       }));
-      const mapped = [tempModel, ...subfolderModels];
+      // only include Temp column if there are direct bookmarks
+      const mapped: FolderModel[] = [
+        ...(directBookmarks.length > 0
+          ? [
+              {
+                id: TEMP_FOLDER_ID,
+                title: "Temp",
+                parentId: folderId,
+                bookmarks: directBookmarks,
+              },
+            ]
+          : []),
+        ...subfolderModels,
+      ];
       setFoldersList(mapped);
       console.debug("[BookmarkLayout] init foldersList for", folderId, mapped);
     };
