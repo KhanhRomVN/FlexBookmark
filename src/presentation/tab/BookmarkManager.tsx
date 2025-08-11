@@ -12,41 +12,45 @@ interface BookmarkNode {
 }
 
 const BookmarkManagerPage: React.FC = () => {
-  const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
+  const [folders, setFolders] = useState<BookmarkNode[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Convert chrome.bookmarks.BookmarkTreeNode to our BookmarkNode
+  const convertNode = (
+    node: chrome.bookmarks.BookmarkTreeNode,
+    parentId: string
+  ): BookmarkNode => ({
+    parentId,
+    id: node.id,
+    title: node.title,
+    url: node.url,
+    children: node.children
+      ? node.children.map((child) => convertNode(child, node.id))
+      : [],
+  });
+
   useEffect(() => {
-    setLoading(true);
     const loadBookmarks = async () => {
+      setLoading(true);
       try {
         const tree = await getBookmarks();
-        console.debug("[BookmarkManager] fetched tree:", tree);
-        const rawChildren = tree[0]?.children || [];
-        const rootId = tree[0]?.id || "";
-        const rootChildren = rawChildren.map((c) => ({
-          parentId: rootId,
-          id: c.id,
-          title: c.title,
-          url: c.url,
-        }));
-        setBookmarks(rootChildren);
+        const root = tree[0];
+        const firstLevel = root.children || [];
+        // Build only top-level folders for Sidebar
+        const mapped = firstLevel.map((node) => convertNode(node, root.id));
+        setFolders(mapped);
 
-        const getStorage = async (): Promise<string | null> => {
-          if (typeof chrome !== "undefined" && chrome.storage?.local) {
-            return new Promise((resolve) => {
-              chrome.storage.local.get("lastFolderId", (data) => {
-                resolve(data.lastFolderId || null);
-              });
-            });
-          } else {
-            return localStorage.getItem("lastFolderId");
-          }
-        };
-
-        const lastFolderId = await getStorage();
-        const initial = lastFolderId || rootChildren[0]?.id || null;
-        setSelectedFolder(initial);
+        // Restore last selected folder or default to first
+        const lastFolderId =
+          typeof chrome !== "undefined" && chrome.storage?.local
+            ? await new Promise<string | null>((res) =>
+                chrome.storage.local.get("lastFolderId", (data) =>
+                  res(data.lastFolderId || null)
+                )
+              )
+            : localStorage.getItem("lastFolderId");
+        setSelectedFolder(lastFolderId || mapped[0]?.id || null);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
       } finally {
@@ -56,24 +60,19 @@ const BookmarkManagerPage: React.FC = () => {
 
     loadBookmarks();
     const runtime = typeof chrome !== "undefined" ? chrome.runtime : undefined;
-    const messageHandler = (msg: any) => {
+    const handler = (msg: any) => {
       if (msg?.action === "bookmarksUpdated") {
         loadBookmarks();
       }
     };
-    if (runtime) {
-      runtime.onMessage.addListener(messageHandler);
-    }
+    runtime?.onMessage.addListener(handler);
     return () => {
-      if (runtime) {
-        runtime.onMessage.removeListener(messageHandler);
-      }
+      runtime?.onMessage.removeListener(handler);
     };
   }, []);
 
   const handleSelectFolder = (id: string) => {
     setSelectedFolder(id);
-    // Persist last opened folder
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       chrome.storage.local.set({ lastFolderId: id });
     } else {
@@ -90,8 +89,8 @@ const BookmarkManagerPage: React.FC = () => {
   }
 
   return (
-    <MainLayout folders={bookmarks} onSelectFolder={handleSelectFolder}>
-      <BookmarkLayout folderId={selectedFolder} folders={bookmarks} />
+    <MainLayout folders={folders} onSelectFolder={handleSelectFolder}>
+      <BookmarkLayout folderId={selectedFolder} folders={folders} />
     </MainLayout>
   );
 };

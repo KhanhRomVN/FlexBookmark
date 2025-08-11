@@ -28,7 +28,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
-  // Danh sách các icon có thể sử dụng
   const folderIcons = [
     Folder,
     Bookmark,
@@ -45,15 +44,6 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
     FolderCheck,
   ];
 
-  // Hàm chọn icon ngẫu nhiên dựa trên ID thư mục
-  const getRandomIcon = (id: string) => {
-    const hash = id
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return folderIcons[hash % folderIcons.length];
-  };
-
-  // Màu sắc cho icon
   const iconColors = [
     "text-blue-500",
     "text-green-500",
@@ -64,67 +54,71 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
     "text-teal-500",
   ];
 
-  // Chọn màu ngẫu nhiên dựa trên ID
+  const getRandomIcon = (id: string) => {
+    const hash = id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const Icon = folderIcons[hash % folderIcons.length];
+    return Icon;
+  };
+
   const getRandomColor = (id: string) => {
-    const hash = id
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     return iconColors[hash % iconColors.length];
   };
 
-  // Tạo groups với icon được chỉ định
-  const groups = useMemo(() => {
+  const groups = useMemo((): FolderNode[] => {
     const result: FolderNode[] = [];
-    folders.forEach((node) => {
-      if (node.url) return;
-      if (node.title === "Other bookmarks" && node.children) {
-        node.children
-          .filter((child: FolderNode) => !child.url)
-          .forEach((child: FolderNode) => result.push(child));
-      } else {
-        result.push(node);
-      }
-    });
+    // Add Bookmarks Bar
+    const bar = folders.find((f) =>
+      f.title.toLowerCase().includes("bookmarks bar")
+    );
+    if (bar) {
+      result.push(bar);
+    }
+    // Add first-level folders under Other Bookmarks
+    const other = folders.find((f) =>
+      f.title.toLowerCase().includes("other bookmarks")
+    );
+    if (other?.children) {
+      other.children
+        .filter((child) => !child.url)
+        .forEach((child) => result.push(child));
+    }
     return result;
   }, [folders]);
 
   return (
     <div className="w-72 bg-sidebar-background border-r border-sidebar-border text-text-primary h-full flex flex-col transition-all duration-300">
       <div className="sidebar-header p-4 border-b border-sidebar-border bg-gradient-to-r from-primary/10 to-transparent">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-primary">FlexBookmark</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-primary">FlexBookmark</h1>
       </div>
-
-      <div className="groups-list flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500">
+      <div className="groups-list flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-400 hover:scrollbar-thumb-gray-500">
         {groups.map((folder) => {
           const Icon = getRandomIcon(folder.id);
           const colorClass = getRandomColor(folder.id);
-
           return (
             <div
               key={folder.id}
-              className="group-item flex items-center justify-between rounded-lg mb-2 cursor-pointer transition-all duration-200 hover:bg-sidebar-hover hover:shadow-sm hover:translate-x-1 border border-transparent hover:border-primary/20"
+              className="group-item flex items-center justify-between rounded-lg mb-2 cursor-pointer px-2 py-1 hover:bg-sidebar-hover hover:shadow-sm transition"
               onClick={() => onSelectFolder(folder.id)}
             >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-primary/10 ${colorClass}`}>
+              <div className="flex items-center gap-2">
+                <div className={`p-1 rounded bg-primary/10 ${colorClass}`}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <div className="group-name truncate font-medium">
-                  {folder.title}
-                </div>
+                <span className="truncate font-medium">{folder.title}</span>
               </div>
-              <span className="group-count bg-background-tertiary rounded-full px-2 py-1 text-xs min-w-[28px] text-center font-medium">
+              <span className="text-xs bg-background-tertiary rounded-full px-2">
                 {folder.children?.length || 0}
               </span>
             </div>
           );
         })}
       </div>
-
-      <footer className="sidebar-footer p-4 border-t border-sidebar-border">
-        <button className="add-group-btn flex items-center justify-center gap-2 w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all duration-300 shadow hover:shadow-md">
+      <footer className="p-4 border-t border-sidebar-border">
+        <button
+          className="flex items-center justify-center gap-2 w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition"
+          onClick={() => onSelectFolder("")}
+        >
           <FolderPlus className="w-5 h-5" />
           New Folder
         </button>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical as LucideMenu } from "lucide-react";
 
@@ -32,15 +32,6 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: item.id,
-    data: {
-      type: "bookmark",
-      payload: { ...item, parentId },
-    },
-  });
-
-  // droppable for bookmark card (for reordering/drop feedback)
-  const { setNodeRef: setDropRef, isOver: dropIsOver } = useDroppable({
-    id: `bookmark-${item.id}`,
     data: {
       type: "bookmark",
       payload: { ...item, parentId },
@@ -84,16 +75,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   return (
     <div
-      ref={(n) => {
-        setNodeRef(n);
-        setDropRef(n);
-      }}
+      ref={setNodeRef}
       {...attributes}
       {...listeners}
-      style={{
-        ...style,
-        background: dropIsOver ? "rgba(59, 130, 246, 0.1)" : undefined,
-      }}
+      style={style}
       className={`bookmark-card group flex items-center p-2 rounded-md transition-all ${
         depth > 1 ? "ml-4" : ""
       } cursor-grab bg-white border border-gray-100`}

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import { useDroppable } from "@dnd-kit/core";
 import BookmarkCard from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,24 +69,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
     },
   });
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: folder.id,
-    data: {
-      type: "folder",
-      payload: {
-        id: folder.id,
-        title: folder.title,
-        parentId: folder.parentId,
-      },
-    },
-  });
-
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // displayed bookmarks: collapsed to 5 by default, expand on hover or open
@@ -109,12 +90,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
       onFolderInsertHint(0);
     }
   }, [headIsOver, onFolderInsertHint]);
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.65 : 1,
-    zIndex: isDragging ? 999 : undefined,
-  };
 
   const toggleOpen = () => setIsOpen((v) => !v);
 
@@ -147,20 +122,14 @@ const FolderCard: React.FC<FolderCardProps> = ({
         isHighlighted || headIsOver || bodyIsOver || folderIsOver
           ? "ring-2 ring-blue-400/30"
           : ""
-      } ${isDragging ? "shadow-lg" : ""}`}
-      style={style}
+      }`}
       onMouseEnter={() => setLocalHover(true)}
       onMouseLeave={() => setLocalHover(false)}
     >
-      {/* HEAD: draggable handle */}
+      {/* HEAD */}
       <div
-        ref={(n) => {
-          setHeadRef(n);
-          setDragRef(n);
-        }}
-        {...attributes}
-        {...listeners}
-        className="folder-header flex items-center justify-between p-3 cursor-grab bg-card-header border-b border-border-default"
+        ref={setHeadRef}
+        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
         onClick={toggleOpen}
       >
         <div className="flex items-center">
@@ -226,7 +195,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
           )}
 
           {/* overlay highlight */}
-          {(isHighlighted || headIsOver || bodyIsOver) && !isDragging && (
+          {(isHighlighted || headIsOver || bodyIsOver) && (
             <div className="absolute inset-0 pointer-events-none rounded border-2 border-dashed border-blue-300/40" />
           )}
         </motion.div>

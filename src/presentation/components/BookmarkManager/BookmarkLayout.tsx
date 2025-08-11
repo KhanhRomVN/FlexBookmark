@@ -7,17 +7,12 @@ import {
   DragStartEvent,
   UniqueIdentifier,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   Collision,
   MeasuringStrategy,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 import BookmarkCard from "./BookmarkCard";
 import FolderCard from "./FolderCard";
 import EmptyState from "./EmptyState";
@@ -75,13 +70,10 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     index: number;
   } | null>(null);
 
-  // sensors
+  // sensors - only PointerSensor for bookmarks
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -204,15 +196,13 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   // --------- Drag handlers ----------
   const handleDragStart = (ev: DragStartEvent) => {
     const { active } = ev;
-    setActiveId(active.id);
     const t = (active.data as any).current?.type || null;
+    // only handle bookmark
+    if (t !== "bookmark") return;
+    setActiveId(active.id);
     setActiveType(t);
     setDragPayload((active.data as any).current?.payload || null);
-    console.log("[BookmarkLayout] dragStart", {
-      id: active.id,
-      type: t,
-      payload: (active.data as any).current?.payload,
-    });
+    console.log("[BookmarkLayout] bookmark drag start", active.id);
   };
 
   const handleDragOver = (ev: DragOverEvent) => {
@@ -265,6 +255,14 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
   const handleDragEnd = async (ev: DragEndEvent) => {
     const { active, over } = ev;
+    // only handle bookmark drags
+    if ((active.data as any).current?.type !== "bookmark") {
+      setActiveId(null);
+      setActiveType(null);
+      setDragPayload(null);
+      setInsertHint(null);
+      return;
+    }
     console.log("[BookmarkLayout] dragEnd start", {
       activeId: active.id,
       overId: over?.id,
@@ -345,95 +343,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
           payload.id
         );
         await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
-      }
-
-      setActiveId(null);
-      setActiveType(null);
-      setDragPayload(null);
-      setInsertHint(null);
-      return;
-    }
-
-    // Folder dropped
-    if ((active.data as any).current?.type === "folder") {
-      const fromFolderId = active.id as string;
-      // Dropped onto folder head/any -> swap positions (reorder)
-      if (overData?.zone === "folder-head" || overData?.zone === "folder-any") {
-        const toFolderId = overData.folderId as string;
-        console.log(
-          "[BookmarkLayout] folder drop onto folder -> reorder",
-          fromFolderId,
-          "=>",
-          toFolderId
-        );
-        if (fromFolderId === toFolderId) {
-          console.log("[BookmarkLayout] folder dropped on itself -> no-op");
-        } else {
-          // reorder foldersList: find indices and move
-          const fromIdx = foldersList.findIndex((f) => f.id === fromFolderId);
-          const toIdx = foldersList.findIndex((f) => f.id === toFolderId);
-          if (fromIdx >= 0 && toIdx >= 0) {
-            const newOrder = arrayMove(foldersList, fromIdx, toIdx);
-            setFoldersList(newOrder);
-            // persist order if parentId same
-            // We try to move folder nodes within the same parent to correct index
-            const fromParent = foldersList[fromIdx].parentId || folderId;
-            const toParent = foldersList[toIdx].parentId || folderId;
-            if (fromParent && toParent && fromParent === toParent) {
-              // call chrome.bookmarks.move for each folder to its index (expensive but explicit)
-              try {
-                await Promise.all(
-                  newOrder.map(async (node, idx) => {
-                    if (!node.parentId) return;
-                    await new Promise((res, rej) =>
-                      chrome.bookmarks.move(
-                        node.id,
-                        { parentId: node.parentId || fromParent, index: idx },
-                        () => {
-                          if (chrome.runtime.lastError) {
-                            console.warn(
-                              "[BookmarkLayout] chrome.move folder warning",
-                              chrome.runtime.lastError
-                            );
-                            // not rejecting to allow best-effort
-                            res(true);
-                          } else res(true);
-                        }
-                      )
-                    );
-                  })
-                );
-                console.log(
-                  "[BookmarkLayout] folder order persisted to chrome"
-                );
-              } catch (err) {
-                console.error(
-                  "[BookmarkLayout] persist folder order fail",
-                  err
-                );
-              }
-            } else {
-              console.debug(
-                "[BookmarkLayout] folder parents differ - skipping persist",
-                { fromParent, toParent }
-              );
-            }
-          } else {
-            console.warn(
-              "[BookmarkLayout] cannot find folder indices for reorder",
-              { fromIdx, toIdx }
-            );
-          }
-        }
-      } else if (overData?.type === "gap") {
-        console.log(
-          "[BookmarkLayout] folder dropped into gap -> insertAt",
-          overData.column,
-          overData.index
-        );
-        await insertFolderAt(fromFolderId, overData.column, overData.index);
-      } else {
-        console.log("[BookmarkLayout] folder drop unknown -> no-op");
       }
 
       setActiveId(null);
