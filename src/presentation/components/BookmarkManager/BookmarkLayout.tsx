@@ -1,3 +1,5 @@
+// FlexBookmark/src/presentation/components/BookmarkManager/BookmarkLayout.tsx
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   DndContext,
@@ -12,19 +14,13 @@ import {
   Collision,
   MeasuringStrategy,
 } from "@dnd-kit/core";
+import type { CollisionDetection } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import BookmarkCard from "./BookmarkCard";
 import FolderCard from "./FolderCard";
 import EmptyState from "./EmptyState";
 import GridHeader from "./GridHeader";
 import { motion } from "framer-motion";
-
-/**
- * Full-featured single DndContext layout.
- * - Two draggable types: "bookmark" and "folder"
- * - Custom collisionDetector to detect folder head/body and gaps between folders
- * - Persist folder order via chrome.bookmarks.move when reordering within same parent
- */
 
 interface BookmarkNode {
   parentId: string;
@@ -60,6 +56,24 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [columnCount, setColumnCount] = useState<number>(4);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
+  // determine selected folder for header
+  const findSelectedFolder = (
+    nodes: BookmarkNode[],
+    id: string
+  ): BookmarkNode | undefined => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findSelectedFolder(node.children, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  const selectedFolder = folderId
+    ? findSelectedFolder(folders, folderId)
+    : undefined;
+
   // UI hints
   const [highlightFolderId, setHighlightFolderId] = useState<string | null>(
     null
@@ -77,58 +91,55 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     })
   );
 
-  // Initialize foldersList from prop `folders`
+  // Initialize foldersList based on selected folder
   useEffect(() => {
-    (async () => {
-      try {
-        const mapped: FolderModel[] = await Promise.all(
-          folders.map(async (f) => {
-            // build bookmarks list: prefer children in prop, otherwise fetch
-            let bookmarks: BookmarkNode[] = [];
-            if (f.children && f.children.length > 0) {
-              bookmarks = f.children.filter(
-                (c) => (c as any).url
-              ) as unknown as BookmarkNode[];
-            } else if (typeof chrome !== "undefined" && chrome.bookmarks) {
-              try {
-                const children = await new Promise<
-                  chrome.bookmarks.BookmarkTreeNode[]
-                >((res) => chrome.bookmarks.getChildren(f.id, res));
-                bookmarks = (children || []).filter(
-                  (c) => (c as any).url
-                ) as BookmarkNode[];
-              } catch (err) {
-                console.warn("[BookmarkLayout] chrome.getChildren fail", err);
-              }
-            }
-            return {
-              id: f.id,
-              title: f.title,
-              parentId: (f as any).parentId || folderId || undefined,
-              bookmarks,
-            } as FolderModel;
-          })
-        );
-
-        // ensure temp folder exists at end
-        const hasTemp = mapped.some((m) => m.id === TEMP_FOLDER_ID);
-        if (!hasTemp) {
-          mapped.push({
-            id: TEMP_FOLDER_ID,
-            title: "Temp",
-            parentId: folderId || undefined,
-            bookmarks: [],
-          } as FolderModel);
-        }
-
-        setFoldersList(mapped);
-        console.debug("[BookmarkLayout] init foldersList", mapped);
-      } catch (error) {
-        console.error("[BookmarkLayout] init error", error);
+    const initList = async () => {
+      if (!folderId) {
+        setFoldersList([]);
+        return;
       }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folders]);
+      // recursively find the selected node in the full tree
+      const findNode = (
+        nodes: BookmarkNode[],
+        id: string
+      ): BookmarkNode | undefined => {
+        for (const node of nodes) {
+          if (node.id === id) return node;
+          if (node.children) {
+            const found = findNode(node.children, id);
+            if (found) return found;
+          }
+        }
+      };
+      const selected = findNode(folders, folderId);
+      if (!selected) {
+        setFoldersList([]);
+        return;
+      }
+      // temp container for bookmarks in this folder
+      const directBookmarks: BookmarkNode[] =
+        selected.children?.filter((c) => c.url) || [];
+      const tempModel: FolderModel = {
+        id: TEMP_FOLDER_ID,
+        title: "Temp",
+        parentId: folderId,
+        bookmarks: directBookmarks,
+      };
+      // subfolders under selected
+      const subfolders: BookmarkNode[] =
+        selected.children?.filter((c) => !c.url) || [];
+      const subfolderModels: FolderModel[] = subfolders.map((s) => ({
+        id: s.id,
+        title: s.title,
+        parentId: folderId,
+        bookmarks: s.children?.filter((c) => c.url) || [],
+      }));
+      const mapped = [tempModel, ...subfolderModels];
+      setFoldersList(mapped);
+      console.debug("[BookmarkLayout] init foldersList for", folderId, mapped);
+    };
+    initList();
+  }, [folders, folderId]);
 
   // responsive columns
   useEffect(() => {
@@ -154,20 +165,11 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   });
 
   // --------- Custom collision detection ----------
-  // We'll use pointer coordinates to detect:
-  // - if pointer is over folder head -> return that folder head id
-  // - if pointer is over folder body -> return that folder body id
-  // - if pointer is between folders in a column -> return synthetic "gap" id like gap-col-<c>-<idx>
-  // Implementation relies on getClientRect of droppables provided by DnD kit.
-
-  const customCollisionDetection = ({
+  const customCollisionDetection: CollisionDetection = ({
     droppableRects,
     pointerCoordinates,
-  }: {
-    droppableRects: Map<string, DOMRect>;
-    pointerCoordinates: { x: number; y: number } | null;
-  }): Collision[] | null => {
-    if (!pointerCoordinates) return null;
+  }) => {
+    if (!pointerCoordinates) return [];
     const { x, y } = pointerCoordinates;
     const collisions: Collision[] = [];
 
@@ -189,15 +191,13 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     if (bookmarkCollision) {
       return [bookmarkCollision];
     }
-    // return first collision if exists
-    return collisions.length ? [collisions[0]] : null;
+    return collisions.length ? [collisions[0]] : [];
   };
 
   // --------- Drag handlers ----------
   const handleDragStart = (ev: DragStartEvent) => {
     const { active } = ev;
     const t = (active.data as any).current?.type || null;
-    // only handle bookmark
     if (t !== "bookmark") return;
     setActiveId(active.id);
     setActiveType(t);
@@ -211,10 +211,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     setHighlightColumn(null);
     setInsertHint(null);
 
-    if (!over) {
-      // pointer over empty space - do nothing (onDragEnd will handle move-to-temp)
-      return;
-    }
+    if (!over) return;
 
     const overData = (over.data as any).current;
     console.debug("[BookmarkLayout] dragOver", {
@@ -222,19 +219,15 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       over: over.id,
       overData,
     });
-
     if (!overData) return;
 
-    // If dragging bookmark
     if ((active.data as any).current?.type === "bookmark") {
-      // If over folder head/body -> highlight folder
       if (overData.zone === "folder-head" || overData.zone === "folder-body") {
         setHighlightFolderId(overData.folderId);
       }
       return;
     }
 
-    // If dragging folder
     if ((active.data as any).current?.type === "folder") {
       if (overData.type === "gap") {
         setHighlightColumn(overData.column);
@@ -243,7 +236,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       }
       if (overData.zone === "folder-head" || overData.zone === "folder-any") {
         setHighlightColumn(overData.column ?? null);
-        // insert hint at that folder index
         setInsertHint({
           column: overData.column ?? 0,
           index: overData.folderIndex ?? 0,
@@ -255,7 +247,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
   const handleDragEnd = async (ev: DragEndEvent) => {
     const { active, over } = ev;
-    // only handle bookmark drags
     if ((active.data as any).current?.type !== "bookmark") {
       setActiveId(null);
       setActiveType(null);
@@ -263,41 +254,19 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
       setInsertHint(null);
       return;
     }
-    console.log("[BookmarkLayout] dragEnd start", {
-      activeId: active.id,
-      overId: over?.id,
-      activeData: (active.data as any).current,
-      overData: (over?.data as any)?.current,
-      insertHint,
-    });
 
     // cleanup UI hints
     setHighlightFolderId(null);
     setHighlightColumn(null);
 
-    // If no target (dropped in empty area)
     if (!over) {
-      if ((active.data as any).current?.type === "bookmark") {
-        // move bookmark -> TEMP
-        const payload = (active.data as any).current.payload as BookmarkNode;
-        const fromParent = payload.parentId || "";
-        console.log(
-          "[BookmarkLayout] bookmark dropped empty -> move to TEMP",
-          payload.id
-        );
-        await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
-      } else if ((active.data as any).current?.type === "folder") {
-        // folder dropped empty: if we have insertHint, insert accordingly; else append to end column 0
-        if (insertHint) {
-          await insertFolderAt(
-            active.id as string,
-            insertHint.column,
-            insertHint.index
-          );
-        } else {
-          await insertFolderAt(active.id as string, 0, columns[0].length);
-        }
-      }
+      const payload = (active.data as any).current.payload as BookmarkNode;
+      const fromParent = payload.parentId || "";
+      console.log(
+        "[BookmarkLayout] bookmark dropped empty -> move to TEMP",
+        payload.id
+      );
+      await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
       setActiveId(null);
       setActiveType(null);
       setDragPayload(null);
@@ -307,347 +276,139 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
     const overData = (over.data as any).current;
 
-    // Bookmark dropped
     if ((active.data as any).current?.type === "bookmark") {
       const payload = (active.data as any).current.payload as BookmarkNode;
       const fromParent = payload.parentId || "";
-      // If over folder head/body -> move to that folder
       if (
         overData?.zone === "folder-head" ||
         overData?.zone === "folder-body"
       ) {
         const toFolder = overData.folderId as string;
-        if (toFolder === fromParent) {
-          console.log(
-            "[BookmarkLayout] bookmark dropped to same folder -> no-op",
-            payload.id
-          );
-        } else {
-          console.log(
-            "[BookmarkLayout] move bookmark",
-            payload.id,
-            "->",
-            toFolder
-          );
+        if (toFolder !== fromParent) {
           await moveBookmark(payload.id, fromParent, toFolder);
         }
-      } else if (overData?.type === "gap") {
-        console.log(
-          "[BookmarkLayout] bookmark dropped onto gap -> move to TEMP",
-          payload.id
-        );
-        await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
       } else {
-        console.log(
-          "[BookmarkLayout] bookmark dropped unknown -> move to TEMP",
-          payload.id
-        );
         await moveBookmark(payload.id, fromParent, TEMP_FOLDER_ID);
       }
-
-      setActiveId(null);
-      setActiveType(null);
-      setDragPayload(null);
-      setInsertHint(null);
-      return;
     }
 
-    // fallback cleanup
     setActiveId(null);
     setActiveType(null);
     setDragPayload(null);
     setInsertHint(null);
   };
 
-  // ---------- Helpers: move bookmark between folders and update UI + chrome persist ----------
+  // Helpers
   const moveBookmark = async (
     bookmarkId: string,
     fromParent: string,
     toParent: string
   ) => {
-    console.log("[BookmarkLayout] request moveBookmark", {
-      bookmarkId,
-      fromParent,
-      toParent,
-    });
-    try {
-      if (fromParent === toParent) {
-        console.debug("[BookmarkLayout] moveBookmark: same parent skip");
-        return;
-      }
+    if (fromParent === toParent) return;
 
-      // call chrome.bookmarks.move if present
+    try {
       if (typeof chrome !== "undefined" && chrome.bookmarks) {
-        try {
-          await new Promise((res, rej) =>
-            chrome.bookmarks.move(
-              bookmarkId,
-              { parentId: toParent },
-              (node) => {
-                if (chrome.runtime.lastError) {
-                  console.warn(
-                    "[BookmarkLayout] chrome.bookmarks.move error",
-                    chrome.runtime.lastError
-                  );
-                  rej(chrome.runtime.lastError);
-                } else res(node);
-              }
-            )
-          );
-        } catch (err) {
-          console.error(
-            "[BookmarkLayout] chrome move fail, continuing with UI update",
-            err
-          );
-        }
-      } else {
-        console.debug("[BookmarkLayout] chrome undefined - skip actual move");
-      }
-
-      // update UI: remove from fromParent folder and add to toParent at front
-      setFoldersList((prev) => {
-        const copy = prev.map((p) => ({ ...p, bookmarks: [...p.bookmarks] }));
-        // remove
-        const s = copy.find((c) => c.id === fromParent);
-        if (s) s.bookmarks = s.bookmarks.filter((b) => b.id !== bookmarkId);
-        // find moved item data: try dragPayload or fallback minimal
-        const moved = (dragPayload && dragPayload.id === bookmarkId
-          ? dragPayload
-          : null) || { id: bookmarkId, title: "Untitled", url: undefined };
-        const t =
-          copy.find((c) => c.id === toParent) ||
-          copy.find((c) => c.id === TEMP_FOLDER_ID);
-        if (t) t.bookmarks = [moved, ...t.bookmarks];
-        else
-          console.warn(
-            "[BookmarkLayout] target folder not found to insert moved bookmark",
-            toParent
-          );
-        return copy;
-      });
-
-      console.log("[BookmarkLayout] moveBookmark UI updated");
-    } catch (error) {
-      console.error("[BookmarkLayout] moveBookmark error", error);
-    }
-  };
-
-  // ---------- Insert folder into column at idx ----------
-  const insertFolderAt = async (
-    folderId: string,
-    column: number,
-    index: number
-  ) => {
-    console.log("[BookmarkLayout] insertFolderAt", { folderId, column, index });
-    try {
-      // Build columns array from current foldersList
-      const cols: FolderModel[][] = Array.from(
-        { length: columnCount },
-        () => [] as FolderModel[]
-      );
-      foldersList.forEach((f, i) => cols[i % columnCount].push(f));
-
-      // find and remove the folder from its current column
-      let removed: FolderModel | null = null;
-      for (let c = 0; c < cols.length; c++) {
-        const i = cols[c].findIndex((x) => x.id === folderId);
-        if (i >= 0) {
-          removed = cols[c].splice(i, 1)[0];
-          break;
-        }
-      }
-      // if not found attempt to find in foldersList
-      if (!removed) {
-        removed = foldersList.find((f) => f.id === folderId) || null;
-      }
-      if (!removed) {
-        console.warn(
-          "[BookmarkLayout] insertFolderAt cannot find folder",
-          folderId
-        );
-        return;
-      }
-
-      // clamp index
-      const targetCol = cols[Math.max(0, Math.min(column, cols.length - 1))];
-      const insertionIndex = Math.max(0, Math.min(index, targetCol.length));
-      targetCol.splice(insertionIndex, 0, removed);
-
-      // rebuild flat list by round robin reading columns
-      const maxLen = Math.max(...cols.map((c) => c.length));
-      const newFlat: FolderModel[] = [];
-      for (let r = 0; r < maxLen; r++) {
-        for (let c = 0; c < cols.length; c++) {
-          if (cols[c][r]) newFlat.push(cols[c][r]);
-        }
-      }
-
-      setFoldersList(newFlat);
-
-      // persist folder order if possible: if all folders share same parent, move them in order
-      const parentIds = new Set(newFlat.map((n) => n.parentId || folderId));
-      if (parentIds.size === 1) {
-        const parent = Array.from(parentIds)[0];
-        // move each folder to index 0..n
-        try {
-          await Promise.all(
-            newFlat.map(
-              (node, idx) =>
-                new Promise((res) =>
-                  chrome.bookmarks.move(
-                    node.id,
-                    { parentId: parent, index: idx },
-                    () => {
-                      // ignore lastError for best-effort
-                      res(true);
-                    }
-                  )
-                )
-            )
-          );
-          console.log(
-            "[BookmarkLayout] persisted folder order via chrome.bookmarks.move"
-          );
-        } catch (err) {
-          console.error("[BookmarkLayout] persist order error", err);
-        }
-      } else {
-        console.debug(
-          "[BookmarkLayout] not persisting order - multiple parentIds",
-          Array.from(parentIds)
+        await new Promise((res, rej) =>
+          chrome.bookmarks.move(bookmarkId, { parentId: toParent }, (node) => {
+            if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
+            else res(node);
+          })
         );
       }
-    } catch (error) {
-      console.error("[BookmarkLayout] insertFolderAt error", error);
+    } catch (err) {
+      console.warn("[BookmarkLayout] chrome move error", err);
     }
-  };
 
-  if (!folderId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <EmptyState />
-      </div>
-    );
-  }
+    setFoldersList((prev) => {
+      const copy = prev.map((p) => ({
+        ...p,
+        bookmarks: [...p.bookmarks],
+      }));
+
+      // remove from source folder
+      const sourceFolder = copy.find((c) => c.id === fromParent);
+      if (sourceFolder) {
+        sourceFolder.bookmarks = sourceFolder.bookmarks.filter(
+          (b) => b.id !== bookmarkId
+        );
+      }
+
+      // determine moved bookmark
+      const movedBookmark: BookmarkNode =
+        dragPayload?.id === bookmarkId
+          ? (dragPayload as BookmarkNode)
+          : {
+              id: bookmarkId,
+              title: "Untitled",
+              url: undefined,
+              parentId: toParent,
+            };
+
+      // add to target folder
+      const targetFolder = copy.find((c) => c.id === toParent);
+      if (targetFolder) {
+        targetFolder.bookmarks = [movedBookmark, ...targetFolder.bookmarks];
+      }
+
+      return copy;
+    });
+  };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={customCollisionDetection as any}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-    >
+    <div className="flex flex-col">
+      {/* Header nằm riêng trên cùng */}
+      <div className="pb-4">
+        <GridHeader folderId={folderId!} folder={selectedFolder} depth={0} />
+      </div>
       <div
-        id="bookmark-grid"
-        className="bookmark-grid"
-        data-parent-id={folderId}
+        ref={gridRef}
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+        }}
       >
-        <GridHeader
-          folderId={folderId}
-          folder={foldersList.find((f) => f.id === folderId) as any}
-          depth={0}
-        />
-
-        {foldersList.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div
-            ref={gridRef}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4"
-          >
-            {columns.map((col, colIndex) => (
-              <div
-                key={colIndex}
-                className={`flex flex-col gap-4 p-1 relative ${
-                  highlightColumn === colIndex ? "ring-2 ring-blue-300/30" : ""
-                }`}
-              >
-                {col.map((folder, idxInCol) => {
-                  const globalIndex = foldersList.findIndex(
-                    (f) => f.id === folder.id
-                  );
-                  // We'll render a small gap droppable region before each folder (we rely on customCollisionDetection to read rects)
-                  return (
-                    <motion.div
-                      key={folder.id}
-                      layout
-                      initial={false}
-                      animate={{}}
-                    >
-                      {/* Gap region BEFORE folder */}
-                      <div
-                        id={`gap-${colIndex}-${idxInCol}`}
-                        data-gap={`gap-${colIndex}-${idxInCol}`}
-                        // style for gap indicator
-                        className={`h-2 transition-all ${
-                          insertHint &&
-                          insertHint.column === colIndex &&
-                          insertHint.index === idxInCol
-                            ? "bg-blue-200/50 rounded"
-                            : "hover:bg-gray-100/20"
-                        }`}
-                      />
-                      <FolderCard
-                        folder={folder}
-                        columnIndex={colIndex}
-                        folderIndex={globalIndex}
-                        isHighlighted={highlightFolderId === folder.id}
-                        // When FolderCard reports a drop request (native fallback), we forward to moveBookmark
-                        onBookmarkMoveRequested={async (
-                          bookmarkId: string,
-                          fromParentId: string
-                        ) => {
-                          await moveBookmark(
-                            bookmarkId,
-                            fromParentId,
-                            folder.id
-                          );
-                        }}
-                        onFolderInsertHint={(insertAt) => {
-                          setInsertHint({ column: colIndex, index: idxInCol });
-                        }}
-                      />
-                    </motion.div>
-                  );
-                })}
-                {/* Gap at end of column */}
-                <div
-                  id={`gap-${colIndex}-${col.length}`}
-                  className={`h-4 mt-2 ${
-                    insertHint &&
-                    insertHint.column === colIndex &&
-                    insertHint.index === col.length
-                      ? "bg-blue-200/50 rounded"
-                      : "hover:bg-gray-100/20"
-                  }`}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={customCollisionDetection as CollisionDetection}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        >
+          {foldersList.length === 0 && (
+            <div className="col-span-full">
+              <EmptyState />
+            </div>
+          )}
+          {columns.map((col, colIndex) => (
+            <div key={colIndex} className="flex flex-col space-y-4">
+              {col.map((folder) => (
+                <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  columnIndex={colIndex}
+                  folderIndex={foldersList.findIndex((f) => f.id === folder.id)}
+                  isHighlighted={folder.id === highlightFolderId}
+                  onBookmarkMoveRequested={(bookmarkId, fromParentId) =>
+                    moveBookmark(bookmarkId, fromParentId, folder.id)
+                  }
                 />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <DragOverlay>
-          {activeId && dragPayload ? (
-            activeType === "bookmark" ? (
+              ))}
+            </div>
+          ))}
+          <DragOverlay>
+            {activeType === "bookmark" && dragPayload ? (
               <BookmarkCard
-                item={dragPayload}
-                parentId={dragPayload.parentId}
-                depth={0}
+                item={dragPayload as BookmarkNode}
+                parentId={(dragPayload as BookmarkNode).parentId}
+                depth={1}
                 isDragging
               />
-            ) : activeType === "folder" ? (
-              <div className="p-2 bg-white rounded shadow-lg">
-                <div className="font-medium">
-                  {dragPayload?.title || activeId}
-                </div>
-              </div>
-            ) : null
-          ) : null}
-        </DragOverlay>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
-    </DndContext>
+    </div>
   );
 };
 

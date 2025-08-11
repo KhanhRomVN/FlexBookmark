@@ -118,10 +118,10 @@ const FolderCard: React.FC<FolderCardProps> = ({
         rootRef.current = n;
         setFolderRef(n);
       }}
-      className={`group relative bg-card-background w-full rounded-md transition-all border border-gray-200 dark:border-gray-700 ${
+      className={`group relative bg-card-background w-full rounded-md transition-all border-2 ${
         isHighlighted || headIsOver || bodyIsOver || folderIsOver
-          ? "ring-2 ring-blue-400/30"
-          : ""
+          ? "border-blue-400 ring-2 ring-blue-400/30"
+          : "border-gray-200 dark:border-gray-700"
       }`}
       onMouseEnter={() => setLocalHover(true)}
       onMouseLeave={() => setLocalHover(false)}
@@ -204,4 +204,4 @@ const FolderCard: React.FC<FolderCardProps> = ({
   );
 };
 
-export default FolderCard;
+export default React.memo(FolderCard);
