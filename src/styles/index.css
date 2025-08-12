@@ -6,7 +6,7 @@
   :root {
     /* Primary color */
     --primary: #3686ff;
-    
+
     /* Background colors */
     --background: #ffffff;
 
@@ -17,18 +17,18 @@
     /* Border Color */
     --border: #e2e8f0;
     --border-hover: #cbd5e1;
-    
+
     /* Card colors */
     --card-background: #ffffff;
     --card-shadow: rgba(0, 0, 0, 0.1);
-  
+
     /* Input colors */
     --input-background: #ffffff;
-    
+
     /* Dialog colors */
     --dialog-background: #ffffff;
     --dialog-shadow: rgba(0, 0, 0, 0.1);
-    
+
     /* Dropdown colors */
     --dropdown-background: #ffffff;
     --dropdown-item-hover: #f8fafc;
@@ -39,6 +39,16 @@
     --sidebar-background: #f9fafb;
     --sidebar-item-hover: #f3f4f6;
     --sidebar-item-focus: #e5e7eb;
+
+    /* Button colors */
+    --button-bg: #3686ff;
+    --button-bg-hover: #1d4ed8;
+    --button-border: #2563eb;
+    --button-border-hover: #1e40af;
+
+    /* Secondary Button colors */
+    --button-second-bg: #1e1e1e;
+    --button-second-bg-hover: #343434;
   }
 
   .dark {
@@ -76,6 +86,16 @@
     --sidebar-background: #131313;
     --sidebar-item-hover: #1e1e1e;
     --sidebar-item-focus: #333333;
+
+    /* Button colors */
+    --button-bg: #3686ff;
+    --button-bg-hover: #418dfe;
+    --button-border: #418dfe;
+    --button-border-hover: #5aa3ff;
+
+    /* Secondary Button colors */
+    --button-second-bg: #1e1e1e;
+    --button-second-bg-hover: #343434;
   }
 
   .image {
@@ -115,9 +135,19 @@
     --sidebar-item-focus: #d1d5db;
 
     /* Custom background image */
-    background-image: url('../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg');
+    background-image: url("../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg");
     background-size: cover;
     background-position: center;
+
+    /* Button colors */
+    --button-bg: rgba(54, 134, 255, 0.85);
+    --button-bg-hover: rgba(29, 78, 216, 0.85);
+    --button-border: rgba(37, 99, 235, 0.85);
+    --button-border-hover: rgba(30, 64, 175, 0.85);
+
+    /* Secondary Button colors */
+    --button-second-bg: #1e1e1e;
+    --button-second-bg-hover: #343434;
   }
 }
 
@@ -135,20 +165,20 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
-  
+
   .scrollbar-thumb-gray-400::-webkit-scrollbar-thumb {
     background-color: #9ca3af;
     border-radius: 6px;
   }
-  
+
   .scrollbar-track-transparent::-webkit-scrollbar-track {
     background-color: transparent;
   }
-  
+
   .scrollbar-thumb-gray-500:hover::-webkit-scrollbar-thumb {
-    background-color: #6b7280;  
+    background-color: #6b7280;
   }
-  
+
   ::-webkit-scrollbar {
     width: 6px;
   }

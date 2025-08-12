@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { CSSProperties } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -61,6 +61,21 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
     setShowMenu((v) => !v);
   };
 
+  // close dropdown when clicking outside
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -102,21 +117,26 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
         </div>
       </div>
 
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <button
-          className="bookmark-menu-btn p-1 rounded hover:bg-gray-200 invisible group-hover:visible"
+          className="bookmark-menu-btn p-1 rounded bg-button-secondBg text-text-secondary hover:bg-button-secondBgHover focus:outline-none visible group-hover:visible"
           onClick={handleMenuClick}
+          aria-label="Open menu"
         >
           <LucideMenu size={16} />
         </button>
 
         {showMenu && (
-          <div className="menu-dropdown absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700">
-            <button className="w-full text-left px-3 py-2 hover:bg-gray-100">
+          <div
+            className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10
+            bg-dropdown-background border border-border-default
+            dark:bg-dropdown-background dark:border-border-default"
+          >
+            <button className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus transition-colors">
               ✏️ Edit
             </button>
             <button
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 text-red-500"
+              className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus text-red-500 transition-colors"
               onClick={handleDelete}
             >
               🗑️ Delete

@@ -39,8 +39,16 @@ module.exports = {
         },
         sidebar: {
           background: "var(--sidebar-background)",
-          itemHover: "var(--sidebar-item-hover)",
+          itemHover: "var(--sidebar-item-hover)", 
           itemFocus: "var(--sidebar-item-focus)",
+        },
+        button: {
+          bg: "var(--button-bg)",
+          bgHover: "var(--button-bg-hover)",
+          border: "var(--button-border)",
+          borderHover: "var(--button-border-hover)",
+          secondBg: "var(--button-second-bg)",
+          secondBgHover: "var(--button-second-bg-hover)",
         },
       },
     },
