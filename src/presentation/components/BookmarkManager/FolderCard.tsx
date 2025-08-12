@@ -6,12 +6,8 @@ import BookmarkCard from "./BookmarkCard";
 import type { BookmarkItem } from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/presentation/components/ui/dropdown-menu";
+import BookmarkForm from "./BookmarkForm";
+import { Pencil, Trash2, Plus } from "lucide-react";
 
 // Drop zone between bookmarks for insert hints
 interface GapDropZoneProps {
@@ -74,6 +70,9 @@ interface FolderCardProps {
   onFolderInsertHint?: (insertAt: number) => void;
   hideWhenDragging?: boolean;
   onBookmarkEdit?: (item: BookmarkItem & { parentId: string }) => void;
+  onFolderRename?: (id: string, newTitle: string) => void;
+  onFolderDelete?: (id: string) => void;
+  onBookmarkAdd?: (parentId: string) => void;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
@@ -87,9 +86,29 @@ const FolderCard: React.FC<FolderCardProps> = ({
   onBookmarkMoveRequested,
   onFolderInsertHint,
   onBookmarkEdit,
+  onFolderRename,
+  onFolderDelete,
+  onBookmarkAdd,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localHover, setLocalHover] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // folder menu state & outside click
+  const [showFolderMenu, setShowFolderMenu] = useState(false);
+  const folderMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        folderMenuRef.current &&
+        !folderMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowFolderMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   // droppable for entire folder (both head and body)
   const { setNodeRef: setFolderRef, isOver: folderIsOver } = useDroppable({
@@ -187,147 +206,186 @@ const FolderCard: React.FC<FolderCardProps> = ({
   };
 
   return (
-    <div
-      ref={(n) => {
-        rootRef.current = n;
-        setFolderRef(n);
-      }}
-      style={{
-        transform: CSS.Translate.toString(dragTransform),
-        opacity: isFolderDragging ? 0.6 : 1,
-        zIndex: isFolderDragging ? 1000 : undefined,
-      }}
-      className={`group relative bg-card-background w-full rounded-md border-2 ${
-        isHighlighted || headIsOver || bodyIsOver || folderIsOver
-          ? "border-blue-400 ring-2 ring-blue-400/30"
-          : "border-gray-200 dark:border-gray-700"
-      } ${hideWhenDragging ? "invisible" : ""}`}
-      onMouseEnter={() => setLocalHover(true)}
-      onMouseLeave={() => setLocalHover(false)}
-    >
-      {/* HEAD */}
+    <>
       <div
         ref={(n) => {
-          setHeadRef(n);
-          setDragRef(n);
+          rootRef.current = n;
+          setFolderRef(n);
         }}
-        {...dragAttributes}
-        {...dragListeners}
-        className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
-        onClick={toggleOpen}
+        style={{
+          transform: CSS.Translate.toString(dragTransform),
+          opacity: isFolderDragging ? 0.6 : 1,
+          zIndex: isFolderDragging ? 1000 : undefined,
+        }}
+        className={`group relative bg-card-background w-full rounded-md border-2 ${
+          isHighlighted || headIsOver || bodyIsOver || folderIsOver
+            ? "border-blue-400 ring-2 ring-blue-400/30"
+            : "border-gray-200 dark:border-gray-700"
+        } ${hideWhenDragging ? "invisible" : ""}`}
+        onMouseEnter={() => setLocalHover(true)}
+        onMouseLeave={() => setLocalHover(false)}
       >
-        <div className="flex items-center">
-          <div className="folder-icon mr-2">{isOpen ? "📂" : "📁"}</div>
-          <div className="folder-title font-medium text-lg truncate">
-            {folder.title}
+        {/* HEAD */}
+        <div
+          ref={(n) => {
+            setHeadRef(n);
+            setDragRef(n);
+          }}
+          {...dragAttributes}
+          {...dragListeners}
+          className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
+          onClick={toggleOpen}
+        >
+          <div className="flex items-center">
+            <div className="folder-icon mr-2">{isOpen ? "📂" : "📁"}</div>
+            <div className="folder-title font-medium text-lg truncate">
+              {folder.title}
+            </div>
           </div>
-        </div>
-        <div className="relative w-6 h-6">
-          {!isOpen && folder.bookmarks.length > 0 && (
-            <span className="absolute inset-0 flex items-center justify-center border border-border-default text-text-secondary text-xs font-semibold rounded-sm transition-opacity duration-200 opacity-100 group-hover:opacity-0">
-              {folder.bookmarks.length}
-            </span>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="relative w-6 h-6">
+            {!isOpen && folder.bookmarks.length > 0 && (
+              <span className="absolute inset-0 flex items-center justify-center border border-border-default text-text-secondary text-xs font-semibold rounded-sm transition-opacity duration-200 opacity-100 group-hover:opacity-0">
+                {folder.bookmarks.length}
+              </span>
+            )}
+            <div ref={folderMenuRef} className="relative w-6 h-6">
+              {!isOpen && folder.bookmarks.length > 0 && (
+                <span className="absolute inset-0 flex items-center justify-center border border-border-default text-text-secondary text-xs font-semibold rounded-sm transition-opacity duration-200 opacity-100 group-hover:opacity-0">
+                  {folder.bookmarks.length}
+                </span>
+              )}
               <button
                 className="absolute inset-0 flex items-center justify-center p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
+                  setShowFolderMenu((v: boolean) => !v);
                 }}
               >
                 <EllipsisVertical size={16} />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={4} align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation(); /* TODO: edit folder */
-                }}
-              >
-                ✏️ Edit Folder
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation(); /* TODO: delete folder */
-                }}
-              >
-                🗑️ Delete Folder
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {showFolderMenu && (
+                <div className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10 bg-dropdown-background border border-border-default dark:bg-dropdown-background dark:border-border-default">
+                  <button
+                    className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus flex items-center justify-between transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newTitle = prompt(
+                        "Enter new folder name",
+                        folder.title
+                      );
+                      if (newTitle) onFolderRename?.(folder.id, newTitle);
+                      setShowFolderMenu(false);
+                    }}
+                  >
+                    Rename <Pencil size={16} />
+                  </button>
+                  <button
+                    className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus flex items-center justify-between text-red-500 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete folder "${folder.title}"?`))
+                        onFolderDelete?.(folder.id);
+                      setShowFolderMenu(false);
+                    }}
+                  >
+                    Delete <Trash2 size={16} />
+                  </button>
+                  <button
+                    className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus flex items-center justify-between transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAddForm(true);
+                      setShowFolderMenu(false);
+                    }}
+                  >
+                    Add Bookmark <Plus size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* BODY: droppable zone for bookmark drops */}
+        <div
+          ref={(n) => {
+            setBodyRef(n);
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleNativeDrop}
+        >
+          <motion.div
+            layout={!disableLayout}
+            className="folder-body p-2 relative overflow-visible"
+          >
+            {folder.bookmarks.length === 0 ? (
+              <div className="text-center py-4 text-gray-500 min-h-[50px]">
+                {bodyIsOver ? "Drop here" : "No bookmarks"}
+              </div>
+            ) : (
+              <AnimatePresence initial={false}>
+                <motion.div
+                  layout={!disableLayout}
+                  initial={{ height: 0 }}
+                  animate={{ height: "auto" }}
+                  exit={{ height: 0 }}
+                  transition={{ duration: 0.16 }}
+                >
+                  {shownBookmarks.map((b, i) => (
+                    <React.Fragment key={b.id}>
+                      <GapDropZone
+                        folderId={folder.id}
+                        folderIndex={folderIndex}
+                        columnIndex={columnIndex}
+                        index={i}
+                        onFolderInsertHint={onFolderInsertHint}
+                      />
+                      <BookmarkCard
+                        item={b}
+                        parentId={folder.id}
+                        depth={1}
+                        hideWhenDragging={
+                          activeType === "bookmark" && activeId === b.id
+                        }
+                        onEdit={(it) => onBookmarkEdit?.(it)}
+                      />
+                    </React.Fragment>
+                  ))}
+                  <GapDropZone
+                    folderId={folder.id}
+                    folderIndex={folderIndex}
+                    columnIndex={columnIndex}
+                    index={shownBookmarks.length}
+                    onFolderInsertHint={onFolderInsertHint}
+                  />
+
+                  {!isOpen && !localHover && folder.bookmarks.length > 5 && (
+                    <div className="text-xs text-gray-400 pt-2">
+                      Hover to expand
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* overlay highlight */}
+            {(isHighlighted || headIsOver || bodyIsOver) && (
+              <div className="absolute inset-0 pointer-events-none rounded border-2 border-dashed border-blue-300/40" />
+            )}
+          </motion.div>
         </div>
       </div>
-
-      {/* BODY: droppable zone for bookmark drops */}
-      <div
-        ref={(n) => {
-          setBodyRef(n);
-        }}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleNativeDrop}
-      >
-        <motion.div
-          layout={!disableLayout}
-          className="folder-body p-2 relative overflow-visible"
-        >
-          {folder.bookmarks.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 min-h-[50px]">
-              {bodyIsOver ? "Drop here" : "No bookmarks"}
-            </div>
-          ) : (
-            <AnimatePresence initial={false}>
-              <motion.div
-                layout={!disableLayout}
-                initial={{ height: 0 }}
-                animate={{ height: "auto" }}
-                exit={{ height: 0 }}
-                transition={{ duration: 0.16 }}
-              >
-                {shownBookmarks.map((b, i) => (
-                  <React.Fragment key={b.id}>
-                    <GapDropZone
-                      folderId={folder.id}
-                      folderIndex={folderIndex}
-                      columnIndex={columnIndex}
-                      index={i}
-                      onFolderInsertHint={onFolderInsertHint}
-                    />
-                    <BookmarkCard
-                      item={b}
-                      parentId={folder.id}
-                      depth={1}
-                      hideWhenDragging={
-                        activeType === "bookmark" && activeId === b.id
-                      }
-                      onEdit={(it) => onBookmarkEdit?.(it)}
-                    />
-                  </React.Fragment>
-                ))}
-                <GapDropZone
-                  folderId={folder.id}
-                  folderIndex={folderIndex}
-                  columnIndex={columnIndex}
-                  index={shownBookmarks.length}
-                  onFolderInsertHint={onFolderInsertHint}
-                />
-
-                {!isOpen && !localHover && folder.bookmarks.length > 5 && (
-                  <div className="text-xs text-gray-400 pt-2">
-                    Hover to expand
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          )}
-
-          {/* overlay highlight */}
-          {(isHighlighted || headIsOver || bodyIsOver) && (
-            <div className="absolute inset-0 pointer-events-none rounded border-2 border-dashed border-blue-300/40" />
-          )}
-        </motion.div>
-      </div>
-    </div>
+      {showAddForm && (
+        <BookmarkForm
+          parentId={folder.id}
+          onClose={() => setShowAddForm(false)}
+          onSuccess={() => {
+            onBookmarkAdd?.(folder.id);
+            setShowAddForm(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 
