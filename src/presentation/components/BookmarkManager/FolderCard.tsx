@@ -4,6 +4,44 @@ import BookmarkCard from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Drop zone between bookmarks for insert hints
+interface GapDropZoneProps {
+  folderId: string;
+  folderIndex?: number;
+  columnIndex?: number;
+  index: number;
+  onFolderInsertHint?: (insertAt: number) => void;
+}
+const GapDropZone: React.FC<GapDropZoneProps> = ({
+  folderId,
+  folderIndex = 0,
+  columnIndex = 0,
+  index,
+  onFolderInsertHint,
+}) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `gap-${folderId}-${index}`,
+    data: {
+      zone: "gap",
+      folderId,
+      folderIndex,
+      column: columnIndex,
+      index,
+    },
+  });
+  useEffect(() => {
+    if (isOver && onFolderInsertHint) {
+      onFolderInsertHint(index);
+    }
+  }, [isOver, index, onFolderInsertHint]);
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-2 ${isOver ? "border-t-2 border-blue-500" : ""}`}
+    />
+  );
+};
+
 interface BookmarkNode {
   id: string;
   title: string;
@@ -176,14 +214,25 @@ const FolderCard: React.FC<FolderCardProps> = ({
                 exit={{ height: 0 }}
                 transition={{ duration: 0.16 }}
               >
-                {shownBookmarks.map((b) => (
-                  <BookmarkCard
-                    key={b.id}
-                    item={b}
-                    parentId={folder.id}
-                    depth={1}
-                  />
+                {shownBookmarks.map((b, i) => (
+                  <React.Fragment key={b.id}>
+                    <GapDropZone
+                      folderId={folder.id}
+                      folderIndex={folderIndex}
+                      columnIndex={columnIndex}
+                      index={i}
+                      onFolderInsertHint={onFolderInsertHint}
+                    />
+                    <BookmarkCard item={b} parentId={folder.id} depth={1} />
+                  </React.Fragment>
                 ))}
+                <GapDropZone
+                  folderId={folder.id}
+                  folderIndex={folderIndex}
+                  columnIndex={columnIndex}
+                  index={shownBookmarks.length}
+                  onFolderInsertHint={onFolderInsertHint}
+                />
 
                 {!isOpen && !localHover && folder.bookmarks.length > 5 && (
                   <div className="text-xs text-gray-400 pt-2">
