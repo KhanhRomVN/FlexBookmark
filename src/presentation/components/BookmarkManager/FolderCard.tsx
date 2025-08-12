@@ -127,6 +127,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
     isDragging: isFolderDragging,
   } = useDraggable({
     id: folder.id,
+    disabled: folder.id === "temp",
     data: {
       type: "folder",
       payload: folder,

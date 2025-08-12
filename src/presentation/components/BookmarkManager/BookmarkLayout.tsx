@@ -256,6 +256,54 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
 
   const handleDragEnd = async (ev: DragEndEvent) => {
     const { active, over } = ev;
+    // handle folder drag end (swap or move-to-end), skip Temp
+    if ((active.data as any).current?.type === "folder") {
+      const folderIdRaw = String(active.id);
+      if (folderIdRaw === TEMP_FOLDER_ID) {
+        setActiveId(null);
+        setActiveType(null);
+        setDragPayload(null);
+        setInsertHint(null);
+        return;
+      }
+      window.location.reload();
+      const fromIndex = (active.data as any).current.folderIndex as number;
+      let toIndex: number;
+      if (!over) {
+        toIndex = foldersList.length - 1;
+      } else {
+        const overData = (over.data as any).current;
+        if (overData.folderId === TEMP_FOLDER_ID) {
+          toIndex = foldersList.length - 1;
+        } else {
+          toIndex = overData.folderIndex as number;
+        }
+      }
+      // persist order in Chrome bookmarks
+      try {
+        if (typeof chrome !== "undefined" && chrome.bookmarks) {
+          await new Promise((res, rej) =>
+            chrome.bookmarks.move(
+              folderIdRaw,
+              { parentId: folderId!, index: toIndex },
+              (node) => {
+                if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
+                else res(node);
+              }
+            )
+          );
+        }
+      } catch (err) {
+        console.warn("[BookmarkLayout] chrome folder move error", err);
+      }
+      setFoldersList((prev) => arrayMove(prev, fromIndex, toIndex));
+      setActiveId(null);
+      setActiveType(null);
+      setDragPayload(null);
+      setInsertHint(null);
+      return;
+    }
+    // bookmark drag
     if ((active.data as any).current?.type !== "bookmark") {
       setActiveId(null);
       setActiveType(null);
