@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, Fragment } from "react";
+import BookmarkForm from "./BookmarkForm";
 import {
   DndContext,
   DragEndEvent,
@@ -49,6 +50,12 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [dragPayload, setDragPayload] = useState<any | null>(null);
   const [columnCount, setColumnCount] = useState<number>(4);
   const gridRef = useRef<HTMLDivElement | null>(null);
+  const [editBookmark, setEditBookmark] = useState<{
+    id: string;
+    title: string;
+    url?: string;
+    parentId: string;
+  } | null>(null);
 
   // determine selected folder for header
   const findSelectedFolder = (
@@ -455,6 +462,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                 return (
                   <FolderCard
                     key={folder.id}
+                    onBookmarkEdit={(item) => setEditBookmark(item)}
                     folder={folder}
                     columnIndex={colIndex}
                     folderIndex={foldersList.findIndex(

@@ -4,7 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical as LucideMenu } from "lucide-react";
 
-interface BookmarkItem {
+export interface BookmarkItem {
   id: string;
   title: string;
   url?: string;
@@ -22,6 +22,9 @@ interface BookmarkCardProps {
     toParentId: string
   ) => void;
   onDrop?: (item: any) => void;
+  /** Called when user clicks “Edit” */
+  /** Called when user clicks “Edit” */
+  onEdit?: (item: BookmarkItem & { parentId: string }) => void;
 }
 
 const BookmarkCard: React.FC<BookmarkCardProps> = ({
@@ -30,6 +33,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
   depth,
   isDragging = false,
   hideWhenDragging = false,
+  onEdit,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -61,6 +65,12 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
     setShowMenu((v) => !v);
   };
 
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.({ ...item, parentId });
+    setShowMenu(false);
+  };
+
   // close dropdown when clicking outside
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -78,6 +88,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!confirm(`Delete bookmark "${item.title}"?`)) return;
     try {
       await new Promise((res, rej) =>
         chrome.bookmarks.remove(item.id, () => {
@@ -119,7 +130,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
       <div ref={containerRef} className="relative">
         <button
-          className="bookmark-menu-btn p-1 rounded bg-button-secondBg text-text-secondary hover:bg-button-secondBgHover focus:outline-none visible group-hover:visible"
+          className="bookmark-menu-btn p-1 rounded bg-button-secondBg text-text-secondary hover:bg-button-secondBgHover focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={handleMenuClick}
           aria-label="Open menu"
         >
@@ -132,7 +143,10 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
             bg-dropdown-background border border-border-default
             dark:bg-dropdown-background dark:border-border-default"
           >
-            <button className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus transition-colors">
+            <button
+              className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus transition-colors"
+              onClick={handleEdit}
+            >
               ✏️ Edit
             </button>
             <button

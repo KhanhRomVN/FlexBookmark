@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import type { CSSProperties } from "react";
 import BookmarkCard from "./BookmarkCard";
+import type { BookmarkItem } from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -67,6 +67,7 @@ interface FolderCardProps {
   onBookmarkMoveRequested?: (bookmarkId: string, fromParentId: string) => void;
   onFolderInsertHint?: (insertAt: number) => void;
   hideWhenDragging?: boolean;
+  onBookmarkEdit?: (item: BookmarkItem & { parentId: string }) => void;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
@@ -79,6 +80,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   hideWhenDragging = false,
   onBookmarkMoveRequested,
   onFolderInsertHint,
+  onBookmarkEdit,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localHover, setLocalHover] = useState(false);
@@ -215,18 +217,20 @@ const FolderCard: React.FC<FolderCardProps> = ({
           </div>
         </div>
         <div className="flex items-center">
-          {!isOpen && folder.bookmarks.length > 0 ? (
-            <div className="border border-border-default text-text-secondary text-xs font-semibold px-2 py-0.5 rounded-sm">
+          {!isOpen && folder.bookmarks.length > 0 && (
+            <div className="border border-border-default text-text-secondary text-xs font-semibold px-2 py-0.5 rounded-sm group-hover:opacity-0 transition-opacity">
               {folder.bookmarks.length}
             </div>
-          ) : (
-            <button
-              className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 invisible group-hover:visible"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <EllipsisVertical size={16} />
-            </button>
           )}
+          <button
+            className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              /* open folder menu */
+            }}
+          >
+            <EllipsisVertical size={16} />
+          </button>
         </div>
       </div>
 
@@ -240,7 +244,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
       >
         <motion.div
           layout={!disableLayout}
-          className="folder-body p-2 relative overflow-hidden"
+          className="folder-body p-2 relative overflow-visible"
         >
           {folder.bookmarks.length === 0 ? (
             <div className="text-center py-4 text-gray-500 min-h-[50px]">
@@ -271,6 +275,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                       hideWhenDragging={
                         activeType === "bookmark" && activeId === b.id
                       }
+                      onEdit={(it) => onBookmarkEdit?.(it)}
                     />
                   </React.Fragment>
                 ))}
