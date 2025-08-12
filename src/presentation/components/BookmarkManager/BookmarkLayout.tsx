@@ -183,7 +183,14 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
         collisions.push({ id });
       }
     }
-    // prioritize bookmark droppables
+    // prioritize gap droppables first
+    const gapCollision = collisions.find((c) =>
+      String(c.id).startsWith("gap-")
+    );
+    if (gapCollision) {
+      return [gapCollision];
+    }
+    // then bookmark droppables
     const bookmarkCollision = collisions.find((c) =>
       String(c.id).startsWith("bookmark-")
     );
@@ -270,11 +277,15 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     const overData = (over.data as any).current;
     if ((active.data as any).current?.type === "bookmark") {
       let toParentRaw = TEMP_FOLDER_ID;
+      let dropIndex: number | undefined;
 
       if (overData?.folderId) {
         toParentRaw = overData.folderId as string;
       }
-      await moveBookmark(payload.id, fromParent, toParentRaw);
+      if (overData?.zone === "gap") {
+        dropIndex = overData.index as number;
+      }
+      await moveBookmark(payload.id, fromParent, toParentRaw, dropIndex);
     }
     setActiveId(null);
     setActiveType(null);
@@ -286,7 +297,8 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const moveBookmark = async (
     bookmarkId: string,
     fromParent: string,
-    toParent: string
+    toParent: string,
+    toIndex?: number
   ) => {
     if (fromParent === toParent) return;
     // Sửa tại đây: Chuyển đổi TEMP_FOLDER_ID thành folderId thực
@@ -296,7 +308,7 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
         await new Promise((res, rej) =>
           chrome.bookmarks.move(
             bookmarkId,
-            { parentId: realToParent },
+            { parentId: realToParent, index: toIndex },
             (node) => {
               if (chrome.runtime.lastError) rej(chrome.runtime.lastError);
               else res(node);
