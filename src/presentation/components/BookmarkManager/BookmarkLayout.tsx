@@ -496,6 +496,17 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
           </DragOverlay>
         </DndContext>
       </div>
+      {editBookmark && (
+        <BookmarkForm
+          parentId={editBookmark.parentId}
+          initialData={{
+            title: editBookmark.title,
+            url: editBookmark.url || "",
+          }}
+          onClose={() => setEditBookmark(null)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
     </div>
   );
 };

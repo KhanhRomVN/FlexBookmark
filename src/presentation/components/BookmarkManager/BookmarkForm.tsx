@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createBookmark } from "../../../utils/api";
 
 interface BookmarkFormProps {
@@ -17,6 +17,17 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
   onSuccess,
   initialData,
 }) => {
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // focus title input when modal opens
+    titleRef.current?.focus();
+    // prevent background scroll
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
   const [title, setTitle] = useState(initialData?.title || "");
   const [url, setUrl] = useState(initialData?.url || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,8 +53,13 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      tabIndex={-1}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
           {initialData ? "Edit Bookmark" : "Add Bookmark"}
         </h2>
@@ -54,8 +70,10 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
               Title
             </label>
             <input
+              ref={titleRef}
               type="text"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+              placeholder="Enter a title"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -68,7 +86,8 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
             </label>
             <input
               type="url"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+              placeholder="https://example.com"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
@@ -86,8 +105,8 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || !title.trim() || !url.trim()}
             >
               {isSubmitting ? "Saving..." : "Save"}
             </button>
