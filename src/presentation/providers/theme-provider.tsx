@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import defaultBgImage from "../../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg";
 
 type Theme = "dark" | "light" | "system" | "image";
 
@@ -34,7 +35,9 @@ export function ThemeProvider({
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   );
 
-  const bgImageRef = useRef<string | null>(null);
+  const [bgImage, setBgImage] = useState<string>(
+    () => localStorage.getItem("backgroundImage") || defaultBgImage
+  );
 
   const applyTheme = () => {
     const root = window.document.documentElement;
@@ -42,8 +45,8 @@ export function ThemeProvider({
 
     if (theme === "image") {
       root.classList.add("image");
-      if (bgImageRef.current) {
-        document.body.style.backgroundImage = `url(${bgImageRef.current})`;
+      if (bgImage) {
+        document.body.style.backgroundImage = `url(${bgImage})`;
         document.body.style.backgroundSize = "cover";
         document.body.style.backgroundPosition = "center";
       }
@@ -60,7 +63,7 @@ export function ThemeProvider({
   };
 
   const setBackgroundImage = (url: string) => {
-    bgImageRef.current = url;
+    setBgImage(url);
     localStorage.setItem("backgroundImage", url);
     if (theme === "image") {
       applyTheme();
@@ -68,13 +71,8 @@ export function ThemeProvider({
   };
 
   useEffect(() => {
-    const storedBgImage = localStorage.getItem("backgroundImage");
-    if (storedBgImage) {
-      bgImageRef.current = storedBgImage;
-    }
-
     applyTheme();
-  }, [theme]);
+  }, [theme, bgImage]);
 
   const value = {
     theme,
@@ -83,7 +81,7 @@ export function ThemeProvider({
       setTheme(theme);
     },
     setBackgroundImage,
-    backgroundImage: bgImageRef.current,
+    backgroundImage: bgImage,
   };
 
   return (

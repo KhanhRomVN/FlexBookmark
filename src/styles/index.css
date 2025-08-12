@@ -102,7 +102,7 @@
     --primary: #3686ff;
 
     /* Background colors */
-    --background: rgba(255, 255, 255, 0.8);
+    --background: rgba(0, 0, 0, 0);
 
     /* Text colors */
     --text-primary: #1e293b;
@@ -130,7 +130,7 @@
     --dropdown-shadow: rgba(0, 0, 0, 0.15);
 
     /* Sidebar colors */
-    --sidebar-background: rgba(255, 255, 255, 0.8);
+    --sidebar-background: rgba(0, 0, 0, 0.3);
     --sidebar-item-hover: rgba(243, 244, 246, 0.85);
     --sidebar-item-focus: #d1d5db;
 
