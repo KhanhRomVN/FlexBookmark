@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { UniqueIdentifier } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import BookmarkCard from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
@@ -59,6 +60,8 @@ interface FolderCardProps {
   columnIndex?: number;
   folderIndex?: number; // global index
   isHighlighted?: boolean;
+  activeId?: UniqueIdentifier | null;
+  activeType?: string | null;
   onBookmarkMoveRequested?: (bookmarkId: string, fromParentId: string) => void;
   onFolderInsertHint?: (insertAt: number) => void;
 }
@@ -68,6 +71,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
   columnIndex = 0,
   folderIndex = 0,
   isHighlighted = false,
+  activeId,
+  activeType,
   onBookmarkMoveRequested,
   onFolderInsertHint,
 }) => {
@@ -223,7 +228,14 @@ const FolderCard: React.FC<FolderCardProps> = ({
                       index={i}
                       onFolderInsertHint={onFolderInsertHint}
                     />
-                    <BookmarkCard item={b} parentId={folder.id} depth={1} />
+                    <BookmarkCard
+                      item={b}
+                      parentId={folder.id}
+                      depth={1}
+                      hideWhenDragging={
+                        activeType === "bookmark" && activeId === b.id
+                      }
+                    />
                   </React.Fragment>
                 ))}
                 <GapDropZone

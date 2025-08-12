@@ -225,6 +225,13 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     });
     if (!overData) return;
     if ((active.data as any).current?.type === "bookmark") {
+      // gap drop between bookmarks
+      if (overData.zone === "gap") {
+        setHighlightColumn(overData.column);
+        setInsertHint({ column: overData.column, index: overData.index });
+        return;
+      }
+      // folder head/body drop
       if (overData.zone === "folder-head" || overData.zone === "folder-body") {
         setHighlightFolderId(overData.folderId);
       }
@@ -406,9 +413,15 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                       (f) => f.id === folder.id
                     )}
                     isHighlighted={folder.id === highlightFolderId}
+                    activeId={activeId}
+                    activeType={activeType}
                     onBookmarkMoveRequested={(bookmarkId, fromParentId) =>
                       moveBookmark(bookmarkId, fromParentId, folder.id)
                     }
+                    onFolderInsertHint={(idx) => {
+                      setHighlightColumn(colIndex);
+                      setInsertHint({ column: colIndex, index: idx });
+                    }}
                   />
                 );
               })}

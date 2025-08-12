@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { CSSProperties } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical as LucideMenu } from "lucide-react";
@@ -14,6 +15,7 @@ interface BookmarkCardProps {
   parentId: string;
   depth: number;
   isDragging?: boolean;
+  hideWhenDragging?: boolean;
   onBookmarkMoved?: (
     bookmarkId: string,
     fromParentId: string,
@@ -27,6 +29,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
   parentId,
   depth,
   isDragging = false,
+  hideWhenDragging = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -38,7 +41,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
     },
   });
 
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.6 : 1,
     zIndex: isDragging ? 1000 : undefined,
@@ -81,7 +84,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
       style={style}
       className={`group flex items-center p-2 rounded-md transition-all ${
         depth > 1 ? "ml-4" : ""
-      } cursor-grab`}
+      } cursor-grab ${hideWhenDragging ? "invisible" : ""}`}
       onClick={handleClick}
       draggable
     >
