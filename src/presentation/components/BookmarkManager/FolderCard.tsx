@@ -134,6 +134,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
       folderIndex,
     },
   });
+  const disableLayout = isFolderDragging;
 
   // displayed bookmarks: collapsed to 5 by default, expand on hover or open
   const shownBookmarks = useMemo(() => {
@@ -236,7 +237,10 @@ const FolderCard: React.FC<FolderCardProps> = ({
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleNativeDrop}
       >
-        <div className="folder-body p-2 relative overflow-hidden">
+        <motion.div
+          layout={!disableLayout}
+          className="folder-body p-2 relative overflow-hidden"
+        >
           {folder.bookmarks.length === 0 ? (
             <div className="text-center py-4 text-gray-500 min-h-[50px]">
               {bodyIsOver ? "Drop here" : "No bookmarks"}
@@ -244,7 +248,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
           ) : (
             <AnimatePresence initial={false}>
               <motion.div
-                layout
+                layout={!disableLayout}
                 initial={{ height: 0 }}
                 animate={{ height: "auto" }}
                 exit={{ height: 0 }}
@@ -290,7 +294,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
           {(isHighlighted || headIsOver || bodyIsOver) && (
             <div className="absolute inset-0 pointer-events-none rounded border-2 border-dashed border-blue-300/40" />
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
