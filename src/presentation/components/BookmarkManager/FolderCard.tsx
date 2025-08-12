@@ -236,7 +236,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleNativeDrop}
       >
-        <motion.div layout className="folder-body p-2 relative overflow-hidden">
+        <div className="folder-body p-2 relative overflow-hidden">
           {folder.bookmarks.length === 0 ? (
             <div className="text-center py-4 text-gray-500 min-h-[50px]">
               {bodyIsOver ? "Drop here" : "No bookmarks"}
@@ -290,7 +290,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
           {(isHighlighted || headIsOver || bodyIsOver) && (
             <div className="absolute inset-0 pointer-events-none rounded border-2 border-dashed border-blue-300/40" />
           )}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
