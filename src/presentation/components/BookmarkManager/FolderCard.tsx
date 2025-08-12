@@ -216,14 +216,14 @@ const FolderCard: React.FC<FolderCardProps> = ({
             {folder.title}
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="relative w-6 h-6">
           {!isOpen && folder.bookmarks.length > 0 && (
-            <div className="border border-border-default text-text-secondary text-xs font-semibold px-2 py-0.5 rounded-sm group-hover:opacity-0 transition-opacity">
+            <span className="absolute inset-0 flex items-center justify-center border border-border-default text-text-secondary text-xs font-semibold rounded-sm transition-opacity duration-200 opacity-100 group-hover:opacity-0">
               {folder.bookmarks.length}
-            </div>
+            </span>
           )}
           <button
-            className="folder-menu-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute inset-0 flex items-center justify-center p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               /* open folder menu */
