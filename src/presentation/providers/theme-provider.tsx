@@ -41,17 +41,18 @@ export function ThemeProvider({
 
   const applyTheme = () => {
     const root = window.document.documentElement;
+    // clear classes & CSS var
     root.classList.remove("light", "dark", "image");
+    root.style.setProperty("--bg-url", "");
 
     if (theme === "image") {
       root.classList.add("image");
       if (bgImage) {
-        document.body.style.backgroundImage = `url(${bgImage})`;
-        document.body.style.backgroundSize = "cover";
-        document.body.style.backgroundPosition = "center";
+        // store image url in CSS var for blur overlay
+        root.style.setProperty("--bg-url", `url(${bgImage})`);
       }
     } else {
-      document.body.style.backgroundImage = "";
+      // normal theme: system or explicit light/dark
       const systemTheme =
         theme === "system"
           ? window.matchMedia("(prefers-color-scheme: dark)").matches

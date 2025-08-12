@@ -105,15 +105,15 @@
     --background: rgba(0, 0, 0, 0);
 
     /* Text colors */
-    --text-primary: #1e293b;
-    --text-secondary: #475569;
+    --text-primary: #e4e4e4;
+    --text-secondary: #9b9b9b;
 
     /* Border Color */
-    --border: #d1d5db;
-    --border-hover: #bfc7d1;
+    --border: #444444;
+    --border-hover: #636363;
 
     /* Card colors */
-    --card-background: rgba(255, 255, 255, 0.85);
+    --card-background: rgba(0, 0, 0, 0.3);
     --card-shadow: rgba(0, 0, 0, 0.15);
 
     /* Input colors */

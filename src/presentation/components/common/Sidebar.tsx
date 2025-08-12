@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTheme } from "../../providers/theme-provider";
 import {
   Folder,
   Bookmark,
@@ -28,6 +29,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
+  const { theme } = useTheme();
   const folderIcons = [
     Folder,
     Bookmark,
@@ -87,7 +89,11 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
   }, [folders]);
 
   return (
-    <div className="w-72 bg-sidebar-background border-r border-border-default text-text-primary h-full flex flex-col transition-all duration-300">
+    <div
+      className={`w-72 bg-sidebar-background ${
+        theme === "image" ? "backdrop-blur-sm" : ""
+      } border-r border-border-default text-text-primary h-full flex flex-col transition-all duration-300`}
+    >
       <div className="sidebar-header h-12 flex items-center px-4 border-b border-border-default bg-gradient-to-r from-primary/10 to-transparent">
         <h1 className="text-2xl font-bold text-primary">FlexBookmark</h1>
       </div>

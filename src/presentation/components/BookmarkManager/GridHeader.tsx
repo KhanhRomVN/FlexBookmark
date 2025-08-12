@@ -27,7 +27,7 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
 
   return (
     <div className="grid-header flex items-center justify-between mb-4">
-      <h3 className="grid-header-title text-xl font-semibold text-gray-800 dark:text-white">
+      <h3 className="grid-header-title text-xl font-semibold text-text-primary">
         {folder?.title || "All Bookmarks"}
       </h3>
 

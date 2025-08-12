@@ -8,6 +8,7 @@ import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import BookmarkForm from "./BookmarkForm";
 import { Pencil, Trash2, Plus } from "lucide-react";
+import { useTheme } from "../../providers/theme-provider";
 
 // Drop zone between bookmarks for insert hints
 interface GapDropZoneProps {
@@ -97,6 +98,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [localHover, setLocalHover] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  // theme for image blur
+  const { theme } = useTheme();
 
   // folder menu state & outside click
   const [showFolderMenu, setShowFolderMenu] = useState(false);
@@ -228,10 +231,12 @@ const FolderCard: React.FC<FolderCardProps> = ({
           opacity: isFolderDragging ? 0.6 : 1,
           zIndex: isFolderDragging ? 1000 : undefined,
         }}
-        className={`group relative bg-card-background w-full rounded-md border-2 ${
+        className={`group relative bg-card-background w-full rounded-md ${
+          theme === "image" ? "backdrop-blur-sm" : ""
+        } ${
           isHighlighted || headIsOver || bodyIsOver || folderIsOver
-            ? "border-blue-400 ring-2 ring-blue-400/30"
-            : "border-gray-200 dark:border-gray-700"
+            ? "border-primary"
+            : "border-border-default"
         } ${hideWhenDragging ? "invisible" : ""}`}
         onMouseEnter={() => setLocalHover(true)}
         onMouseLeave={() => setLocalHover(false)}
