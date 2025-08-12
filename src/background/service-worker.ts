@@ -25,6 +25,21 @@ async function syncBookmarks() {
         console.error("Bookmark sync error:", error);
     }
 }
+/**
+ * Get Other Bookmarks folder ID
+ */
+async function getOtherBookmarksId(): Promise<string> {
+    const tree = await chrome.bookmarks.getTree();
+    // Look for "Other Bookmarks" case-insensitive, fallback to root id
+    const otherBookmarks = tree[0]?.children?.find(
+        node => node.title.toLowerCase().includes("other bookmarks")
+    );
+    if (otherBookmarks?.id) {
+        return otherBookmarks.id;
+    }
+    // Fallback to root folder
+    return tree[0].id;
+}
 
 // --- Message handling ---
 chrome.runtime.onMessage.addListener((request: any, _sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
@@ -38,11 +53,22 @@ chrome.runtime.onMessage.addListener((request: any, _sender: chrome.runtime.Mess
 
     // Handle folder creation requested from popup/page
     if (request.action === "createFolder" && request.folder) {
-        chrome.bookmarks.create(request.folder, (newNode) => {
-            // Sync and notify after creating
-            syncBookmarks().catch(console.error);
-            sendResponse(newNode);
-        });
+        // Determine parentId if not provided, then create folder
+        (async () => {
+            try {
+                const folderDetails = { ...request.folder };
+                if (!folderDetails.parentId) {
+                    folderDetails.parentId = await getOtherBookmarksId();
+                }
+                chrome.bookmarks.create(folderDetails, (newNode) => {
+                    syncBookmarks().catch(console.error);
+                    sendResponse(newNode);
+                });
+            } catch (error) {
+                console.error("Error creating folder:", error);
+                sendResponse({ error: error instanceof Error ? error.message : String(error) });
+            }
+        })();
         return true; // Keep channel open for async response
     }
 
