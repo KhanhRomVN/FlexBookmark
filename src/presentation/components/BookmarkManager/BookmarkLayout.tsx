@@ -423,6 +423,34 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     });
   };
 
+  // Handlers for folder rename & delete
+  const handleFolderRename = async (id: string, newTitle: string) => {
+    if (typeof chrome !== "undefined" && chrome.bookmarks?.update) {
+      await new Promise<void>((resolve, reject) =>
+        chrome.bookmarks.update(id, { title: newTitle }, () =>
+          chrome.runtime.lastError
+            ? reject(chrome.runtime.lastError)
+            : resolve()
+        )
+      );
+    }
+    setFoldersList((list) =>
+      list.map((f) => (f.id === id ? { ...f, title: newTitle } : f))
+    );
+  };
+  const handleFolderDelete = async (id: string) => {
+    if (typeof chrome !== "undefined" && chrome.bookmarks?.removeTree) {
+      await new Promise<void>((resolve, reject) =>
+        chrome.bookmarks.removeTree(id, () =>
+          chrome.runtime.lastError
+            ? reject(chrome.runtime.lastError)
+            : resolve()
+        )
+      );
+    }
+    setFoldersList((list) => list.filter((f) => f.id !== id));
+  };
+
   return (
     <div className="flex flex-col">
       {/* Header nằm riêng trên cùng */}
@@ -478,6 +506,8 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
                       setHighlightColumn(colIndex);
                       setInsertHint({ column: colIndex, index: idx });
                     }}
+                    onFolderRename={handleFolderRename}
+                    onFolderDelete={handleFolderDelete}
                   />
                 );
               })}
