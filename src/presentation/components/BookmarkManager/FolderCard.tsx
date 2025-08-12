@@ -6,6 +6,12 @@ import BookmarkCard from "./BookmarkCard";
 import type { BookmarkItem } from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/presentation/components/ui/dropdown-menu";
 
 // Drop zone between bookmarks for insert hints
 interface GapDropZoneProps {
@@ -222,15 +228,34 @@ const FolderCard: React.FC<FolderCardProps> = ({
               {folder.bookmarks.length}
             </span>
           )}
-          <button
-            className="absolute inset-0 flex items-center justify-center p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              /* open folder menu */
-            }}
-          >
-            <EllipsisVertical size={16} />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="absolute inset-0 flex items-center justify-center p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <EllipsisVertical size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={4} align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation(); /* TODO: edit folder */
+                }}
+              >
+                ✏️ Edit Folder
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation(); /* TODO: delete folder */
+                }}
+              >
+                🗑️ Delete Folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
