@@ -33,7 +33,19 @@ chrome.runtime.onMessage.addListener((request: any, _sender: chrome.runtime.Mess
             sendResponse(data.bookmarkTree || []);
         });
         return true; // Keep message channel open for async response
+
     }
+
+    // Handle folder creation requested from popup/page
+    if (request.action === "createFolder" && request.folder) {
+        chrome.bookmarks.create(request.folder, (newNode) => {
+            // Sync and notify after creating
+            syncBookmarks().catch(console.error);
+            sendResponse(newNode);
+        });
+        return true; // Keep channel open for async response
+    }
+
 
     if (request.action === "getAuthToken") {
         getAuthToken(request.interactive || false)
@@ -62,6 +74,12 @@ chrome.runtime.onMessage.addListener((request: any, _sender: chrome.runtime.Mess
             .catch(error => sendResponse({ success: false, error: error.message }));
         return true; // Keep message channel open for async response
     }
+    // Keep the message channel open for all cases to avoid port closed errors
+    return true;
+    // Ensure asynchronous response channel remains open for all messages
+    return true;
+    // Default: keep channel open to prevent port-closed errors
+    return true;
 });
 
 // Initialize on extension install/startup

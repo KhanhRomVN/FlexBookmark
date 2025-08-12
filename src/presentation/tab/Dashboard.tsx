@@ -1,9 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useTheme } from "../providers/theme-provider";
 import { getBookmarks } from "../../utils/api";
 import Clock from "../components/Dashboard/Clock";
 import WeatherWidget from "../components/Dashboard/WeatherWidget";
 import SearchBar from "../components/common/SearchBar";
-import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
+import {
+  DndContext,
+  DragEndEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+} from "@dnd-kit/core";
+import BookmarkItem from "../components/Dashboard/BookmarkItem";
+import FolderPreview from "../components/Dashboard/FolderPreview";
 
 export interface BookmarkNode {
   id: string;
@@ -13,19 +22,21 @@ export interface BookmarkNode {
 }
 
 const Dashboard: React.FC = () => {
+  const { theme } = useTheme();
   const [weather, setWeather] = useState<{
     temperature: number;
     weathercode: number;
     description: string;
   } | null>(null);
   const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
+  const [barFolderId, setBarFolderId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
   const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
 
   // Weather code mapping
   const getWeatherDescription = useCallback((code: number): string => {
-    const weatherCodes: Record<number, string> = {
+    const map: Record<number, string> = {
       0: "Clear sky",
       1: "Mostly sunny",
       2: "Partly cloudy",
@@ -55,37 +66,27 @@ const Dashboard: React.FC = () => {
       96: "Thunderstorm with hail",
       99: "Severe thunderstorm",
     };
-
-    return weatherCodes[code] || `Weather code: ${code}`;
+    return map[code] || `Weather code: ${code}`;
   }, []);
 
   // Fetch weather
   const fetchWeather = useCallback(async () => {
     if (!navigator.geolocation) return;
-
     try {
-      const position = await new Promise<GeolocationPosition>(
-        (resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 5000,
-          });
-        }
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
       );
-
-      const { latitude, longitude } = position.coords;
-      const response = await fetch(
+      const { latitude, longitude } = pos.coords;
+      const r = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
       );
-
-      const data = await response.json();
+      const data = await r.json();
       if (data.current_weather) {
-        const description = getWeatherDescription(
-          data.current_weather.weathercode
-        );
+        const desc = getWeatherDescription(data.current_weather.weathercode);
         setWeather({
           temperature: data.current_weather.temperature,
           weathercode: data.current_weather.weathercode,
-          description,
+          description: desc,
         });
       }
     } catch (err) {
@@ -97,27 +98,24 @@ const Dashboard: React.FC = () => {
   const loadBookmarks = useCallback(async () => {
     try {
       const tree = await getBookmarks();
-      const root = tree[0]?.children || [];
-
-      // Find bookmarks bar folder
-      const barFolder =
-        root.find((f: BookmarkNode) =>
+      const rootChildren = tree[0]?.children || [];
+      const bar =
+        rootChildren.find((f) =>
           f.title.toLowerCase().includes("bookmark bar")
-        ) || root[0];
-
-      setBookmarks(barFolder?.children || []);
+        ) || rootChildren[0];
+      setBarFolderId(bar?.id || "");
+      setBookmarks(bar?.children || []);
     } catch (err) {
       console.error("Bookmarks load error:", err);
     }
   }, []);
 
-  // Initial data loading
   useEffect(() => {
     fetchWeather();
     loadBookmarks();
   }, [fetchWeather, loadBookmarks]);
 
-  // Handle search submission
+  // Search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -129,52 +127,127 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter bookmarks
-  const filteredBookmarks = (currentFolder?.children || bookmarks).filter(
+  // Filter list
+  const filtered = (currentFolder?.children || bookmarks).filter(
     (bm) =>
-      bm.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bm.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       bm.url?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Open folder view
+  // Navigation
   const openFolder = (folder: BookmarkNode) => {
     setFolderHistory([...folderHistory, folder]);
     setCurrentFolder(folder);
   };
-
-  // Navigate back to previous folder
   const goBack = () => {
-    if (folderHistory.length > 0) {
-      const newHistory = [...folderHistory];
-      const prevFolder = newHistory.pop();
-      setFolderHistory(newHistory);
-      setCurrentFolder(prevFolder || null);
+    if (folderHistory.length) {
+      const hist = [...folderHistory];
+      const prev = hist.pop()!;
+      setFolderHistory(hist);
+      setCurrentFolder(prev);
     } else {
       setCurrentFolder(null);
     }
   };
 
+  // Drag-n-drop setup
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const handleDragEnd = async (ev: DragEndEvent) => {
+    const srcId = ev.active.id as string;
+    const over = ev.over?.id as string | undefined;
+    if (!over || srcId === over) return;
+    // only at root level grouping
+    if (currentFolder) return;
+    // create new folder
+    const name = prompt("Folder name", "New Folder");
+    if (!name) return;
+    const newNode = await new Promise<chrome.bookmarks.BookmarkTreeNode>(
+      (res, rej) =>
+        chrome.bookmarks.create(
+          { title: name, parentId: barFolderId },
+          (node) =>
+            chrome.runtime.lastError ? rej(chrome.runtime.lastError) : res(node)
+        )
+    );
+    // move both
+    await chrome.bookmarks.move(srcId, { parentId: newNode.id });
+    await chrome.bookmarks.move(over, { parentId: newNode.id, index: 1 });
+    // refresh
+    loadBookmarks();
+    setCurrentFolder({
+      id: newNode.id,
+      title: newNode.title || name,
+      children: [],
+    });
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+    <div
+      style={
+        theme === "image"
+          ? {
+              backgroundImage: "var(--bg-url)",
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : {}
+      }
+      className={`min-h-screen flex flex-col items-center justify-center p-4 text-gray-900 dark:text-gray-100 ${
+        theme === "image"
+          ? ""
+          : "bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-gray-900 dark:to-gray-800"
+      }`}
+    >
       <div className="w-full max-w-6xl flex flex-col items-center">
         <div className="w-full max-w-2xl flex flex-col items-center mb-8">
           <Clock />
           <WeatherWidget weather={weather} />
         </div>
-
         <SearchBar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           handleSearch={handleSearch}
         />
 
-        <BookmarkGrid
-          bookmarks={filteredBookmarks}
-          currentFolder={currentFolder}
-          folderHistory={folderHistory}
-          openFolder={openFolder}
-          goBack={goBack}
-        />
+        <div className="w-full max-w-6xl">
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
+              {filtered.map((item) =>
+                item.url ? (
+                  <div
+                    key={item.id}
+                    id={item.id}
+                    draggable
+                    className="cursor-grab"
+                  >
+                    <BookmarkItem bookmark={item} />
+                  </div>
+                ) : (
+                  <div
+                    key={item.id}
+                    id={item.id}
+                    draggable
+                    className="cursor-pointer"
+                    onClick={() => openFolder(item)}
+                  >
+                    <FolderPreview folder={item} openFolder={openFolder} />
+                  </div>
+                )
+              )}
+            </div>
+          </DndContext>
+          {currentFolder && (
+            <button
+              onClick={goBack}
+              className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Back
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

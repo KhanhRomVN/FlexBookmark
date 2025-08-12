@@ -50,7 +50,9 @@ export const createFolder = (
     folder: chrome.bookmarks.CreateDetails
 ): Promise<chrome.bookmarks.BookmarkTreeNode> => {
     return new Promise((resolve) => {
-        chrome.bookmarks.create(folder, resolve);
+        chrome.runtime.sendMessage({ action: "createFolder", folder }, (response) => {
+            resolve(response);
+        });
     });
 };
 

@@ -26,9 +26,14 @@ interface FolderNode {
 interface SidebarProps {
   folders: FolderNode[];
   onSelectFolder: (id: string) => void;
+  onAddFolder: (title: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  folders,
+  onSelectFolder,
+  onAddFolder,
+}) => {
   const { theme } = useTheme();
   const folderIcons = [
     Folder,
@@ -123,7 +128,12 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
       <footer className="p-4 border-t border-border-default">
         <button
           className="flex items-center justify-center gap-2 w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition"
-          onClick={() => onSelectFolder("")}
+          onClick={() => {
+            const title = window.prompt("Enter new folder title");
+            if (title && title.trim()) {
+              onAddFolder(title.trim());
+            }
+          }}
         >
           <FolderPlus className="w-5 h-5" />
           New Folder

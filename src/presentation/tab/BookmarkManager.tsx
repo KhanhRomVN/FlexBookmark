@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { getBookmarks } from "../../utils/api";
+import React, { useEffect, useState, useCallback } from "react";
+import { getBookmarks, createFolder } from "../../utils/api";
 import MainLayout from "../components/layout/MainLayout";
 import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
 import BookmarkSearchLayout from "../components/BookmarkManager/BookmarkSearchLayout";
@@ -20,7 +20,34 @@ const BookmarkManagerPage: React.FC = () => {
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const [editBookmark, setEditBookmark] = useState<BookmarkNode | null>(null);
 
-  // Convert chrome.bookmarks.BookmarkTreeNode to our BookmarkNode
+  // Load and map Chrome bookmark tree into our state
+  const loadBookmarks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const tree = await getBookmarks();
+      const root = tree[0];
+      const firstLevel = root.children || [];
+      const mapped = firstLevel.map((node) => convertNode(node, root.id));
+      setFolders(mapped);
+
+      // Restore last selected folder or default to first
+      const lastFolderId =
+        typeof chrome !== "undefined" && chrome.storage?.local
+          ? await new Promise<string | null>((res) =>
+              chrome.storage.local.get("lastFolderId", (data) =>
+                res(data.lastFolderId || null)
+              )
+            )
+          : (localStorage.getItem("lastFolderId") as string | null);
+      setSelectedFolder(lastFolderId || mapped[0]?.id || null);
+    } catch (error) {
+      console.error("Error fetching bookmarks:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Helper to convert Chrome API nodes
   const convertNode = (
     node: chrome.bookmarks.BookmarkTreeNode,
     parentId: string
@@ -34,34 +61,36 @@ const BookmarkManagerPage: React.FC = () => {
       : [],
   });
 
+  // Handle selecting a folder
+  const handleSelectFolder = (id: string) => {
+    setSelectedFolder(id);
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.set({ lastFolderId: id });
+    } else {
+      localStorage.setItem("lastFolderId", id);
+    }
+  };
+
+  // Handle adding a new folder under "Other Bookmarks"
+  const handleAddFolder = async (title: string) => {
+    const other = folders.find((f) =>
+      f.title.toLowerCase().includes("other bookmarks")
+    );
+    if (!other) {
+      alert("Could not find 'Other Bookmarks' folder to add to.");
+      return;
+    }
+    try {
+      await createFolder({ parentId: other.id, title });
+      await loadBookmarks();
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      alert("Failed to create folder");
+    }
+  };
+
+  // Initial load and listener for updates
   useEffect(() => {
-    const loadBookmarks = async () => {
-      setLoading(true);
-      try {
-        const tree = await getBookmarks();
-        const root = tree[0];
-        const firstLevel = root.children || [];
-        // Build only top-level folders for Sidebar
-        const mapped = firstLevel.map((node) => convertNode(node, root.id));
-        setFolders(mapped);
-
-        // Restore last selected folder or default to first
-        const lastFolderId =
-          typeof chrome !== "undefined" && chrome.storage?.local
-            ? await new Promise<string | null>((res) =>
-                chrome.storage.local.get("lastFolderId", (data) =>
-                  res(data.lastFolderId || null)
-                )
-              )
-            : localStorage.getItem("lastFolderId");
-        setSelectedFolder(lastFolderId || mapped[0]?.id || null);
-      } catch (error) {
-        console.error("Error fetching bookmarks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadBookmarks();
     const runtime = typeof chrome !== "undefined" ? chrome.runtime : undefined;
     const handler = (msg: any) => {
@@ -73,16 +102,7 @@ const BookmarkManagerPage: React.FC = () => {
     return () => {
       runtime?.onMessage.removeListener(handler);
     };
-  }, []);
-
-  const handleSelectFolder = (id: string) => {
-    setSelectedFolder(id);
-    if (typeof chrome !== "undefined" && chrome.storage?.local) {
-      chrome.storage.local.set({ lastFolderId: id });
-    } else {
-      localStorage.setItem("lastFolderId", id);
-    }
-  };
+  }, [loadBookmarks]);
 
   if (loading) {
     return (
@@ -93,7 +113,11 @@ const BookmarkManagerPage: React.FC = () => {
   }
 
   return (
-    <MainLayout folders={folders} onSelectFolder={handleSelectFolder}>
+    <MainLayout
+      folders={folders}
+      onSelectFolder={handleSelectFolder}
+      onAddFolder={handleAddFolder}
+    >
       {searchQuery ? (
         <BookmarkSearchLayout
           searchQuery={searchQuery}

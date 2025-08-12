@@ -5,6 +5,7 @@ import Header from "../common/Header";
 interface MainLayoutProps {
   folders: { id: string; title: string; url?: string; children?: any[] }[];
   onSelectFolder: (id: string) => void;
+  onAddFolder: (title: string) => void;
   children: ReactNode;
 }
 
@@ -14,11 +15,16 @@ interface MainLayoutProps {
 const MainLayout: React.FC<MainLayoutProps> = ({
   folders,
   onSelectFolder,
+  onAddFolder,
   children,
 }) => {
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar folders={folders} onSelectFolder={onSelectFolder} />
+      <Sidebar
+        folders={folders}
+        onSelectFolder={onSelectFolder}
+        onAddFolder={onAddFolder}
+      />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-4">

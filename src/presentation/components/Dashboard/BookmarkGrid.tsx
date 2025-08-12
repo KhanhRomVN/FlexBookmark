@@ -2,6 +2,16 @@ import React from "react";
 import { BookmarkNode } from "../../tab/Dashboard";
 import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
+import { useDroppable } from "@dnd-kit/core";
+
+// Droppable wrapper for each bookmark or folder tile
+const DroppableTile: React.FC<{ id: string; children: React.ReactNode }> = ({
+  id,
+  children,
+}) => {
+  const { setNodeRef } = useDroppable({ id });
+  return <div ref={setNodeRef}>{children}</div>;
+};
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
