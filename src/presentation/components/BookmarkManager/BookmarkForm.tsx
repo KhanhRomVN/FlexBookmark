@@ -59,21 +59,19 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
       onKeyDown={(e) => e.key === "Escape" && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
+      <div className="bg-dialog-background rounded-lg p-4 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4 text-text-primary">
           {initialData ? "Edit Bookmark" : "Add Bookmark"}
         </h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 dark:text-gray-300 mb-2">
-              Title
-            </label>
+            <label className="block text-text-secondary mb-2">Title</label>
             <input
               ref={titleRef}
               type="text"
               placeholder="Enter a title"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border-default rounded-md bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -81,13 +79,11 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
           </div>
 
           <div className="mb-6">
-            <label className="block text-gray-700 dark:text-gray-300 mb-2">
-              URL
-            </label>
+            <label className="block text-text-secondary mb-2">URL</label>
             <input
               type="url"
               placeholder="https://example.com"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border-default rounded-md bg-dialog-background text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
@@ -97,7 +93,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md"
+              className="px-4 py-2 bg-button-secondBg hover:bg-button-secondBgHover text-text-primary rounded-md"
               onClick={onClose}
               disabled={isSubmitting}
             >

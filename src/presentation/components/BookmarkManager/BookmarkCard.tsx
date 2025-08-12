@@ -22,8 +22,6 @@ interface BookmarkCardProps {
     toParentId: string
   ) => void;
   onDrop?: (item: any) => void;
-  /** Called when user clicks “Edit” */
-  /** Called when user clicks “Edit” */
   onEdit?: (item: BookmarkItem & { parentId: string }) => void;
 }
 
@@ -144,13 +142,13 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
             dark:bg-dropdown-background dark:border-border-default"
           >
             <button
-              className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus transition-colors"
+              className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus transition-colors"
               onClick={handleEdit}
             >
               ✏️ Edit
             </button>
             <button
-              className="w-full px-3 py-2 text-left hover:bg-dropdown-item-hover focus:bg-dropdown-item-focus text-red-500 transition-colors"
+              className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus text-red-500 transition-colors"
               onClick={handleDelete}
             >
               🗑️ Delete

@@ -47,8 +47,8 @@
     --button-border-hover: #1e40af;
 
     /* Secondary Button colors */
-    --button-second-bg: #1e1e1e;
-    --button-second-bg-hover: #343434;
+    --button-second-bg: #d4d4d4;
+    --button-second-bg-hover: #a7a7a7;
   }
 
   .dark {
