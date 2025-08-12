@@ -102,47 +102,65 @@ const BookmarkSearchLayout: React.FC<BookmarkSearchLayoutProps> = ({
           bookmarks,
         })),
       }))
+      .filter((group) => sidebarIds.has(group.rootFolder.id))
       .sort((a, b) => b.folders.length - a.folders.length);
   }, [searchResults, folders, sidebarFolders]);
 
   if (!searchQuery.trim()) return null;
 
+  if (groupedResults.length === 0) {
+    return (
+      <div className="search-results-container mt-6 text-center py-10">
+        <p className="text-gray-500">No bookmarks found.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="search-results-container mt-6">
-      {groupedResults.map((group) => (
-        <div key={group.rootFolder.id} className="mb-10">
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h2 className="text-xl font-bold text-text-primary">
-              {group.rootFolder.title}
-            </h2>
-            <button
-              className="text-primary hover:underline text-sm"
-              onClick={() => onSelectFolder(group.rootFolder.id)}
-            >
-              View all
-            </button>
+      {groupedResults
+        .filter(
+          (group) =>
+            !group.rootFolder.title.toLowerCase().includes("other bookmarks")
+        )
+        .map((group) => (
+          <div key={group.rootFolder.id} className="mb-10">
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h2 className="text-xl font-bold text-text-primary">
+                {group.rootFolder.title}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {group.folders
+                .filter(({ folderId }) => {
+                  const f =
+                    folders.find((f) => f.id === folderId) ||
+                    searchResults.find((r) => r.id === folderId);
+                  return (
+                    f && !f.title.toLowerCase().includes("other bookmarks")
+                  );
+                })
+                .map(({ folderId, bookmarks }) => {
+                  const folder =
+                    folders.find((f) => f.id === folderId) ||
+                    searchResults.find((r) => r.id === folderId);
+                  return folder ? (
+                    <FolderCard
+                      key={`${group.rootFolder.id}-${folderId}`}
+                      folder={{
+                        id: folder.id,
+                        title: folder.title,
+                        bookmarks,
+                      }}
+                      onBookmarkEdit={onBookmarkEdit}
+                      hideActions={true}
+                      alwaysExpand={true}
+                    />
+                  ) : null;
+                })}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {group.folders.map(({ folderId, bookmarks }) => {
-              const folder =
-                folders.find((f) => f.id === folderId) ||
-                searchResults.find((r) => r.id === folderId);
-              return folder ? (
-                <FolderCard
-                  key={`${group.rootFolder.id}-${folderId}`}
-                  folder={{
-                    id: folder.id,
-                    title: folder.title,
-                    bookmarks,
-                  }}
-                  onBookmarkEdit={onBookmarkEdit}
-                  hideActions={true}
-                />
-              ) : null;
-            })}
-          </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 };

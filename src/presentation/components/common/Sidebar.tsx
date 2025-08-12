@@ -87,8 +87,8 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
   }, [folders]);
 
   return (
-    <div className="w-72 bg-sidebar-background border-r border-sidebar-border text-text-primary h-full flex flex-col transition-all duration-300">
-      <div className="sidebar-header p-4 border-b border-sidebar-border bg-gradient-to-r from-primary/10 to-transparent">
+    <div className="w-72 bg-sidebar-background border-r border-border-default text-text-primary h-full flex flex-col transition-all duration-300">
+      <div className="sidebar-header h-12 flex items-center px-4 border-b border-border-default bg-gradient-to-r from-primary/10 to-transparent">
         <h1 className="text-2xl font-bold text-primary">FlexBookmark</h1>
       </div>
       <div className="groups-list flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-400 hover:scrollbar-thumb-gray-500">
@@ -114,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, onSelectFolder }) => {
           );
         })}
       </div>
-      <footer className="p-4 border-t border-sidebar-border">
+      <footer className="p-4 border-t border-border-default">
         <button
           className="flex items-center justify-center gap-2 w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition"
           onClick={() => onSelectFolder("")}

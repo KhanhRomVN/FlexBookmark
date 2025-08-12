@@ -16,6 +16,7 @@ interface BookmarkCardProps {
   depth: number;
   isDragging?: boolean;
   hideWhenDragging?: boolean;
+  disableDrag?: boolean;
   onBookmarkMoved?: (
     bookmarkId: string,
     fromParentId: string,
@@ -31,6 +32,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
   depth,
   isDragging = false,
   hideWhenDragging = false,
+  disableDrag = false,
   onEdit,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -38,6 +40,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: item.id,
+    disabled: disableDrag,
     data: {
       type: "bookmark",
       payload: { ...item, parentId },

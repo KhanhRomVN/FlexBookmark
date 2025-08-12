@@ -70,6 +70,7 @@ interface FolderCardProps {
   onFolderInsertHint?: (insertAt: number) => void;
   hideWhenDragging?: boolean;
   hideActions?: boolean;
+  alwaysExpand?: boolean;
   onBookmarkEdit?: (item: BookmarkItem & { parentId: string }) => void;
   onFolderRename?: (id: string, newTitle: string) => void;
   onFolderDelete?: (id: string) => void;
@@ -85,6 +86,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   activeType,
   hideWhenDragging = false,
   hideActions = false,
+  alwaysExpand = false,
   onBookmarkMoveRequested,
   onFolderInsertHint,
   onBookmarkEdit,
@@ -156,7 +158,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
     isDragging: isFolderDragging,
   } = useDraggable({
     id: folder.id,
-    disabled: folder.id === "temp",
+    disabled: folder.id === "temp" || hideActions,
     data: {
       type: "folder",
       payload: folder,
@@ -168,10 +170,17 @@ const FolderCard: React.FC<FolderCardProps> = ({
 
   // displayed bookmarks: collapsed to 5 by default, expand on hover or open
   const shownBookmarks = useMemo(() => {
-    if (isOpen || localHover || headIsOver || bodyIsOver)
+    if (alwaysExpand || isOpen || localHover || headIsOver || bodyIsOver)
       return folder.bookmarks;
     return folder.bookmarks.slice(0, 5);
-  }, [folder.bookmarks, isOpen, localHover, headIsOver, bodyIsOver]);
+  }, [
+    folder.bookmarks,
+    alwaysExpand,
+    isOpen,
+    localHover,
+    headIsOver,
+    bodyIsOver,
+  ]);
 
   useEffect(() => {
     if (bodyIsOver && onFolderInsertHint) {
@@ -349,6 +358,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                         hideWhenDragging={
                           activeType === "bookmark" && activeId === b.id
                         }
+                        disableDrag={hideActions}
                         onEdit={(it) => onBookmarkEdit?.(it)}
                       />
                     </React.Fragment>

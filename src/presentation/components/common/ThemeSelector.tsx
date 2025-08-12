@@ -22,7 +22,8 @@ const ThemeSelector: React.FC = () => {
   return (
     <div className="theme-container relative">
       <button
-        className="theme-btn w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
+        aria-label="Toggle theme"
+        className="theme-btn w-8 h-8 rounded-full bg-background-secondary hover:bg-background-tertiary focus:outline-none focus:ring-2 focus:ring-primary transition flex items-center justify-center"
         onClick={() => setShowDropdown(!showDropdown)}
       >
         {theme === "light" ? "🌞" : theme === "dark" ? "🌙" : "🖼️"}
