@@ -34,6 +34,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onEdit,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: item.id,
@@ -106,7 +107,9 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
       {...attributes}
       {...listeners}
       style={style}
-      className={`group flex items-center p-2 rounded-md transition-all ${
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`flex items-center p-2 rounded-md transition-all ${
         depth > 1 ? "ml-4" : ""
       } cursor-grab ${hideWhenDragging ? "invisible" : ""}`}
       onClick={handleClick}
@@ -128,7 +131,9 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
       <div ref={containerRef} className="relative">
         <button
-          className="bookmark-menu-btn p-1 rounded bg-button-secondBg text-text-secondary hover:bg-button-secondBgHover focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`bookmark-menu-btn p-1 rounded bg-button-secondBg text-text-secondary hover:bg-button-secondBgHover focus:outline-none transition-opacity ${
+            isHovered || showMenu ? "opacity-100" : "opacity-0"
+          }`}
           onClick={handleMenuClick}
           aria-label="Open menu"
         >
