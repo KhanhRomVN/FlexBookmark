@@ -21,7 +21,7 @@ import EmptyState from "./EmptyState";
 import GridHeader from "./GridHeader";
 import { motion } from "framer-motion";
 
-interface BookmarkNode {
+export interface BookmarkNode {
   parentId: string;
   id: string;
   title: string;

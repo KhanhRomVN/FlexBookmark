@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React from "react";
 import ThemeSelector from "./ThemeSelector";
+import { useSearchStore } from "../../store/searchStore";
 
 const Header: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchQuery = useSearchStore((state) => state.searchQuery);
+  const setSearchQuery = useSearchStore((state) => state.setSearchQuery);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    // TODO: implement search functionality
   };
 
   return (

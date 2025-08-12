@@ -69,6 +69,7 @@ interface FolderCardProps {
   onBookmarkMoveRequested?: (bookmarkId: string, fromParentId: string) => void;
   onFolderInsertHint?: (insertAt: number) => void;
   hideWhenDragging?: boolean;
+  hideActions?: boolean;
   onBookmarkEdit?: (item: BookmarkItem & { parentId: string }) => void;
   onFolderRename?: (id: string, newTitle: string) => void;
   onFolderDelete?: (id: string) => void;
@@ -83,6 +84,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   activeId,
   activeType,
   hideWhenDragging = false,
+  hideActions = false,
   onBookmarkMoveRequested,
   onFolderInsertHint,
   onBookmarkEdit,

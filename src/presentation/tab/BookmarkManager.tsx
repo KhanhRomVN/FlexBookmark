@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { getBookmarks } from "../../utils/api";
 import MainLayout from "../components/layout/MainLayout";
 import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
+import BookmarkSearchLayout from "../components/BookmarkManager/BookmarkSearchLayout";
+import { useSearchStore } from "../store/searchStore";
 
 interface BookmarkNode {
   parentId: string;
@@ -15,6 +17,8 @@ const BookmarkManagerPage: React.FC = () => {
   const [folders, setFolders] = useState<BookmarkNode[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const searchQuery = useSearchStore((state) => state.searchQuery);
+  const [editBookmark, setEditBookmark] = useState<BookmarkNode | null>(null);
 
   // Convert chrome.bookmarks.BookmarkTreeNode to our BookmarkNode
   const convertNode = (
@@ -90,7 +94,16 @@ const BookmarkManagerPage: React.FC = () => {
 
   return (
     <MainLayout folders={folders} onSelectFolder={handleSelectFolder}>
-      <BookmarkLayout folderId={selectedFolder} folders={folders} />
+      {searchQuery ? (
+        <BookmarkSearchLayout
+          searchQuery={searchQuery}
+          folders={folders}
+          onSelectFolder={handleSelectFolder}
+          onBookmarkEdit={(item: BookmarkNode) => setEditBookmark(item)}
+        />
+      ) : (
+        <BookmarkLayout folderId={selectedFolder} folders={folders} />
+      )}
     </MainLayout>
   );
 };
