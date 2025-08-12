@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { useDroppable } from "@dnd-kit/core";
+import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import type { CSSProperties } from "react";
 import BookmarkCard from "./BookmarkCard";
 import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,7 +15,7 @@ interface GapDropZoneProps {
   index: number;
   onFolderInsertHint?: (insertAt: number) => void;
 }
-const GapDropZone: React.FC<GapDropZoneProps> = ({
+export const GapDropZone: React.FC<GapDropZoneProps> = ({
   folderId,
   folderIndex = 0,
   columnIndex = 0,
@@ -64,6 +66,7 @@ interface FolderCardProps {
   activeType?: string | null;
   onBookmarkMoveRequested?: (bookmarkId: string, fromParentId: string) => void;
   onFolderInsertHint?: (insertAt: number) => void;
+  hideWhenDragging?: boolean;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
@@ -73,6 +76,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   isHighlighted = false,
   activeId,
   activeType,
+  hideWhenDragging = false,
   onBookmarkMoveRequested,
   onFolderInsertHint,
 }) => {
@@ -113,6 +117,23 @@ const FolderCard: React.FC<FolderCardProps> = ({
   });
 
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // draggable for folder reordering
+  const {
+    attributes: dragAttributes,
+    listeners: dragListeners,
+    setNodeRef: setDragRef,
+    transform: dragTransform,
+    isDragging: isFolderDragging,
+  } = useDraggable({
+    id: folder.id,
+    data: {
+      type: "folder",
+      payload: folder,
+      column: columnIndex,
+      folderIndex,
+    },
+  });
 
   // displayed bookmarks: collapsed to 5 by default, expand on hover or open
   const shownBookmarks = useMemo(() => {
@@ -161,17 +182,27 @@ const FolderCard: React.FC<FolderCardProps> = ({
         rootRef.current = n;
         setFolderRef(n);
       }}
-      className={`group relative bg-card-background w-full rounded-md transition-all border-2 ${
+      style={{
+        transform: CSS.Translate.toString(dragTransform),
+        opacity: isFolderDragging ? 0.6 : 1,
+        zIndex: isFolderDragging ? 1000 : undefined,
+      }}
+      className={`group relative bg-card-background w-full rounded-md border-2 ${
         isHighlighted || headIsOver || bodyIsOver || folderIsOver
           ? "border-blue-400 ring-2 ring-blue-400/30"
           : "border-gray-200 dark:border-gray-700"
-      }`}
+      } ${hideWhenDragging ? "invisible" : ""}`}
       onMouseEnter={() => setLocalHover(true)}
       onMouseLeave={() => setLocalHover(false)}
     >
       {/* HEAD */}
       <div
-        ref={setHeadRef}
+        ref={(n) => {
+          setHeadRef(n);
+          setDragRef(n);
+        }}
+        {...dragAttributes}
+        {...dragListeners}
         className="folder-header flex items-center justify-between p-3 cursor-pointer bg-card-header border-b border-border-default"
         onClick={toggleOpen}
       >

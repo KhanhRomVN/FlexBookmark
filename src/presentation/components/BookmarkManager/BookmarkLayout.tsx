@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, Fragment } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -15,7 +15,7 @@ import {
 import type { CollisionDetection } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import BookmarkCard from "./BookmarkCard";
-import FolderCard from "./FolderCard";
+import FolderCard, { GapDropZone } from "./FolderCard";
 import EmptyState from "./EmptyState";
 import GridHeader from "./GridHeader";
 import { motion } from "framer-motion";
