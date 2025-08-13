@@ -22,7 +22,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search web or bookmarks..."
-          className="w-full py-4 pl-14 pr-6 rounded-full border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300/50 shadow-lg bg-white/90 dark:bg-gray-800/90 dark:border-gray-700 dark:focus:ring-blue-600/30 text-lg"
+          className="w-full py-2 pl-14 pr-6 rounded-lg border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300/50 shadow-lg bg-white/90 dark:bg-gray-800/90 dark:border-gray-700 dark:focus:ring-blue-600/30 text-lg"
         />
         <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
           <svg
@@ -40,12 +40,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
             />
           </svg>
         </div>
-        <button
-          type="submit"
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2 text-sm font-medium transition-colors"
-        >
-          Search
-        </button>
       </div>
     </form>
   );

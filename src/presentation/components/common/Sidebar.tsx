@@ -235,7 +235,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           items={localGroups.map((g) => g.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="groups-list flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-400 hover:scrollbar-thumb-gray-500">
+          <div className="groups-list flex-1 overflow-y-auto p-3 hide-scrollbar">
             {localGroups.map((folder) => (
               <SortableFolderItem
                 key={folder.id}
