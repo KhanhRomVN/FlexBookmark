@@ -35,14 +35,14 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
       {folder?.id !== "temp" && (
         <div className="grid-header-actions flex gap-2">
           <button
-            className="add-bookmark-btn-grid px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            className="px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg"
             onClick={() => alert("Add bookmark form will open here")}
           >
             + Bookmark
           </button>
 
           <button
-            className="add-group-btn-grid px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            className="px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg"
             onClick={handleAddFolder}
           >
             + Folder
@@ -50,7 +50,7 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
 
           <div className="relative">
             <button
-              className="import-btn-grid px-4 py-2 bg-button-bg hover:bg-button-bgHover text-text-primary rounded-lg"
+              className="px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg"
               onClick={() => setShowImportDropdown(!showImportDropdown)}
             >
               + Import

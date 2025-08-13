@@ -6,11 +6,14 @@ interface BookmarkItemProps {
   bookmark: BookmarkNode;
   /** show drop zones when dragging */
   isDragActive?: boolean;
+  /** highlight item when gap hovered */
+  isHighlighted?: boolean;
 }
 
 const BookmarkItem: React.FC<BookmarkItemProps> = ({
   bookmark,
   isDragActive,
+  isHighlighted = false,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -23,7 +26,11 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
     : undefined;
 
   return (
-    <div className="relative group">
+    <div
+      className={`relative group ${
+        isHighlighted ? "border-l-2 border-blue-500" : ""
+      }`}
+    >
       {isDragActive && (
         <div className="absolute left-0 top-0 bottom-0 w-2 group-hover:bg-blue-200/30 transition-colors" />
       )}

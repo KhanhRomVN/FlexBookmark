@@ -5,11 +5,14 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 interface FolderPreviewProps {
   folder: BookmarkNode;
   openFolder: (folder: BookmarkNode) => void;
+  /** highlight folder when gap hovered */
+  isHighlighted?: boolean;
 }
 
 const FolderPreview: React.FC<FolderPreviewProps> = ({
   folder,
   openFolder,
+  isHighlighted = false,
 }) => {
   const {
     attributes,
@@ -30,7 +33,10 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
   const remainingCount = (folder.children?.length || 0) - previewItems.length;
 
   return (
-    <div ref={dropRef}>
+    <div
+      ref={dropRef}
+      className={`${isHighlighted ? "border-l-2 border-blue-500" : ""}`}
+    >
       <div
         ref={dragRef}
         style={style}
