@@ -14,7 +14,6 @@ import {
   UniqueIdentifier,
 } from "@dnd-kit/core";
 import BookmarkGridHeader from "./BookmarkGridHeader";
-/* import arrayMove removed as unused */
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
@@ -41,8 +40,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const [activeDropId, setActiveDropId] = useState<UniqueIdentifier | null>(
     null
   );
-  // const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
-  // const [activeGapPosition, setActiveGapPosition] = useState<"left" | "right" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -71,15 +68,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const { active, over } = event;
     setActiveDragItem(null);
     setActiveDropId(null);
-    // setActiveGapIndex(null);
-    // setActiveGapPosition(null);
 
     if (!over) return;
-
-    // // Gap-zone drop handling disabled
-    // if (over?.id?.toString().startsWith("gap-")) {
-    //   return;
-    // }
 
     const targetItem = allBookmarks.find((bm) => bm.id === over.id);
     if (!targetItem || targetItem.id === active.id) return;
@@ -113,17 +103,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const handleDragCancel = () => {
     setActiveDragItem(null);
     setActiveDropId(null);
-    // setActiveGapIndex(null);
-    // setActiveGapPosition(null);
   };
-
-  // const GapDropZone = ({
-  //   position,
-  //   index,
-  // }: {
-  //   position: "left" | "right";
-  //   index: number;
-  // }) => null;
 
   return (
     <div className="w-full max-w-6xl">
@@ -157,8 +137,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
                     isDropTarget={activeDropId === bm.id}
                   />
                 )}
-
-                {/* <GapDropZone position="right" index={index} /> */}
               </div>
             ))}
           </div>
