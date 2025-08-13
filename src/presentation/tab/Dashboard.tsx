@@ -13,7 +13,6 @@ import {
 } from "@dnd-kit/core";
 import BookmarkItem from "../components/Dashboard/BookmarkItem";
 import FolderPreview from "../components/Dashboard/FolderPreview";
-import GapDropZone from "../components/Dashboard/GapDropZone";
 
 export interface BookmarkNode {
   id: string;
@@ -34,10 +33,6 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
   const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
-  const [hoverPosition, setHoverPosition] = useState<{
-    index: number;
-    position: "left" | "right";
-  } | null>(null);
 
   // Weather code mapping
   const getWeatherDescription = useCallback((code: number): string => {
@@ -165,7 +160,6 @@ const Dashboard: React.FC = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
   const handleDragEnd = async (ev: DragEndEvent) => {
-    setHoverPosition(null);
     const srcId = ev.active.id as string;
     const over = ev.over?.id as string | undefined;
     if (over?.startsWith("gap-")) {
@@ -238,30 +232,15 @@ const Dashboard: React.FC = () => {
         <div className="w-full max-w-6xl">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="flex flex-wrap justify-center gap-4">
-              {filtered.map((item, index) => (
+              {filtered.map((item) => (
                 <div
                   key={item.id}
                   className="relative flex items-center justify-center"
                   style={{ minWidth: "80px" }}
                 >
-                  <GapDropZone
-                    id={`gap-left-${item.id}`}
-                    index={index}
-                    position="left"
-                    onHover={(idx) =>
-                      setHoverPosition({ index: idx, position: "left" })
-                    }
-                  />
                   {item.url ? (
                     <div id={item.id} draggable className="cursor-grab">
-                      <BookmarkItem
-                        bookmark={item}
-                        isHighlighted={
-                          hoverPosition?.index === index &&
-                          hoverPosition.position === "left"
-                        }
-                        position={hoverPosition?.position}
-                      />
+                      <BookmarkItem bookmark={item} isDragActive={false} />
                     </div>
                   ) : (
                     <div
@@ -270,25 +249,9 @@ const Dashboard: React.FC = () => {
                       className="cursor-pointer"
                       onClick={() => openFolder(item)}
                     >
-                      <FolderPreview
-                        folder={item}
-                        openFolder={openFolder}
-                        isHighlighted={
-                          hoverPosition?.index === index &&
-                          hoverPosition.position === "left"
-                        }
-                        position={hoverPosition?.position}
-                      />
+                      <FolderPreview folder={item} openFolder={openFolder} />
                     </div>
                   )}
-                  <GapDropZone
-                    id={`gap-right-${item.id}`}
-                    index={index}
-                    position="right"
-                    onHover={(idx) =>
-                      setHoverPosition({ index: idx, position: "right" })
-                    }
-                  />
                 </div>
               ))}
             </div>
