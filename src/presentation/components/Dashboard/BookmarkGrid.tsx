@@ -14,6 +14,7 @@ import {
   UniqueIdentifier,
 } from "@dnd-kit/core";
 import BookmarkGridHeader from "./BookmarkGridHeader";
+import DropZone from "./DropZone";
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
@@ -114,49 +115,43 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     return 4;
   };
 
-  // Split bookmarks into two rows
+  // Create unique DropZone ID
+  const getDropZoneId = (index: number, position: "before" | "after") =>
+    `drop-zone-${index}-${position}`;
+
+  // Render items with drop zones
+  const renderBookmarkItems = (items: BookmarkNode[]) =>
+    items.map((bm, index) => (
+      <div key={bm.id} className="relative flex items-center justify-center">
+        <DropZone id={getDropZoneId(index, "before")} position="before" />
+        <div className="z-10">
+          {bm.url ? (
+            <BookmarkItem bookmark={bm} isDropTarget={activeDropId === bm.id} />
+          ) : (
+            <FolderPreview
+              folder={bm}
+              openFolder={openFolder}
+              isDropTarget={activeDropId === bm.id}
+            />
+          )}
+        </div>
+        <DropZone id={getDropZoneId(index, "after")} position="after" />
+      </div>
+    ));
+
+  // Render rows
   const renderBookmarkRows = () => {
     const maxCols = getMaxCols();
     const row1 = bookmarks.slice(0, maxCols);
     const row2 = bookmarks.slice(maxCols, maxCols * 2);
     return (
       <>
-        <div className="flex flex-wrap justify-center gap-4 w-full mb-4">
-          {row1.map((bm) => (
-            <div key={bm.id} className="relative">
-              {bm.url ? (
-                <BookmarkItem
-                  bookmark={bm}
-                  isDropTarget={activeDropId === bm.id}
-                />
-              ) : (
-                <FolderPreview
-                  folder={bm}
-                  openFolder={openFolder}
-                  isDropTarget={activeDropId === bm.id}
-                />
-              )}
-            </div>
-          ))}
+        <div className="flex flex-wrap justify-center gap-4 w-full mb-4 relative">
+          {renderBookmarkItems(row1)}
         </div>
         {row2.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-4 w-full">
-            {row2.map((bm) => (
-              <div key={bm.id} className="relative">
-                {bm.url ? (
-                  <BookmarkItem
-                    bookmark={bm}
-                    isDropTarget={activeDropId === bm.id}
-                  />
-                ) : (
-                  <FolderPreview
-                    folder={bm}
-                    openFolder={openFolder}
-                    isDropTarget={activeDropId === bm.id}
-                  />
-                )}
-              </div>
-            ))}
+          <div className="flex flex-wrap justify-center gap-4 w-full relative">
+            {renderBookmarkItems(row2)}
           </div>
         )}
       </>
