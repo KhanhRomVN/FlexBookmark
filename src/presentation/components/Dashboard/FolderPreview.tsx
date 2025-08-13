@@ -7,24 +7,24 @@ interface FolderPreviewProps {
   openFolder: (folder: BookmarkNode) => void;
   /** highlight folder when gap hovered */
   isHighlighted?: boolean;
+  /** side for highlight */
+  position?: "left" | "right";
 }
 
 const FolderPreview: React.FC<FolderPreviewProps> = ({
   folder,
   openFolder,
   isHighlighted = false,
+  position,
 }) => {
   const {
     attributes,
     listeners,
     setNodeRef: dragRef,
     transform,
-  } = useDraggable({
-    id: folder.id,
-  });
-  const { setNodeRef: dropRef, isOver } = useDroppable({
-    id: folder.id,
-  });
+    isDragging,
+  } = useDraggable({ id: folder.id });
+  const { setNodeRef: dropRef, isOver } = useDroppable({ id: folder.id });
   const style: React.CSSProperties | undefined = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
@@ -35,8 +35,17 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
   return (
     <div
       ref={dropRef}
-      className={`${isHighlighted ? "border-l-2 border-blue-500" : ""}`}
+      className={`relative transition-all ${
+        isHighlighted
+          ? position === "left"
+            ? "border-l-4 border-blue-500 ml-2"
+            : "border-r-4 border-blue-500 mr-2"
+          : ""
+      }`}
     >
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-500/20 rounded-xl z-10 border-2 border-blue-500" />
+      )}
       <div
         ref={dragRef}
         style={style}
@@ -54,44 +63,29 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
           {...attributes}
         >
           <div className="relative w-14 h-14 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5">
-            {[0, 1, 2, 3].map((i) => {
-              const item = previewItems[i];
-              if (item) {
-                return (
-                  <div
-                    key={i}
-                    className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-800"
-                  >
-                    {item.url ? (
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${
-                          new URL(item.url).hostname
-                        }&sz=64`}
-                        alt=""
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-xl">📁</span>
-                    )}
-                  </div>
-                );
-              } else if (i === 3 && remainingCount > 0) {
-                return (
-                  <div
-                    key={i}
-                    className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-[10px] font-semibold"
-                  >
-                    +{remainingCount}
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={i}
-                  className="w-full h-full bg-gray-100 dark:bg-gray-700"
-                />
-              );
-            })}
+            {previewItems.map((item, i) => (
+              <div
+                key={i}
+                className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-800"
+              >
+                {item.url ? (
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${
+                      new URL(item.url).hostname
+                    }&sz=64`}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xl">📁</span>
+                )}
+              </div>
+            ))}
+            {remainingCount > 0 && (
+              <div className="absolute bottom-0 right-0 bg-gray-100 dark:bg-gray-700 text-[10px] font-semibold p-1 rounded-full">
+                +{remainingCount}
+              </div>
+            )}
           </div>
           <div className="mt-2 w-full text-xs text-center truncate">
             {folder.title}

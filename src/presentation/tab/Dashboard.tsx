@@ -237,9 +237,13 @@ const Dashboard: React.FC = () => {
 
         <div className="w-full max-w-6xl">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
+            <div className="flex flex-wrap justify-center gap-4">
               {filtered.map((item, index) => (
-                <div key={item.id} className="relative">
+                <div
+                  key={item.id}
+                  className="relative flex items-center justify-center"
+                  style={{ minWidth: "80px" }}
+                >
                   <GapDropZone
                     id={`gap-left-${item.id}`}
                     index={index}
@@ -256,6 +260,7 @@ const Dashboard: React.FC = () => {
                           hoverPosition?.index === index &&
                           hoverPosition.position === "left"
                         }
+                        position={hoverPosition?.position}
                       />
                     </div>
                   ) : (
@@ -272,6 +277,7 @@ const Dashboard: React.FC = () => {
                           hoverPosition?.index === index &&
                           hoverPosition.position === "left"
                         }
+                        position={hoverPosition?.position}
                       />
                     </div>
                   )}

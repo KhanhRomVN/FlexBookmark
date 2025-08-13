@@ -29,23 +29,25 @@ const GapDropZone: React.FC<GapDropZoneProps> = ({
     }
   }, [isOver, onHover, index]);
 
-  const borderClass =
-    position === "left"
-      ? "border-l-2 border-blue-500"
-      : "border-r-2 border-blue-500";
-
   return (
     <div
       ref={setNodeRef}
-      style={{
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        width: "1rem",
-        [position]: "-0.5rem",
-      }}
-      className={isOver ? `${borderClass} bg-blue-200/20 z-20` : ""}
-    />
+      className={`absolute inset-y-0 z-20 ${
+        position === "left" ? "left-0 w-8" : "right-0 w-8"
+      } transition-all duration-200 ${
+        isOver
+          ? "bg-blue-500/20 border-2 border-blue-500"
+          : "hover:bg-blue-500/10"
+      }`}
+    >
+      {isOver && (
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 w-1 h-16 bg-blue-500 rounded-full ${
+            position === "left" ? "right-1" : "left-1"
+          }`}
+        />
+      )}
+    </div>
   );
 };
 

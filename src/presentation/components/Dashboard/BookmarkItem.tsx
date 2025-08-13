@@ -8,17 +8,18 @@ interface BookmarkItemProps {
   isDragActive?: boolean;
   /** highlight item when gap hovered */
   isHighlighted?: boolean;
+  /** side for highlight */
+  position?: "left" | "right";
 }
 
 const BookmarkItem: React.FC<BookmarkItemProps> = ({
   bookmark,
   isDragActive,
   isHighlighted = false,
+  position,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: bookmark.id,
-    });
+    useDraggable({ id: bookmark.id });
   const { setNodeRef: dropRef, isOver } = useDroppable({ id: bookmark.id });
 
   const style: React.CSSProperties | undefined = transform
@@ -27,10 +28,17 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
 
   return (
     <div
-      className={`relative group ${
-        isHighlighted ? "border-l-2 border-blue-500" : ""
+      className={`relative group transition-all ${
+        isHighlighted
+          ? position === "left"
+            ? "border-l-4 border-blue-500 ml-2"
+            : "border-r-4 border-blue-500 mr-2"
+          : ""
       }`}
     >
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-500/20 rounded-xl z-10 border-2 border-blue-500" />
+      )}
       {isDragActive && (
         <div className="absolute left-0 top-0 bottom-0 w-2 group-hover:bg-blue-200/30 transition-colors" />
       )}
@@ -62,7 +70,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
                 className="w-14 h-14 rounded-xl bg-white p-2 shadow border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-all"
               />
             </div>
-            <div className="mt-2 w-full text-xs text-center truncate">
+            <div className="mt-2 w-14 text-xs text-center truncate">
               {bookmark.title || new URL(bookmark.url!).hostname}
             </div>
           </a>
