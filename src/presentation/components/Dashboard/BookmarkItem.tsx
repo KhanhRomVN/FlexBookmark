@@ -1,16 +1,12 @@
 import React from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 import { BookmarkNode } from "../../tab/Dashboard";
 
 interface BookmarkItemProps {
   bookmark: BookmarkNode;
-  isDropTarget?: boolean;
 }
 
-const BookmarkItem: React.FC<BookmarkItemProps> = ({
-  bookmark,
-  isDropTarget = false,
-}) => {
+const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
   const {
     attributes,
     listeners,
@@ -18,15 +14,6 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
     transform,
     isDragging,
   } = useDraggable({ id: bookmark.id });
-
-  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
-    id: bookmark.id,
-  });
-
-  const combinedRef = (node: HTMLElement | null) => {
-    setDraggableNodeRef(node);
-    setDroppableNodeRef(node);
-  };
 
   const style: React.CSSProperties = {
     transform: transform
@@ -38,7 +25,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
   return (
     <div className="relative group transition-all">
       <div
-        ref={combinedRef}
+        ref={setDraggableNodeRef}
         style={style}
         {...listeners}
         {...attributes}
@@ -54,11 +41,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
             isDragging ? "opacity-50" : "hover:scale-105"
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
         >
-          <div
-            className={`relative transition-colors rounded-xl ${
-              isDropTarget ? "border-2 border-primary" : ""
-            }`}
-          >
+          <div className="relative transition-colors rounded-xl">
             <img
               src={`https://www.google.com/s2/favicons?domain=${
                 new URL(bookmark.url!).hostname

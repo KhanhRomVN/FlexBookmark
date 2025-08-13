@@ -38,9 +38,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     null
   );
   const [allBookmarks, setAllBookmarks] = useState<BookmarkNode[]>(bookmarks);
-  const [activeDropId, setActiveDropId] = useState<UniqueIdentifier | null>(
-    null
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -56,19 +53,11 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     if (draggedItem) setActiveDragItem(draggedItem);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    if (over) {
-      setActiveDropId(over.id);
-    } else {
-      setActiveDropId(null);
-    }
-  };
+  // drag-over no longer tracks activeDropId
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragItem(null);
-    setActiveDropId(null);
 
     if (!over) return;
 
@@ -103,7 +92,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
   const handleDragCancel = () => {
     setActiveDragItem(null);
-    setActiveDropId(null);
   };
 
   // Calculate max columns based on window width
@@ -115,27 +103,18 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     return 4;
   };
 
-  // Create unique DropZone ID
-  const getDropZoneId = (index: number, position: "before" | "after") =>
-    `drop-zone-${index}-${position}`;
+  // DropZone id will be direct bookmark id
 
-  // Render items with drop zones
+  // Render items with a single right-side drop zone
   const renderBookmarkItems = (items: BookmarkNode[]) =>
-    items.map((bm, index) => (
+    items.map((bm) => (
       <div key={bm.id} className="relative flex items-center justify-center">
-        {index === 0 && (
-          <DropZone id={getDropZoneId(index, "before")} position="before" />
-        )}
-        <DropZone id={getDropZoneId(index, "after")} position="after" />
+        <DropZone id={bm.id} position="right" />
         <div className="z-10">
           {bm.url ? (
-            <BookmarkItem bookmark={bm} isDropTarget={activeDropId === bm.id} />
+            <BookmarkItem bookmark={bm} />
           ) : (
-            <FolderPreview
-              folder={bm}
-              openFolder={openFolder}
-              isDropTarget={activeDropId === bm.id}
-            />
+            <FolderPreview folder={bm} openFolder={openFolder} />
           )}
         </div>
       </div>
@@ -171,7 +150,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
         onDragCancel={handleDragCancel}
       >
         {bookmarks.length > 0 ? (

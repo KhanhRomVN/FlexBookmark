@@ -5,13 +5,11 @@ import { useDraggable } from "@dnd-kit/core";
 interface FolderPreviewProps {
   folder: BookmarkNode;
   openFolder: (folder: BookmarkNode) => void;
-  isDropTarget?: boolean;
 }
 
 const FolderPreview: React.FC<FolderPreviewProps> = ({
   folder,
   openFolder,
-  isDropTarget = false,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: folder.id });
@@ -32,9 +30,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
         className={`relative w-full ${isDragging ? "opacity-50" : ""}`}
       >
         <button
-          className={`w-full flex flex-col items-center p-2 focus:outline-none ${
-            isDropTarget ? "ring-4 ring-blue-500 rounded-xl" : ""
-          }`}
+          className="w-full flex flex-col items-center p-2 focus:outline-none"
           onClick={() => openFolder(folder)}
           draggable="false"
           onDragStart={(e) => e.preventDefault()}
