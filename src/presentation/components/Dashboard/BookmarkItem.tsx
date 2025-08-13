@@ -39,11 +39,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
         style={style}
         {...listeners}
         {...attributes}
-        className={`w-full focus:outline-none focus:ring-0 border-2 ${
-          isDropTarget || isOver
-            ? "border-primary rounded-xl"
-            : "border-transparent"
-        } transition-colors`}
+        className="w-full focus:outline-none focus:ring-0 transition-colors"
       >
         <a
           href={bookmark.url}

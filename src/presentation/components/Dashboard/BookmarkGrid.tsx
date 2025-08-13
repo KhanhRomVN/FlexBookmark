@@ -29,7 +29,6 @@ interface BookmarkGridProps {
 const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   bookmarks,
   currentFolder,
-  folderHistory,
   openFolder,
   goBack,
   barFolderId,
