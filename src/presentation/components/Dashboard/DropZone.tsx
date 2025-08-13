@@ -14,8 +14,10 @@ const DropZone: React.FC<DropZoneProps> = ({ id, position }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`absolute z-50 inset-y-0 flex items-center pointer-events-none ${
-        position === "before" ? "-left-1" : "-right-1"
+      className={`absolute z-50 w-[calc(50%+8px)] h-full pointer-events-none ${
+        position === "before"
+          ? "left-0 justify-start -translate-x-full"
+          : "right-0 justify-end translate-x-full"
       }`}
     >
       <div

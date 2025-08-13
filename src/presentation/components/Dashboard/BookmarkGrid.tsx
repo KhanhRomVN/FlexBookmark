@@ -123,7 +123,10 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const renderBookmarkItems = (items: BookmarkNode[]) =>
     items.map((bm, index) => (
       <div key={bm.id} className="relative flex items-center justify-center">
-        <DropZone id={getDropZoneId(index, "before")} position="before" />
+        {index === 0 && (
+          <DropZone id={getDropZoneId(index, "before")} position="before" />
+        )}
+        <DropZone id={getDropZoneId(index, "after")} position="after" />
         <div className="z-10">
           {bm.url ? (
             <BookmarkItem bookmark={bm} isDropTarget={activeDropId === bm.id} />
@@ -135,7 +138,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             />
           )}
         </div>
-        <DropZone id={getDropZoneId(index, "after")} position="after" />
       </div>
     ));
 
