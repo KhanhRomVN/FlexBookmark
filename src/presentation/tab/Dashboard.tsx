@@ -136,6 +136,11 @@ const Dashboard: React.FC = () => {
 
   // Navigation
   const openFolder = (folder: BookmarkNode) => {
+    // prevent nested folders beyond one level
+    if (folderHistory.length >= 1) {
+      alert("Nested folders are not supported");
+      return;
+    }
     setFolderHistory([...folderHistory, folder]);
     setCurrentFolder(folder);
   };

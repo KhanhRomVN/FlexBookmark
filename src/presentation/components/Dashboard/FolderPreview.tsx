@@ -44,37 +44,45 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
           {...listeners}
           {...attributes}
         >
-          <div className="relative w-14 h-14">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow flex items-center justify-center group-hover:shadow-lg transition-all">
-              <span className="text-xl">📁</span>
-            </div>
-            {previewItems.length > 0 && (
-              <div className="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-lg p-1 shadow border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-0.5">
-                {previewItems.map((item, index) => (
+          <div className="relative w-14 h-14 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5">
+            {[0, 1, 2, 3].map((i) => {
+              const item = previewItems[i];
+              if (item) {
+                return (
                   <div
-                    key={index}
-                    className="w-3 h-3 flex items-center justify-center"
+                    key={i}
+                    className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-800"
                   >
                     {item.url ? (
                       <img
                         src={`https://www.google.com/s2/favicons?domain=${
                           new URL(item.url).hostname
-                        }&sz=32`}
+                        }&sz=64`}
                         alt=""
                         className="w-full h-full object-contain"
                       />
                     ) : (
-                      <span className="text-[8px]">📁</span>
+                      <span className="text-xl">📁</span>
                     )}
                   </div>
-                ))}
-                {remainingCount > 0 && (
-                  <div className="w-3 h-3 bg-gray-100 dark:bg-gray-700 rounded text-[6px] flex items-center justify-center">
+                );
+              } else if (i === 3 && remainingCount > 0) {
+                return (
+                  <div
+                    key={i}
+                    className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-[10px] font-semibold"
+                  >
                     +{remainingCount}
                   </div>
-                )}
-              </div>
-            )}
+                );
+              }
+              return (
+                <div
+                  key={i}
+                  className="w-full h-full bg-gray-100 dark:bg-gray-700"
+                />
+              );
+            })}
           </div>
           <div className="mt-2 w-full text-xs text-center truncate">
             {folder.title}
