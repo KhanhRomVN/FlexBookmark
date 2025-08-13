@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BookmarkNode } from "../../tab/Dashboard";
 import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
@@ -29,6 +29,13 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const [activeDragItem, setActiveDragItem] = useState<BookmarkNode | null>(
     null
   );
+  // store full unfiltered list to support drag operations
+  const [allBookmarks, setAllBookmarks] = useState<BookmarkNode[]>(bookmarks);
+
+  // keep allBookmarks in sync when props change
+  useEffect(() => {
+    setAllBookmarks(bookmarks);
+  }, [bookmarks]);
   const [showFolderForm, setShowFolderForm] = useState(false);
   const [dropTarget, setDropTarget] = useState<BookmarkNode | null>(null);
 
@@ -38,7 +45,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
   const handleDragStart = (event: any) => {
     const { active } = event;
-    const draggedItem = bookmarks.find((bm) => bm.id === active.id);
+    const draggedItem = allBookmarks.find((bm) => bm.id === active.id);
     if (draggedItem) setActiveDragItem(draggedItem);
   };
 
@@ -48,7 +55,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
     if (!over || !activeDragItem) return;
 
-    const targetItem = bookmarks.find((bm) => bm.id === over.id);
+    const targetItem = allBookmarks.find((bm) => bm.id === over.id);
     if (!targetItem || targetItem.id === activeDragItem.id) return;
 
     setDropTarget(targetItem);
@@ -149,7 +156,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
         <DragOverlay>
           {activeDragItem && (
-            <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg opacity-80">
+            <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border border-blue-500 transform scale-110 transition-transform">
               {activeDragItem.url ? (
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${

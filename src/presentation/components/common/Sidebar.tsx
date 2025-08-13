@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useTheme } from "../../providers/theme-provider";
 import { Circle, FolderPlus, EllipsisVertical } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -77,7 +78,7 @@ const SortableFolderItem: React.FC<SortableFolderItemProps> = ({
     >
       <div className="flex items-center gap-2">
         <div className={`p-1 rounded bg-primary/10 ${colorClass}`}>
-          <Circle className="w-3 h-3" />1
+          <Circle className="w-3 h-3" />
         </div>
         <span className="truncate font-medium text-base">{folder.title}</span>
       </div>
@@ -142,6 +143,26 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAddFolderComplete,
 }) => {
   const { theme } = useTheme();
+  // local state for immediate drag-and-drop updates
+  const [localGroups, setLocalGroups] = useState<FolderNode[]>([]);
+
+  // initialize localGroups from folders
+  useEffect(() => {
+    const result: FolderNode[] = [];
+    const bar = folders.find((f) =>
+      f.title.toLowerCase().includes("bookmarks bar")
+    );
+    if (bar) result.push(bar);
+    const other = folders.find((f) =>
+      f.title.toLowerCase().includes("other bookmarks")
+    );
+    if (other?.children) {
+      other.children
+        .filter((child) => !child.url)
+        .forEach((child) => result.push(child));
+    }
+    setLocalGroups(result);
+  }, [folders]);
 
   const iconColors = [
     "text-blue-500",
@@ -158,23 +179,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     return iconColors[hash % iconColors.length];
   };
 
-  const groups = useMemo((): FolderNode[] => {
-    const result: FolderNode[] = [];
-    const bar = folders.find((f) =>
-      f.title.toLowerCase().includes("bookmarks bar")
-    );
-    if (bar) result.push(bar);
-    const other = folders.find((f) =>
-      f.title.toLowerCase().includes("other bookmarks")
-    );
-    if (other?.children) {
-      other.children
-        .filter((child) => !child.url)
-        .forEach((child) => result.push(child));
-    }
-    return result;
-  }, [folders]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
@@ -186,11 +190,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = groups.findIndex((g) => g.id === active.id);
-    const newIndex = groups.findIndex((g) => g.id === over.id);
+    const oldIndex = localGroups.findIndex((g) => g.id === active.id);
+    const newIndex = localGroups.findIndex((g) => g.id === over.id);
     if (otherFolder) {
+      // update UI immediately
+      setLocalGroups((prev) => arrayMove(prev, oldIndex, newIndex));
       // account for Bookmarks Bar at index 0
-      const offset = groups[0]?.id === otherFolder.id ? 0 : 1;
+      const offset = localGroups[0]?.id === otherFolder.id ? 0 : 1;
       const toIndex = newIndex - offset;
       try {
         await new Promise((res, rej) =>
@@ -203,9 +209,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             }
           )
         );
-        window.location.reload();
       } catch (err) {
         console.warn("[Sidebar] reorder error", err);
+        // rollback on error
+        setLocalGroups((prev) => arrayMove(prev, newIndex, oldIndex));
       }
     }
   };
@@ -225,11 +232,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={groups.map((g) => g.id)}
+          items={localGroups.map((g) => g.id)}
           strategy={verticalListSortingStrategy}
         >
           <div className="groups-list flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-400 hover:scrollbar-thumb-gray-500">
-            {groups.map((folder) => (
+            {localGroups.map((folder) => (
               <SortableFolderItem
                 key={folder.id}
                 folder={folder}
