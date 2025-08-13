@@ -145,9 +145,8 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
         {showMenu && (
           <div
-            className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10
-            bg-dropdown-background border border-border-default
-            dark:bg-dropdown-background dark:border-border-default"
+            className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10 backdrop-blur-sm
+            bg-dropdown-background border border-border-default "
           >
             <button
               className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus transition-colors"

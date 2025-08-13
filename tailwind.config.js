@@ -45,6 +45,7 @@ module.exports = {
         button: {
           bg: "var(--button-bg)",
           bgHover: "var(--button-bg-hover)",
+          bgText: "var(--button-text)",
           border: "var(--button-border)",
           borderHover: "var(--button-border-hover)",
           secondBg: "var(--button-second-bg)",

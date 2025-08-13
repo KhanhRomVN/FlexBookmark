@@ -8,7 +8,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -91,7 +90,7 @@ const SortableFolderItem: React.FC<SortableFolderItemProps> = ({
         )}
         {/* ellipsis button */}
         <button
-          className="absolute inset-0 flex items-center justify-center p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+          className="absolute inset-0 flex items-center justify-center p-1 rounded bg-button-secondBg transition-opacity duration-200 opacity-0 group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             setShowMenu(true);
@@ -100,7 +99,7 @@ const SortableFolderItem: React.FC<SortableFolderItemProps> = ({
           <EllipsisVertical size={16} />
         </button>
         {showMenu && (
-          <div className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10 bg-dropdown-background border border-border-default">
+          <div className="menu-dropdown absolute right-0 top-full mt-1 w-32 rounded-md shadow z-10 backdrop-blur-sm bg-dropdown-background border border-border-default">
             <button
               className="w-full px-3 py-2 text-left hover:bg-dropdown-itemHover focus:bg-dropdown-itemFocus transition-colors"
               onClick={(e) => {
@@ -249,13 +248,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       </DndContext>
       <footer className="p-4 border-t border-border-default">
         <button
-          className="flex items-center justify-center gap-2 w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition"
+          className="flex items-center justify-center gap-2 w-full py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg transition"
           onClick={async () => {
             const title = window.prompt("Enter new folder title");
-            if (title?.trim()) {
-              await onAddFolder(title.trim());
-              onAddFolderComplete?.();
+            const titleTrim = title?.trim();
+            if (!titleTrim) return;
+            if (
+              otherFolder?.children?.some((child) => child.title === titleTrim)
+            ) {
+              window.alert(`Folder "${titleTrim}" already exists`);
+              return;
             }
+            await onAddFolder(titleTrim);
+            onAddFolderComplete?.();
           }}
         >
           <FolderPlus className="w-5 h-5" />

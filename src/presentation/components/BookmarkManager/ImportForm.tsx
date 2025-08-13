@@ -42,7 +42,7 @@ const ImportForm: React.FC<ImportFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+      <div className="bg-dialog-background rounded-lg p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Import Bookmarks</h2>
 
         <form onSubmit={handleSubmit}>
@@ -51,7 +51,7 @@ const ImportForm: React.FC<ImportFormProps> = ({
               Paste bookmarks (Title,URL per line):
             </label>
             <textarea
-              className="w-full h-40 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+              className="w-full h-40 p-2 border border-border-default rounded bg-input-background text-text-primary"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder="Google,https://google.com\nFacebook,https://facebook.com"
@@ -61,14 +61,14 @@ const ImportForm: React.FC<ImportFormProps> = ({
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
+              className="px-4 py-2 bg-button-secondBg rounded"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded"
+              className="px-4 py-2 bg-button-bg text-text-primary rounded"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Importing..." : "Import"}

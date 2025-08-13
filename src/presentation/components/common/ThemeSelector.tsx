@@ -31,21 +31,21 @@ const ThemeSelector: React.FC = () => {
       </button>
 
       {showDropdown && (
-        <div className="theme-dropdown absolute right-0 top-10 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700 min-w-[150px]">
+        <div className="theme-dropdown absolute right-0 top-10 bg-dropdown-background rounded-md shadow-lg z-50 border min-w-[150px]">
           <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover flex items-center gap-2"
             onClick={() => handleThemeChange("light")}
           >
             🌞 Light
           </button>
           <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover flex items-center gap-2"
             onClick={() => handleThemeChange("dark")}
           >
             🌙 Dark
           </button>
           <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover flex items-center gap-2"
             onClick={() => handleThemeChange("image")}
           >
             🖼️ Image
@@ -53,7 +53,7 @@ const ThemeSelector: React.FC = () => {
 
           {theme === "image" && (
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover flex items-center gap-2"
               onClick={() => setShowImageInput(!showImageInput)}
             >
               ✏️ Change Image

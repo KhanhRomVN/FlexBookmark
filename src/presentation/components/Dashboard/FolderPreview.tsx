@@ -41,6 +41,9 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
         <button
           className="w-full flex flex-col items-center p-2 group"
           onClick={() => openFolder(folder)}
+          draggable="false"
+          onDragStart={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
           {...listeners}
           {...attributes}
         >
