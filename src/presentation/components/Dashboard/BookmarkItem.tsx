@@ -28,9 +28,12 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
     setDroppableNodeRef(node);
   };
 
-  const style: React.CSSProperties | undefined = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+  const style: React.CSSProperties = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    visibility: isDragging ? "hidden" : "visible",
+  };
 
   return (
     <div className="relative group transition-all">
@@ -39,7 +42,9 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
         style={style}
         {...listeners}
         {...attributes}
-        className="w-full focus:outline-none focus:ring-0 transition-colors"
+        className={`w-full focus:outline-none focus:ring-0 transition-colors ${
+          isDragging ? "opacity-0" : ""
+        }`}
       >
         <a
           href={bookmark.url}
@@ -50,9 +55,9 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
         >
           <div
-            className={`relative transition-colors border-2 ${
-              isDropTarget ? "border-primary" : "border-transparent"
-            } rounded-xl`}
+            className={`relative transition-colors rounded-xl ${
+              isDropTarget ? "border-2 border-primary" : ""
+            }`}
           >
             <img
               src={`https://www.google.com/s2/favicons?domain=${
