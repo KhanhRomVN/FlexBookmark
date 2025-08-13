@@ -66,7 +66,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
             {previewItems.map((item, i) => (
               <div
                 key={i}
-                className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-800"
+                className="w-full h-full flex items-center justify-center bg-bookmarkItem-bg"
               >
                 {item.url ? (
                   <img
@@ -87,7 +87,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
               </div>
             )}
           </div>
-          <div className="mt-2 w-full text-xs text-center truncate">
+          <div className="mt-2 w-full text-xs text-bookmarkItem-text truncate">
             {folder.title}
           </div>
         </button>

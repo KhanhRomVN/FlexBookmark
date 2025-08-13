@@ -42,10 +42,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
       {isDragActive && (
         <div className="absolute left-0 top-0 bottom-0 w-2 group-hover:bg-blue-200/30 transition-colors" />
       )}
-      <div
-        ref={dropRef}
-        className={isOver ? "ring-2 ring-blue-500 rounded-lg" : ""}
-      >
+      <div>
         <div
           ref={setNodeRef}
           style={style}
@@ -61,16 +58,21 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
               isDragging ? "opacity-50 scale-95" : "hover:scale-105"
             }`}
           >
-            <div className="relative">
+            <div
+              ref={dropRef}
+              className={`relative ${
+                isOver ? "ring-2 ring-blue-500 rounded-lg" : ""
+              }`}
+            >
               <img
                 src={`https://www.google.com/s2/favicons?domain=${
                   new URL(bookmark.url!).hostname
                 }&sz=128`}
                 alt={bookmark.title || ""}
-                className="w-14 h-14 rounded-xl bg-white p-2 shadow border border-gray-200 dark:border-gray-700 group-hover:shadow-lg transition-all"
+                className="w-14 h-14 rounded-xl bg-bookmarkItem-bg p-2 transition-all"
               />
             </div>
-            <div className="mt-2 w-14 text-xs text-center truncate">
+            <div className="mt-2 w-14 text-xs text-bookmarkItem-text truncate">
               {bookmark.title || new URL(bookmark.url!).hostname}
             </div>
           </a>

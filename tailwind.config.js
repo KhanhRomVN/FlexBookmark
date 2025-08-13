@@ -51,6 +51,10 @@ module.exports = {
           secondBg: "var(--button-second-bg)",
           secondBgHover: "var(--button-second-bg-hover)",
         },
+        bookmarkItem: {
+          bg: "var(--bookmark-item-bg)",
+          text: "var(--bookmark-item-text)",
+        },
       },
     },
   },

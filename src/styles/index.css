@@ -50,6 +50,10 @@
     /* Secondary Button colors */
     --button-second-bg: #d4d4d4;
     --button-second-bg-hover: #b6b6b6;
+
+    /* Bookmark item colors */
+    --bookmark-item-bg: #f1f5f9;
+    --bookmark-item-text: #0f172a;
   }
 
   .dark {
@@ -98,6 +102,10 @@
     /* Secondary Button colors */
     --button-second-bg: #1e1e1e;
     --button-second-bg-hover: #343434;
+
+    /* Bookmark item colors */
+    --bookmark-item-bg: #1e293b;
+    --bookmark-item-text: #e2e8f0;
   }
 
   .image {
@@ -151,6 +159,10 @@
     /* Secondary Button colors */
     --button-second-bg: #1e1e1e;
     --button-second-bg-hover: #343434;
+
+    /* Bookmark item colors */
+    --bookmark-item-bg: rgba(255, 255, 255, 0.15);
+    --bookmark-item-text: #ffffff;
   }
 }
 
