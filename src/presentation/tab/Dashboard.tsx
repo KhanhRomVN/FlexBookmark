@@ -4,15 +4,7 @@ import { getBookmarks } from "../../utils/api";
 import Clock from "../components/Dashboard/Clock";
 import WeatherWidget from "../components/Dashboard/WeatherWidget";
 import SearchBar from "../components/common/SearchBar";
-import {
-  DndContext,
-  DragEndEvent,
-  useSensor,
-  useSensors,
-  PointerSensor,
-} from "@dnd-kit/core";
-import BookmarkItem from "../components/Dashboard/BookmarkItem";
-import FolderPreview from "../components/Dashboard/FolderPreview";
+import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
 
 export interface BookmarkNode {
   id: string;
@@ -34,7 +26,6 @@ const Dashboard: React.FC = () => {
   const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
   const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
 
-  // Weather code mapping
   const getWeatherDescription = useCallback((code: number): string => {
     const map: Record<number, string> = {
       0: "Clear sky",
@@ -69,7 +60,6 @@ const Dashboard: React.FC = () => {
     return map[code] || `Weather code: ${code}`;
   }, []);
 
-  // Fetch weather
   const fetchWeather = useCallback(async () => {
     if (!navigator.geolocation) return;
     try {
@@ -94,7 +84,6 @@ const Dashboard: React.FC = () => {
     }
   }, [getWeatherDescription]);
 
-  // Load bookmarks
   const loadBookmarks = useCallback(async () => {
     try {
       const tree = await getBookmarks();
@@ -115,7 +104,6 @@ const Dashboard: React.FC = () => {
     loadBookmarks();
   }, [fetchWeather, loadBookmarks]);
 
-  // Search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -127,16 +115,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter list
   const filtered = (currentFolder?.children || bookmarks).filter(
     (bm) =>
       bm.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       bm.url?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Navigation
   const openFolder = (folder: BookmarkNode) => {
-    // prevent nested folders beyond one level
     if (folderHistory.length >= 1) {
       alert("Nested folders are not supported");
       return;
@@ -144,6 +129,7 @@ const Dashboard: React.FC = () => {
     setFolderHistory([...folderHistory, folder]);
     setCurrentFolder(folder);
   };
+
   const goBack = () => {
     if (folderHistory.length) {
       const hist = [...folderHistory];
@@ -153,51 +139,6 @@ const Dashboard: React.FC = () => {
     } else {
       setCurrentFolder(null);
     }
-  };
-
-  // Drag-n-drop setup
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-  const handleDragEnd = async (ev: DragEndEvent) => {
-    const srcId = ev.active.id as string;
-    const over = ev.over?.id as string | undefined;
-    if (over?.startsWith("gap-")) {
-      const gapData = ev.over?.data.current;
-      if (!gapData) return;
-      const { index, position } = gapData;
-      const newIndex = position === "left" ? index : index + 1;
-      await chrome.bookmarks.move(srcId, {
-        parentId: currentFolder?.id || barFolderId,
-        index: newIndex,
-      });
-      loadBookmarks();
-      return;
-    }
-    if (!over || srcId === over) return;
-    // only at root level grouping
-    if (currentFolder) return;
-    // create new folder
-    const name = prompt("Folder name", "New Folder");
-    if (!name) return;
-    const newNode = await new Promise<chrome.bookmarks.BookmarkTreeNode>(
-      (res, rej) =>
-        chrome.bookmarks.create(
-          { title: name, parentId: barFolderId },
-          (node) =>
-            chrome.runtime.lastError ? rej(chrome.runtime.lastError) : res(node)
-        )
-    );
-    // move both
-    await chrome.bookmarks.move(srcId, { parentId: newNode.id });
-    await chrome.bookmarks.move(over, { parentId: newNode.id, index: 1 });
-    // refresh
-    loadBookmarks();
-    setCurrentFolder({
-      id: newNode.id,
-      title: newNode.title || name,
-      children: [],
-    });
   };
 
   return (
@@ -229,42 +170,15 @@ const Dashboard: React.FC = () => {
           handleSearch={handleSearch}
         />
 
-        <div className="w-full max-w-6xl">
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="flex flex-wrap justify-center gap-4">
-              {filtered.map((item) => (
-                <div
-                  key={item.id}
-                  className="relative flex items-center justify-center"
-                  style={{ minWidth: "80px" }}
-                >
-                  {item.url ? (
-                    <div id={item.id} draggable className="cursor-grab">
-                      <BookmarkItem bookmark={item} isDragActive={false} />
-                    </div>
-                  ) : (
-                    <div
-                      id={item.id}
-                      draggable
-                      className="cursor-pointer"
-                      onClick={() => openFolder(item)}
-                    >
-                      <FolderPreview folder={item} openFolder={openFolder} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </DndContext>
-          {currentFolder && (
-            <button
-              onClick={goBack}
-              className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-            >
-              Back
-            </button>
-          )}
-        </div>
+        <BookmarkGrid
+          bookmarks={filtered}
+          currentFolder={currentFolder}
+          folderHistory={folderHistory}
+          openFolder={openFolder}
+          goBack={goBack}
+          barFolderId={barFolderId}
+          loadBookmarks={loadBookmarks}
+        />
       </div>
     </div>
   );

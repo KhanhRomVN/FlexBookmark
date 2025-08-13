@@ -161,8 +161,8 @@
     --button-second-bg-hover: #343434;
 
     /* Bookmark item colors */
-    --bookmark-item-bg: rgba(255, 255, 255, 0.15);
-    --bookmark-item-text: #ffffff;
+    --bookmark-item-bg: rgba(0, 0, 0, 0.3);
+    --bookmark-item-text: #e8e8e8;
   }
 }
 

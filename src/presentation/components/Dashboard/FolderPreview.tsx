@@ -1,30 +1,20 @@
 import React from "react";
 import { BookmarkNode } from "../../tab/Dashboard";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 
 interface FolderPreviewProps {
   folder: BookmarkNode;
   openFolder: (folder: BookmarkNode) => void;
-  /** highlight folder when gap hovered */
-  isHighlighted?: boolean;
-  /** side for highlight */
-  position?: "left" | "right";
+  isDropTarget?: boolean;
 }
 
 const FolderPreview: React.FC<FolderPreviewProps> = ({
   folder,
   openFolder,
-  isHighlighted = false,
-  position,
+  isDropTarget = false,
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef: dragRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: folder.id });
-  const { setNodeRef: dropRef, isOver } = useDroppable({ id: folder.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id: folder.id });
   const style: React.CSSProperties | undefined = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
@@ -34,27 +24,17 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
 
   return (
     <div
-      ref={dropRef}
-      className={`relative transition-all ${
-        isHighlighted
-          ? position === "left"
-            ? "border-l-4 border-blue-500 ml-2"
-            : "border-r-4 border-blue-500 mr-2"
-          : ""
-      }`}
+      className={`relative transition-all ${isDragging ? "opacity-50" : ""}`}
     >
-      {isDragging && (
-        <div className="absolute inset-0 bg-blue-500/20 rounded-xl z-10 border-2 border-blue-500" />
-      )}
       <div
-        ref={dragRef}
+        ref={setNodeRef}
         style={style}
-        className={`relative w-full ${
-          isOver ? "ring-2 ring-blue-500 rounded-lg" : ""
-        }`}
+        className={`relative w-full ${isDragging ? "opacity-50" : ""}`}
       >
         <button
-          className="w-full flex flex-col items-center p-2 group"
+          className={`w-full flex flex-col items-center p-2 focus:outline-none ${
+            isDropTarget ? "ring-4 ring-blue-500 rounded-xl" : ""
+          }`}
           onClick={() => openFolder(folder)}
           draggable="false"
           onDragStart={(e) => e.preventDefault()}
@@ -62,7 +42,9 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
           {...listeners}
           {...attributes}
         >
-          <div className="relative w-14 h-14 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5">
+          <div
+            className={`relative w-14 h-14 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5`}
+          >
             {previewItems.map((item, i) => (
               <div
                 key={i}

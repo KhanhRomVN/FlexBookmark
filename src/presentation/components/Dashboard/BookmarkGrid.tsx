@@ -4,13 +4,17 @@ import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
 import {
   DndContext,
+  DragStartEvent,
+  DragOverEvent,
   DragEndEvent,
   useSensor,
   useSensors,
   PointerSensor,
   DragOverlay,
+  UniqueIdentifier,
 } from "@dnd-kit/core";
 import BookmarkGridHeader from "./BookmarkGridHeader";
+/* import arrayMove removed as unused */
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
@@ -18,6 +22,8 @@ interface BookmarkGridProps {
   folderHistory: BookmarkNode[];
   openFolder: (folder: BookmarkNode) => void;
   goBack: () => void;
+  barFolderId: string;
+  loadBookmarks: () => void;
 }
 
 const BookmarkGrid: React.FC<BookmarkGridProps> = ({
@@ -26,73 +32,99 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   folderHistory,
   openFolder,
   goBack,
+  barFolderId,
+  loadBookmarks,
 }) => {
   const [activeDragItem, setActiveDragItem] = useState<BookmarkNode | null>(
     null
   );
-  // store full unfiltered list to support drag operations
   const [allBookmarks, setAllBookmarks] = useState<BookmarkNode[]>(bookmarks);
-
-  // keep allBookmarks in sync when props change
-  useEffect(() => {
-    setAllBookmarks(bookmarks);
-  }, [bookmarks]);
-  const [showFolderForm, setShowFolderForm] = useState(false);
-  const [dropTarget, setDropTarget] = useState<BookmarkNode | null>(null);
+  const [activeDropId, setActiveDropId] = useState<UniqueIdentifier | null>(
+    null
+  );
+  // const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
+  // const [activeGapPosition, setActiveGapPosition] = useState<"left" | "right" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const handleDragStart = (event: any) => {
+  useEffect(() => {
+    setAllBookmarks(bookmarks);
+  }, [bookmarks]);
+
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const draggedItem = allBookmarks.find((bm) => bm.id === active.id);
     if (draggedItem) setActiveDragItem(draggedItem);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (over) {
+      setActiveDropId(over.id);
+    } else {
+      setActiveDropId(null);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragItem(null);
+    setActiveDropId(null);
+    // setActiveGapIndex(null);
+    // setActiveGapPosition(null);
 
-    if (!over || !activeDragItem) return;
+    if (!over) return;
+
+    // // Gap-zone drop handling disabled
+    // if (over?.id?.toString().startsWith("gap-")) {
+    //   return;
+    // }
 
     const targetItem = allBookmarks.find((bm) => bm.id === over.id);
-    if (!targetItem || targetItem.id === activeDragItem.id) return;
+    if (!targetItem || targetItem.id === active.id) return;
 
-    setDropTarget(targetItem);
-    setShowFolderForm(true);
-  };
-
-  const handleCreateFolder = async (folderName: string) => {
-    if (!activeDragItem || !dropTarget) return;
-
+    const folderName = window.prompt("Enter new folder name:");
+    if (!folderName) return;
     try {
       const newFolder = await new Promise<chrome.bookmarks.BookmarkTreeNode>(
         (res, rej) =>
           chrome.bookmarks.create(
-            { title: folderName, parentId: currentFolder?.id || "1" },
+            { title: folderName, parentId: currentFolder?.id || barFolderId },
             (node) =>
               chrome.runtime.lastError
                 ? rej(chrome.runtime.lastError)
                 : res(node)
           )
       );
-
-      await chrome.bookmarks.move(activeDragItem.id, {
+      await chrome.bookmarks.move(active.id as string, {
         parentId: newFolder.id,
       });
-      await chrome.bookmarks.move(dropTarget.id, {
+      await chrome.bookmarks.move(targetItem.id, {
         parentId: newFolder.id,
         index: 1,
       });
-
-      window.location.reload();
+      loadBookmarks();
     } catch (error) {
       console.error("Error creating folder:", error);
-    } finally {
-      setShowFolderForm(false);
     }
   };
+
+  const handleDragCancel = () => {
+    setActiveDragItem(null);
+    setActiveDropId(null);
+    // setActiveGapIndex(null);
+    // setActiveGapPosition(null);
+  };
+
+  // const GapDropZone = ({
+  //   position,
+  //   index,
+  // }: {
+  //   position: "left" | "right";
+  //   index: number;
+  // }) => null;
 
   return (
     <div className="w-full max-w-6xl">
@@ -101,29 +133,35 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         goBack={goBack}
         itemCount={bookmarks.length}
       />
-
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragCancel={handleDragCancel}
       >
         {bookmarks.length > 0 ? (
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 justify-items-center">
-            {bookmarks.map((bm) =>
-              bm.url ? (
-                <BookmarkItem
-                  key={bm.id}
-                  bookmark={bm}
-                  isDragActive={!!activeDragItem}
-                />
-              ) : (
-                <FolderPreview
-                  key={bm.id}
-                  folder={bm}
-                  openFolder={openFolder}
-                />
-              )
-            )}
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 justify-items-center relative">
+            {bookmarks.map((bm) => (
+              <div key={bm.id} className="relative">
+                {/* <GapDropZone position="left" index={index} /> */}
+
+                {bm.url ? (
+                  <BookmarkItem
+                    bookmark={bm}
+                    isDropTarget={activeDropId === bm.id}
+                  />
+                ) : (
+                  <FolderPreview
+                    folder={bm}
+                    openFolder={openFolder}
+                    isDropTarget={activeDropId === bm.id}
+                  />
+                )}
+
+                {/* <GapDropZone position="right" index={index} /> */}
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
@@ -136,7 +174,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
         <DragOverlay>
           {activeDragItem && (
-            <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border border-blue-500 transform scale-110 transition-transform">
+            <div className="opacity-50 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border border-blue-500 transform scale-110 transition-transform">
               {activeDragItem.url ? (
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${
@@ -157,43 +195,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
           )}
         </DragOverlay>
       </DndContext>
-
-      {showFolderForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-80">
-            <h3 className="text-lg font-medium mb-4">Create New Folder</h3>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Folder name"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-4 dark:bg-gray-700 dark:text-white"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleCreateFolder((e.target as HTMLInputElement).value);
-                }
-              }}
-            />
-            <div className="flex justify-end space-x-2">
-              <button
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
-                onClick={() => setShowFolderForm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-500 text-white rounded"
-                onClick={() => {
-                  const input = document.querySelector("input");
-                  if (input)
-                    handleCreateFolder((input as HTMLInputElement).value);
-                }}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
