@@ -77,7 +77,7 @@ const SortableFolderItem: React.FC<SortableFolderItemProps> = ({
     >
       <div className="flex items-center gap-2">
         <div className={`p-1 rounded bg-primary/10 ${colorClass}`}>
-          <Circle className="w-3 h-3" />
+          <Circle className="w-3 h-3" />1
         </div>
         <span className="truncate font-medium text-base">{folder.title}</span>
       </div>
