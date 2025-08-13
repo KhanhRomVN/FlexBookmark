@@ -105,6 +105,64 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     setActiveDropId(null);
   };
 
+  // Calculate max columns based on window width
+  const getMaxCols = (): number => {
+    const width = window.innerWidth;
+    if (width >= 1024) return 10;
+    if (width >= 768) return 8;
+    if (width >= 640) return 6;
+    return 4;
+  };
+
+  // Split bookmarks into two rows
+  const renderBookmarkRows = () => {
+    const maxCols = getMaxCols();
+    const row1 = bookmarks.slice(0, maxCols);
+    const row2 = bookmarks.slice(maxCols, maxCols * 2);
+    return (
+      <>
+        <div className="flex flex-wrap justify-center gap-4 w-full mb-4">
+          {row1.map((bm) => (
+            <div key={bm.id} className="relative">
+              {bm.url ? (
+                <BookmarkItem
+                  bookmark={bm}
+                  isDropTarget={activeDropId === bm.id}
+                />
+              ) : (
+                <FolderPreview
+                  folder={bm}
+                  openFolder={openFolder}
+                  isDropTarget={activeDropId === bm.id}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {row2.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-4 w-full">
+            {row2.map((bm) => (
+              <div key={bm.id} className="relative">
+                {bm.url ? (
+                  <BookmarkItem
+                    bookmark={bm}
+                    isDropTarget={activeDropId === bm.id}
+                  />
+                ) : (
+                  <FolderPreview
+                    folder={bm}
+                    openFolder={openFolder}
+                    isDropTarget={activeDropId === bm.id}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="w-full max-w-6xl">
       <BookmarkGridHeader
@@ -120,25 +178,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         onDragCancel={handleDragCancel}
       >
         {bookmarks.length > 0 ? (
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 justify-items-center relative">
-            {bookmarks.map((bm) => (
-              <div key={bm.id} className="relative">
-                {/* <GapDropZone position="left" index={index} /> */}
-
-                {bm.url ? (
-                  <BookmarkItem
-                    bookmark={bm}
-                    isDropTarget={activeDropId === bm.id}
-                  />
-                ) : (
-                  <FolderPreview
-                    folder={bm}
-                    openFolder={openFolder}
-                    isDropTarget={activeDropId === bm.id}
-                  />
-                )}
-              </div>
-            ))}
+          <div className="flex flex-col items-center relative">
+            {renderBookmarkRows()}
           </div>
         ) : (
           <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm">

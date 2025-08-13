@@ -5,6 +5,7 @@ import Clock from "../components/Dashboard/Clock";
 import WeatherWidget from "../components/Dashboard/WeatherWidget";
 import SearchBar from "../components/common/SearchBar";
 import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
+import useWindowSize from "../../hooks/useWindowSize";
 
 export interface BookmarkNode {
   id: string;
@@ -14,6 +15,7 @@ export interface BookmarkNode {
 }
 
 const Dashboard: React.FC = () => {
+  const windowSize = useWindowSize();
   const { theme } = useTheme();
   const [weather, setWeather] = useState<{
     temperature: number;
@@ -178,6 +180,7 @@ const Dashboard: React.FC = () => {
           goBack={goBack}
           barFolderId={barFolderId}
           loadBookmarks={loadBookmarks}
+          key={windowSize.width}
         />
       </div>
     </div>
