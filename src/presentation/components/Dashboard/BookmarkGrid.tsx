@@ -331,7 +331,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       id: "back-to-root",
     });
 
-    if (!currentFolder || !activeDragItem) return null;
+    if (!currentFolder) return null;
 
     return (
       <div className="relative flex items-center">
@@ -342,17 +342,17 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
               flex flex-col items-center p-3 w-full transition-all duration-200
               ${
                 isOver
-                  ? "ring-2 ring-orange-500 rounded-xl bg-orange-50/50 dark:bg-orange-900/30 scale-105"
-                  : "hover:scale-105 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl"
+                  ? "rounded-xl bg-button-bg scale-105"
+                  : "hover:scale-105 hover:bg-button-secondBg rounded-xl"
               }
             `}
           >
             <div
               className={`relative transition-all duration-200 rounded-xl ${
-                isOver ? "shadow-lg ring-2 ring-orange-400" : ""
+                isOver ? "shadow-lg" : ""
               }`}
             >
-              <div className="w-16 h-16 rounded-xl bg-orange-500 p-2 flex items-center justify-center transition-all duration-200">
+              <div className="w-16 h-16 rounded-xl bg-button-bg p-2 flex items-center justify-center transition-all duration-200">
                 <svg
                   width="32"
                   height="32"
@@ -415,8 +415,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const renderBookmarkItems = (items: BookmarkNode[]) => {
     const result: React.ReactNode[] = [];
 
-    // Add back button at the beginning if in folder and dragging
-    if (currentFolder && activeDragItem) {
+    // Add back button at the beginning if in folder
+    if (currentFolder) {
       result.push(<BackButton key="back-button" />);
     }
 
