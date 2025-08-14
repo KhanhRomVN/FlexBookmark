@@ -1,12 +1,108 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { BookmarkNode } from "../../tab/Dashboard";
+import BookmarkForm from "../BookmarkManager/BookmarkForm";
 
 interface BookmarkItemProps {
   bookmark: BookmarkNode;
+  onEdit?: (bookmark: BookmarkNode) => void;
+  onDelete?: (bookmarkId: string) => void;
 }
 
-const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
+const BookmarkItem: React.FC<BookmarkItemProps> = ({
+  bookmark,
+  onEdit,
+  onDelete,
+}) => {
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowContextMenu(false);
+      }
+    };
+
+    if (showContextMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showContextMenu]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
+  };
+
+  const handleEdit = () => {
+    setShowContextMenu(false);
+    setShowEditForm(true);
+  };
+
+  const handleEditSuccess = () => {
+    setShowEditForm(false);
+    // Update the bookmark using Chrome API since we can't modify BookmarkForm
+    // The form will create a new bookmark, so we need to handle the edit differently
+    onEdit?.(bookmark);
+  };
+
+  const handleDelete = async () => {
+    setShowContextMenu(false);
+    if (confirm(`Delete bookmark "${bookmark.title}"?`)) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          chrome.bookmarks.remove(bookmark.id, () => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve();
+            }
+          });
+        });
+        onDelete?.(bookmark.id);
+      } catch (error) {
+        console.error("Error deleting bookmark:", error);
+      }
+    }
+  };
+
+  // For edit, we'll need to handle it differently since BookmarkForm only creates
+  const handleEditWithPrompt = () => {
+    setShowContextMenu(false);
+    const newTitle = prompt("Enter new bookmark title:", bookmark.title);
+    const newUrl = prompt("Enter new bookmark URL:", bookmark.url || "");
+
+    if (newTitle && newUrl) {
+      chrome.bookmarks.update(
+        bookmark.id,
+        {
+          title: newTitle.trim(),
+          url: newUrl.trim(),
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error updating bookmark:", chrome.runtime.lastError);
+          } else {
+            onEdit?.(bookmark);
+          }
+        }
+      );
+    }
+  };
+
   const {
     attributes,
     listeners,
@@ -42,15 +138,20 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
       <div
         ref={combinedRef}
         style={style}
-        {...listeners}
-        {...attributes}
+        {...(showContextMenu ? {} : listeners)}
+        {...(showContextMenu ? {} : attributes)}
         className={`w-full focus:outline-none focus:ring-0 transition-all duration-200 ${
           isDragging ? "opacity-0" : ""
-        } ${
-          isOver
-            ? "ring-2 ring-blue-500 rounded-xl bg-blue-50/50 dark:bg-blue-900/30"
-            : ""
         }`}
+        onContextMenu={handleContextMenu}
+        onMouseDown={(e) => {
+          // Prevent drag start when right-clicking
+          if (e.button === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+        }}
       >
         <a
           href={bookmark.url}
@@ -63,7 +164,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
           onClick={(e) => {
             // Prevent navigation if we're in drag mode or hovering for drop
-            if (isDragging || isOver) {
+            if (isDragging || isOver || showContextMenu) {
               e.preventDefault();
             }
           }}
@@ -75,7 +176,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
               }&sz=128`}
               alt={bookmark.title || ""}
               className={`w-16 h-16 rounded-xl bg-bookmarkItem-bg p-2 transition-all duration-200 ${
-                isOver ? "shadow-lg ring-2 ring-blue-400" : ""
+                isOver ? "ring-2 ring-blue-400 shadow-lg" : ""
               }`}
               onError={(e) => {
                 // Fallback to a generic icon if favicon fails to load
@@ -90,6 +191,33 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
           </div>
         </a>
       </div>
+
+      {/* Context Menu */}
+      {showContextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-2 z-50 min-w-[120px] backdrop-blur-sm"
+          style={{
+            left: contextMenuPosition.x,
+            top: contextMenuPosition.y,
+          }}
+        >
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+            onClick={handleEditWithPrompt}
+          >
+            <span>✏️</span>
+            Edit
+          </button>
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400"
+            onClick={handleDelete}
+          >
+            <span>🗑️</span>
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -152,6 +152,113 @@ const Dashboard: React.FC = () => {
     setCurrentPage(0);
   };
 
+  // Context menu handlers
+  const handleBookmarkEdit = (bookmark: BookmarkNode) => {
+    const newTitle = prompt("Enter new bookmark title:", bookmark.title);
+    const newUrl = prompt("Enter new bookmark URL:", bookmark.url || "");
+
+    if (newTitle && newUrl) {
+      chrome.bookmarks.update(
+        bookmark.id,
+        {
+          title: newTitle.trim(),
+          url: newUrl.trim(),
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error updating bookmark:", chrome.runtime.lastError);
+          } else {
+            loadBookmarks(); // Reload bookmarks to reflect changes
+          }
+        }
+      );
+    }
+  };
+
+  const handleBookmarkDelete = (bookmarkId: string) => {
+    // The deletion is handled in the BookmarkItem component
+    loadBookmarks(); // Just reload bookmarks to reflect changes
+  };
+
+  const handleFolderRename = (folderId: string, newTitle: string) => {
+    chrome.bookmarks.update(folderId, { title: newTitle }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error renaming folder:", chrome.runtime.lastError);
+      } else {
+        loadBookmarks(); // Reload bookmarks to reflect changes
+      }
+    });
+  };
+
+  const handleFolderDelete = async (
+    folderId: string,
+    moveBookmarksOut: boolean
+  ) => {
+    try {
+      if (moveBookmarksOut) {
+        // Get the folder to access its children and parent
+        const [folder] = await new Promise<chrome.bookmarks.BookmarkTreeNode[]>(
+          (resolve) => {
+            chrome.bookmarks.get(folderId, resolve);
+          }
+        );
+
+        // Get folder's children
+        const folderChildren = await new Promise<
+          chrome.bookmarks.BookmarkTreeNode[]
+        >((resolve) => {
+          chrome.bookmarks.getChildren(folderId, resolve);
+        });
+
+        // Move all bookmarks to the parent folder
+        for (const child of folderChildren) {
+          await new Promise<void>((resolve) => {
+            chrome.bookmarks.move(child.id, { parentId: folder.parentId }, () =>
+              resolve()
+            );
+          });
+        }
+      }
+
+      // Delete the folder (Chrome will handle children deletion if moveBookmarksOut is false)
+      await new Promise<void>((resolve, reject) => {
+        chrome.bookmarks.removeTree(folderId, () => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      loadBookmarks(); // Reload bookmarks to reflect changes
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+    }
+  };
+
+  const handleAddBookmark = (folderId: string) => {
+    const title = prompt("Enter bookmark title:");
+    const url = prompt("Enter bookmark URL:");
+
+    if (title && url) {
+      chrome.bookmarks.create(
+        {
+          parentId: folderId,
+          title: title.trim(),
+          url: url.trim(),
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error creating bookmark:", chrome.runtime.lastError);
+          } else {
+            loadBookmarks(); // Reload bookmarks to reflect changes
+          }
+        }
+      );
+    }
+  };
+
   return (
     <div
       style={
@@ -192,6 +299,11 @@ const Dashboard: React.FC = () => {
           loadBookmarks={loadBookmarks}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
+          onBookmarkEdit={handleBookmarkEdit}
+          onBookmarkDelete={handleBookmarkDelete}
+          onFolderRename={handleFolderRename}
+          onFolderDelete={handleFolderDelete}
+          onAddBookmark={handleAddBookmark}
           key={windowSize.width}
         />
       </div>

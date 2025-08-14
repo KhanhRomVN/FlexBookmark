@@ -11,12 +11,11 @@ import {
   useSensors,
   PointerSensor,
   DragOverlay,
-  UniqueIdentifier,
   useDroppable,
   useDndContext,
 } from "@dnd-kit/core";
 import BookmarkGridHeader from "./BookmarkGridHeader";
-import { ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
@@ -29,11 +28,17 @@ interface BookmarkGridProps {
   loadBookmarks: () => void;
   currentPage: number;
   setCurrentPage: (page: number) => void;
+  onBookmarkEdit: (bookmark: BookmarkNode) => void;
+  onBookmarkDelete: (bookmarkId: string) => void;
+  onFolderRename: (folderId: string, newTitle: string) => void;
+  onFolderDelete: (folderId: string, moveBookmarksOut: boolean) => void;
+  onAddBookmark: (folderId: string) => void;
 }
 
 const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   bookmarks,
   currentFolder,
+  folderHistory,
   openFolder,
   goBack,
   exitToRootFolder,
@@ -41,6 +46,11 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   loadBookmarks,
   currentPage,
   setCurrentPage,
+  onBookmarkEdit,
+  onBookmarkDelete,
+  onFolderRename,
+  onFolderDelete,
+  onAddBookmark,
 }) => {
   const [activeDragItem, setActiveDragItem] = useState<BookmarkNode | null>(
     null
@@ -68,15 +78,14 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const { active } = event;
     const draggedItem = allBookmarks.find((bm) => bm.id === active.id);
     if (draggedItem) setActiveDragItem(draggedItem);
-    setHasTriggeredBackExit(false); // Reset the flag when starting new drag
-    setHasTriggeredPageChange({ left: false, right: false }); // Reset page change flags
+    setHasTriggeredBackExit(false);
+    setHasTriggeredPageChange({ left: false, right: false });
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
     if (!over) {
       setHoveringArrow(null);
-      // Reset page change flags when not hovering arrows
       setHasTriggeredPageChange({ left: false, right: false });
       return;
     }
@@ -84,18 +93,14 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const overId = over.id.toString();
     if (overId === "arrow-left") {
       setHoveringArrow("left");
-      // Reset right flag when hovering left
       setHasTriggeredPageChange((prev) => ({ ...prev, right: false }));
-      // Trigger page change immediately on hover during drag
       if (activeDragItem && currentPage > 0 && !hasTriggeredPageChange.left) {
         setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
         setCurrentPage(currentPage - 1);
       }
     } else if (overId === "arrow-right") {
       setHoveringArrow("right");
-      // Reset left flag when hovering right
       setHasTriggeredPageChange((prev) => ({ ...prev, left: false }));
-      // Trigger page change immediately on hover during drag
       if (activeDragItem && hasNextPage() && !hasTriggeredPageChange.right) {
         setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
         setCurrentPage(currentPage + 1);
@@ -106,19 +111,16 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       activeDragItem &&
       !hasTriggeredBackExit
     ) {
-      // Exit folder while maintaining drag state - only once per drag session
       setHasTriggeredBackExit(true);
       exitToRootFolder();
     } else {
       setHoveringArrow(null);
-      // Reset page change flags when not hovering arrows
       setHasTriggeredPageChange({ left: false, right: false });
     }
   };
 
   const createFolder = async (bookmark1Id: string, bookmark2Id: string) => {
     try {
-      // Get both bookmarks to get their titles and parent info
       const [bookmark1] = await new Promise<
         chrome.bookmarks.BookmarkTreeNode[]
       >((resolve) => chrome.bookmarks.get(bookmark1Id, resolve));
@@ -126,17 +128,15 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         chrome.bookmarks.BookmarkTreeNode[]
       >((resolve) => chrome.bookmarks.get(bookmark2Id, resolve));
 
-      // Prompt for folder name with default suggestion
       const defaultName = `${bookmark1.title} & ${bookmark2.title}`;
       const folderTitle = prompt(`Enter folder name:`, defaultName);
 
       if (!folderTitle || folderTitle.trim() === "") {
-        return; // User cancelled or entered empty name
+        return;
       }
 
       const parentId = bookmark1.parentId;
 
-      // Create new folder
       const newFolder = await new Promise<chrome.bookmarks.BookmarkTreeNode>(
         (resolve) =>
           chrome.bookmarks.create(
@@ -145,7 +145,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
           )
       );
 
-      // Move both bookmarks into the new folder
       await new Promise<void>((resolve) =>
         chrome.bookmarks.move(bookmark1Id, { parentId: newFolder.id }, () =>
           resolve()
@@ -186,14 +185,12 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const overId = over.id.toString();
     const sourceId = active.id.toString();
 
-    // Remove arrow navigation from dragEnd since it's now in dragOver
     // Check if dropping on a DropZone (has position suffix)
     if (overId.includes("-")) {
       const [targetId, position] = overId.split("-");
       if (sourceId === targetId) return;
 
       try {
-        // Move bookmark logic for positioning
         const [sourceNode] = await new Promise<
           chrome.bookmarks.BookmarkTreeNode[]
         >((resolve) => chrome.bookmarks.get(sourceId, resolve));
@@ -225,7 +222,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       // Handle different drop scenarios based on folder context
       if (currentFolder) {
         // Inside folder - only BookmarkItems exist, no folder creation
-        return; // Do nothing when dropping BookmarkItem on BookmarkItem inside folder
+        return;
       } else {
         // Root folder
         if (!sourceItem.url && targetItem.url) {
@@ -380,33 +377,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     );
   };
 
-  // Render items with extended drop areas and back button
-  const renderBookmarkItems = (items: BookmarkNode[]) => {
-    const result: React.ReactNode[] = [];
-
-    // Add back button at the beginning if in folder and dragging
-    if (currentFolder && activeDragItem) {
-      result.push(<BackButton key="back-button" />);
-    }
-
-    items.forEach((bm, index) => {
-      result.push(
-        <div key={bm.id} className="relative flex items-center">
-          <div className="flex-shrink-0">
-            {bm.url ? (
-              <BookmarkItem bookmark={bm} />
-            ) : (
-              <FolderPreview folder={bm} openFolder={openFolder} />
-            )}
-          </div>
-          {index < items.length - 1 && <DropIndicator id={`${bm.id}-right`} />}
-        </div>
-      );
-    });
-
-    return result;
-  };
-
   // Drop indicator component
   interface DropIndicatorProps {
     id: string;
@@ -439,6 +409,43 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         )}
       </div>
     );
+  };
+
+  // Render items with extended drop areas and back button
+  const renderBookmarkItems = (items: BookmarkNode[]) => {
+    const result: React.ReactNode[] = [];
+
+    // Add back button at the beginning if in folder and dragging
+    if (currentFolder && activeDragItem) {
+      result.push(<BackButton key="back-button" />);
+    }
+
+    items.forEach((bm, index) => {
+      result.push(
+        <div key={bm.id} className="relative flex items-center">
+          <div className="flex-shrink-0">
+            {bm.url ? (
+              <BookmarkItem
+                bookmark={bm}
+                onEdit={onBookmarkEdit}
+                onDelete={onBookmarkDelete}
+              />
+            ) : (
+              <FolderPreview
+                folder={bm}
+                openFolder={openFolder}
+                onRename={onFolderRename}
+                onDelete={onFolderDelete}
+                onAddBookmark={onAddBookmark}
+              />
+            )}
+          </div>
+          {index < items.length - 1 && <DropIndicator id={`${bm.id}-right`} />}
+        </div>
+      );
+    });
+
+    return result;
   };
 
   // Render rows with pagination
