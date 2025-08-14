@@ -4,7 +4,11 @@ import { useTheme } from "../../providers/theme-provider";
 import { useSearchStore } from "../../store/searchStore";
 import { Search } from "lucide-react";
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onOpenTheme: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onOpenTheme }) => {
   const { theme } = useTheme();
   const searchQuery = useSearchStore((state) => state.searchQuery);
   const setSearchQuery = useSearchStore((state) => state.setSearchQuery);
@@ -31,7 +35,7 @@ const Header: React.FC = () => {
           />
         </div>
         <div className="header-buttons flex items-center">
-          <ThemeSelector />
+          <ThemeSelector onOpenTheme={onOpenTheme} />
         </div>
       </div>
     </header>

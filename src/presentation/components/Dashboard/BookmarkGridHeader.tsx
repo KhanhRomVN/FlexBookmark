@@ -38,7 +38,7 @@ const BookmarkGridHeader: React.FC<BookmarkGridHeaderProps> = ({
           {currentFolder?.title || "Bookmarks"}
         </h2>
       </div>
-      <div className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="text-sm text-text-primary">
         {itemCount} {itemCount === 1 ? "item" : "items"}
       </div>
     </div>

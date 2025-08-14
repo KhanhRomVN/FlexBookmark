@@ -55,6 +55,9 @@ module.exports = {
           bg: "var(--bookmark-item-bg)",
           text: "var(--bookmark-item-text)",
         },
+        drawer: {
+          background: "var(--drawer-background)",
+        },
       },
     },
   },

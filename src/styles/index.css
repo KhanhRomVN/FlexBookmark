@@ -54,6 +54,9 @@
     /* Bookmark item colors */
     --bookmark-item-bg: #f1f5f9;
     --bookmark-item-text: #0f172a;
+
+    /* Drawer colors */
+    --drawer-background: #ffffff;
   }
 
   .dark {
@@ -106,6 +109,9 @@
     /* Bookmark item colors */
     --bookmark-item-bg: #1e293b;
     --bookmark-item-text: #e2e8f0;
+
+    /* Drawer colors */
+    --drawer-background: #1e1e1e;
   }
 
   .image {
@@ -150,19 +156,22 @@
     background-position: center;
 
     /* Button colors */
-    --button-bg: rgba(54, 134, 255, 0.85);
-    --button-bg-hover: rgba(29, 78, 216, 0.85);
-    --button-text: #ffffff;
-    --button-border: rgba(37, 99, 235, 0.85);
-    --button-border-hover: rgba(30, 64, 175, 0.85);
+    --button-bg: rgba(74, 168, 255, 0.85);
+    --button-bg-hover: rgba(0, 0, 0, 0.85);
+    --button-text: #dddddd;
+    --button-border: rgba(0, 0, 0, 0.85);
+    --button-border-hover: rgba(161, 161, 161, 0.85);
 
     /* Secondary Button colors */
-    --button-second-bg: rgba(0, 0, 0, 0.5);
-    --button-second-bg-hover: rgba(54, 134, 255, 0.85);
+    --button-second-bg: rgba(0, 0, 0, 0.3);
+    --button-second-bg-hover: rgba(0, 0, 0, 0.4);
 
     /* Bookmark item colors */
     --bookmark-item-bg: rgba(0, 0, 0, 0.3);
     --bookmark-item-text: #e8e8e8;
+
+    /* Drawer colors */
+    --drawer-background: #1f1f1f;
   }
 }
 

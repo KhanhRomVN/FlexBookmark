@@ -1,11 +1,12 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
 import Sidebar from "../common/Sidebar";
 import Header from "../common/Header";
+import ThemeDrawer from "../drawer/ThemeDrawer";
 
 interface MainLayoutProps {
   folders: { id: string; title: string; url?: string; children?: any[] }[];
   onSelectFolder: (id: string) => void;
-  onAddFolder: (title: string) => void;
+  onAddFolder: (title: string) => Promise<void>;
   children: ReactNode;
 }
 
@@ -18,6 +19,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   onAddFolder,
   children,
 }) => {
+  const [showThemeDrawer, setShowThemeDrawer] = useState(false);
   return (
     <div className="flex h-screen bg-background">
       <Sidebar
@@ -26,12 +28,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         onAddFolder={onAddFolder}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
+        <Header onOpenTheme={() => setShowThemeDrawer(true)} />
         <main className="flex-1 overflow-y-auto p-4">
           {/* Allow full width content to accommodate wider cards */}
           <div className="mx-auto w-full max-w-none">{children}</div>
         </main>
       </div>
+      <ThemeDrawer
+        isOpen={showThemeDrawer}
+        onClose={() => setShowThemeDrawer(false)}
+      />
     </div>
   );
 };

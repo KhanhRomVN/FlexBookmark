@@ -295,7 +295,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     if (!visible) return <div className="w-12" />;
 
     return (
-      <div ref={setNodeRef} className="flex items-center">
+      <div ref={setNodeRef} className="flex items-center -mt-8">
         <button
           onClick={onClick}
           disabled={disabled}
@@ -304,13 +304,13 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             transition-all duration-200 border-2
             ${
               disabled
-                ? "bg-button-secondBgHover text-text-primary border-border-default cursor-not-allowed"
-                : "bg-button-secondBg border-border-default"
+                ? "bg-button-secondBg text-text-secondary cursor-not-allowed"
+                : "bg-button-bg hover:bg-button-bgHover text-text-primary"
             }
             ${
               isOver && activeDragItem
-                ? "bg-button-secondBg border-border-default"
-                : ""
+                ? "bg-button-secondBg text-text-secondary"
+                : "text-text-secondary"
             }
             backdrop-blur-sm shadow-lg
           `}

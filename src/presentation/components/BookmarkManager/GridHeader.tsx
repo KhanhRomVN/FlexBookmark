@@ -48,28 +48,26 @@ const GridHeader: React.FC<GridHeaderProps> = ({ folderId, folder, depth }) => {
             + Folder
           </button>
 
-          <div className="relative">
-            <button
-              className="px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg"
-              onClick={() => setShowImportDropdown(!showImportDropdown)}
-            >
-              + Import
-            </button>
+          <button
+            className="px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg"
+            onClick={() => setShowImportDropdown(!showImportDropdown)}
+          >
+            + Import
+          </button>
 
-            {showImportDropdown && (
-              <div className="import-dropdown absolute right-0 top-10 bg-dropdown-background rounded-md shadow-lg z-50 border min-w-[150px]">
-                <button
-                  className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover"
-                  onClick={() => {
-                    setShowImportForm(true);
-                    setShowImportDropdown(false);
-                  }}
-                >
-                  From Text
-                </button>
-              </div>
-            )}
-          </div>
+          {showImportDropdown && (
+            <div className="import-dropdown absolute right-0 top-10 bg-dropdown-background rounded-md shadow-lg z-50 border min-w-[150px]">
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-dropdown-itemHover"
+                onClick={() => {
+                  setShowImportForm(true);
+                  setShowImportDropdown(false);
+                }}
+              >
+                From Text
+              </button>
+            </div>
+          )}
         </div>
       )}
       {showImportForm && (

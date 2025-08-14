@@ -261,21 +261,25 @@ const Dashboard: React.FC = () => {
 
   return (
     <div
-      style={
-        theme === "image"
-          ? {
+      className={`relative min-h-screen flex flex-col items-center justify-center p-4 text-text-primary ${
+        theme !== "image" ? "bg-background" : ""
+      }`}
+    >
+      {theme === "image" && (
+        <>
+          <div
+            className="absolute inset-0 filter blur-md"
+            style={{
               backgroundImage: "var(--bg-url)",
               backgroundRepeat: "no-repeat",
               backgroundSize: "cover",
               backgroundPosition: "center",
-            }
-          : {}
-      }
-      className={`min-h-screen flex flex-col items-center justify-center p-4 text-text-primary ${
-        theme === "image" ? "" : "bg-background"
-      }`}
-    >
-      <div className="w-full max-w-6xl flex flex-col items-center">
+            }}
+          />
+          <div className="absolute inset-0 bg-black/10" />
+        </>
+      )}
+      <div className="w-full max-w-6xl flex flex-col items-center relative z-10">
         <div className="w-full max-w-2xl flex flex-col items-center mb-8">
           <Clock />
           <WeatherWidget weather={weather} />

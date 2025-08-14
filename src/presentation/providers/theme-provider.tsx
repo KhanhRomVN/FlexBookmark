@@ -9,18 +9,33 @@ type ThemeProviderProps = {
   storageKey?: string;
 };
 
+type ColorSettings = {
+  primary: string;
+  background: string;
+  cardBackground: string;
+  sidebar: string;
+};
+
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   setBackgroundImage: (url: string) => void;
   backgroundImage: string | null;
+  colorSettings: ColorSettings;
+  setColorSettings: (settings: ColorSettings) => void;
 };
-
 const initialState: ThemeProviderState = {
   theme: "system",
   setTheme: () => null,
   setBackgroundImage: () => null,
   backgroundImage: null,
+  colorSettings: {
+    primary: "#3686ff",
+    background: "#ffffff",
+    cardBackground: "#ffffff",
+    sidebar: "#f9fafb",
+  },
+  setColorSettings: () => {},
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -38,6 +53,24 @@ export function ThemeProvider({
   const [bgImage, setBgImage] = useState<string>(
     () => localStorage.getItem("backgroundImage") || defaultBgImage
   );
+
+  // Persisted color settings for light/dark themes
+  const [colorSettings, setColorSettings] = useState<ColorSettings>(() =>
+    JSON.parse(
+      localStorage.getItem(`${storageKey}-colors`) ||
+        JSON.stringify({
+          primary: "#3686ff",
+          background: "#ffffff",
+          cardBackground: "#ffffff",
+          sidebar: "#f9fafb",
+        })
+    )
+  );
+
+  const updateColorSettings = (settings: ColorSettings) => {
+    setColorSettings(settings);
+    localStorage.setItem(`${storageKey}-colors`, JSON.stringify(settings));
+  };
 
   const applyTheme = () => {
     const root = window.document.documentElement;
@@ -61,6 +94,15 @@ export function ThemeProvider({
           : theme;
       root.classList.add(systemTheme);
     }
+
+    // apply color variables for light/dark
+    if (theme === "light" || theme === "dark") {
+      Object.entries(colorSettings).forEach(([key, value]) => {
+        // convert camelCase key to kebab-case CSS variable
+        const varName = `--${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+        root.style.setProperty(varName, value);
+      });
+    }
   };
 
   const setBackgroundImage = (url: string) => {
@@ -73,7 +115,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     applyTheme();
-  }, [theme, bgImage]);
+  }, [theme, bgImage, colorSettings]);
 
   const value = {
     theme,
@@ -83,6 +125,8 @@ export function ThemeProvider({
     },
     setBackgroundImage,
     backgroundImage: bgImage,
+    colorSettings,
+    setColorSettings: updateColorSettings,
   };
 
   return (
