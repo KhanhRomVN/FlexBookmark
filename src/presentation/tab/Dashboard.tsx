@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
   const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(0);
 
   const getWeatherDescription = useCallback((code: number): string => {
     const map: Record<number, string> = {
@@ -130,6 +131,7 @@ const Dashboard: React.FC = () => {
     }
     setFolderHistory([...folderHistory, folder]);
     setCurrentFolder(folder);
+    setCurrentPage(0); // Reset to first page when opening folder
   };
 
   const goBack = () => {
@@ -138,9 +140,16 @@ const Dashboard: React.FC = () => {
       const prev = hist.pop()!;
       setFolderHistory(hist);
       setCurrentFolder(prev);
+      setCurrentPage(0); // Reset to first page when going back
     } else {
       setCurrentFolder(null);
     }
+  };
+
+  const exitToRootFolder = () => {
+    setFolderHistory([]);
+    setCurrentFolder(null);
+    setCurrentPage(0);
   };
 
   return (
@@ -178,8 +187,11 @@ const Dashboard: React.FC = () => {
           folderHistory={folderHistory}
           openFolder={openFolder}
           goBack={goBack}
+          exitToRootFolder={exitToRootFolder}
           barFolderId={barFolderId}
           loadBookmarks={loadBookmarks}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
           key={windowSize.width}
         />
       </div>
