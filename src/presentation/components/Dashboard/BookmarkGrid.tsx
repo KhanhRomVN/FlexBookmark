@@ -51,6 +51,10 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   );
   const [hasTriggeredBackExit, setHasTriggeredBackExit] =
     useState<boolean>(false);
+  const [hasTriggeredPageChange, setHasTriggeredPageChange] = useState<{
+    left: boolean;
+    right: boolean;
+  }>({ left: false, right: false });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -65,20 +69,37 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const draggedItem = allBookmarks.find((bm) => bm.id === active.id);
     if (draggedItem) setActiveDragItem(draggedItem);
     setHasTriggeredBackExit(false); // Reset the flag when starting new drag
+    setHasTriggeredPageChange({ left: false, right: false }); // Reset page change flags
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
     if (!over) {
       setHoveringArrow(null);
+      // Reset page change flags when not hovering arrows
+      setHasTriggeredPageChange({ left: false, right: false });
       return;
     }
 
     const overId = over.id.toString();
     if (overId === "arrow-left") {
       setHoveringArrow("left");
+      // Reset right flag when hovering left
+      setHasTriggeredPageChange((prev) => ({ ...prev, right: false }));
+      // Trigger page change immediately on hover during drag
+      if (activeDragItem && currentPage > 0 && !hasTriggeredPageChange.left) {
+        setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
+        setCurrentPage(currentPage - 1);
+      }
     } else if (overId === "arrow-right") {
       setHoveringArrow("right");
+      // Reset left flag when hovering right
+      setHasTriggeredPageChange((prev) => ({ ...prev, left: false }));
+      // Trigger page change immediately on hover during drag
+      if (activeDragItem && hasNextPage() && !hasTriggeredPageChange.right) {
+        setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
+        setCurrentPage(currentPage + 1);
+      }
     } else if (
       overId === "back-to-root" &&
       currentFolder &&
@@ -90,6 +111,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       exitToRootFolder();
     } else {
       setHoveringArrow(null);
+      // Reset page change flags when not hovering arrows
+      setHasTriggeredPageChange({ left: false, right: false });
     }
   };
 
@@ -163,17 +186,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const overId = over.id.toString();
     const sourceId = active.id.toString();
 
-    // Handle arrow navigation
-    if (overId === "arrow-left" && currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-      return;
-    }
-    if (overId === "arrow-right" && hasNextPage()) {
-      setCurrentPage(currentPage + 1);
-      return;
-    }
-    // Remove back-to-root handling from dragEnd since it's now in dragOver
-
+    // Remove arrow navigation from dragEnd since it's now in dragOver
     // Check if dropping on a DropZone (has position suffix)
     if (overId.includes("-")) {
       const [targetId, position] = overId.split("-");
@@ -239,6 +252,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     setActiveDragItem(null);
     setHoveringArrow(null);
     setHasTriggeredBackExit(false);
+    setHasTriggeredPageChange({ left: false, right: false });
   };
 
   // Calculate max columns and items per page
