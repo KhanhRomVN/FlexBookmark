@@ -127,7 +127,7 @@
     --card-shadow: rgba(0, 0, 0, 0.15);
 
     /* Input colors */
-    --input-background: rgba(255, 255, 255, 0.85);
+    --input-background: rgba(0, 0, 0, 0.5);
 
     /* Dialog colors */
     --dialog-background: rgba(255, 255, 255, 0.85);
@@ -157,8 +157,8 @@
     --button-border-hover: rgba(30, 64, 175, 0.85);
 
     /* Secondary Button colors */
-    --button-second-bg: #1e1e1e;
-    --button-second-bg-hover: #343434;
+    --button-second-bg: rgba(0, 0, 0, 0.5);
+    --button-second-bg-hover: rgba(54, 134, 255, 0.85);
 
     /* Bookmark item colors */
     --bookmark-item-bg: rgba(0, 0, 0, 0.3);

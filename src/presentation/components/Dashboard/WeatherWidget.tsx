@@ -27,11 +27,11 @@ const WeatherWidget: React.FC<WeatherProps> = ({ weather }) => {
   };
 
   return (
-    <div className="flex items-center justify-center gap-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-sm">
+    <div className="flex items-center justify-center gap-3 bg-button-secondBg text-text-primary rounded-full px-4 py-2">
       <div className="text-3xl">{weatherIcon(weather.weathercode)}</div>
       <div className="text-center">
         <div className="text-lg font-medium">{weather.description}</div>
-        <div className="text-gray-600 dark:text-gray-300">
+        <div className="text-text-primary">
           {Math.round(weather.temperature)}°C
         </div>
       </div>

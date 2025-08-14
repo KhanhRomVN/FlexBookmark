@@ -271,10 +271,8 @@ const Dashboard: React.FC = () => {
             }
           : {}
       }
-      className={`min-h-screen flex flex-col items-center justify-center p-4 text-gray-900 dark:text-gray-100 ${
-        theme === "image"
-          ? ""
-          : "bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-gray-900 dark:to-gray-800"
+      className={`min-h-screen flex flex-col items-center justify-center p-4 text-text-primary ${
+        theme === "image" ? "" : "bg-background"
       }`}
     >
       <div className="w-full max-w-6xl flex flex-col items-center">
