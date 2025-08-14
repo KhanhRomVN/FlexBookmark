@@ -14,7 +14,6 @@ import {
   useDroppable,
   useDndContext,
 } from "@dnd-kit/core";
-import BookmarkGridHeader from "./BookmarkGridHeader";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BookmarkGridProps {
@@ -38,11 +37,9 @@ interface BookmarkGridProps {
 const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   bookmarks,
   currentFolder,
-  folderHistory,
   openFolder,
   goBack,
   exitToRootFolder,
-  barFolderId,
   loadBookmarks,
   currentPage,
   setCurrentPage,
@@ -56,9 +53,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     null
   );
   const [allBookmarks, setAllBookmarks] = useState<BookmarkNode[]>(bookmarks);
-  const [hoveringArrow, setHoveringArrow] = useState<"left" | "right" | null>(
-    null
-  );
+  const [, setHoveringArrow] = useState<"left" | "right" | null>(null);
   const [hasTriggeredBackExit, setHasTriggeredBackExit] =
     useState<boolean>(false);
   const [hasTriggeredPageChange, setHasTriggeredPageChange] = useState<{
@@ -191,9 +186,9 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       if (sourceId === targetId) return;
 
       try {
-        const [sourceNode] = await new Promise<
-          chrome.bookmarks.BookmarkTreeNode[]
-        >((resolve) => chrome.bookmarks.get(sourceId, resolve));
+        const [] = await new Promise<chrome.bookmarks.BookmarkTreeNode[]>(
+          (resolve) => chrome.bookmarks.get(sourceId, resolve)
+        );
         const [targetNode] = await new Promise<
           chrome.bookmarks.BookmarkTreeNode[]
         >((resolve) => chrome.bookmarks.get(targetId, resolve));
@@ -338,14 +333,15 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         <div className="flex-shrink-0">
           <div
             ref={setNodeRef}
+            onClick={() => goBack()} // <-- thêm click để quay lại
             className={`
-              flex flex-col items-center p-3 w-full transition-all duration-200
-              ${
-                isOver
-                  ? "rounded-xl bg-button-bg scale-105"
-                  : "hover:scale-105 hover:bg-button-secondBg rounded-xl"
-              }
-            `}
+            flex flex-col items-center p-3 w-full transition-all duration-200 cursor-pointer
+            ${
+              isOver
+                ? "rounded-xl bg-button-bg scale-105"
+                : "hover:scale-105 hover:bg-button-secondBg rounded-xl"
+            }
+          `}
           >
             <div
               className={`relative transition-all duration-200 rounded-xl ${
