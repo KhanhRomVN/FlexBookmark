@@ -133,11 +133,11 @@
     --card-shadow: rgba(0, 0, 0, 0.15);
 
     /* Input colors */
-    --input-background: rgba(0, 0, 0, 0.5);
+    --input-background: transparent;
 
     /* Dialog colors */
-    --dialog-background: rgba(255, 255, 255, 0.85);
-    --dialog-shadow: rgba(0, 0, 0, 0.15);
+    --dialog-background: transparent;
+    --dialog-shadow: none;
 
     /* Dropdown colors */
     --dropdown-background: rgba(0, 0, 0, 0.3);
@@ -150,10 +150,11 @@
     --sidebar-item-hover: rgba(243, 244, 246, 0.85);
     --sidebar-item-focus: #d1d5db;
 
-    /* Custom background image */
-    background-image: url("../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg");
+    /* Dynamic background image */
+    background-image: var(--bg-url);
     background-size: cover;
     background-position: center;
+    /* blur disabled */
 
     /* Button colors */
     --button-bg: rgba(74, 168, 255, 0.85);

@@ -74,9 +74,12 @@ export function ThemeProvider({
 
   const applyTheme = () => {
     const root = window.document.documentElement;
-    // clear classes & CSS var
+    // clear classes
     root.classList.remove("light", "dark", "image");
-    root.style.setProperty("--bg-url", "");
+    // clear all inline CSS variables
+    Array.from(root.style)
+      .filter((prop) => prop.startsWith("--"))
+      .forEach((prop) => root.style.removeProperty(prop));
 
     if (theme === "image") {
       root.classList.add("image");

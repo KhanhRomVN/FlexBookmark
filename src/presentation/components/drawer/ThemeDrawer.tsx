@@ -28,8 +28,8 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (theme === "image" && backgroundImage) {
       document.documentElement.style.setProperty(
-        "--background",
-        `linear-gradient(rgba(0, 0, 0, 0), url(${backgroundImage}))`
+        "--bg-url",
+        `url(${backgroundImage})`
       );
       document.documentElement.style.setProperty(
         "--bg-blur",
