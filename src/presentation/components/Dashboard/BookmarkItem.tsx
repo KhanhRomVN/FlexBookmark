@@ -52,7 +52,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
           href={bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex flex-col items-center p-2 w-full transition-all ${
+          className={`flex flex-col items-center p-3 w-full transition-all ${
             isDragging ? "opacity-50" : "hover:scale-105"
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
           onClick={(e) => {
@@ -68,10 +68,10 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
                 new URL(bookmark.url!).hostname
               }&sz=128`}
               alt={bookmark.title || ""}
-              className="w-14 h-14 rounded-xl bg-bookmarkItem-bg p-2 transition-all"
+              className="w-16 h-16 rounded-xl bg-bookmarkItem-bg p-2 transition-all"
             />
           </div>
-          <div className="mt-2 w-14 text-xs text-bookmarkItem-text truncate">
+          <div className="mt-3 w-16 text-sm text-bookmarkItem-text truncate">
             {bookmark.title || new URL(bookmark.url!).hostname}
           </div>
         </a>

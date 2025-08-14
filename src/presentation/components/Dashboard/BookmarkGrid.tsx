@@ -108,11 +108,12 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
   // Calculate max columns based on window width
   const getMaxCols = (): number => {
+    <div className="w-full max-w-6xl"></div>;
     const width = window.innerWidth;
-    if (width >= 1024) return 10;
-    if (width >= 768) return 8;
-    if (width >= 640) return 6;
-    return 4;
+    if (width >= 1024) return 8; // Reduced to accommodate larger items
+    if (width >= 768) return 6; // Reduced to accommodate larger items
+    if (width >= 640) return 4; // Reduced to accommodate larger items
+    return 3; // Reduced to accommodate larger items
   };
 
   // Render items with extended drop areas
@@ -154,7 +155,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       <div
         ref={setNodeRef}
         className={`flex items-center justify-center transition-all duration-200 ${
-          active ? "w-8 h-16" : "w-0 h-0 overflow-hidden"
+          active ? "w-10 h-16" : "w-0 h-0 overflow-hidden"
         }`}
         style={{
           pointerEvents: active ? "auto" : "none",
@@ -183,11 +184,11 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
     return (
       <>
-        <div className="flex items-center justify-center gap-0 w-full mb-4">
+        <div className="flex items-center justify-evenly w-full mb-8 px-4">
           {renderBookmarkItems(row1)}
         </div>
         {row2.length > 0 && (
-          <div className="flex items-center justify-center gap-0 w-full">
+          <div className="flex items-center justify-evenly w-full px-4">
             {renderBookmarkItems(row2)}
           </div>
         )}
@@ -196,7 +197,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   };
 
   return (
-    <div className="w-full max-w-6xl">
+    <div className="w-full max-w-4xl">
       <BookmarkGridHeader
         currentFolder={currentFolder}
         goBack={goBack}
@@ -230,10 +231,10 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
                     new URL(activeDragItem.url).hostname
                   }&sz=128`}
                   alt={activeDragItem.title}
-                  className="w-12 h-12 mx-auto"
+                  className="w-14 h-14 mx-auto"
                 />
               ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mx-auto">
                   <span className="text-xl">📁</span>
                 </div>
               )}

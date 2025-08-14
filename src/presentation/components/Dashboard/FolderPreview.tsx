@@ -51,7 +51,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
         } ${isOver ? "ring-2 ring-blue-500 rounded-xl" : ""}`}
       >
         <button
-          className="w-full flex flex-col items-center p-2 focus:outline-none"
+          className="w-full flex flex-col items-center p-3 focus:outline-none"
           onClick={(e) => {
             // Prevent folder opening if we're in drag mode or hovering for drop
             if (isDragging || isOver) {
@@ -67,7 +67,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
           {...attributes}
         >
           <div
-            className={`relative w-14 h-14 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5`}
+            className={`relative w-16 h-16 rounded-xl overflow-hidden shadow grid grid-cols-2 grid-rows-2 gap-0.5`}
           >
             {previewItems.map((item, i) => (
               <div
@@ -93,7 +93,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
               </div>
             )}
           </div>
-          <div className="mt-2 w-full text-xs text-bookmarkItem-text truncate">
+          <div className="mt-3 w-full text-sm text-bookmarkItem-text truncate">
             {folder.title}
           </div>
         </button>
