@@ -472,94 +472,90 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const totalPages = Math.ceil(bookmarks.length / getItemsPerPage());
 
   return (
-    <div className="w-full max-w-4xl relative">
-      <BookmarkGridHeader
-        currentFolder={currentFolder}
-        goBack={goBack}
-        itemCount={bookmarks.length}
-      />
+    <div className="w-full">
+      <div className="w-full max-w-6xl mx-auto relative">
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          {bookmarks.length > 0 ? (
+            <div className="flex items-center justify-between w-full">
+              {/* Left Arrow */}
+              <NavigationArrow
+                direction="left"
+                visible={totalPages > 1}
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={!hasPrevPage()}
+              />
 
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        {bookmarks.length > 0 ? (
-          <div className="flex items-center justify-between w-full">
-            {/* Left Arrow */}
-            <NavigationArrow
-              direction="left"
-              visible={totalPages > 1}
-              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-              disabled={!hasPrevPage()}
-            />
+              {/* Bookmark Grid */}
+              <div className="flex flex-col items-center flex-1">
+                {renderBookmarkRows()}
 
-            {/* Bookmark Grid */}
-            <div className="flex flex-col items-center flex-1">
-              {renderBookmarkRows()}
-
-              {/* Page indicator */}
-              {totalPages > 1 && (
-                <div className="mt-4 flex space-x-2">
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i)}
-                      className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                        i === currentPage
-                          ? "bg-blue-500 scale-125"
-                          : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right Arrow */}
-            <NavigationArrow
-              direction="right"
-              visible={totalPages > 1}
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-              }
-              disabled={!hasNextPage()}
-            />
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
-            <div className="text-xl opacity-80">
-              No bookmarks match your search
-            </div>
-            <div className="mt-2 opacity-60">Try a different search term</div>
-          </div>
-        )}
-
-        <DragOverlay>
-          {activeDragItem && (
-            <div className="opacity-80 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border-2 border-blue-500 transform scale-110 transition-transform">
-              {activeDragItem.url ? (
-                <img
-                  src={`https://www.google.com/s2/favicons?domain=${
-                    new URL(activeDragItem.url).hostname
-                  }&sz=128`}
-                  alt={activeDragItem.title}
-                  className="w-14 h-14 mx-auto"
-                />
-              ) : (
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mx-auto">
-                  <span className="text-xl">📁</span>
-                </div>
-              )}
-              <div className="mt-1 text-xs text-center truncate max-w-[80px]">
-                {activeDragItem.title}
+                {/* Page indicator */}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex space-x-2">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(i)}
+                        className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                          i === currentPage
+                            ? "bg-blue-500 scale-125"
+                            : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Right Arrow */}
+              <NavigationArrow
+                direction="right"
+                visible={totalPages > 1}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
+                }
+                disabled={!hasNextPage()}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
+              <div className="text-xl opacity-80">
+                No bookmarks match your search
+              </div>
+              <div className="mt-2 opacity-60">Try a different search term</div>
             </div>
           )}
-        </DragOverlay>
-      </DndContext>
+
+          <DragOverlay>
+            {activeDragItem && (
+              <div className="opacity-80 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border-2 border-blue-500 transform scale-110 transition-transform">
+                {activeDragItem.url ? (
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${
+                      new URL(activeDragItem.url).hostname
+                    }&sz=128`}
+                    alt={activeDragItem.title}
+                    className="w-14 h-14 mx-auto"
+                  />
+                ) : (
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mx-auto">
+                    <span className="text-xl">📁</span>
+                  </div>
+                )}
+                <div className="mt-1 text-xs text-center truncate max-w-[80px]">
+                  {activeDragItem.title}
+                </div>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      </div>
     </div>
   );
 };

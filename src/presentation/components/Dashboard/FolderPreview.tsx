@@ -141,7 +141,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
           <button
             className={`w-full flex flex-col items-center p-3 focus:outline-none transition-all duration-200 ${
               !isDragging && !isOver
-                ? "hover:scale-105 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl"
+                ? "hover:scale-105 hover:bg-button-secondBg rounded-xl"
                 : ""
             }`}
             onClick={(e) => {
@@ -165,8 +165,8 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
             {...(showContextMenu ? {} : attributes)}
           >
             <div
-              className={`relative w-16 h-16 rounded-xl overflow-hidden shadow-md grid grid-cols-2 grid-rows-2 gap-0.5 transition-all duration-200 ${
-                isOver ? "ring-2 ring-green-400 shadow-lg" : ""
+              className={`relative w-16 h-16 rounded-xl overflow-hidden grid grid-cols-2 grid-rows-2 gap-[4px] p-[4px] transition-all duration-200 ${
+                isOver ? "ring-2 ring-green-400" : ""
               }`}
             >
               {previewItems.length > 0
@@ -212,7 +212,7 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
               )}
             </div>
 
-            <div className="mt-3 w-16 text-sm text-bookmarkItem-text truncate text-center">
+            <div className="mt-1 w-16 text-sm text-bookmarkItem-text truncate text-center">
               {truncatedTitle}
             </div>
           </button>

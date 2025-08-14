@@ -133,7 +133,7 @@
     --card-shadow: rgba(0, 0, 0, 0.15);
 
     /* Input colors */
-    --input-background: transparent;
+    --input-background: rgba(0, 0, 0, 0.3);
 
     /* Dialog colors */
     --dialog-background: transparent;
@@ -169,7 +169,7 @@
 
     /* Bookmark item colors */
     --bookmark-item-bg: rgba(0, 0, 0, 0.3);
-    --bookmark-item-text: #e8e8e8;
+    --bookmark-item-text: #ffffff;
 
     /* Drawer colors */
     --drawer-background: #1f1f1f;

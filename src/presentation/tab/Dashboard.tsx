@@ -261,7 +261,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div
-      className={`relative min-h-screen flex flex-col items-center justify-center p-4 text-text-primary ${
+      className={`relative min-h-screen flex flex-col items-center justify-center text-text-primary ${
         theme !== "image" ? "bg-background" : ""
       }`}
     >

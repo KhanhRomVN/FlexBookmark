@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { BookmarkNode } from "../../tab/Dashboard";
-import BookmarkForm from "../BookmarkManager/BookmarkForm";
 
 interface BookmarkItemProps {
   bookmark: BookmarkNode;
@@ -15,7 +14,6 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
   onDelete,
 }) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({
     x: 0,
     y: 0,
@@ -45,18 +43,6 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
     e.stopPropagation();
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setShowContextMenu(true);
-  };
-
-  const handleEdit = () => {
-    setShowContextMenu(false);
-    setShowEditForm(true);
-  };
-
-  const handleEditSuccess = () => {
-    setShowEditForm(false);
-    // Update the bookmark using Chrome API since we can't modify BookmarkForm
-    // The form will create a new bookmark, so we need to handle the edit differently
-    onEdit?.(bookmark);
   };
 
   const handleDelete = async () => {
@@ -157,10 +143,8 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
           href={bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex flex-col items-center p-3 w-full transition-all duration-200 ${
-            isDragging
-              ? "opacity-50"
-              : "hover:scale-105 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl"
+          className={`flex flex-col items-center px-2 pb-1 w-full transition-all duration-200 ${
+            isDragging ? "" : "hover:bg-button-secondBg rounded-lg"
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
           onClick={(e) => {
             // Prevent navigation if we're in drag mode or hovering for drop
@@ -169,24 +153,23 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
             }
           }}
         >
-          <div className="relative transition-all duration-200 rounded-xl">
+          <div className="relative transition-all duration-200 rounded-lg">
             <img
               src={`https://www.google.com/s2/favicons?domain=${
                 new URL(bookmark.url!).hostname
               }&sz=128`}
               alt={bookmark.title || ""}
-              className={`w-16 h-16 rounded-xl bg-bookmarkItem-bg p-2 transition-all duration-200 ${
+              className={`w-16 h-16 rounded-xl p-2 transition-all duration-200 ${
                 isOver ? "ring-2 ring-blue-400 shadow-lg" : ""
               }`}
               onError={(e) => {
-                // Fallback to a generic icon if favicon fails to load
                 const target = e.target as HTMLImageElement;
                 target.src =
                   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCA0OEg4OFY4MEg0MFY0OFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+";
               }}
             />
           </div>
-          <div className="mt-3 w-16 text-sm text-bookmarkItem-text truncate text-center">
+          <div className="mt-1 w-16 text-sm text-bookmarkItem-text truncate text-center">
             {bookmark.title || new URL(bookmark.url!).hostname}
           </div>
         </a>
@@ -196,7 +179,7 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({
       {showContextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-2 z-50 min-w-[120px] backdrop-blur-sm"
+          className="fixed bg-background border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-2 z-50 min-w-[120px] backdrop-blur-sm"
           style={{
             left: contextMenuPosition.x,
             top: contextMenuPosition.y,
