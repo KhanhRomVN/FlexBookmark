@@ -304,12 +304,12 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             transition-all duration-200 border-2
             ${
               disabled
-                ? "bg-button-secondBg text-text-primary border-border-default cursor-not-allowed"
-                : "bg-button-secondBgHover text-text-secondary border-border-default hover:bg-button-secondBgHover hover:border-primary hover:text-blue-600 dark:hover:text-blue-400"
+                ? "bg-button-secondBgHover text-text-primary border-border-default cursor-not-allowed"
+                : "bg-button-secondBg border-border-default"
             }
             ${
               isOver && activeDragItem
-                ? "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-900"
+                ? "bg-button-secondBg border-border-default"
                 : ""
             }
             backdrop-blur-sm shadow-lg
