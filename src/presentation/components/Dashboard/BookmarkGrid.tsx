@@ -12,9 +12,10 @@ import {
   PointerSensor,
   DragOverlay,
   UniqueIdentifier,
+  useDroppable,
+  useDndContext,
 } from "@dnd-kit/core";
 import BookmarkGridHeader from "./BookmarkGridHeader";
-import DropZone from "./DropZone";
 
 interface BookmarkGridProps {
   bookmarks: BookmarkNode[];
@@ -53,38 +54,51 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     if (draggedItem) setActiveDragItem(draggedItem);
   };
 
-  // drag-over no longer tracks activeDropId
-
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragItem(null);
 
     if (!over) return;
 
-    const [targetId, position] = over.id.toString().split("-");
+    const overId = over.id.toString();
     const sourceId = active.id.toString();
-    if (sourceId === targetId) return;
 
-    try {
-      // Retrieve nodes
-      const [sourceNode] = await new Promise<
-        chrome.bookmarks.BookmarkTreeNode[]
-      >((resolve) => chrome.bookmarks.get(sourceId, resolve));
-      const [targetNode] = await new Promise<
-        chrome.bookmarks.BookmarkTreeNode[]
-      >((resolve) => chrome.bookmarks.get(targetId, resolve));
-      const parentId = targetNode.parentId;
-      const targetIndex = targetNode.index ?? 0;
-      const newIndex = position === "right" ? targetIndex + 1 : targetIndex;
+    // Check if dropping on a DropZone (has position suffix)
+    if (overId.includes("-")) {
+      const [targetId, position] = overId.split("-");
+      if (sourceId === targetId) return;
 
-      await new Promise<void>((resolve) =>
-        chrome.bookmarks.move(sourceId, { parentId, index: newIndex }, () =>
-          resolve()
-        )
-      );
-      loadBookmarks();
-    } catch (error) {
-      console.error("Error moving bookmark:", error);
+      try {
+        // Move bookmark logic
+        const [sourceNode] = await new Promise<
+          chrome.bookmarks.BookmarkTreeNode[]
+        >((resolve) => chrome.bookmarks.get(sourceId, resolve));
+        const [targetNode] = await new Promise<
+          chrome.bookmarks.BookmarkTreeNode[]
+        >((resolve) => chrome.bookmarks.get(targetId, resolve));
+        const parentId = targetNode.parentId;
+        const targetIndex = targetNode.index ?? 0;
+        const newIndex = position === "right" ? targetIndex + 1 : targetIndex;
+
+        await new Promise<void>((resolve) =>
+          chrome.bookmarks.move(sourceId, { parentId, index: newIndex }, () =>
+            resolve()
+          )
+        );
+        loadBookmarks();
+      } catch (error) {
+        console.error("Error moving bookmark:", error);
+      }
+    } else {
+      // Dropping directly on bookmark/folder - create folder logic
+      if (sourceId === overId) return;
+
+      try {
+        // TODO: Implement folder creation logic here
+        console.log(`Create folder with ${sourceId} and ${overId}`);
+      } catch (error) {
+        console.error("Error creating folder:", error);
+      }
     }
   };
 
@@ -101,35 +115,79 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     return 4;
   };
 
-  // DropZone id will be direct bookmark id
+  // Render items with extended drop areas
+  const renderBookmarkItems = (items: BookmarkNode[]) => {
+    const result: React.ReactNode[] = [];
 
-  // Render items with a single right-side drop zone
-  const renderBookmarkItems = (items: BookmarkNode[]) =>
-    items.map((bm) => (
-      <div key={bm.id} className="relative flex items-center justify-center">
-        <div className="z-10">
-          {bm.url ? (
-            <BookmarkItem bookmark={bm} />
-          ) : (
-            <FolderPreview folder={bm} openFolder={openFolder} />
-          )}
+    items.forEach((bm, index) => {
+      // Add bookmark item with extended drop area
+      result.push(
+        <div key={bm.id} className="relative flex items-center">
+          {/* The bookmark item */}
+          <div className="flex-shrink-0">
+            {bm.url ? (
+              <BookmarkItem bookmark={bm} />
+            ) : (
+              <FolderPreview folder={bm} openFolder={openFolder} />
+            )}
+          </div>
+
+          {/* Extended drop area for positioning after this item */}
+          {index < items.length - 1 && <DropIndicator id={`${bm.id}-right`} />}
         </div>
-        <DropZone id={`${bm.id}-right`} position="right" />
+      );
+    });
+
+    return result;
+  };
+
+  // Simple drop indicator component
+  interface DropIndicatorProps {
+    id: string;
+  }
+
+  const DropIndicator: React.FC<DropIndicatorProps> = ({ id }) => {
+    const { setNodeRef, isOver } = useDroppable({ id });
+    const { active } = useDndContext();
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`flex items-center justify-center transition-all duration-200 ${
+          active ? "w-8 h-16" : "w-0 h-0 overflow-hidden"
+        }`}
+        style={{
+          pointerEvents: active ? "auto" : "none",
+          backgroundColor:
+            active && isOver ? "rgba(59, 130, 246, 0.3)" : "transparent",
+        }}
+      >
+        {active && (
+          <div
+            className={`transition-all duration-200 rounded-sm ${
+              isOver
+                ? "w-2 h-16 bg-blue-500 shadow-lg"
+                : "w-px h-14 bg-gray-400 opacity-60"
+            }`}
+          />
+        )}
       </div>
-    ));
+    );
+  };
 
   // Render rows
   const renderBookmarkRows = () => {
     const maxCols = getMaxCols();
     const row1 = bookmarks.slice(0, maxCols);
     const row2 = bookmarks.slice(maxCols, maxCols * 2);
+
     return (
       <>
-        <div className="flex flex-wrap justify-center gap-4 w-full mb-4 relative">
+        <div className="flex items-center justify-center gap-0 w-full mb-4">
           {renderBookmarkItems(row1)}
         </div>
         {row2.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-4 w-full relative">
+          <div className="flex items-center justify-center gap-0 w-full">
             {renderBookmarkItems(row2)}
           </div>
         )}
@@ -151,7 +209,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         onDragCancel={handleDragCancel}
       >
         {bookmarks.length > 0 ? (
-          <div className="flex flex-col items-center relative">
+          <div className="flex flex-col items-center">
             {renderBookmarkRows()}
           </div>
         ) : (

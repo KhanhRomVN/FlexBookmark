@@ -1,6 +1,6 @@
 import React from "react";
 import { BookmarkNode } from "../../tab/Dashboard";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 interface FolderPreviewProps {
   folder: BookmarkNode;
@@ -11,14 +11,31 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
   folder,
   openFolder,
 }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: folder.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({ id: folder.id });
+
+  // Add droppable for folder merging/creation
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+    id: folder.id,
+  });
+
   const style: React.CSSProperties | undefined = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
 
   const previewItems = folder.children?.slice(0, 4) || [];
   const remainingCount = (folder.children?.length || 0) - previewItems.length;
+
+  // Combine refs
+  const combinedRef = (node: HTMLElement | null) => {
+    setDraggableNodeRef(node);
+    setDroppableNodeRef(node);
+  };
 
   return (
     <div
@@ -27,15 +44,22 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
       }`}
     >
       <div
-        ref={setNodeRef}
+        ref={combinedRef}
         style={style}
         className={`relative w-full ${
           isDragging ? "opacity-50 cursor-grabbing" : ""
-        }`}
+        } ${isOver ? "ring-2 ring-blue-500 rounded-xl" : ""}`}
       >
         <button
           className="w-full flex flex-col items-center p-2 focus:outline-none"
-          onClick={() => openFolder(folder)}
+          onClick={(e) => {
+            // Prevent folder opening if we're in drag mode or hovering for drop
+            if (isDragging || isOver) {
+              e.preventDefault();
+              return;
+            }
+            openFolder(folder);
+          }}
           draggable="false"
           onDragStart={(e) => e.preventDefault()}
           onDrop={(e) => e.preventDefault()}

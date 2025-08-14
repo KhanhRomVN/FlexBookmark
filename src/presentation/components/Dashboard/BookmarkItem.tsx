@@ -1,5 +1,5 @@
 import React from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { BookmarkNode } from "../../tab/Dashboard";
 
 interface BookmarkItemProps {
@@ -15,11 +15,22 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
     isDragging,
   } = useDraggable({ id: bookmark.id });
 
+  // Add droppable for folder creation
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+    id: bookmark.id,
+  });
+
   const style: React.CSSProperties = {
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
     visibility: isDragging ? "hidden" : "visible",
+  };
+
+  // Combine refs
+  const combinedRef = (node: HTMLElement | null) => {
+    setDraggableNodeRef(node);
+    setDroppableNodeRef(node);
   };
 
   return (
@@ -29,13 +40,13 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
       }`}
     >
       <div
-        ref={setDraggableNodeRef}
+        ref={combinedRef}
         style={style}
         {...listeners}
         {...attributes}
         className={`w-full focus:outline-none focus:ring-0 transition-colors ${
           isDragging ? "opacity-0" : ""
-        }`}
+        } ${isOver ? "ring-2 ring-blue-500 rounded-xl" : ""}`}
       >
         <a
           href={bookmark.url}
@@ -44,6 +55,12 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
           className={`flex flex-col items-center p-2 w-full transition-all ${
             isDragging ? "opacity-50" : "hover:scale-105"
           } focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0`}
+          onClick={(e) => {
+            // Prevent navigation if we're in drag mode or hovering for drop
+            if (isDragging || isOver) {
+              e.preventDefault();
+            }
+          }}
         >
           <div className="relative transition-colors rounded-xl">
             <img
