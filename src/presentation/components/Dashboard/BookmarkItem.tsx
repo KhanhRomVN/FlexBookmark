@@ -23,7 +23,11 @@ const BookmarkItem: React.FC<BookmarkItemProps> = ({ bookmark }) => {
   };
 
   return (
-    <div className="relative group transition-all">
+    <div
+      className={`relative group transition-all ${
+        isDragging ? "cursor-grabbing" : ""
+      }`}
+    >
       <div
         ref={setDraggableNodeRef}
         style={style}

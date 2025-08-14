@@ -22,12 +22,16 @@ const FolderPreview: React.FC<FolderPreviewProps> = ({
 
   return (
     <div
-      className={`relative transition-all ${isDragging ? "opacity-50" : ""}`}
+      className={`relative transition-all ${
+        isDragging ? "opacity-50 cursor-grabbing" : ""
+      }`}
     >
       <div
         ref={setNodeRef}
         style={style}
-        className={`relative w-full ${isDragging ? "opacity-50" : ""}`}
+        className={`relative w-full ${
+          isDragging ? "opacity-50 cursor-grabbing" : ""
+        }`}
       >
         <button
           className="w-full flex flex-col items-center p-2 focus:outline-none"

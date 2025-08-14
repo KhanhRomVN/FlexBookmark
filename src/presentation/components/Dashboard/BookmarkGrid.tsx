@@ -61,32 +61,30 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
     if (!over) return;
 
-    const targetItem = allBookmarks.find((bm) => bm.id === over.id);
-    if (!targetItem || targetItem.id === active.id) return;
+    const [targetId, position] = over.id.toString().split("-");
+    const sourceId = active.id.toString();
+    if (sourceId === targetId) return;
 
-    const folderName = window.prompt("Enter new folder name:");
-    if (!folderName) return;
     try {
-      const newFolder = await new Promise<chrome.bookmarks.BookmarkTreeNode>(
-        (res, rej) =>
-          chrome.bookmarks.create(
-            { title: folderName, parentId: currentFolder?.id || barFolderId },
-            (node) =>
-              chrome.runtime.lastError
-                ? rej(chrome.runtime.lastError)
-                : res(node)
-          )
+      // Retrieve nodes
+      const [sourceNode] = await new Promise<
+        chrome.bookmarks.BookmarkTreeNode[]
+      >((resolve) => chrome.bookmarks.get(sourceId, resolve));
+      const [targetNode] = await new Promise<
+        chrome.bookmarks.BookmarkTreeNode[]
+      >((resolve) => chrome.bookmarks.get(targetId, resolve));
+      const parentId = targetNode.parentId;
+      const targetIndex = targetNode.index ?? 0;
+      const newIndex = position === "right" ? targetIndex + 1 : targetIndex;
+
+      await new Promise<void>((resolve) =>
+        chrome.bookmarks.move(sourceId, { parentId, index: newIndex }, () =>
+          resolve()
+        )
       );
-      await chrome.bookmarks.move(active.id as string, {
-        parentId: newFolder.id,
-      });
-      await chrome.bookmarks.move(targetItem.id, {
-        parentId: newFolder.id,
-        index: 1,
-      });
       loadBookmarks();
     } catch (error) {
-      console.error("Error creating folder:", error);
+      console.error("Error moving bookmark:", error);
     }
   };
 
@@ -109,7 +107,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const renderBookmarkItems = (items: BookmarkNode[]) =>
     items.map((bm) => (
       <div key={bm.id} className="relative flex items-center justify-center">
-        <DropZone id={bm.id} position="right" />
         <div className="z-10">
           {bm.url ? (
             <BookmarkItem bookmark={bm} />
@@ -117,6 +114,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             <FolderPreview folder={bm} openFolder={openFolder} />
           )}
         </div>
+        <DropZone id={`${bm.id}-right`} position="right" />
       </div>
     ));
 
