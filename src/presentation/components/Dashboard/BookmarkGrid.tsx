@@ -70,10 +70,63 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   );
   // ref to auto-hide toast after delay
   const hideToastTimeout = useRef<NodeJS.Timeout | null>(null);
-  // droppable zone for toast confirmation (treat toast as arrow hover)
+
+  // droppable zone for toast confirmation
   const { setNodeRef: setToastRef, isOver: isOverToast } = useDroppable({
     id: toastDirection ? `toast-${toastDirection}` : "toast-disabled",
   });
+
+  // Debug state
+  const [isHoveringToast, setIsHoveringToast] = useState(false);
+
+  // Add mouse event handlers for toast hover
+  const handleToastMouseEnter = () => {
+    setIsHoveringToast(true);
+
+    // Trigger page change when mouse enters toast area during drag
+    if (activeDragItem && toastDirection) {
+      const dir = toastDirection;
+      console.log(
+        "Mouse entered toast:",
+        dir,
+        "hasTriggeredPageChange:",
+        hasTriggeredPageChange
+      );
+
+      if (dir === "left" && hasPrevPage() && !hasTriggeredPageChange.left) {
+        console.log("Changing to previous page via mouse");
+        setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
+        setCurrentPage(Math.max(0, currentPage - 1));
+        // Hide toast after successful page change
+        setTimeout(() => {
+          setShowDragToast(false);
+          setToastDirection(null);
+          if (hideToastTimeout.current) {
+            clearTimeout(hideToastTimeout.current);
+            hideToastTimeout.current = null;
+          }
+        }, 100);
+      }
+      if (dir === "right" && hasNextPage() && !hasTriggeredPageChange.right) {
+        console.log("Changing to next page via mouse");
+        setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
+        setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
+        // Hide toast after successful page change
+        setTimeout(() => {
+          setShowDragToast(false);
+          setToastDirection(null);
+          if (hideToastTimeout.current) {
+            clearTimeout(hideToastTimeout.current);
+            hideToastTimeout.current = null;
+          }
+        }, 100);
+      }
+    }
+  };
+
+  const handleToastMouseLeave = () => {
+    setIsHoveringToast(false);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -82,6 +135,29 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   useEffect(() => {
     setAllBookmarks(bookmarks);
   }, [bookmarks]);
+
+  // Debug effect - log more detailed info
+  useEffect(() => {
+    console.log("Toast state:", {
+      showDragToast,
+      toastDirection,
+      isOverToast,
+      isHoveringToast,
+      activeDragItem: activeDragItem?.title,
+      hasTriggeredPageChange,
+      currentPage,
+      hasPrevPage: hasPrevPage(),
+      hasNextPage: hasNextPage(),
+    });
+  }, [
+    showDragToast,
+    toastDirection,
+    isOverToast,
+    isHoveringToast,
+    activeDragItem,
+    hasTriggeredPageChange,
+    currentPage,
+  ]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -96,18 +172,21 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     if (!over) {
       setHoveringArrow(null);
       setHasTriggeredPageChange({ left: false, right: false });
-      // do not hide toast here; let timer handle visibility
       return;
     }
 
     const overId = over.id.toString();
+
+    // Reset page change triggers when not hovering over toast
+    if (!overId.startsWith("toast-")) {
+      setHasTriggeredPageChange({ left: false, right: false });
+    }
+
     if (overId === "arrow-left") {
       setHoveringArrow("left");
-      setHasTriggeredPageChange((prev) => ({ ...prev, right: false }));
-      // defer actual page change until user confirms via toast
       setToastDirection("left");
+      setToastMessage("Hover here to go to previous page");
       setShowDragToast(true);
-      // schedule auto-hide toast
       if (hideToastTimeout.current) clearTimeout(hideToastTimeout.current);
       hideToastTimeout.current = setTimeout(() => {
         setShowDragToast(false);
@@ -116,8 +195,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       }, 5000);
     } else if (overId === "arrow-right") {
       setHoveringArrow("right");
-      setHasTriggeredPageChange((prev) => ({ ...prev, left: false }));
       setToastDirection("right");
+      setToastMessage("Hover here to go to next page");
       setShowDragToast(true);
       if (hideToastTimeout.current) clearTimeout(hideToastTimeout.current);
       hideToastTimeout.current = setTimeout(() => {
@@ -125,6 +204,40 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         setToastDirection(null);
         hideToastTimeout.current = null;
       }, 5000);
+    } else if (overId.startsWith("toast-")) {
+      // Handle hover over toast - trigger page change immediately
+      const dir = overId.split("-")[1] as "left" | "right";
+      console.log(
+        "Hovering over toast:",
+        dir,
+        "hasTriggeredPageChange:",
+        hasTriggeredPageChange
+      );
+
+      if (dir === "left" && hasPrevPage() && !hasTriggeredPageChange.left) {
+        console.log("Changing to previous page");
+        setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
+        setCurrentPage(Math.max(0, currentPage - 1));
+        // Hide toast after successful page change
+        setShowDragToast(false);
+        setToastDirection(null);
+        if (hideToastTimeout.current) {
+          clearTimeout(hideToastTimeout.current);
+          hideToastTimeout.current = null;
+        }
+      }
+      if (dir === "right" && hasNextPage() && !hasTriggeredPageChange.right) {
+        console.log("Changing to next page");
+        setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
+        setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
+        // Hide toast after successful page change
+        setShowDragToast(false);
+        setToastDirection(null);
+        if (hideToastTimeout.current) {
+          clearTimeout(hideToastTimeout.current);
+          hideToastTimeout.current = null;
+        }
+      }
     } else if (
       overId === "back-to-root" &&
       currentFolder &&
@@ -135,8 +248,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
       exitToRootFolder();
     } else {
       setHoveringArrow(null);
-      setHasTriggeredPageChange({ left: false, right: false });
-      // do not hide toast here
     }
   };
 
@@ -200,20 +311,22 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     const { active, over } = event;
     setActiveDragItem(null);
     setHoveringArrow(null);
+
+    // Clear toast state
     setShowDragToast(false);
+    setToastDirection(null);
+    setIsHoveringToast(false);
+    if (hideToastTimeout.current) {
+      clearTimeout(hideToastTimeout.current);
+      hideToastTimeout.current = null;
+    }
 
     if (!over) return;
 
-    // drop on toast confirmation zone
+    // No need to handle toast drop since page change happens on hover
     const toastOverId = over.id.toString();
     if (toastOverId.startsWith("toast-")) {
-      const dir = toastOverId.split("-")[1] as "left" | "right";
-      if (dir === "left" && hasPrevPage()) {
-        setCurrentPage(Math.max(0, currentPage - 1));
-      }
-      if (dir === "right" && hasNextPage()) {
-        setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
-      }
+      // Page change already happened in handleDragOver
       return;
     }
 
@@ -296,7 +409,13 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     setHoveringArrow(null);
     setHasTriggeredBackExit(false);
     setHasTriggeredPageChange({ left: false, right: false });
-    +setShowDragToast(false);
+    setShowDragToast(false);
+    setToastDirection(null);
+    setIsHoveringToast(false);
+    if (hideToastTimeout.current) {
+      clearTimeout(hideToastTimeout.current);
+      hideToastTimeout.current = null;
+    }
   };
 
   // Calculate max columns and items per page
@@ -393,7 +512,7 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
         <div className="flex-shrink-0">
           <div
             ref={setNodeRef}
-            onClick={() => goBack()} // <-- thêm click để quay lại
+            onClick={() => goBack()}
             className={`
             flex flex-col items-center p-3 w-full transition-all duration-200 cursor-pointer
             ${
@@ -611,26 +730,57 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             )}
           </DragOverlay>
         </DndContext>
+
         {/* Drag confirmation toast */}
         <AnimatePresence>
-          {showDragToast && (
+          {showDragToast && toastDirection && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="fixed bottom-4 right-4 p-4 border-2 border-dashed rounded-lg bg-black bg-opacity-60 text-white text-center pointer-events-auto"
+              className="fixed bottom-4 right-4 z-[9999]"
             >
-              <div className="mb-2 text-sm">{toastMessage}</div>
-              <div
-                ref={setToastRef}
-                className={`p-2 border-2 rounded transition-colors ${
-                  isOverToast
-                    ? "bg-blue-500 text-white border-blue-400"
-                    : "bg-gray-200 text-gray-800 border-gray-400"
-                }`}
-              >
-                Drop here
+              <div className="p-4 border-2 border-dashed rounded-lg bg-black bg-opacity-90 text-white text-center">
+                {/* Debug info */}
+                <div className="text-xs mb-2 opacity-70 bg-red-500 p-1 rounded">
+                  Debug: {toastDirection} | Over: {isOverToast ? "YES" : "NO"} |
+                  Hover: {isHoveringToast ? "YES" : "NO"}
+                </div>
+
+                <div className="mb-3 text-sm font-medium">{toastMessage}</div>
+
+                <div
+                  ref={(node) => {
+                    setToastRef(node);
+                  }}
+                  onMouseEnter={handleToastMouseEnter}
+                  onMouseLeave={handleToastMouseLeave}
+                  className={`
+                    w-40 h-24 p-4 border-2 rounded-lg transition-all duration-200 cursor-pointer
+                    flex items-center justify-center text-sm font-semibold
+                    ${
+                      isOverToast || isHoveringToast
+                        ? "bg-green-500 text-white border-green-400 shadow-lg scale-105 ring-4 ring-green-300"
+                        : "bg-gray-200 text-gray-800 border-gray-400 hover:bg-gray-300"
+                    }
+                  `}
+                  style={{
+                    pointerEvents: "auto",
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="text-2xl mb-2">
+                      {toastDirection === "left" ? "←" : "→"}
+                    </div>
+                    <div>Hover here</div>
+                    {(isOverToast || isHoveringToast) && (
+                      <div className="text-xs mt-1 animate-pulse font-bold">
+                        CHANGING PAGE!
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
