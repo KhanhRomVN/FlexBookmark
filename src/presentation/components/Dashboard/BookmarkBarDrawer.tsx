@@ -138,7 +138,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`flex items-center py-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer`}
+        className={`flex items-center py-1 px-2 rounded cursor-pointer`}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
         {...attributes}
         {...listeners}
@@ -146,7 +146,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
         {/* Expand/Collapse button for folders */}
         {isFolder && (
           <button
-            className="mr-1 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+            className="mr-1 p-1 rounded"
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpanded(item.id);
@@ -180,7 +180,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
         {isHovered && (
           <div ref={menuRef} className="relative">
             <button
-              className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+              className="ml-2 p-1 rounded"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
@@ -191,7 +191,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
 
             {/* Dropdown menu */}
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border rounded-md shadow-lg z-10">
                 {isFolder ? (
                   <>
                     <button
@@ -478,33 +478,30 @@ const BookmarkBarDrawer: React.FC<BookmarkBarDrawerProps> = ({
         overlayClassName="z-[1500]"
         overlayOpacity={0.2}
       >
-        <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+        <div className="h-full flex flex-col bg-drawer-background">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold">Bookmarks Bar Manager</h2>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-            >
-              <X size={20} />
+            <button onClick={onClose} className="p-1 rounded">
+              <X size={20} className="hover:text-red-400" />
             </button>
           </div>
 
           {/* Toolbar */}
-          <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 p-3 border-b">
             <button
               onClick={handleCollapseAll}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              className="p-2 rounded"
               title="Collapse All"
             >
-              <Minimize2 size={16} />
+              <Minimize2 size={16} className="hover:text-red-400" />
             </button>
             <button
               onClick={handleExpandAll}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              className="p-2 rounded"
               title="Expand All"
             >
-              <Maximize2 size={16} />
+              <Maximize2 size={16} className="hover:text-red-400" />
             </button>
             <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2" />
             <button
@@ -532,10 +529,10 @@ const BookmarkBarDrawer: React.FC<BookmarkBarDrawerProps> = ({
                   );
                 }
               }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              className="p-2 rounded"
               title="Create Folder"
             >
-              <FolderPlus size={16} />
+              <FolderPlus size={16} className="hover:text-red-400" />
             </button>
             <button
               onClick={() =>
@@ -544,10 +541,10 @@ const BookmarkBarDrawer: React.FC<BookmarkBarDrawerProps> = ({
                     bookmarks.length > 0 ? bookmarks[0].parentId || "" : "",
                 })
               }
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              className="p-2 rounded"
               title="Add Bookmark"
             >
-              <BookmarkPlus size={16} />
+              <BookmarkPlus size={16} className="hover:text-red-400" />
             </button>
           </div>
 

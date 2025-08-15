@@ -64,8 +64,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={onOptionOne}>Option One</DropdownMenuItem>
-          <DropdownMenuItem onSelect={onOptionTwo}>Option Two</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onOptionOne}>Bookmark</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onOptionTwo}>Theme</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
