@@ -1,4 +1,41 @@
-export const PRESET_THEMES = {
+import { ReactNode } from "react";
+
+export interface PresetThemeType {
+    name: string;
+    primary: string;
+    background: string;
+    textPrimary?: string;
+    textSecondary?: string;
+    border?: string;
+    borderHover?: string;
+    cardBackground: string;
+    inputBackground?: string;
+    dialogBackground?: string;
+    dropdownBackground?: string;
+    dropdownItemHover?: string;
+    sidebarBackground?: string;
+    sidebarItemHover?: string;
+    sidebarItemFocus?: string;
+    buttonBg?: string;
+    buttonBgHover?: string;
+    buttonText?: string;
+    buttonBorder?: string;
+    buttonBorderHover?: string;
+    buttonSecondBg?: string;
+    buttonSecondBgHover?: string;
+    bookmarkItemBg?: string;
+    bookmarkItemText?: string;
+    drawerBackground?: string;
+    clockGradientFrom?: string;
+    clockGradientTo?: string;
+    cardShadow?: string;
+    dialogShadow?: string;
+    dropdownShadow?: string;
+    icon?: ReactNode;
+    description?: string;
+}
+
+export const PRESET_THEMES: Record<"light" | "dark", PresetThemeType[]> = {
     light: [
         {
             name: "Default Light",

@@ -184,37 +184,122 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     <div className="preset-themes mb-6">
       <h3 className="text-lg font-semibold mb-4">Preset Themes</h3>
       <div className="grid grid-cols-2 gap-4">
-        {PRESET_THEMES[themeType].map((preset, index) => (
-          <button
-            key={index}
-            className={`flex flex-col items-start p-3 rounded-xl border transition-all ${
-              colorSettings.primary === preset.primary &&
-              colorSettings.background === preset.background &&
-              colorSettings.cardBackground === preset.cardBackground
-                ? "border-primary ring-2 ring-primary/20"
-                : "border-gray-200 dark:border-gray-700"
-            } hover:bg-gray-50 dark:hover:bg-gray-800`}
-            onClick={() => applyPresetTheme(preset)}
-          >
-            <div className="w-full h-16 rounded-lg overflow-hidden mb-3">
-              <div className="h-full flex">
+        {PRESET_THEMES[themeType].map((preset, index) => {
+          const isSelected =
+            colorSettings.primary === preset.primary &&
+            colorSettings.background === preset.background &&
+            colorSettings.cardBackground === preset.cardBackground;
+
+          return (
+            <button
+              key={index}
+              className={`relative flex flex-col items-start p-4 rounded-2xl border transition-all overflow-hidden group ${
+                isSelected
+                  ? "border-primary ring-4 ring-primary/30 shadow-lg"
+                  : "border-gray-200 dark:border-gray-700"
+              } hover:shadow-md hover:scale-[1.02] transition-transform duration-200`}
+              onClick={() => applyPresetTheme(preset)}
+            >
+              {/* Glow effect for selected theme */}
+              {isSelected && (
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
+              )}
+
+              <div className="w-full h-24 rounded-lg overflow-hidden mb-3 border border-border relative">
+                {/* Header */}
                 <div
-                  className="flex-1"
+                  className="h-4 w-full"
+                  style={{ backgroundColor: preset.primary }}
+                ></div>
+
+                <div className="flex h-20">
+                  {/* Sidebar */}
+                  <div
+                    className="w-1/4 h-full"
+                    style={{
+                      backgroundColor:
+                        preset.sidebarBackground || preset.cardBackground,
+                    }}
+                  ></div>
+
+                  {/* Main content */}
+                  <div
+                    className="w-3/4 h-full p-2"
+                    style={{ backgroundColor: preset.background }}
+                  >
+                    {/* Card preview */}
+                    <div
+                      className="w-full h-4 rounded mb-1"
+                      style={{ backgroundColor: preset.cardBackground }}
+                    ></div>
+                    <div
+                      className="w-3/4 h-4 rounded"
+                      style={{ backgroundColor: preset.cardBackground }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Floating icon */}
+                <div className="absolute top-2 right-2 bg-white/80 dark:bg-black/80 p-1.5 rounded-full">
+                  {preset.icon ? (
+                    <div className="text-lg">{preset.icon}</div>
+                  ) : (
+                    <div
+                      className="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800"
+                      style={{ backgroundColor: preset.primary }}
+                    ></div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start w-full">
+                <div className="flex-1">
+                  <span className="font-medium text-sm block text-left">
+                    {preset.name}
+                  </span>
+                  <span className="text-xs text-text-secondary text-left block mt-1">
+                    {preset.description || "Modern theme"}
+                  </span>
+                </div>
+
+                {isSelected && (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
+
+              {/* Color palette indicator */}
+              <div className="flex mt-3 gap-1 w-full">
+                <div
+                  className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.primary }}
                 ></div>
                 <div
-                  className="flex-1"
+                  className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.background }}
                 ></div>
                 <div
-                  className="flex-1"
+                  className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.cardBackground }}
                 ></div>
+                <div
+                  className="h-2 flex-1 rounded-full"
+                  style={{ backgroundColor: preset.textPrimary || "#000" }}
+                ></div>
               </div>
-            </div>
-            <span className="font-medium text-sm">{preset.name}</span>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
