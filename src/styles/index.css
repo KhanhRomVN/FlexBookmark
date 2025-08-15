@@ -20,20 +20,17 @@
 
     /* Card colors */
     --card-background: #ffffff;
-    --card-shadow: rgba(0, 0, 0, 0.1);
 
     /* Input colors */
     --input-background: #ffffff;
 
     /* Dialog colors */
     --dialog-background: #ffffff;
-    --dialog-shadow: rgba(0, 0, 0, 0.1);
 
     /* Dropdown colors */
     --dropdown-background: #ffffff;
     --dropdown-item-hover: #f8fafc;
     --dropdown-item-focus: #e2e8f0;
-    --dropdown-shadow: rgba(0, 0, 0, 0.1);
 
     /* Sidebar colors */
     --sidebar-background: #f9fafb;
@@ -75,20 +72,17 @@
 
     /* Card colors */
     --card-background: #242424;
-    --card-shadow: rgba(0, 0, 0, 0.3);
 
     /* Input colors */
     --input-background: #1e1e1e;
 
     /* Dialog colors */
     --dialog-background: #1e1e1e;
-    --dialog-shadow: rgba(0, 0, 0, 0.5);
 
     /* Dropdown colors */
     --dropdown-background: #1e1e1e;
     --dropdown-item-hover: #2d2d2d;
     --dropdown-item-focus: #404040;
-    --dropdown-shadow: rgba(0, 0, 0, 0.5);
 
     /* Sidebar colors */
     --sidebar-background: #131313;
@@ -130,20 +124,17 @@
 
     /* Card colors */
     --card-background: rgba(0, 0, 0, 0.3);
-    --card-shadow: rgba(0, 0, 0, 0.15);
 
     /* Input colors */
     --input-background: rgba(0, 0, 0, 0.3);
 
     /* Dialog colors */
     --dialog-background: transparent;
-    --dialog-shadow: none;
 
     /* Dropdown colors */
     --dropdown-background: rgba(0, 0, 0, 0.8);
     --dropdown-item-hover: rgba(0, 0, 0, 0.4);
     --dropdown-item-focus: rgba(0, 0, 0, 0.5);
-    --dropdown-shadow: rgba(0, 0, 0, 0.15);
 
     /* Sidebar colors */
     --sidebar-background: rgba(0, 0, 0, 0.3);

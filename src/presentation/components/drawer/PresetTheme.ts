@@ -30,6 +30,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#f1f5f9",
             bookmarkItemText: "#0f172a",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#3686ff",
+            clockGradientTo: "#1d4ed8",
         },
         {
             name: "Blue Light",
@@ -61,6 +63,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#dbeafe",
             bookmarkItemText: "#1e3a8a",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#1e40af",
+            clockGradientTo: "#1e3a8a",
         },
         {
             name: "Emerald Light",
@@ -92,6 +96,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#d1fae5",
             bookmarkItemText: "#064e3b",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#10b981",
+            clockGradientTo: "#059669",
         },
         {
             name: "Rose Light",
@@ -123,6 +129,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#fce7f3",
             bookmarkItemText: "#881337",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#e11d48",
+            clockGradientTo: "#be123c",
         },
         {
             name: "Violet Light",
@@ -154,6 +162,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#ede9fe",
             bookmarkItemText: "#581c87",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#7c3aed",
+            clockGradientTo: "#6d28d9",
         },
         {
             name: "Orange Light",
@@ -185,6 +195,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#ffedd5",
             bookmarkItemText: "#9a3412",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#ea580c",
+            clockGradientTo: "#dc2626",
         },
         {
             name: "Teal Light",
@@ -216,6 +228,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#ccfbf1",
             bookmarkItemText: "#134e4a",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#0d9488",
+            clockGradientTo: "#0f766e",
         },
         {
             name: "Pink Light",
@@ -247,6 +261,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#fce7f3",
             bookmarkItemText: "#831843",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#db2777",
+            clockGradientTo: "#be185d",
         },
         {
             name: "Indigo Light",
@@ -278,6 +294,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#e0e7ff",
             bookmarkItemText: "#3730a3",
             drawerBackground: "#ffffff",
+            clockGradientFrom: "#4f46e5",
+            clockGradientTo: "#4338ca",
         },
         {
             name: "Cyan Light",
@@ -342,6 +360,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#1e293b",
             bookmarkItemText: "#e2e8f0",
             drawerBackground: "#1e1e1e",
+            clockGradientFrom: "#3686ff",
+            clockGradientTo: "#418dfe",
         },
         {
             name: "Deep Purple",
@@ -373,6 +393,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#312e81",
             bookmarkItemText: "#e2e8f0",
             drawerBackground: "#1e293b",
+            clockGradientFrom: "#8b5cf6",
+            clockGradientTo: "#7c3aed",
         },
         {
             name: "Amber Dark",
@@ -404,6 +426,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#451a03",
             bookmarkItemText: "#fbbf24",
             drawerBackground: "#292524",
+            clockGradientFrom: "#f59e0b",
+            clockGradientTo: "#d97706",
         },
         {
             name: "Crimson Dark",
@@ -435,6 +459,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#7f1d1d",
             bookmarkItemText: "#fca5a5",
             drawerBackground: "#1c1917",
+            clockGradientFrom: "#ef4444",
+            clockGradientTo: "#dc2626",
         },
         {
             name: "Emerald Dark",
@@ -466,6 +492,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#064e3b",
             bookmarkItemText: "#6ee7b7",
             drawerBackground: "#1f2937",
+            clockGradientFrom: "#10b981",
+            clockGradientTo: "#059669",
         },
         {
             name: "Ocean Dark",
@@ -497,6 +525,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#164e63",
             bookmarkItemText: "#67e8f9",
             drawerBackground: "#0c4a6e",
+            clockGradientFrom: "#06b6d4",
+            clockGradientTo: "#0891b2",
         },
         {
             name: "Forest Dark",
@@ -528,6 +558,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#15803d",
             bookmarkItemText: "#86efac",
             drawerBackground: "#1e293b",
+            clockGradientFrom: "#22c55e",
+            clockGradientTo: "#16a34a",
         },
         {
             name: "Sunset Dark",
@@ -559,6 +591,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#9a3412",
             bookmarkItemText: "#fdba74",
             drawerBackground: "#2d3748",
+            clockGradientFrom: "#f97316",
+            clockGradientTo: "#ea580c",
         },
         {
             name: "Lavender Dark",
@@ -590,6 +624,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#581c87",
             bookmarkItemText: "#c4b5fd",
             drawerBackground: "#312e81",
+            clockGradientFrom: "#a855f7",
+            clockGradientTo: "#9333ea",
         },
         {
             name: "Midnight Dark",
@@ -621,6 +657,8 @@ export const PRESET_THEMES = {
             bookmarkItemBg: "#1e293b",
             bookmarkItemText: "#e2e8f0",
             drawerBackground: "#0f172a",
+            clockGradientFrom: "#6366f1",
+            clockGradientTo: "#4f46e5",
         },
     ],
 };

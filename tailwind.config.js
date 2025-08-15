@@ -22,20 +22,17 @@ module.exports = {
         },
         card: {
           background: "var(--card-background)",
-          shadow: "var(--card-shadow)",
         },
         input: {
           background: "var(--input-background)",
         },
         dialog: {
           background: "var(--dialog-background)",
-          shadow: "var(--dialog-shadow)",
         },
         dropdown: {
           background: "var(--dropdown-background)",
           itemHover: "var(--dropdown-item-hover)",
           itemFocus: "var(--dropdown-item-focus)",
-          shadow: "var(--dropdown-shadow)",
         },
         sidebar: {
           background: "var(--sidebar-background)",

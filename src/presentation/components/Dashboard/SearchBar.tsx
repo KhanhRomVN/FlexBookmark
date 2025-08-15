@@ -58,9 +58,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <DropdownMenuTrigger asChild>
           <button
             aria-label="Options"
-            className="p-2 rounded-lg bg-input-background hover:bg-gray-200 dark:hover:bg-gray-700 shadow-lg"
+            className="p-3 rounded-lg bg-input-background  shadow-lg"
           >
-            <Bolt className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            <Bolt className="h-5 w-5 text-text-secondary hover:text-text-primary" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -37,11 +37,17 @@ const Clock: React.FC = () => {
     <div className="text-center mb-6">
       <div
         className={cn(
-          "text-7xl md:text-8xl font-bold tracking-tighter font-mono",
-          theme === "image"
-            ? "text-[var(--clock-color)]"
-            : "bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-400"
+          "text-7xl md:text-8xl font-bold tracking-tighter font-mono bg-clip-text text-transparent",
+          theme === "image" ? "text-[var(--clock-color)]" : ""
         )}
+        style={
+          theme !== "image"
+            ? {
+                backgroundImage:
+                  "linear-gradient(to right, var(--clock-gradient-from), var(--clock-gradient-to))",
+              }
+            : undefined
+        }
       >
         {time}
       </div>
