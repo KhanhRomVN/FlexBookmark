@@ -140,7 +140,7 @@
     --dialog-shadow: none;
 
     /* Dropdown colors */
-    --dropdown-background: rgba(0, 0, 0, 0.3);
+    --dropdown-background: rgba(0, 0, 0, 0.8);
     --dropdown-item-hover: rgba(0, 0, 0, 0.4);
     --dropdown-item-focus: rgba(0, 0, 0, 0.5);
     --dropdown-shadow: rgba(0, 0, 0, 0.15);

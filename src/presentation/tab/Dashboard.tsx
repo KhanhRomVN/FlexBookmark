@@ -299,8 +299,8 @@ const Dashboard: React.FC = () => {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             handleSearch={handleSearch}
-            onOpenTheme={() => setShowThemeDrawer(true)}
-            onOpenBookmarks={() => setShowBookmarkDrawer(true)}
+            onOptionOne={() => setShowBookmarkDrawer(true)}
+            onOptionTwo={() => setShowThemeDrawer(true)}
           />
 
           <BookmarkGrid
