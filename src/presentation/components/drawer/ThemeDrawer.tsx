@@ -48,10 +48,14 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       border: "--border",
       borderHover: "--border-hover",
       cardBackground: "--card-background",
+      cardShadow: "--card-shadow",
       inputBackground: "--input-background",
       dialogBackground: "--dialog-background",
+      dialogShadow: "--dialog-shadow",
       dropdownBackground: "--dropdown-background",
       dropdownItemHover: "--dropdown-item-hover",
+      dropdownItemFocus: "--dropdown-item-focus",
+      dropdownShadow: "--dropdown-shadow",
       sidebarBackground: "--sidebar-background",
       sidebarItemHover: "--sidebar-item-hover",
       sidebarItemFocus: "--sidebar-item-focus",
@@ -65,8 +69,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       bookmarkItemBg: "--bookmark-item-bg",
       bookmarkItemText: "--bookmark-item-text",
       drawerBackground: "--drawer-background",
-      clockGradientFrom: "--clock-gradient-from",
-      clockGradientTo: "--clock-gradient-to",
     };
 
     // Apply all CSS variables
