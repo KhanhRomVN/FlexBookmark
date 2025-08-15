@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from "react";
-import Sidebar from "../common/Sidebar";
-import Header from "../common/Header";
+import Sidebar from "../BookmarkManager/Sidebar";
+import Header from "../BookmarkManager/Header";
 import ThemeDrawer from "../drawer/ThemeDrawer";
 
 interface MainLayoutProps {

@@ -3,8 +3,10 @@ import { useTheme } from "../providers/theme-provider";
 import { getBookmarks } from "../../utils/api";
 import Clock from "../components/Dashboard/Clock";
 import WeatherWidget from "../components/Dashboard/WeatherWidget";
-import SearchBar from "../components/common/SearchBar";
+import SearchBar from "../components/Dashboard/SearchBar";
 import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
+import ThemeDrawer from "../components/drawer/ThemeDrawer";
+import BookmarkBarDrawer from "../components/Dashboard/BookmarkBarDrawer";
 import useWindowSize from "../../hooks/useWindowSize";
 
 export interface BookmarkNode {
@@ -28,6 +30,10 @@ const Dashboard: React.FC = () => {
   const [currentFolder, setCurrentFolder] = useState<BookmarkNode | null>(null);
   const [folderHistory, setFolderHistory] = useState<BookmarkNode[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(0);
+
+  // Drawer states
+  const [showThemeDrawer, setShowThemeDrawer] = useState(false);
+  const [showBookmarkDrawer, setShowBookmarkDrawer] = useState(false);
 
   const getWeatherDescription = useCallback((code: number): string => {
     const map: Record<number, string> = {
@@ -260,60 +266,74 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div
-      className={`relative min-h-screen flex flex-col items-center justify-center text-text-primary ${
-        theme !== "image" ? "bg-background" : ""
-      }`}
-    >
-      {theme === "image" && (
-        <>
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "var(--bg-url)",
-              backgroundRepeat: "no-repeat",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              filter: "blur(var(--bg-blur)) brightness(var(--bg-brightness))",
-            }}
+    <>
+      <div
+        className={`relative min-h-screen flex flex-col items-center justify-center text-text-primary ${
+          theme !== "image" ? "bg-background" : ""
+        }`}
+      >
+        {theme === "image" && (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: "var(--bg-url)",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                filter: "blur(var(--bg-blur)) brightness(var(--bg-brightness))",
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: "var(--overlay-color)" }}
+            />
+          </>
+        )}
+        <div className="w-full max-w-6xl flex flex-col items-center relative z-10">
+          <div className="w-full max-w-2xl flex flex-col items-center mb-8">
+            <Clock />
+            <WeatherWidget weather={weather} />
+          </div>
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleSearch={handleSearch}
+            onOpenTheme={() => setShowThemeDrawer(true)}
+            onOpenBookmarks={() => setShowBookmarkDrawer(true)}
           />
-          <div
-            className="absolute inset-0"
-            style={{ backgroundColor: "var(--overlay-color)" }}
-          />
-        </>
-      )}
-      <div className="w-full max-w-6xl flex flex-col items-center relative z-10">
-        <div className="w-full max-w-2xl flex flex-col items-center mb-8">
-          <Clock />
-          <WeatherWidget weather={weather} />
-        </div>
-        <SearchBar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          handleSearch={handleSearch}
-        />
 
-        <BookmarkGrid
-          bookmarks={filtered}
-          currentFolder={currentFolder}
-          folderHistory={folderHistory}
-          openFolder={openFolder}
-          goBack={goBack}
-          exitToRootFolder={exitToRootFolder}
-          barFolderId={barFolderId}
-          loadBookmarks={loadBookmarks}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          onBookmarkEdit={handleBookmarkEdit}
-          onBookmarkDelete={handleBookmarkDelete}
-          onFolderRename={handleFolderRename}
-          onFolderDelete={handleFolderDelete}
-          onAddBookmark={handleAddBookmark}
-          key={windowSize.width}
-        />
+          <BookmarkGrid
+            bookmarks={filtered}
+            currentFolder={currentFolder}
+            folderHistory={folderHistory}
+            openFolder={openFolder}
+            goBack={goBack}
+            exitToRootFolder={exitToRootFolder}
+            barFolderId={barFolderId}
+            loadBookmarks={loadBookmarks}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            onBookmarkEdit={handleBookmarkEdit}
+            onBookmarkDelete={handleBookmarkDelete}
+            onFolderRename={handleFolderRename}
+            onFolderDelete={handleFolderDelete}
+            onAddBookmark={handleAddBookmark}
+            key={windowSize.width}
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Drawers */}
+      <ThemeDrawer
+        isOpen={showThemeDrawer}
+        onClose={() => setShowThemeDrawer(false)}
+      />
+      <BookmarkBarDrawer
+        isOpen={showBookmarkDrawer}
+        onClose={() => setShowBookmarkDrawer(false)}
+      />
+    </>
   );
 };
 

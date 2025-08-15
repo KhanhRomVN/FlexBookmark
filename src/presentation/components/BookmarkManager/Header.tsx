@@ -1,5 +1,5 @@
 import React from "react";
-import ThemeSelector from "./ThemeSelector";
+import ThemeSelector from "../common/ThemeSelector";
 import { useTheme } from "../../providers/theme-provider";
 import { useSearchStore } from "../../store/searchStore";
 import { Search } from "lucide-react";
