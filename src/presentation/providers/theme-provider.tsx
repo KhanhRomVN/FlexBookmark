@@ -15,6 +15,16 @@ type ColorSettings = {
   cardBackground: string;
   sidebar: string;
 };
+type ImageThemeSettings = {
+  opacity: string | number | readonly string[] | undefined;
+  blur: number;
+  brightness: number;
+  overlay: string;
+  clockColor: string;
+  inputBackground: string;
+  sidebarOpacity: number;
+  cardOpacity: number;
+};
 
 type ThemeProviderState = {
   theme: Theme;
@@ -23,6 +33,8 @@ type ThemeProviderState = {
   backgroundImage: string | null;
   colorSettings: ColorSettings;
   setColorSettings: (settings: ColorSettings) => void;
+  imageThemeSettings: ImageThemeSettings;
+  setImageThemeSettings: (settings: ImageThemeSettings) => void;
 };
 const initialState: ThemeProviderState = {
   theme: "system",
@@ -36,6 +48,17 @@ const initialState: ThemeProviderState = {
     sidebar: "#f9fafb",
   },
   setColorSettings: () => {},
+  imageThemeSettings: {
+    blur: 8,
+    brightness: 100,
+    overlay: "rgba(0,0,0,0.1)",
+    clockColor: "#ffffff",
+    inputBackground: "rgba(0,0,0,0.3)",
+    sidebarOpacity: 0.3,
+    cardOpacity: 0.3,
+    opacity: undefined,
+  },
+  setImageThemeSettings: () => {},
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -72,6 +95,30 @@ export function ThemeProvider({
     localStorage.setItem(`${storageKey}-colors`, JSON.stringify(settings));
   };
 
+  const [imageThemeSettings, setImageThemeSettings] =
+    useState<ImageThemeSettings>(() => {
+      const saved = localStorage.getItem(`${storageKey}-image-settings`);
+      return saved
+        ? JSON.parse(saved)
+        : {
+            blur: 8,
+            brightness: 100,
+            overlay: "rgba(0,0,0,0.1)",
+            clockColor: "#ffffff",
+            inputBackground: "rgba(0,0,0,0.3)",
+            sidebarOpacity: 0.3,
+            cardOpacity: 0.3,
+          };
+    });
+
+  const updateImageThemeSettings = (settings: ImageThemeSettings) => {
+    setImageThemeSettings(settings);
+    localStorage.setItem(
+      `${storageKey}-image-settings`,
+      JSON.stringify(settings)
+    );
+  };
+
   const applyTheme = () => {
     const root = window.document.documentElement;
     // clear classes
@@ -86,6 +133,25 @@ export function ThemeProvider({
       if (bgImage) {
         // store image url in CSS var for blur overlay
         root.style.setProperty("--bg-url", `url(${bgImage})`);
+        root.style.setProperty("--bg-blur", `${imageThemeSettings.blur}px`);
+        root.style.setProperty(
+          "--bg-brightness",
+          `${imageThemeSettings.brightness}%`
+        );
+        root.style.setProperty("--overlay-color", imageThemeSettings.overlay);
+        root.style.setProperty("--clock-color", imageThemeSettings.clockColor);
+        root.style.setProperty(
+          "--input-background",
+          imageThemeSettings.inputBackground
+        );
+        root.style.setProperty(
+          "--sidebar-opacity",
+          imageThemeSettings.sidebarOpacity.toString()
+        );
+        root.style.setProperty(
+          "--card-opacity",
+          imageThemeSettings.cardOpacity.toString()
+        );
       }
     } else {
       // normal theme: system or explicit light/dark
@@ -118,7 +184,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     applyTheme();
-  }, [theme, bgImage, colorSettings]);
+  }, [theme, bgImage, colorSettings, imageThemeSettings]);
 
   const value = {
     theme,
@@ -130,6 +196,8 @@ export function ThemeProvider({
     backgroundImage: bgImage,
     colorSettings,
     setColorSettings: updateColorSettings,
+    imageThemeSettings,
+    setImageThemeSettings: updateImageThemeSettings,
   };
 
   return (

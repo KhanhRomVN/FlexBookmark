@@ -268,15 +268,19 @@ const Dashboard: React.FC = () => {
       {theme === "image" && (
         <>
           <div
-            className="absolute inset-0 filter blur-md"
+            className="absolute inset-0"
             style={{
               backgroundImage: "var(--bg-url)",
               backgroundRepeat: "no-repeat",
               backgroundSize: "cover",
               backgroundPosition: "center",
+              filter: "blur(var(--bg-blur)) brightness(var(--bg-brightness))",
             }}
           />
-          <div className="absolute inset-0 bg-black/10" />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: "var(--overlay-color)" }}
+          />
         </>
       )}
       <div className="w-full max-w-6xl flex flex-col items-center relative z-10">

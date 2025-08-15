@@ -222,3 +222,12 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Custom image theme opacity utilities */
+.sidebar-background {
+  background-color: rgba(0, 0, 0, var(--sidebar-opacity)) !important;
+}
+
+.card-background {
+  background-color: rgba(0, 0, 0, var(--card-opacity)) !important;
+}

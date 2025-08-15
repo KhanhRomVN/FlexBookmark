@@ -218,7 +218,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div
-      className={`w-72 bg-sidebar-background ${
+      className={`w-72 ${
+        theme === "image" ? "sidebar-background" : "bg-sidebar-background"
+      } ${
         theme === "image" ? "backdrop-blur-sm" : ""
       } border-r border-border-default text-text-primary h-full flex flex-col transition-all duration-300`}
     >

@@ -231,7 +231,9 @@ const FolderCard: React.FC<FolderCardProps> = ({
           opacity: isFolderDragging ? 0.6 : 1,
           zIndex: isFolderDragging ? 1000 : undefined,
         }}
-        className={`group relative bg-card-background w-full rounded-md border ${
+        className={`group relative ${
+          theme === "image" ? "card-background" : "bg-card-background"
+        } w-full rounded-md border ${
           theme === "image" ? "backdrop-blur-sm" : ""
         } ${
           isHighlighted || headIsOver || bodyIsOver || folderIsOver

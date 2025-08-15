@@ -17,30 +17,9 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     backgroundImage,
     colorSettings,
     setColorSettings,
+    imageThemeSettings,
+    setImageThemeSettings,
   } = useTheme();
-
-  const [imageSettings, setImageSettings] = useState({
-    blur: 2,
-    opacity: 0.2,
-  });
-
-  // Apply image settings to CSS variables
-  useEffect(() => {
-    if (theme === "image" && backgroundImage) {
-      document.documentElement.style.setProperty(
-        "--bg-url",
-        `url(${backgroundImage})`
-      );
-      document.documentElement.style.setProperty(
-        "--bg-blur",
-        `${imageSettings.blur}px`
-      );
-      document.documentElement.style.setProperty(
-        "--overlay-opacity",
-        `${imageSettings.opacity}`
-      );
-    }
-  }, [theme, backgroundImage, imageSettings]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,13 +32,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleImageSettingsChange = (
-    field: keyof typeof imageSettings,
-    value: number
-  ) => {
-    setImageSettings((prev) => ({ ...prev, [field]: value }));
   };
 
   // FIX: Apply all theme properties, not just 4
@@ -291,31 +263,152 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             type="range"
             min="0"
             max="20"
-            value={imageSettings.blur}
+            value={imageThemeSettings.blur}
             onChange={(e) =>
-              handleImageSettingsChange("blur", parseInt(e.target.value))
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                blur: parseInt(e.target.value),
+              })
             }
             className="w-full accent-primary"
           />
-          <span className="w-10 text-center">{imageSettings.blur}px</span>
+          <span className="w-10 text-center">{imageThemeSettings.blur}px</span>
         </div>
       </div>
       <div>
-        <h4 className="font-medium mb-2">Overlay Opacity</h4>
+        <h4 className="font-medium mb-2">Background Brightness</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="200"
+            value={imageThemeSettings.brightness}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                brightness: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.brightness}%
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="font-medium mb-2">Overlay Color</h4>
+        <input
+          type="text"
+          value={imageThemeSettings.overlay}
+          onChange={(e) =>
+            setImageThemeSettings({
+              ...imageThemeSettings,
+              overlay: e.target.value,
+            })
+          }
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
+          placeholder="rgba(0,0,0,0.5)"
+        />
+      </div>
+
+      <div>
+        <h4 className="font-medium mb-2">Clock Color</h4>
+        <div className="flex flex-wrap gap-2">
+          {[
+            "#ffffff",
+            "#ff0000",
+            "#00ff00",
+            "#0000ff",
+            "#ffff00",
+            "#ff00ff",
+            "#00ffff",
+          ].map((color) => (
+            <button
+              key={color}
+              className="w-8 h-8 rounded-full border-2 border-gray-300"
+              style={{ backgroundColor: color }}
+              onClick={() =>
+                setImageThemeSettings({
+                  ...imageThemeSettings,
+                  clockColor: color,
+                })
+              }
+            />
+          ))}
+        </div>
+        <input
+          type="text"
+          value={imageThemeSettings.clockColor}
+          onChange={(e) =>
+            setImageThemeSettings({
+              ...imageThemeSettings,
+              clockColor: e.target.value,
+            })
+          }
+          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
+        />
+      </div>
+
+      <div>
+        <h4 className="font-medium mb-2">Input Background</h4>
+        <input
+          type="text"
+          value={imageThemeSettings.inputBackground}
+          onChange={(e) =>
+            setImageThemeSettings({
+              ...imageThemeSettings,
+              inputBackground: e.target.value,
+            })
+          }
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
+          placeholder="rgba(0,0,0,0.3)"
+        />
+      </div>
+
+      <div>
+        <h4 className="font-medium mb-2">Sidebar Opacity</h4>
         <div className="flex items-center gap-4">
           <input
             type="range"
             min="0"
             max="1"
             step="0.05"
-            value={imageSettings.opacity}
+            value={imageThemeSettings.sidebarOpacity}
             onChange={(e) =>
-              handleImageSettingsChange("opacity", parseFloat(e.target.value))
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                sidebarOpacity: parseFloat(e.target.value),
+              })
             }
             className="w-full accent-primary"
           />
           <span className="w-10 text-center">
-            {Math.round(imageSettings.opacity * 100)}%
+            {Math.round(imageThemeSettings.sidebarOpacity * 100)}%
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="font-medium mb-2">Card Opacity</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={imageThemeSettings.cardOpacity}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                cardOpacity: parseFloat(e.target.value),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {Math.round(imageThemeSettings.cardOpacity * 100)}%
           </span>
         </div>
       </div>

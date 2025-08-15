@@ -39,7 +39,7 @@ const Clock: React.FC = () => {
         className={cn(
           "text-7xl md:text-8xl font-bold tracking-tighter font-mono",
           theme === "image"
-            ? "text-white"
+            ? "text-[var(--clock-color)]"
             : "bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-400"
         )}
       >
@@ -48,7 +48,9 @@ const Clock: React.FC = () => {
       <div
         className={cn(
           "text-xl md:text-2xl font-medium mt-2",
-          theme === "image" ? "text-white opacity-90" : "opacity-90"
+          theme === "image"
+            ? "text-[var(--clock-color)] opacity-90"
+            : "opacity-90"
         )}
       >
         {date}
