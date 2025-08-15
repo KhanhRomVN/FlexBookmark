@@ -40,6 +40,9 @@ type ThemeProviderState = {
   setTheme: (theme: Theme) => void;
   setBackgroundImage: (url: string) => void;
   backgroundImage: string | null;
+  backgroundImages: string[];
+  setBackgroundImages: (images: string[]) => void;
+  removeBackgroundImage: (url: string) => void;
   colorSettings: ColorSettings;
   setColorSettings: (settings: ColorSettings) => void;
   imageThemeSettings: ImageThemeSettings;
@@ -50,6 +53,9 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
   setBackgroundImage: () => null,
   backgroundImage: null,
+  backgroundImages: [],
+  setBackgroundImages: () => {},
+  removeBackgroundImage: () => {},
   colorSettings: {
     primary: "#3686ff",
     background: "#ffffff",
@@ -93,6 +99,13 @@ export function ThemeProvider({
 
   const [bgImage, setBgImage] = useState<string>(
     () => localStorage.getItem("backgroundImage") || defaultBgImage
+  );
+
+  const [bgImages, setBgImages] = useState<string[]>(() =>
+    JSON.parse(
+      localStorage.getItem("backgroundImages") ||
+        JSON.stringify([defaultBgImage])
+    )
   );
 
   // Persisted color settings for light/dark themes
@@ -147,6 +160,19 @@ export function ThemeProvider({
     );
   };
 
+  // Manage multiple background images (from device or URL)
+  const setBackgroundImages = (images: string[]) => {
+    setBgImages(images);
+    localStorage.setItem("backgroundImages", JSON.stringify(images));
+  };
+  const removeBackgroundImage = (url: string) => {
+    const newList = bgImages.filter((img) => img !== url);
+    setBackgroundImages(newList);
+    if (url === bgImage) {
+      const newSelected = newList[0] || defaultBgImage;
+      setBackgroundImage(newSelected);
+    }
+  };
   const applyTheme = () => {
     const root = window.document.documentElement;
     // clear classes
@@ -225,6 +251,7 @@ export function ThemeProvider({
 
   const setBackgroundImage = (url: string) => {
     setBgImage(url);
+    setBackgroundImages(bgImages.includes(url) ? bgImages : [...bgImages, url]);
     localStorage.setItem("backgroundImage", url);
     if (theme === "image") {
       applyTheme();
@@ -243,6 +270,9 @@ export function ThemeProvider({
     },
     setBackgroundImage,
     backgroundImage: bgImage,
+    backgroundImages: bgImages,
+    setBackgroundImages,
+    removeBackgroundImage,
     colorSettings,
     setColorSettings: updateColorSettings,
     imageThemeSettings,

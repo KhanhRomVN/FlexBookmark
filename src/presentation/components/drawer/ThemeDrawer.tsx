@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Drawer from "react-modern-drawer";
 import "react-modern-drawer/dist/index.css";
 import { useTheme } from "../../providers/theme-provider";
@@ -14,12 +14,15 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     theme,
     setTheme,
     backgroundImage,
+    backgroundImages,
     setBackgroundImage,
+    removeBackgroundImage,
     colorSettings,
     setColorSettings,
     imageThemeSettings,
     setImageThemeSettings,
   } = useTheme();
+  const [urlInput, setUrlInput] = useState<string>("");
 
   // Handle uploading a custom background image
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,38 +288,85 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Background image upload section
-  const renderImageUpload = () => (
+  // Background Images section: URL input, dropzone, and gallery
+  const renderBackgroundSection = () => (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-4">Background Image</h3>
-      <div className="flex items-center gap-4">
-        {backgroundImage ? (
-          <div className="w-16 h-16 rounded-lg overflow-hidden border border-border">
-            <img
-              src={backgroundImage}
-              alt="Background preview"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-            <ImageIcon />
-          </div>
-        )}
-        <label className="flex-1 cursor-pointer">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <div
-            className="px-4 py-2 rounded-lg bg-button-second-bg hover:bg-button-second-bg-hover
-                          text-center transition-colors"
+      <h3 className="text-lg font-semibold mb-4">Background Images</h3>
+      {/* URL input with plus button */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          placeholder="Image URL"
+          className="flex-1 h-10 px-3 border border-border rounded-lg bg-input-background text-sm"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setBackgroundImage(urlInput);
+            setUrlInput("");
+          }}
+          disabled={!urlInput}
+          className="w-10 h-10 flex items-center justify-center bg-button-second-bg hover:bg-button-second-bg-hover text-white rounded-lg transition-colors disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            Upload Image
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
+      {/* Dropzone */}
+      <div
+        className="relative mb-4 h-32 flex items-center justify-center border-2 border-dashed border-border rounded-lg cursor-pointer"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          handleImageUpload({
+            target: { files: e.dataTransfer.files },
+          } as React.ChangeEvent<HTMLInputElement>);
+        }}
+      >
+        <span className="text-sm text-text-secondary">
+          Drag & drop image here or click to upload
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </div>
+      {/* Gallery */}
+      <div className="grid grid-cols-4 gap-4">
+        {backgroundImages.map((img, idx) => (
+          <div key={idx} className="relative w-full pb-[56.25%]">
+            {" "}
+            {/* 16:9 ratio */}
+            <img
+              onClick={() => setBackgroundImage(img)}
+              src={img}
+              alt={`bg-${idx}`}
+              className="absolute inset-0 w-full h-full object-cover rounded-lg border border-border cursor-pointer"
+            />
+            <button
+              onClick={() => removeBackgroundImage(img)}
+              className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
+            >
+              ×
+            </button>
           </div>
-        </label>
+        ))}
       </div>
     </div>
   );
@@ -729,7 +779,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
 
           {theme === "image" && (
             <>
-              {renderImageUpload()}
+              {renderBackgroundSection()}
               {renderDashboardSettings()}
               <div className="mt-6">{renderBookmarkManagerSettings()}</div>
             </>
