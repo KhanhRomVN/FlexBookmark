@@ -32,7 +32,6 @@ module.exports = {
         dropdown: {
           background: "var(--dropdown-background)",
           itemHover: "var(--dropdown-item-hover)",
-          itemFocus: "var(--dropdown-item-focus)",
         },
         sidebar: {
           background: "var(--sidebar-background)",

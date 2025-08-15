@@ -52,7 +52,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       dialogBackground: "--dialog-background",
       dropdownBackground: "--dropdown-background",
       dropdownItemHover: "--dropdown-item-hover",
-      dropdownItemFocus: "--dropdown-item-focus",
       sidebarBackground: "--sidebar-background",
       sidebarItemHover: "--sidebar-item-hover",
       sidebarItemFocus: "--sidebar-item-focus",
