@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { BookmarkNode } from "../../tab/Dashboard";
 import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
@@ -13,7 +13,6 @@ import {
   PointerSensor,
   DragOverlay,
   useDroppable,
-  useDndContext,
 } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -54,79 +53,8 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     null
   );
   const [allBookmarks, setAllBookmarks] = useState<BookmarkNode[]>(bookmarks);
-  const [, setHoveringArrow] = useState<"left" | "right" | null>(null);
   const [hasTriggeredBackExit, setHasTriggeredBackExit] =
     useState<boolean>(false);
-  const [hasTriggeredPageChange, setHasTriggeredPageChange] = useState<{
-    left: boolean;
-    right: boolean;
-  }>({ left: false, right: false });
-
-  // toast for drag confirmation
-  const [showDragToast, setShowDragToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastDirection, setToastDirection] = useState<"left" | "right" | null>(
-    null
-  );
-  // ref to auto-hide toast after delay
-  const hideToastTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // droppable zone for toast confirmation
-  const { setNodeRef: setToastRef, isOver: isOverToast } = useDroppable({
-    id: toastDirection ? `toast-${toastDirection}` : "toast-disabled",
-  });
-
-  // Debug state
-  const [isHoveringToast, setIsHoveringToast] = useState(false);
-
-  // Add mouse event handlers for toast hover
-  const handleToastMouseEnter = () => {
-    setIsHoveringToast(true);
-
-    // Trigger page change when mouse enters toast area during drag
-    if (activeDragItem && toastDirection) {
-      const dir = toastDirection;
-      console.log(
-        "Mouse entered toast:",
-        dir,
-        "hasTriggeredPageChange:",
-        hasTriggeredPageChange
-      );
-
-      if (dir === "left" && hasPrevPage() && !hasTriggeredPageChange.left) {
-        console.log("Changing to previous page via mouse");
-        setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
-        setCurrentPage(Math.max(0, currentPage - 1));
-        // Hide toast after successful page change
-        setTimeout(() => {
-          setShowDragToast(false);
-          setToastDirection(null);
-          if (hideToastTimeout.current) {
-            clearTimeout(hideToastTimeout.current);
-            hideToastTimeout.current = null;
-          }
-        }, 100);
-      }
-      if (dir === "right" && hasNextPage() && !hasTriggeredPageChange.right) {
-        console.log("Changing to next page via mouse");
-        setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
-        setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
-        // Hide toast after successful page change
-        setTimeout(() => {
-          setShowDragToast(false);
-          setToastDirection(null);
-          if (hideToastTimeout.current) {
-            clearTimeout(hideToastTimeout.current);
-            hideToastTimeout.current = null;
-          }
-        }, 100);
-      }
-    }
-  };
-
-  const handleToastMouseLeave = () => {
-    setIsHoveringToast(false);
-  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -136,109 +64,31 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     setAllBookmarks(bookmarks);
   }, [bookmarks]);
 
-  // Debug effect - log more detailed info
-  useEffect(() => {
-    console.log("Toast state:", {
-      showDragToast,
-      toastDirection,
-      isOverToast,
-      isHoveringToast,
-      activeDragItem: activeDragItem?.title,
-      hasTriggeredPageChange,
-      currentPage,
-      hasPrevPage: hasPrevPage(),
-      hasNextPage: hasNextPage(),
-    });
-  }, [
-    showDragToast,
-    toastDirection,
-    isOverToast,
-    isHoveringToast,
-    activeDragItem,
-    hasTriggeredPageChange,
-    currentPage,
-  ]);
-
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const draggedItem = allBookmarks.find((bm) => bm.id === active.id);
     if (draggedItem) setActiveDragItem(draggedItem);
     setHasTriggeredBackExit(false);
-    setHasTriggeredPageChange({ left: false, right: false });
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
-    if (!over) {
-      setHoveringArrow(null);
-      setHasTriggeredPageChange({ left: false, right: false });
-      return;
-    }
+    if (!over) return;
 
     const overId = over.id.toString();
 
-    // Reset page change triggers when not hovering over toast
-    if (!overId.startsWith("toast-")) {
-      setHasTriggeredPageChange({ left: false, right: false });
+    // Handle quick navigation on arrow hover
+    if (overId === "arrow-left" && hasPrevPage()) {
+      setCurrentPage(Math.max(0, currentPage - 1));
+      return;
+    }
+    if (overId === "arrow-right" && hasNextPage()) {
+      setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
+      return;
     }
 
-    if (overId === "arrow-left") {
-      setHoveringArrow("left");
-      setToastDirection("left");
-      setToastMessage("Hover here to go to previous page");
-      setShowDragToast(true);
-      if (hideToastTimeout.current) clearTimeout(hideToastTimeout.current);
-      hideToastTimeout.current = setTimeout(() => {
-        setShowDragToast(false);
-        setToastDirection(null);
-        hideToastTimeout.current = null;
-      }, 5000);
-    } else if (overId === "arrow-right") {
-      setHoveringArrow("right");
-      setToastDirection("right");
-      setToastMessage("Hover here to go to next page");
-      setShowDragToast(true);
-      if (hideToastTimeout.current) clearTimeout(hideToastTimeout.current);
-      hideToastTimeout.current = setTimeout(() => {
-        setShowDragToast(false);
-        setToastDirection(null);
-        hideToastTimeout.current = null;
-      }, 5000);
-    } else if (overId.startsWith("toast-")) {
-      // Handle hover over toast - trigger page change immediately
-      const dir = overId.split("-")[1] as "left" | "right";
-      console.log(
-        "Hovering over toast:",
-        dir,
-        "hasTriggeredPageChange:",
-        hasTriggeredPageChange
-      );
-
-      if (dir === "left" && hasPrevPage() && !hasTriggeredPageChange.left) {
-        console.log("Changing to previous page");
-        setHasTriggeredPageChange((prev) => ({ ...prev, left: true }));
-        setCurrentPage(Math.max(0, currentPage - 1));
-        // Hide toast after successful page change
-        setShowDragToast(false);
-        setToastDirection(null);
-        if (hideToastTimeout.current) {
-          clearTimeout(hideToastTimeout.current);
-          hideToastTimeout.current = null;
-        }
-      }
-      if (dir === "right" && hasNextPage() && !hasTriggeredPageChange.right) {
-        console.log("Changing to next page");
-        setHasTriggeredPageChange((prev) => ({ ...prev, right: true }));
-        setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
-        // Hide toast after successful page change
-        setShowDragToast(false);
-        setToastDirection(null);
-        if (hideToastTimeout.current) {
-          clearTimeout(hideToastTimeout.current);
-          hideToastTimeout.current = null;
-        }
-      }
-    } else if (
+    // Handle back to root folder
+    if (
       overId === "back-to-root" &&
       currentFolder &&
       activeDragItem &&
@@ -246,8 +96,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
     ) {
       setHasTriggeredBackExit(true);
       exitToRootFolder();
-    } else {
-      setHoveringArrow(null);
     }
   };
 
@@ -310,112 +158,58 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragItem(null);
-    setHoveringArrow(null);
-
-    // Clear toast state
-    setShowDragToast(false);
-    setToastDirection(null);
-    setIsHoveringToast(false);
-    if (hideToastTimeout.current) {
-      clearTimeout(hideToastTimeout.current);
-      hideToastTimeout.current = null;
-    }
 
     if (!over) return;
-
-    // No need to handle toast drop since page change happens on hover
-    const toastOverId = over.id.toString();
-    if (toastOverId.startsWith("toast-")) {
-      // Page change already happened in handleDragOver
-      return;
-    }
-
-    // quick page-switch when dropping directly on navigation arrows
-    const overId = over.id.toString();
-    if (overId === "arrow-left" && hasPrevPage()) {
-      setCurrentPage(Math.max(0, currentPage - 1));
-      return;
-    }
-    if (overId === "arrow-right" && hasNextPage()) {
-      setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
-      return;
-    }
 
     const dropId = over.id.toString();
     const sourceId = active.id.toString();
 
-    // Check if dropping on a DropZone (has position suffix)
-    if (dropId.includes("-")) {
-      const [targetId, position] = dropId.split("-");
-      if (sourceId === targetId) return;
+    // Quick page-switch when dropping directly on navigation arrows
+    if (dropId === "arrow-left" && hasPrevPage()) {
+      setCurrentPage(Math.max(0, currentPage - 1));
+      return;
+    }
+    if (dropId === "arrow-right" && hasNextPage()) {
+      setCurrentPage(Math.min(totalPages - 1, currentPage + 1));
+      return;
+    }
 
-      try {
-        const [] = await new Promise<chrome.bookmarks.BookmarkTreeNode[]>(
-          (resolve) => chrome.bookmarks.get(sourceId, resolve)
-        );
-        const [targetNode] = await new Promise<
-          chrome.bookmarks.BookmarkTreeNode[]
-        >((resolve) => chrome.bookmarks.get(targetId, resolve));
-        const parentId = targetNode.parentId;
-        const targetIndex = targetNode.index ?? 0;
-        const newIndex = position === "right" ? targetIndex + 1 : targetIndex;
+    // Dropping directly on bookmark/folder
+    if (sourceId === dropId) return;
 
-        await new Promise<void>((resolve) =>
-          chrome.bookmarks.move(sourceId, { parentId, index: newIndex }, () =>
-            resolve()
-          )
-        );
-        loadBookmarks();
-      } catch (error) {
-        console.error("Error moving bookmark:", error);
-      }
+    const sourceItem = allBookmarks.find((bm) => bm.id === sourceId);
+    const targetItem = allBookmarks.find((bm) => bm.id === dropId);
+
+    if (!sourceItem || !targetItem) return;
+
+    // Handle different drop scenarios based on folder context
+    if (currentFolder) {
+      // Inside folder - only BookmarkItems exist, no folder creation
+      return;
     } else {
-      // Dropping directly on bookmark/folder
-      if (sourceId === dropId) return;
-
-      const sourceItem = allBookmarks.find((bm) => bm.id === sourceId);
-      const targetItem = allBookmarks.find((bm) => bm.id === dropId);
-
-      if (!sourceItem || !targetItem) return;
-
-      // Handle different drop scenarios based on folder context
-      if (currentFolder) {
-        // Inside folder - only BookmarkItems exist, no folder creation
+      // Root folder
+      if (!sourceItem.url && targetItem.url) {
+        // FolderPreview on BookmarkItem - do nothing
         return;
-      } else {
-        // Root folder
-        if (!sourceItem.url && targetItem.url) {
-          // FolderPreview on BookmarkItem - do nothing
-          return;
-        }
-        if (!sourceItem.url && !targetItem.url) {
-          // FolderPreview on FolderPreview - do nothing
-          return;
-        }
-        if (sourceItem.url && !targetItem.url) {
-          // BookmarkItem on FolderPreview - move bookmark into folder
-          await moveBookmarkToFolder(sourceId, overId);
-        }
-        if (sourceItem.url && targetItem.url) {
-          // BookmarkItem on BookmarkItem - create folder and move both
-          await createFolder(sourceId, overId);
-        }
+      }
+      if (!sourceItem.url && !targetItem.url) {
+        // FolderPreview on FolderPreview - do nothing
+        return;
+      }
+      if (sourceItem.url && !targetItem.url) {
+        // BookmarkItem on FolderPreview - move bookmark into folder
+        await moveBookmarkToFolder(sourceId, dropId);
+      }
+      if (sourceItem.url && targetItem.url) {
+        // BookmarkItem on BookmarkItem - create folder and move both
+        await createFolder(sourceId, dropId);
       }
     }
   };
 
   const handleDragCancel = () => {
     setActiveDragItem(null);
-    setHoveringArrow(null);
     setHasTriggeredBackExit(false);
-    setHasTriggeredPageChange({ left: false, right: false });
-    setShowDragToast(false);
-    setToastDirection(null);
-    setIsHoveringToast(false);
-    if (hideToastTimeout.current) {
-      clearTimeout(hideToastTimeout.current);
-      hideToastTimeout.current = null;
-    }
   };
 
   // Calculate max columns and items per page
@@ -509,11 +303,10 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
     return (
       <div className="relative flex items-center">
-        <div className="flex-shrink-0">
-          <div
-            ref={setNodeRef}
-            onClick={() => goBack()}
-            className={`
+        <div
+          ref={setNodeRef}
+          onClick={() => goBack()}
+          className={`
             flex flex-col items-center p-3 w-full transition-all duration-200 cursor-pointer
             ${
               isOver
@@ -521,126 +314,80 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
                 : "hover:scale-105 hover:bg-button-secondBg rounded-xl"
             }
           `}
+        >
+          <div
+            className={`relative transition-all duration-200 rounded-xl ${
+              isOver ? "shadow-lg" : ""
+            }`}
           >
-            <div
-              className={`relative transition-all duration-200 rounded-xl ${
-                isOver ? "shadow-lg" : ""
-              }`}
-            >
-              <div className="w-16 h-16 rounded-xl bg-button-bg p-2 flex items-center justify-center transition-all duration-200">
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m12 19-7-7 7-7" />
-                  <path d="M19 12H5" />
-                </svg>
-              </div>
+            <div className="w-16 h-16 rounded-xl bg-button-bg p-2 flex items-center justify-center transition-all duration-200">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+              </svg>
             </div>
-            <div className="mt-3 w-16 text-sm text-bookmarkItem-text truncate text-center">
-              Back
-            </div>
+          </div>
+          <div className="mt-3 w-16 text-sm text-bookmarkItem-text truncate text-center">
+            Back
           </div>
         </div>
       </div>
     );
   };
 
-  // Drop indicator component
-  interface DropIndicatorProps {
-    id: string;
-  }
-
-  const DropIndicator: React.FC<DropIndicatorProps> = ({ id }) => {
-    const { setNodeRef, isOver } = useDroppable({ id });
-    const { active } = useDndContext();
-
-    return (
-      <div
-        ref={setNodeRef}
-        className={`flex items-center justify-center transition-all duration-200 ${
-          active ? "w-10 h-16" : "w-0 h-0 overflow-hidden"
-        }`}
-        style={{
-          pointerEvents: active ? "auto" : "none",
-          backgroundColor:
-            active && isOver ? "rgba(59, 130, 246, 0.3)" : "transparent",
-        }}
-      >
-        {active && (
-          <div
-            className={`transition-all duration-200 rounded-sm ${
-              isOver
-                ? "w-2 h-16 bg-blue-500 shadow-lg"
-                : "w-px h-14 bg-gray-400 opacity-60"
-            }`}
-          />
-        )}
-      </div>
-    );
-  };
-
-  // Render items with extended drop areas and back button
-  const renderBookmarkItems = (items: BookmarkNode[]) => {
-    const result: React.ReactNode[] = [];
+  // Render bookmark grid
+  const renderBookmarkGrid = () => {
+    const currentItems = getCurrentPageItems();
+    const maxCols = getMaxCols();
+    const allItems: React.ReactNode[] = [];
 
     // Add back button at the beginning if in folder
     if (currentFolder) {
-      result.push(<BackButton key="back-button" />);
+      allItems.push(<BackButton key="back-button" />);
     }
 
-    items.forEach((bm, index) => {
-      result.push(
-        <div key={bm.id} className="relative flex items-center">
-          <div className="flex-shrink-0">
-            {bm.url ? (
-              <BookmarkItem
-                bookmark={bm}
-                onEdit={onBookmarkEdit}
-                onDelete={onBookmarkDelete}
-              />
-            ) : (
-              <FolderPreview
-                folder={bm}
-                openFolder={openFolder}
-                onRename={onFolderRename}
-                onDelete={onFolderDelete}
-                onAddBookmark={onAddBookmark}
-              />
-            )}
-          </div>
-          {index < items.length - 1 && <DropIndicator id={`${bm.id}-right`} />}
-        </div>
+    // Add all bookmark items
+    currentItems.forEach((bm) => {
+      allItems.push(
+        bm.url ? (
+          <BookmarkItem
+            key={bm.id}
+            bookmark={bm}
+            onEdit={onBookmarkEdit}
+            onDelete={onBookmarkDelete}
+          />
+        ) : (
+          <FolderPreview
+            key={bm.id}
+            folder={bm}
+            openFolder={openFolder}
+            onRename={onFolderRename}
+            onDelete={onFolderDelete}
+            onAddBookmark={onAddBookmark}
+          />
+        )
       );
     });
 
-    return result;
-  };
-
-  // Render rows with pagination
-  const renderBookmarkRows = () => {
-    const currentItems = getCurrentPageItems();
-    const maxCols = getMaxCols();
-    const row1 = currentItems.slice(0, maxCols);
-    const row2 = currentItems.slice(maxCols, maxCols * 2);
-
     return (
-      <>
-        <div className="flex items-center justify-evenly w-full mb-8 px-4">
-          {renderBookmarkItems(row1)}
-        </div>
-        {row2.length > 0 && (
-          <div className="flex items-center justify-evenly w-full px-4">
-            {renderBookmarkItems(row2)}
-          </div>
-        )}
-      </>
+      <div
+        className="grid gap-4 px-4 w-full place-items-center"
+        style={{
+          gridTemplateColumns: `repeat(${maxCols}, minmax(0, 1fr))`,
+          gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+        }}
+      >
+        {allItems}
+      </div>
     );
   };
 
@@ -668,11 +415,11 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
 
               {/* Bookmark Grid */}
               <div className="flex flex-col items-center flex-1">
-                {renderBookmarkRows()}
+                {renderBookmarkGrid()}
 
                 {/* Page indicator */}
                 {totalPages > 1 && (
-                  <div className="mt-4 flex space-x-2">
+                  <div className="mt-6 flex space-x-2">
                     {Array.from({ length: totalPages }, (_, i) => (
                       <button
                         key={i}
@@ -730,61 +477,6 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
             )}
           </DragOverlay>
         </DndContext>
-
-        {/* Drag confirmation toast */}
-        <AnimatePresence>
-          {showDragToast && toastDirection && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="fixed bottom-4 right-4 z-[9999]"
-            >
-              <div className="p-4 border-2 border-dashed rounded-lg bg-black bg-opacity-90 text-white text-center">
-                {/* Debug info */}
-                <div className="text-xs mb-2 opacity-70 bg-red-500 p-1 rounded">
-                  Debug: {toastDirection} | Over: {isOverToast ? "YES" : "NO"} |
-                  Hover: {isHoveringToast ? "YES" : "NO"}
-                </div>
-
-                <div className="mb-3 text-sm font-medium">{toastMessage}</div>
-
-                <div
-                  ref={(node) => {
-                    setToastRef(node);
-                  }}
-                  onMouseEnter={handleToastMouseEnter}
-                  onMouseLeave={handleToastMouseLeave}
-                  className={`
-                    w-40 h-24 p-4 border-2 rounded-lg transition-all duration-200 cursor-pointer
-                    flex items-center justify-center text-sm font-semibold
-                    ${
-                      isOverToast || isHoveringToast
-                        ? "bg-green-500 text-white border-green-400 shadow-lg scale-105 ring-4 ring-green-300"
-                        : "bg-gray-200 text-gray-800 border-gray-400 hover:bg-gray-300"
-                    }
-                  `}
-                  style={{
-                    pointerEvents: "auto",
-                  }}
-                >
-                  <div className="text-center">
-                    <div className="text-2xl mb-2">
-                      {toastDirection === "left" ? "←" : "→"}
-                    </div>
-                    <div>Hover here</div>
-                    {(isOverToast || isHoveringToast) && (
-                      <div className="text-xs mt-1 animate-pulse font-bold">
-                        CHANGING PAGE!
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
