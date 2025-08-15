@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTheme } from "../../providers/theme-provider";
 import { createBookmark } from "../../../utils/api";
 
 interface BookmarkFormProps {
@@ -31,6 +32,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
   const [title, setTitle] = useState(initialData?.title || "");
   const [url, setUrl] = useState(initialData?.url || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { theme, imageThemeSettings } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,12 +56,32 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={
+        theme === "image"
+          ? {
+              backgroundColor: `rgba(0,0,0,${
+                imageThemeSettings.bmOverlayOpacity / 100
+              })`,
+            }
+          : { backgroundColor: "rgba(0,0,0,0.5)" }
+      }
       onClick={(e) => e.target === e.currentTarget && onClose()}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-dialog-background rounded-lg p-4 w-full max-w-md">
+      <div
+        className="bg-dialog-background rounded-lg p-4 w-full max-w-md"
+        style={
+          theme === "image"
+            ? {
+                backgroundColor: `rgba(0,0,0,${
+                  imageThemeSettings.bmDialogOpacity / 100
+                })`,
+              }
+            : undefined
+        }
+      >
         <h2 className="text-xl font-bold mb-4 text-text-primary">
           {initialData ? "Edit Bookmark" : "Add Bookmark"}
         </h2>

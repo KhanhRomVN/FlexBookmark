@@ -186,11 +186,16 @@ export function ThemeProvider({
         );
         root.style.setProperty(
           "--input-background",
-          imageThemeSettings.inputBackground
+          `rgba(0,0,0,${imageThemeSettings.inputOpacity / 100})`
         );
         root.style.setProperty(
           "--sidebar-opacity",
           imageThemeSettings.sidebarOpacity.toString()
+        );
+        // Dialog background transparency for image theme
+        root.style.setProperty(
+          "--dialog-background",
+          `rgba(0,0,0,${imageThemeSettings.dialogOpacity / 100})`
         );
         root.style.setProperty(
           "--card-opacity",

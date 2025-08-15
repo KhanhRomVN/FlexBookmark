@@ -332,34 +332,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           </span>
         </div>
       </div>
-      {/* Solid Clock Colors */}
-      <div>
-        <h4 className="font-medium mb-2">Clock Color (Solid)</h4>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            "#ffffff",
-            "#ff0000",
-            "#00ff00",
-            "#0000ff",
-            "#ffff00",
-            "#ff00ff",
-            "#00ffff",
-          ].map((col) => (
-            <button
-              key={col}
-              className="w-8 h-8 rounded-full border-2 border-gray-300"
-              style={{ backgroundColor: col }}
-              onClick={() =>
-                setImageThemeSettings({
-                  ...imageThemeSettings,
-                  clockGradientFrom: col,
-                  clockGradientTo: col,
-                })
-              }
-            />
-          ))}
-        </div>
-      </div>
 
       {/* Clock Gradient */}
       <div>

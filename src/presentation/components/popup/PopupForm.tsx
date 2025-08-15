@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createBookmark } from "../../../utils/api";
+import { Folder } from "lucide-react";
 
 interface PopupFormProps {
   folders: any[];
@@ -10,6 +11,7 @@ const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFolderSelector, setShowFolderSelector] = useState(false);
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -25,7 +27,7 @@ const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
     e.preventDefault();
 
     if (!selectedFolder) {
-      alert("Please select a folder");
+      setShowFolderSelector(true);
       return;
     }
 
@@ -47,55 +49,169 @@ const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
     }
   };
 
+  const getSelectedFolderName = () => {
+    if (!selectedFolder) return "Select folder";
+    const folder = folders.find((f) => f.id === selectedFolder);
+    return folder ? folder.title : "Unknown folder";
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="popup-form">
-      <div className="mb-3">
-        <label className="block text-sm font-medium mb-1">Title</label>
-        <input
-          type="text"
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
+    <div className="">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-text-primary">Add Bookmark</h2>
+        <button
+          onClick={() => window.close()}
+          className="p-1 rounded-full hover:bg-button-second-bg-hover transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 text-text-secondary"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
       </div>
 
-      <div className="mb-3">
-        <label className="block text-sm font-medium mb-1">URL</label>
-        <input
-          type="url"
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          required
-        />
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-text-secondary">
+            Title
+          </label>
+          <input
+            type="text"
+            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+        </div>
 
-      <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-        Selected folder:{" "}
-        {selectedFolder
-          ? folders.find((f) => f.id === selectedFolder)?.title || "None"
-          : "None"}
-      </div>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-text-secondary">
+            URL
+          </label>
+          <input
+            type="url"
+            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+          />
+        </div>
 
-      <button
-        type="submit"
-        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center justify-center gap-2"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <>
-            <span className="animate-spin">⏳</span>
-            Saving...
-          </>
-        ) : (
-          <>
-            <span>💾</span>
-            Save Bookmark
-          </>
-        )}
-      </button>
-    </form>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowFolderSelector(!showFolderSelector)}
+            className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg transition-colors ${
+              selectedFolder
+                ? "bg-primary/10 border-primary text-primary"
+                : "bg-input-background border-border-default text-text-primary"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Folder size={16} />
+              <span>{getSelectedFolderName()}</span>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+
+          {showFolderSelector && (
+            <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto border border-border-default rounded-lg bg-dropdown-background shadow-lg">
+              {folders
+                .filter((folder) => !folder.url)
+                .map((folder) => (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectFolder(folder.id);
+                      setShowFolderSelector(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 hover:bg-dropdown-item-hover flex items-center gap-2 ${
+                      selectedFolder === folder.id
+                        ? "bg-primary/10 text-primary"
+                        : "text-text-primary"
+                    }`}
+                  >
+                    <Folder size={14} />
+                    <span className="truncate">{folder.title}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
+            isSubmitting
+              ? "bg-primary/80 cursor-not-allowed"
+              : "bg-primary hover:bg-primary/90"
+          } text-white font-medium`}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>Save Bookmark</span>
+            </>
+          )}
+        </button>
+      </form>
+    </div>
   );
 };
 
