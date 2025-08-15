@@ -16,7 +16,6 @@ type ColorSettings = {
   sidebar: string;
 };
 type ImageThemeSettings = {
-  opacity: string | number | readonly string[] | undefined;
   blur: number;
   brightness: number;
   overlay: string;
@@ -24,6 +23,15 @@ type ImageThemeSettings = {
   inputBackground: string;
   sidebarOpacity: number;
   cardOpacity: number;
+  overlayOpacity: number;
+  inputOpacity: number;
+  dialogOpacity: number;
+  bmBlur: number;
+  bmOverlayOpacity: number;
+  bmSidebarOpacity: number;
+  bmCardOpacity: number;
+  bmCardBlur: number;
+  bmDialogOpacity: number;
 };
 
 type ThemeProviderState = {
@@ -56,7 +64,15 @@ const initialState: ThemeProviderState = {
     inputBackground: "rgba(0,0,0,0.3)",
     sidebarOpacity: 0.3,
     cardOpacity: 0.3,
-    opacity: undefined,
+    overlayOpacity: 10,
+    inputOpacity: 30,
+    dialogOpacity: 20,
+    bmBlur: 5,
+    bmOverlayOpacity: 15,
+    bmSidebarOpacity: 20,
+    bmCardOpacity: 15,
+    bmCardBlur: 3,
+    bmDialogOpacity: 10,
   },
   setImageThemeSettings: () => {},
 };
@@ -108,6 +124,15 @@ export function ThemeProvider({
             inputBackground: "rgba(0,0,0,0.3)",
             sidebarOpacity: 0.3,
             cardOpacity: 0.3,
+            overlayOpacity: 10,
+            inputOpacity: 30,
+            dialogOpacity: 20,
+            bmBlur: 5,
+            bmOverlayOpacity: 15,
+            bmSidebarOpacity: 20,
+            bmCardOpacity: 15,
+            bmCardBlur: 3,
+            bmDialogOpacity: 10,
           };
     });
 

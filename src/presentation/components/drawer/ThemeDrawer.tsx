@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Drawer from "react-modern-drawer";
 import "react-modern-drawer/dist/index.css";
 import { useTheme } from "../../providers/theme-provider";
@@ -34,12 +34,9 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // FIX: Apply all theme properties, not just 4
+  // Apply preset theme colors to CSS variables
   const applyPresetTheme = (preset: any) => {
-    // Apply ALL CSS variables from preset to root element
     const root = document.documentElement;
-
-    // Map preset properties to CSS variables
     const cssVarMap = {
       primary: "--primary",
       background: "--background",
@@ -70,20 +67,16 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       bookmarkItemText: "--bookmark-item-text",
       drawerBackground: "--drawer-background",
     };
-
-    // Apply all CSS variables
     Object.entries(preset).forEach(([key, value]) => {
-      const cssVar = cssVarMap[key as keyof typeof cssVarMap];
+      const cssVar = (cssVarMap as any)[key];
       if (cssVar && value) {
         root.style.setProperty(cssVar, value as string);
       }
     });
-
-    // Also update colorSettings for compatibility
     setColorSettings(preset);
   };
 
-  // Theme mode icons
+  // Icons
   const LightIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -100,7 +93,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       />
     </svg>
   );
-
   const DarkIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -117,7 +109,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       />
     </svg>
   );
-
   const ImageIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -135,6 +126,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </svg>
   );
 
+  // Theme mode selector
   const renderThemeSelector = () => (
     <div className="theme-selector mb-6">
       <h3 className="text-lg font-semibold mb-4">Theme Mode</h3>
@@ -182,6 +174,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
+  // Preset themes
   const renderPresetThemes = (themeType: "light" | "dark") => (
     <div className="preset-themes mb-6">
       <h3 className="text-lg font-semibold mb-4">Preset Themes</h3>
@@ -191,7 +184,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             colorSettings.primary === preset.primary &&
             colorSettings.background === preset.background &&
             colorSettings.cardBackground === preset.cardBackground;
-
           return (
             <button
               key={index}
@@ -202,46 +194,36 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
               } hover:shadow-md hover:scale-[1.02] transition-transform duration-200`}
               onClick={() => applyPresetTheme(preset)}
             >
-              {/* Glow effect for selected theme */}
               {isSelected && (
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
               )}
-
               <div className="w-full h-24 rounded-lg overflow-hidden mb-3 border border-border relative">
-                {/* Header */}
                 <div
                   className="h-4 w-full"
                   style={{ backgroundColor: preset.primary }}
-                ></div>
-
+                />
                 <div className="flex h-20">
-                  {/* Sidebar */}
                   <div
                     className="w-1/4 h-full"
                     style={{
                       backgroundColor:
                         preset.sidebarBackground || preset.cardBackground,
                     }}
-                  ></div>
-
-                  {/* Main content */}
+                  />
                   <div
                     className="w-3/4 h-full p-2"
                     style={{ backgroundColor: preset.background }}
                   >
-                    {/* Card preview */}
                     <div
                       className="w-full h-4 rounded mb-1"
                       style={{ backgroundColor: preset.cardBackground }}
-                    ></div>
+                    />
                     <div
                       className="w-3/4 h-4 rounded"
                       style={{ backgroundColor: preset.cardBackground }}
-                    ></div>
+                    />
                   </div>
                 </div>
-
-                {/* Floating icon */}
                 <div className="absolute top-2 right-2 bg-white/80 dark:bg-black/80 p-1.5 rounded-full">
                   {preset.icon ? (
                     <div className="text-lg">{preset.icon}</div>
@@ -249,21 +231,19 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                     <div
                       className="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800"
                       style={{ backgroundColor: preset.primary }}
-                    ></div>
+                    />
                   )}
                 </div>
               </div>
-
               <div className="flex items-start w-full">
                 <div className="flex-1">
                   <span className="font-medium text-sm block text-left">
                     {preset.name}
                   </span>
-                  <span className="text-xs text-text-secondary text-left block mt-1">
+                  <span className="text-xs text-text-secondary block mt-1">
                     {preset.description || "Modern theme"}
                   </span>
                 </div>
-
                 {isSelected && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -279,25 +259,23 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                   </svg>
                 )}
               </div>
-
-              {/* Color palette indicator */}
               <div className="flex mt-3 gap-1 w-full">
                 <div
                   className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.primary }}
-                ></div>
+                />
                 <div
                   className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.background }}
-                ></div>
+                />
                 <div
                   className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.cardBackground }}
-                ></div>
+                />
                 <div
                   className="h-2 flex-1 rounded-full"
                   style={{ backgroundColor: preset.textPrimary || "#000" }}
-                ></div>
+                />
               </div>
             </button>
           );
@@ -306,41 +284,11 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  const renderImageSettings = () => (
-    <div className="image-settings space-y-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">Image Settings</h3>
-      <div>
-        <h4 className="font-medium mb-2">Background Image</h4>
-        <div className="flex flex-col gap-4">
-          {backgroundImage && (
-            <div className="w-full h-40 rounded-lg overflow-hidden border">
-              <img
-                src={backgroundImage}
-                alt="Background"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Image URL"
-              value={backgroundImage || ""}
-              onChange={(e) => setBackgroundImage(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
-            />
-            <label className="px-4 py-2 bg-button-bg text-button-text rounded-lg cursor-pointer transition hover:bg-button-bg-hover">
-              Upload
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-            </label>
-          </div>
-        </div>
-      </div>
+  // Dashboard-specific settings
+  const renderDashboardSettings = () => (
+    <div className="space-y-6 mb-6">
+      <h4 className="font-medium mb-2">Dashboard Settings</h4>
+      {/* Background Blur */}
       <div>
         <h4 className="font-medium mb-2">Background Blur</h4>
         <div className="flex items-center gap-4">
@@ -352,7 +300,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             onChange={(e) =>
               setImageThemeSettings({
                 ...imageThemeSettings,
-                blur: parseInt(e.target.value),
+                blur: parseInt(e.target.value, 10),
               })
             }
             className="w-full accent-primary"
@@ -360,44 +308,29 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           <span className="w-10 text-center">{imageThemeSettings.blur}px</span>
         </div>
       </div>
+      {/* Overlay Opacity */}
       <div>
-        <h4 className="font-medium mb-2">Background Brightness</h4>
+        <h4 className="font-medium mb-2">Background Transparency</h4>
         <div className="flex items-center gap-4">
           <input
             type="range"
             min="0"
-            max="200"
-            value={imageThemeSettings.brightness}
+            max="100"
+            value={imageThemeSettings.overlayOpacity}
             onChange={(e) =>
               setImageThemeSettings({
                 ...imageThemeSettings,
-                brightness: parseInt(e.target.value, 10),
+                overlayOpacity: parseInt(e.target.value, 10),
               })
             }
             className="w-full accent-primary"
           />
           <span className="w-10 text-center">
-            {imageThemeSettings.brightness}%
+            {imageThemeSettings.overlayOpacity}%
           </span>
         </div>
       </div>
-
-      <div>
-        <h4 className="font-medium mb-2">Overlay Color</h4>
-        <input
-          type="text"
-          value={imageThemeSettings.overlay}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              overlay: e.target.value,
-            })
-          }
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
-          placeholder="rgba(0,0,0,0.5)"
-        />
-      </div>
-
+      {/* Clock Color */}
       <div>
         <h4 className="font-medium mb-2">Clock Color</h4>
         <div className="flex flex-wrap gap-2">
@@ -435,65 +368,186 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
         />
       </div>
-
+      {/* Input Transparency */}
       <div>
-        <h4 className="font-medium mb-2">Input Background</h4>
-        <input
-          type="text"
-          value={imageThemeSettings.inputBackground}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              inputBackground: e.target.value,
-            })
-          }
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
-          placeholder="rgba(0,0,0,0.3)"
-        />
-      </div>
-
-      <div>
-        <h4 className="font-medium mb-2">Sidebar Opacity</h4>
+        <h4 className="font-medium mb-2">Input Transparency</h4>
         <div className="flex items-center gap-4">
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={imageThemeSettings.sidebarOpacity}
+            max="100"
+            value={imageThemeSettings.inputOpacity}
             onChange={(e) =>
               setImageThemeSettings({
                 ...imageThemeSettings,
-                sidebarOpacity: parseFloat(e.target.value),
+                inputOpacity: parseInt(e.target.value, 10),
               })
             }
             className="w-full accent-primary"
           />
           <span className="w-10 text-center">
-            {Math.round(imageThemeSettings.sidebarOpacity * 100)}%
+            {imageThemeSettings.inputOpacity}%
           </span>
         </div>
       </div>
-
+      {/* Dialog Transparency */}
       <div>
-        <h4 className="font-medium mb-2">Card Opacity</h4>
+        <h4 className="font-medium mb-2">Dialog Transparency</h4>
         <div className="flex items-center gap-4">
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.05"
-            value={imageThemeSettings.cardOpacity}
+            max="100"
+            value={imageThemeSettings.dialogOpacity}
             onChange={(e) =>
               setImageThemeSettings({
                 ...imageThemeSettings,
-                cardOpacity: parseFloat(e.target.value),
+                dialogOpacity: parseInt(e.target.value, 10),
               })
             }
             className="w-full accent-primary"
           />
           <span className="w-10 text-center">
-            {Math.round(imageThemeSettings.cardOpacity * 100)}%
+            {imageThemeSettings.dialogOpacity}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Bookmark-manager-specific settings
+  const renderBookmarkManagerSettings = () => (
+    <div className="space-y-6 mb-6">
+      <h4 className="font-medium mb-2">Bookmark Manager Settings</h4>
+      {/* Background Blur */}
+      <div>
+        <h4 className="font-medium mb-2">Background Blur</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="20"
+            value={imageThemeSettings.bmBlur}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmBlur: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmBlur}px
+          </span>
+        </div>
+      </div>
+      {/* Overlay Opacity */}
+      <div>
+        <h4 className="font-medium mb-2">Overlay Transparency</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={imageThemeSettings.bmOverlayOpacity}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmOverlayOpacity: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmOverlayOpacity}%
+          </span>
+        </div>
+      </div>
+      {/* Sidebar Transparency */}
+      <div>
+        <h4 className="font-medium mb-2">Sidebar Transparency</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={imageThemeSettings.bmSidebarOpacity}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmSidebarOpacity: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmSidebarOpacity}%
+          </span>
+        </div>
+      </div>
+      {/* Card Transparency */}
+      <div>
+        <h4 className="font-medium mb-2">Card Transparency</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={imageThemeSettings.bmCardOpacity}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmCardOpacity: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmCardOpacity}%
+          </span>
+        </div>
+      </div>
+      {/* Card Blur */}
+      <div>
+        <h4 className="font-medium mb-2">Card Blur</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="20"
+            value={imageThemeSettings.bmCardBlur}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmCardBlur: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmCardBlur}px
+          </span>
+        </div>
+      </div>
+      {/* Dialog Transparency */}
+      <div>
+        <h4 className="font-medium mb-2">Dialog Transparency</h4>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={imageThemeSettings.bmDialogOpacity}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                bmDialogOpacity: parseInt(e.target.value, 10),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <span className="w-10 text-center">
+            {imageThemeSettings.bmDialogOpacity}%
           </span>
         </div>
       </div>
@@ -513,13 +567,26 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         <div className="p-6 border-b border-border">
           <h2 className="text-xl font-bold">Theme Settings</h2>
           <p className="text-sm text-text-secondary">
-            Customize the look and feel of your dashboard
+            Customize the look and feel of your app
           </p>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           {renderThemeSelector()}
+
           {(theme === "light" || theme === "dark") && renderPresetThemes(theme)}
-          {theme === "image" && renderImageSettings()}
+
+          {theme === "image" && (
+            <>
+              <h3 className="text-lg font-semibold mb-4">
+                Dashboard Image Customization
+              </h3>
+              {renderDashboardSettings()}
+              <h3 className="text-lg font-semibold mb-4 mt-6">
+                Bookmark Manager Image Customization
+              </h3>
+              {renderBookmarkManagerSettings()}
+            </>
+          )}
         </div>
         <div className="p-4 border-t border-border flex justify-end gap-2">
           <button
