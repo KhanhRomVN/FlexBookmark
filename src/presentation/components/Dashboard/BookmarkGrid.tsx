@@ -446,11 +446,13 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
               />
             </div>
           ) : (
-            <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
-              <div className="text-xl opacity-80">
+            <div className="text-center py-12">
+              <div className="text-2xl text-text-primary">
                 No bookmarks match your search
               </div>
-              <div className="mt-2 opacity-60">Try a different search term</div>
+              <div className="mt-2 text-text-primary">
+                Try a different search term
+              </div>
             </div>
           )}
 

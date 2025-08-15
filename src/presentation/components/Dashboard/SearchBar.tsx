@@ -24,17 +24,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   return (
     <div className="flex items-center w-full max-w-2xl mb-10 space-x-2">
-      <form
-        onSubmit={handleSearch}
-        className="flex-1 transition-all duration-300 focus-within:scale-[1.02]"
-      >
+      <form onSubmit={handleSearch} className="flex-1">
         <div className="relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search web or bookmarks..."
-            className="w-full py-2 pl-10 pr-4 rounded-lg bg-input-background text-lg border-none"
+            className="w-full py-2 pl-10 pr-4 rounded-lg bg-input-background text-lg border-border-default"
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
             <svg
