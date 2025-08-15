@@ -347,25 +347,33 @@ const BookmarkGrid: React.FC<BookmarkGridProps> = ({
           onClick={onClick}
           disabled={disabled}
           className={`
-            w-10 h-10 rounded-full flex items-center justify-center
-            transition-all duration-200 border-2
-            ${
-              disabled
-                ? "bg-button-secondBg text-text-secondary cursor-not-allowed"
-                : "bg-button-bg hover:bg-button-bgHover text-text-primary"
-            }
-            ${
-              isOver && activeDragItem
-                ? "bg-button-secondBg text-text-secondary"
-                : "text-text-secondary"
-            }
-            backdrop-blur-sm shadow-lg
-          `}
+          w-10 h-10 rounded-full flex items-center justify-center
+          transition-all duration-200 border-2
+          bg-button-secondBg hover:bg-button-secondBgHover 
+          border-button-secondBg hover:border-button-secondBgHover
+          backdrop-blur-sm shadow-lg
+          ${disabled ? "opacity-40 cursor-not-allowed" : "opacity-100"}
+          ${isOver && activeDragItem ? "scale-105" : ""}
+        `}
         >
           {direction === "left" ? (
-            <ChevronLeft size={20} />
+            <ChevronLeft
+              size={20}
+              className={`transition-colors duration-200 ${
+                disabled
+                  ? "text-text-secondary opacity-50"
+                  : "text-text-primary"
+              }`}
+            />
           ) : (
-            <ChevronRight size={20} />
+            <ChevronRight
+              size={20}
+              className={`transition-colors duration-200 ${
+                disabled
+                  ? "text-text-secondary opacity-50"
+                  : "text-text-primary"
+              }`}
+            />
           )}
         </button>
       </div>
