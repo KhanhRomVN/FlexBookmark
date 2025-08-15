@@ -66,6 +66,8 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       bookmarkItemBg: "--bookmark-item-bg",
       bookmarkItemText: "--bookmark-item-text",
       drawerBackground: "--drawer-background",
+      clockGradientFrom: "--clock-gradient-from",
+      clockGradientTo: "--clock-gradient-to",
     };
     Object.entries(preset).forEach(([key, value]) => {
       const cssVar = (cssVarMap as any)[key];
@@ -330,10 +332,10 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           </span>
         </div>
       </div>
-      {/* Clock Color */}
+      {/* Solid Clock Colors */}
       <div>
-        <h4 className="font-medium mb-2">Clock Color</h4>
-        <div className="flex flex-wrap gap-2">
+        <h4 className="font-medium mb-2">Clock Color (Solid)</h4>
+        <div className="flex flex-wrap gap-2 mb-4">
           {[
             "#ffffff",
             "#ff0000",
@@ -342,31 +344,76 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             "#ffff00",
             "#ff00ff",
             "#00ffff",
-          ].map((color) => (
+          ].map((col) => (
             <button
-              key={color}
+              key={col}
               className="w-8 h-8 rounded-full border-2 border-gray-300"
-              style={{ backgroundColor: color }}
+              style={{ backgroundColor: col }}
               onClick={() =>
                 setImageThemeSettings({
                   ...imageThemeSettings,
-                  clockColor: color,
+                  clockGradientFrom: col,
+                  clockGradientTo: col,
                 })
               }
             />
           ))}
         </div>
-        <input
-          type="text"
-          value={imageThemeSettings.clockColor}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              clockColor: e.target.value,
-            })
-          }
-          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-input-background"
-        />
+      </div>
+
+      {/* Clock Gradient */}
+      <div>
+        <h4 className="font-medium mb-2">Clock Gradient</h4>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {[
+            { from: "#ffffff", to: "#000000" },
+            { from: "#ff7e5f", to: "#feb47b" },
+            { from: "#6a11cb", to: "#2575fc" },
+            { from: "#11998e", to: "#38ef7d" },
+            { from: "#fc5c7d", to: "#6a82fb" },
+            { from: "#ee9ca7", to: "#ffdde1" },
+            { from: "#2193b0", to: "#6dd5ed" },
+          ].map((grad, idx) => (
+            <button
+              key={idx}
+              className="w-16 h-8 rounded-lg border-2 border-gray-300 overflow-hidden"
+              style={{
+                backgroundImage: `linear-gradient(to right, ${grad.from}, ${grad.to})`,
+              }}
+              onClick={() =>
+                setImageThemeSettings({
+                  ...imageThemeSettings,
+                  clockGradientFrom: grad.from,
+                  clockGradientTo: grad.to,
+                })
+              }
+            />
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="color"
+            value={imageThemeSettings.clockGradientFrom}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                clockGradientFrom: e.target.value,
+              })
+            }
+            className="flex-1 w-12 h-10 p-0 border-0 bg-transparent"
+          />
+          <input
+            type="color"
+            value={imageThemeSettings.clockGradientTo}
+            onChange={(e) =>
+              setImageThemeSettings({
+                ...imageThemeSettings,
+                clockGradientTo: e.target.value,
+              })
+            }
+            className="flex-1 w-12 h-10 p-0 border-0 bg-transparent"
+          />
+        </div>
       </div>
       {/* Input Transparency */}
       <div>

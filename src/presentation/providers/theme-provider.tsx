@@ -19,7 +19,8 @@ type ImageThemeSettings = {
   blur: number;
   brightness: number;
   overlay: string;
-  clockColor: string;
+  clockGradientFrom: string;
+  clockGradientTo: string;
   inputBackground: string;
   sidebarOpacity: number;
   cardOpacity: number;
@@ -60,7 +61,8 @@ const initialState: ThemeProviderState = {
     blur: 8,
     brightness: 100,
     overlay: "rgba(0,0,0,0.1)",
-    clockColor: "#ffffff",
+    clockGradientFrom: "#ffffff",
+    clockGradientTo: "#ffffff",
     inputBackground: "rgba(0,0,0,0.3)",
     sidebarOpacity: 0.3,
     cardOpacity: 0.3,
@@ -120,7 +122,8 @@ export function ThemeProvider({
             blur: 8,
             brightness: 100,
             overlay: "rgba(0,0,0,0.1)",
-            clockColor: "#ffffff",
+            clockGradientFrom: "#ffffff",
+            clockGradientTo: "#ffffff",
             inputBackground: "rgba(0,0,0,0.3)",
             sidebarOpacity: 0.3,
             cardOpacity: 0.3,
@@ -167,7 +170,20 @@ export function ThemeProvider({
           "--overlay-color",
           `rgba(0, 0, 0, ${imageThemeSettings.overlayOpacity / 100})`
         );
-        root.style.setProperty("--clock-color", imageThemeSettings.clockColor);
+        // clock gradient for image theme
+        root.style.setProperty(
+          "--clock-gradient-from",
+          imageThemeSettings.clockGradientFrom
+        );
+        root.style.setProperty(
+          "--clock-gradient-to",
+          imageThemeSettings.clockGradientTo
+        );
+        // provide backwards-compatible --clock-color gradient
+        root.style.setProperty(
+          "--clock-color",
+          `linear-gradient(to right, ${imageThemeSettings.clockGradientFrom}, ${imageThemeSettings.clockGradientTo})`
+        );
         root.style.setProperty(
           "--input-background",
           imageThemeSettings.inputBackground
