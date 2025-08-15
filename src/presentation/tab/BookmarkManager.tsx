@@ -13,7 +13,7 @@ interface BookmarkNode {
   children?: BookmarkNode[];
 }
 
-const BookmarkManagerPage: React.FC = () => {
+const BookmarkManager: React.FC = () => {
   const [folders, setFolders] = useState<BookmarkNode[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -132,4 +132,4 @@ const BookmarkManagerPage: React.FC = () => {
   );
 };
 
-export default BookmarkManagerPage;
+export default BookmarkManager;

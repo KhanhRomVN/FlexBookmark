@@ -11,7 +11,7 @@ import {
 } from "@/presentation/components/ui/tabs";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
-import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
+// import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
 
 const queryClient = new QueryClient({
   defaultOptions: {
