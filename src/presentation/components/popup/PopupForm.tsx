@@ -1,65 +1,68 @@
 import React, { useState, useEffect } from "react";
 import { createBookmark } from "../../../utils/api";
 import { Folder } from "lucide-react";
+import FolderTree from "./FolderTree";
 
 interface PopupFormProps {
   folders: any[];
   selectedFolder: string | null;
+  onSelectFolder: (id: string) => void;
 }
 
-const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
+const PopupForm: React.FC<PopupFormProps> = ({
+  folders,
+  selectedFolder,
+  onSelectFolder,
+}) => {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFolderSelector, setShowFolderSelector] = useState(false);
 
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (tab) {
-        setTitle(tab.title || "");
-        setUrl(tab.url || "");
+    chrome.tabs.query(
+      { active: true, currentWindow: true },
+      (tabs: chrome.tabs.Tab[]) => {
+        const tab = tabs[0];
+        if (tab) {
+          setTitle(tab.title || "");
+          setUrl(tab.url || "");
+        }
       }
-    });
+    );
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!selectedFolder) {
       setShowFolderSelector(true);
       return;
     }
-
     setIsSubmitting(true);
-
     try {
-      await createBookmark({
-        parentId: selectedFolder,
-        title,
-        url,
-      });
-      alert("Bookmark added successfully!");
+      await createBookmark({ parentId: selectedFolder, title, url });
+      window.alert("Bookmark added successfully!");
       window.close();
     } catch (error) {
       console.error("Error adding bookmark:", error);
-      alert("Failed to add bookmark");
+      window.alert("Failed to add bookmark");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getSelectedFolderName = () => {
+  const getSelectedFolderName = (): string => {
     if (!selectedFolder) return "Select folder";
     const folder = folders.find((f) => f.id === selectedFolder);
     return folder ? folder.title : "Unknown folder";
   };
 
   return (
-    <div className="">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-text-primary">Add Bookmark</h2>
         <button
+          type="button"
           onClick={() => window.close()}
           className="p-1 rounded-full hover:bg-button-second-bg-hover transition-colors"
         >
@@ -79,36 +82,92 @@ const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Title Input */}
         <div className="space-y-1">
           <label className="block text-sm font-medium text-text-secondary">
             Title
           </label>
           <input
             type="text"
-            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
+            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
+        {/* URL Input */}
         <div className="space-y-1">
           <label className="block text-sm font-medium text-text-secondary">
             URL
           </label>
           <input
             type="url"
-            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
+            className="w-full px-3 py-2 border border-border-default rounded-lg bg-input-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
+        {/* Save Bookmark Button */}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 text-white font-medium transition-all ${
+            isSubmitting
+              ? "bg-primary/80 cursor-not-allowed"
+              : "bg-primary hover:bg-primary/90"
+          }`}
+        >
+          {isSubmitting ? (
+            <>
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>Save Bookmark</span>
+            </>
+          )}
+        </button>
+
+        {/* Folder Selector */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setShowFolderSelector(!showFolderSelector)}
+            onClick={() => setShowFolderSelector((prev) => !prev)}
             className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg transition-colors ${
               selectedFolder
                 ? "bg-primary/10 border-primary text-primary"
@@ -132,84 +191,19 @@ const PopupForm: React.FC<PopupFormProps> = ({ folders, selectedFolder }) => {
               />
             </svg>
           </button>
-
           {showFolderSelector && (
             <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto border border-border-default rounded-lg bg-dropdown-background shadow-lg">
-              {folders
-                .filter((folder) => !folder.url)
-                .map((folder) => (
-                  <button
-                    key={folder.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectFolder(folder.id);
-                      setShowFolderSelector(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 hover:bg-dropdown-item-hover flex items-center gap-2 ${
-                      selectedFolder === folder.id
-                        ? "bg-primary/10 text-primary"
-                        : "text-text-primary"
-                    }`}
-                  >
-                    <Folder size={14} />
-                    <span className="truncate">{folder.title}</span>
-                  </button>
-                ))}
+              <FolderTree
+                folders={folders}
+                selectedFolderId={selectedFolder}
+                onSelectFolder={(id) => {
+                  onSelectFolder(id);
+                  setShowFolderSelector(false);
+                }}
+              />
             </div>
           )}
         </div>
-
-        <button
-          type="submit"
-          className={`w-full py-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
-            isSubmitting
-              ? "bg-primary/80 cursor-not-allowed"
-              : "bg-primary hover:bg-primary/90"
-          } text-white font-medium`}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <svg
-                className="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Save Bookmark</span>
-            </>
-          )}
-        </button>
       </form>
     </div>
   );
