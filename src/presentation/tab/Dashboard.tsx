@@ -281,7 +281,7 @@ const Dashboard: React.FC = () => {
                 backgroundRepeat: "no-repeat",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
-                filter: "blur(var(--bg-blur)) brightness(var(--bg-brightness))",
+                filter: "blur(var(--bg-blur))",
               }}
             />
             <div

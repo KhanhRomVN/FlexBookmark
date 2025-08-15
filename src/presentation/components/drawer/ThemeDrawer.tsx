@@ -561,7 +561,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       direction="right"
       size="25vw"
       overlayClassName="z-[1500]"
-      overlayOpacity={0.2}
+      overlayOpacity={0}
     >
       <div className="h-full flex flex-col bg-drawer-background">
         <div className="p-6 border-b border-border">

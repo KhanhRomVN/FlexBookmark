@@ -163,7 +163,10 @@ export function ThemeProvider({
           "--bg-brightness",
           `${imageThemeSettings.brightness}%`
         );
-        root.style.setProperty("--overlay-color", imageThemeSettings.overlay);
+        root.style.setProperty(
+          "--overlay-color",
+          `rgba(0, 0, 0, ${imageThemeSettings.overlayOpacity / 100})`
+        );
         root.style.setProperty("--clock-color", imageThemeSettings.clockColor);
         root.style.setProperty(
           "--input-background",
