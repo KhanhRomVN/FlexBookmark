@@ -12,6 +12,10 @@ import {
   isSameHour,
   isSameMinute,
   addHours,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameWeek,
 } from "date-fns";
 import { CalendarEvent, Task } from "../../tab/TaskAndEvent";
 
@@ -42,6 +46,13 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Calculate week days
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(date, { weekStartsOn: 0 });
+    const end = endOfWeek(date, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start, end });
+  }, [date]);
+
   // Helper function to safely parse dates
   const safeParseDate = (dateValue: Date | string | undefined): Date | null => {
     if (!dateValue) return null;
@@ -59,50 +70,54 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     }
   };
 
-  const itemsByHour = useMemo(() => {
-    const hourMap: Record<number, (CalendarEvent | Task)[]> = {};
+  // Group items by date and hour
+  const itemsByDateAndHour = useMemo(() => {
+    const dateMap: Record<
+      string,
+      Record<number, (CalendarEvent | Task)[]>
+    > = {};
 
-    // Initialize hours
-    for (let hour = 0; hour < 24; hour++) {
-      hourMap[hour] = [];
-    }
+    // Initialize structure
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      dateMap[dayKey] = {};
+      for (let hour = 0; hour < 24; hour++) {
+        dateMap[dayKey][hour] = [];
+      }
+    });
 
-    // Process events for the selected date
+    // Process events
     events.forEach((event) => {
       const startDate = safeParseDate(event.start);
-      if (startDate && isSameDay(startDate, date)) {
+      if (startDate) {
+        const dayKey = format(startDate, "yyyy-MM-dd");
         const hour = getHours(startDate);
-        hourMap[hour].push(event);
+        if (dateMap[dayKey] && dateMap[dayKey][hour]) {
+          dateMap[dayKey][hour].push(event);
+        }
       }
     });
 
-    // Process tasks for the selected date
+    // Process tasks
     tasks.forEach((task) => {
       const dueDate = safeParseDate(task.due);
-      if (dueDate && isSameDay(dueDate, date)) {
+      if (dueDate) {
+        const dayKey = format(dueDate, "yyyy-MM-dd");
         const hour = getHours(dueDate);
-        hourMap[hour].push(task);
+        if (dateMap[dayKey] && dateMap[dayKey][hour]) {
+          dateMap[dayKey][hour].push(task);
+        }
       }
     });
 
-    // Sort items within each hour by time
-    Object.keys(hourMap).forEach((hourKey) => {
-      const hour = parseInt(hourKey);
-      hourMap[hour].sort((a, b) => {
-        const aTime = safeParseDate("start" in a ? a.start : a.due);
-        const bTime = safeParseDate("start" in b ? b.start : b.due);
-
-        if (!aTime || !bTime) return 0;
-        return aTime.getTime() - bTime.getTime();
-      });
-    });
-
-    return hourMap;
-  }, [events, tasks, date]);
+    return dateMap;
+  }, [events, tasks, weekDays]);
 
   const hasItems = useMemo(() => {
-    return Object.values(itemsByHour).some((items) => items.length > 0);
-  }, [itemsByHour]);
+    return Object.values(itemsByDateAndHour).some((day) =>
+      Object.values(day).some((items) => items.length > 0)
+    );
+  }, [itemsByDateAndHour]);
 
   const toggleItem = (id: string) => {
     setExpandedItems((prev) => {
@@ -116,6 +131,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     });
   };
 
+  // Calculate current time position
   const currentTimePosition = useMemo(() => {
     if (!isToday(date)) return null;
 
@@ -169,7 +185,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-bold">
-          {format(date, "EEEE, MMMM d, yyyy")}
+          Tuần {format(weekDays[0], "d MMM")} -{" "}
+          {format(weekDays[6], "d MMM, yyyy")}
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
           {events.length + tasks.length} sự kiện và công việc
@@ -181,7 +198,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         {currentTimePosition !== null && (
           <div
             className="absolute left-20 right-0 h-0.5 bg-red-500 z-10 pointer-events-none"
-            style={{ top: `${60 + (currentTimePosition / 24) * (24 * 64)}px` }}
+            style={{ top: `${60 + currentTimePosition * 64}px` }}
           >
             <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-red-500 rounded-full"></div>
           </div>
@@ -200,127 +217,134 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
             ))}
           </div>
 
-          {/* Events column */}
-          <div
-            className={`flex-1 border-l border-gray-100 dark:border-gray-700 ${
-              isToday(date) ? "bg-blue-50/30 dark:bg-blue-900/10" : ""
-            }`}
-          >
-            {Array.from({ length: 24 }).map((_, hour) => {
-              const items = itemsByHour[hour] || [];
+          {/* Days columns */}
+          {weekDays.map((day) => {
+            const dayKey = format(day, "yyyy-MM-dd");
+            const dayItems = itemsByDateAndHour[dayKey] || {};
 
-              return (
-                <div
-                  key={hour}
-                  className="h-16 border-b border-gray-100 dark:border-gray-700 relative px-2"
-                >
-                  {items.map((item, itemIndex) => {
-                    const isExpanded = expandedItems.has(item.id);
-                    const itemDate = safeParseDate(
-                      "start" in item ? item.start : item.due
-                    );
-                    const minutes = itemDate ? getMinutes(itemDate) : 0;
-                    const top = (minutes / 60) * 64;
+            return (
+              <div
+                key={dayKey}
+                className={`w-[calc((100%-5rem)/7)] border-l border-gray-100 dark:border-gray-700 ${
+                  isToday(day)
+                    ? "bg-blue-50/30 dark:bg-blue-900/10 ring-2 ring-blue-300 dark:ring-blue-600"
+                    : ""
+                }`}
+              >
+                <div className="text-center py-1 text-sm font-medium border-b dark:border-gray-700">
+                  {format(day, "EEE d")}
+                </div>
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={`absolute left-2 right-2 rounded p-2 text-xs cursor-pointer transition-all z-${
-                          5 + itemIndex
-                        } ${
-                          "start" in item
-                            ? "bg-blue-100 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200"
-                            : item.completed
-                            ? "bg-green-100 border border-green-200 dark:bg-green-900/30 dark:border-green-800 hover:bg-green-200"
-                            : "bg-yellow-100 border border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 hover:bg-yellow-200"
-                        }`}
-                        style={{
-                          top: `${top}px`,
-                          height: "28px",
-                          marginLeft: `${itemIndex * 4}px`,
-                          zIndex: 5 + itemIndex,
-                        }}
-                        onClick={() => toggleItem(item.id)}
-                      >
-                        <div className="flex items-center">
-                          <span className="truncate flex-1 font-medium">
-                            {item.title}
-                          </span>
-                          <div className="ml-2 flex items-center gap-1">
-                            {itemDate && (
-                              <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                                {format(itemDate, "h:mm")}
-                              </span>
-                            )}
-                            {"start" in item ? (
-                              <span className="bg-blue-500 text-white text-[10px] px-1 rounded">
-                                E
-                              </span>
-                            ) : (
-                              <span
-                                className={`text-[10px] px-1 rounded ${
-                                  item.completed
-                                    ? "bg-green-500 text-white"
-                                    : "bg-yellow-500 text-white"
-                                }`}
-                              >
-                                T
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                {Array.from({ length: 24 }).map((_, hour) => {
+                  const items = dayItems[hour] || [];
 
-                        {isExpanded && (
+                  return (
+                    <div
+                      key={`${dayKey}-${hour}`}
+                      className="h-16 border-b border-gray-100 dark:border-gray-700 relative px-1"
+                    >
+                      {items.map((item, itemIndex) => {
+                        const isExpanded = expandedItems.has(item.id);
+                        const itemDate = safeParseDate(
+                          "start" in item ? item.start : item.due
+                        );
+                        const minutes = itemDate ? getMinutes(itemDate) : 0;
+                        const top = (minutes / 60) * 64;
+                        const totalItems = items.length;
+                        const widthPercent = 100 / totalItems;
+                        const left = itemIndex * widthPercent;
+
+                        return (
                           <div
-                            className="absolute z-50 top-full left-0 right-0 mt-1 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-60"
-                            onClick={(e) => e.stopPropagation()}
+                            key={`${item.id}-${hour}`}
+                            className={`absolute rounded p-2 text-xs cursor-pointer transition-all ${
+                              "start" in item
+                                ? "bg-blue-100 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200"
+                                : item.completed
+                                ? "bg-green-100 border border-green-200 dark:bg-green-900/30 dark:border-green-800 hover:bg-green-200"
+                                : "bg-yellow-100 border border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 hover:bg-yellow-200"
+                            }`}
+                            style={{
+                              top: `${top}px`,
+                              height: "28px",
+                              width: `${widthPercent}%`,
+                              left: `${left}%`,
+                              zIndex: 5 + itemIndex,
+                            }}
+                            onClick={() => toggleItem(item.id)}
                           >
-                            <div className="font-medium mb-1">{item.title}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                              {itemDate && format(itemDate, "h:mm a")}
+                            <div className="flex items-center h-full">
+                              <span className="truncate flex-1 font-medium">
+                                {item.title}
+                              </span>
+                              <div className="ml-2 flex items-center gap-1">
+                                {itemDate && (
+                                  <span className="text-[10px] text-gray-600 dark:text-gray-300">
+                                    {format(itemDate, "h:mm")}
+                                  </span>
+                                )}
+                                {"start" in item ? (
+                                  <span className="bg-blue-500 text-white text-[10px] px-1 rounded">
+                                    E
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`text-[10px] px-1 rounded ${
+                                      item.completed
+                                        ? "bg-green-500 text-white"
+                                        : "bg-yellow-500 text-white"
+                                    }`}
+                                  >
+                                    T
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            {"description" in item && item.description && (
-                              <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
-                                {item.description}
+                            {isExpanded && (
+                              <div
+                                className="absolute z-50 top-full left-0 right-0 mt-1 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-60"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="font-medium mb-1">
+                                  {item.title}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                  {itemDate && format(itemDate, "h:mm a")}
+                                </div>
+
+                                {"description" in item && item.description && (
+                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
+                                    {item.description}
+                                  </div>
+                                )}
+
+                                {"notes" in item && item.notes && (
+                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
+                                    {item.notes}
+                                  </div>
+                                )}
+
+                                <button
+                                  className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                                  onClick={() => onSelectItem(item)}
+                                >
+                                  Xem chi tiết
+                                </button>
                               </div>
                             )}
-
-                            {"notes" in item && item.notes && (
-                              <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
-                                {item.notes}
-                              </div>
-                            )}
-
-                            <button
-                              className="text-xs text-blue-500 hover:text-blue-700 font-medium"
-                              onClick={() => onSelectItem(item)}
-                            >
-                              Xem chi tiết
-                            </button>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Show empty state for current hour if no items */}
-                  {items.length === 0 &&
-                    isToday(date) &&
-                    getHours(currentTime) === hour && (
-                      <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
-                        <span className="bg-white dark:bg-gray-800 px-2 py-1 rounded border border-dashed border-gray-300 dark:border-gray-600">
-                          Trống
-                        </span>
-                      </div>
-                    )}
-                </div>
-              );
-            })}
-          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Overall empty state */}
+        {/* Empty state */}
         {!hasItems && !loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-gray-500 dark:text-gray-400">
@@ -339,8 +363,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
               </svg>
               <p className="text-lg font-medium mb-2">Không có sự kiện nào</p>
               <p className="text-sm">
-                Không có sự kiện hoặc công việc nào cho ngày{" "}
-                {format(date, "dd/MM/yyyy")}
+                Không có sự kiện hoặc công việc nào trong tuần này
               </p>
             </div>
           </div>

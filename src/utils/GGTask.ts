@@ -5,15 +5,16 @@ function safeDateParse(dateStr: string): Date | undefined {
     if (!dateStr) return undefined;
 
     try {
-        // Handle different date formats from Google Tasks API
+        // Handle date-only format (YYYY-MM-DD)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return new Date(`${dateStr}T07:00:00.000Z`);
+        }
+
+        // Handle date-time format
         let normalizedDateStr = dateStr;
 
-        // If it's just a date (YYYY-MM-DD), add time component
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            normalizedDateStr = dateStr + "T00:00:00.000Z";
-        }
         // If it has T but no timezone, add Z
-        else if (dateStr.includes("T") && !dateStr.includes("Z") && !dateStr.includes("+") && !dateStr.includes("-", 10)) {
+        if (dateStr.includes("T") && !dateStr.includes("Z") && !dateStr.includes("+") && !dateStr.includes("-", 10)) {
             normalizedDateStr = dateStr + "Z";
         }
 

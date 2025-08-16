@@ -14,7 +14,6 @@ import {
   startOfDay,
 } from "date-fns";
 import { CalendarEvent, Task } from "../../tab/TaskAndEvent";
-import { FixedSizeGrid as Grid } from "react-window";
 
 interface CalendarPanelProps {
   selectedDate: Date;
@@ -33,17 +32,12 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     startOfMonth(new Date())
   );
 
-  const { days, weekCount } = useMemo(() => {
+  const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
-
-    return {
-      days,
-      weekCount: Math.ceil(days.length / 7),
-    };
+    return eachDayOfInterval({ start: startDate, end: endDate });
   }, [currentMonth]);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -82,52 +76,6 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     return itemsByDate[dayKey] || { events: 0, tasks: 0 };
   };
 
-  // Grid cell renderer
-  const Cell = ({ columnIndex, rowIndex, style }: any) => {
-    const index = rowIndex * 7 + columnIndex;
-    if (index >= days.length) return <div style={style} />;
-
-    const day = days[index];
-    const { events: eventCount, tasks: taskCount } = getDayEvents(day);
-    const isCurrentMonth = isSameMonth(day, currentMonth);
-    const isSelected = isSameDay(day, selectedDate);
-    const isToday = isSameDay(day, new Date());
-
-    return (
-      <button
-        onClick={() => onDateChange(day)}
-        style={style}
-        className={`flex flex-col items-center justify-start p-1 h-full w-full rounded-lg transition-all
-          ${
-            isCurrentMonth
-              ? "text-gray-900 dark:text-white"
-              : "text-gray-400 dark:text-gray-500"
-          } 
-          ${
-            isSelected
-              ? "bg-blue-500 text-white dark:bg-blue-600"
-              : "hover:bg-gray-100 dark:hover:bg-gray-700"
-          }
-          ${
-            isToday && !isSelected
-              ? "ring-2 ring-blue-400 dark:ring-blue-500"
-              : ""
-          }`}
-      >
-        <span className="text-sm font-medium mb-1">{format(day, "d")}</span>
-
-        <div className="flex flex-wrap justify-center gap-0.5">
-          {eventCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-          )}
-          {taskCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-          )}
-        </div>
-      </button>
-    );
-  };
-
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 p-4">
       <div className="flex justify-between items-center mb-4">
@@ -161,17 +109,49 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
         ))}
       </div>
 
-      <div className="flex-1">
-        <Grid
-          columnCount={7}
-          columnWidth={32}
-          height={weekCount * 40}
-          rowCount={weekCount}
-          rowHeight={40}
-          width={"100%"}
-        >
-          {Cell}
-        </Grid>
+      <div className="grid grid-cols-7 gap-1 flex-1">
+        {days.map((day, index) => {
+          const { events: eventCount, tasks: taskCount } = getDayEvents(day);
+          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isSelected = isSameDay(day, selectedDate);
+          const isToday = isSameDay(day, new Date());
+
+          return (
+            <button
+              key={index}
+              onClick={() => onDateChange(day)}
+              className={`flex flex-col items-center justify-start p-1 rounded-lg transition-all
+                ${
+                  isCurrentMonth
+                    ? "text-gray-900 dark:text-white"
+                    : "text-gray-400 dark:text-gray-500"
+                } 
+                ${
+                  isSelected
+                    ? "bg-blue-500 text-white dark:bg-blue-600"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                }
+                ${
+                  isToday && !isSelected
+                    ? "ring-2 ring-blue-400 dark:ring-blue-500"
+                    : ""
+                }`}
+            >
+              <span className="text-sm font-medium mb-1">
+                {format(day, "d")}
+              </span>
+
+              <div className="flex flex-wrap justify-center gap-0.5">
+                {eventCount > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                )}
+                {taskCount > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
