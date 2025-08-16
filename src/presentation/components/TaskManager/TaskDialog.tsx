@@ -224,7 +224,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 value={editedTask.description || ""}
                 onChange={(e) => handleChange("description", e.target.value)}
                 rows={4}
-                className="w-full bg-input-background rounded-lg p-4 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full bg-input-background rounded-lg p-4 border border-border-default"
                 placeholder="Add a detailed description..."
               />
             </div>
@@ -294,7 +294,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Add new subtask"
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
-                    className="flex-1 bg-input-background rounded-lg p-3 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="flex-1 bg-input-background rounded-lg p-3 border border-border-default "
                     onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
                   />
                   <button
@@ -363,7 +363,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           title: e.target.value,
                         }))
                       }
-                      className="w-full bg-input-background rounded-lg p-3 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full bg-input-background rounded-lg p-3 border border-border-default "
                     />
                   </div>
                   <div>
@@ -422,7 +422,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         url: e.target.value,
                       }))
                     }
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
                   />
                 </div>
 
@@ -454,7 +454,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       onChange={(e) =>
                         handleChange("status", e.target.value as Status)
                       }
-                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-8"
+                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none  pr-8"
                     >
                       <option value="backlog">Backlog</option>
                       <option value="todo">To Do</option>
@@ -503,7 +503,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   <input
                     value={editedTask.assignee || ""}
                     onChange={(e) => handleChange("assignee", e.target.value)}
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
                     placeholder="Assignee"
                   />
                 </div>
@@ -525,7 +525,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     onChange={(e) =>
                       handleChange("dueDate", new Date(e.target.value))
                     }
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
                   />
                 </div>
               </div>

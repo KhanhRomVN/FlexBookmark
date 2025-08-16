@@ -91,6 +91,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       textSecondary: "--text-secondary",
       border: "--border",
       borderHover: "--border-hover",
+      borderFocus: "--border-focus",
       cardBackground: "--card-background",
       cardShadow: "--card-shadow",
       inputBackground: "--input-background",
