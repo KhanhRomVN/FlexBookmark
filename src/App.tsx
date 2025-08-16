@@ -11,7 +11,7 @@ import {
 } from "@/presentation/components/ui/tabs";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
-// import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
+import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,12 +29,19 @@ const App: React.FC = () => {
     "dashboard"
   );
 
-  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks
+  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Tasks
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "1") setActiveTab("dashboard");
-      if (e.key === "2") setActiveTab("manager");
-      // if (e.key === "3") setActiveTab("tasks");
+      // support top-row and numpad keys
+      if (e.key === "1" || e.code === "Digit1" || e.code === "Numpad1") {
+        setActiveTab("dashboard");
+      }
+      if (e.key === "2" || e.code === "Digit2" || e.code === "Numpad2") {
+        setActiveTab("manager");
+      }
+      if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
+        setActiveTab("tasks");
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -59,7 +66,9 @@ const App: React.FC = () => {
           <div className="min-h-screen flex flex-col ">
             <Tabs
               value={activeTab}
-              onValueChange={(v) => setActiveTab(v as any)}
+              onValueChange={(v) =>
+                setActiveTab(v as "dashboard" | "manager" | "tasks")
+              }
             >
               <TabsContent value="dashboard" className="flex-1 overflow-auto">
                 <Dashboard />
@@ -67,9 +76,9 @@ const App: React.FC = () => {
               <TabsContent value="manager" className="flex-1 overflow-auto">
                 <BookmarkManager />
               </TabsContent>
-              {/* <TabsContent value="tasks" className="flex-1 overflow-auto">
+              <TabsContent value="tasks" className="flex-1 overflow-auto">
                 <TaskAndEvent />
-              </TabsContent> */}
+              </TabsContent>
             </Tabs>
           </div>
         </ThemeProvider>

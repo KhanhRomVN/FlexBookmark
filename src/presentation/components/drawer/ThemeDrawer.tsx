@@ -23,6 +23,8 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     setImageThemeSettings,
   } = useTheme();
   const [urlInput, setUrlInput] = useState<string>("");
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle uploading a custom background image
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,6 +37,47 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (!file.type.match("image.*")) {
+        setError("Only image files are allowed");
+        return;
+      }
+      handleImageUpload({
+        target: { files: [file] },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    }
+  };
+
+  const handleAddFromUrl = () => {
+    if (!urlInput) {
+      setError("Please enter an image URL");
+      return;
+    }
+    try {
+      new URL(urlInput);
+      setBackgroundImage(urlInput);
+      setUrlInput("");
+      setError(null);
+    } catch {
+      setError("Please enter a valid URL");
     }
   };
 
@@ -288,86 +331,168 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Background Images section: URL input, dropzone, and gallery
+  // Enhanced Background Images section
   const renderBackgroundSection = () => (
     <div className="mb-6">
       <h3 className="text-lg font-semibold mb-4">Background Images</h3>
-      {/* URL input with plus button */}
-      <div className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          placeholder="Image URL"
-          className="flex-1 h-10 px-3 border border-border rounded-lg bg-input-background text-sm"
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setBackgroundImage(urlInput);
-            setUrlInput("");
-          }}
-          disabled={!urlInput}
-          className="w-10 h-10 flex items-center justify-center bg-button-second-bg hover:bg-button-second-bg-hover text-white rounded-lg transition-colors disabled:opacity-50"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+
+      {/* URL input with improved UX */}
+      <div className="relative mb-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={urlInput}
+            onChange={(e) => {
+              setUrlInput(e.target.value);
+              if (error) setError(null);
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleAddFromUrl()}
+            placeholder="Enter image URL"
+            className={`flex-1 h-10 px-3 border rounded-lg bg-input-background text-sm
+              ${error ? "border-red-500" : "border-border"}`}
+          />
+          <button
+            onClick={handleAddFromUrl}
+            disabled={!urlInput}
+            className="w-10 h-10 flex items-center justify-center bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
-      </div>
-      {/* Dropzone */}
-      <div
-        className="relative mb-4 h-32 flex items-center justify-center border-2 border-dashed border-border rounded-lg cursor-pointer"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          handleImageUpload({
-            target: { files: e.dataTransfer.files },
-          } as React.ChangeEvent<HTMLInputElement>);
-        }}
-      >
-        <span className="text-sm text-text-secondary">
-          Drag & drop image here or click to upload
-        </span>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-      </div>
-      {/* Gallery */}
-      <div className="grid grid-cols-4 gap-4">
-        {backgroundImages.map((img, idx) => (
-          <div key={idx} className="relative w-full pb-[56.25%]">
-            {" "}
-            {/* 16:9 ratio */}
-            <img
-              onClick={() => setBackgroundImage(img)}
-              src={img}
-              alt={`bg-${idx}`}
-              className="absolute inset-0 w-full h-full object-cover rounded-lg border border-border cursor-pointer"
-            />
-            <button
-              onClick={() => removeBackgroundImage(img)}
-              className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              ×
-            </button>
-          </div>
-        ))}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </button>
+        </div>
+        {error && (
+          <p className="mt-1 text-xs text-red-500 flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 mr-1"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 112 0 1 1 0 00-2 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {error}
+          </p>
+        )}
       </div>
+
+      {/* Enhanced dropzone */}
+      <div
+        className={`relative mb-4 flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all
+          ${
+            dragActive
+              ? "border-primary bg-primary/10"
+              : error
+              ? "border-red-500 bg-red-500/5"
+              : "border-border hover:border-primary/50"
+          }
+          ${backgroundImages.length > 0 ? "h-32" : "h-40"}`}
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="p-2 mb-3 bg-gray-100 dark:bg-gray-800 rounded-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5 text-gray-500 dark:text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+          </div>
+          <p className="text-sm mb-1 font-medium">
+            {dragActive ? "Drop your image here" : "Drag & drop image here"}
+          </p>
+          <p className="text-xs text-text-secondary">
+            or{" "}
+            <label className="text-primary cursor-pointer font-medium">
+              browse files
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+            </label>
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            JPG, PNG, GIF up to 10MB
+          </p>
+        </div>
+      </div>
+
+      {/* Enhanced gallery */}
+      {backgroundImages.length > 0 && (
+        <>
+          <h4 className="text-md font-medium mb-3">Your Backgrounds</h4>
+          <div className="grid grid-cols-3 gap-3">
+            {backgroundImages.map((img, idx) => (
+              <div
+                key={idx}
+                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all
+                  ${
+                    backgroundImage === img
+                      ? "border-primary ring-2 ring-primary/40"
+                      : "border-transparent"
+                  }`}
+              >
+                <img
+                  onClick={() => setBackgroundImage(img)}
+                  src={img}
+                  alt={`bg-${idx}`}
+                  className="w-full h-full object-cover cursor-pointer"
+                />
+                <button
+                  onClick={() => removeBackgroundImage(img)}
+                  className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-1 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+                {backgroundImage === img && (
+                  <div className="absolute bottom-1 left-1 bg-primary text-white text-xs px-1.5 py-0.5 rounded">
+                    Active
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 

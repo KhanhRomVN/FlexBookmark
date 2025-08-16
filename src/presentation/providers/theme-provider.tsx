@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import defaultBgImage from "../../assets/background_images/ocean_beach_aerial_view_134429_1920x1080.jpg";
+import { PRESET_THEMES } from "../components/drawer/PresetTheme";
 
 type Theme = "dark" | "light" | "system" | "image";
 
@@ -89,7 +90,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "dark",
   storageKey = "vite-ui-theme",
   ...props
 }: ThemeProviderProps) {
@@ -109,17 +110,41 @@ export function ThemeProvider({
   );
 
   // Persisted color settings for light/dark themes
-  const [colorSettings, setColorSettings] = useState<ColorSettings>(() =>
-    JSON.parse(
-      localStorage.getItem(`${storageKey}-colors`) ||
-        JSON.stringify({
-          primary: "#3686ff",
-          background: "#ffffff",
-          cardBackground: "#ffffff",
-          sidebar: "#f9fafb",
-        })
-    )
-  );
+  const [colorSettings, setColorSettings] = useState<ColorSettings>(() => {
+    const saved = localStorage.getItem(`${storageKey}-colors`);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    // default fallback based on defaultTheme
+    let defaultColors: ColorSettings;
+    if (defaultTheme === "dark") {
+      // use Midnight Dark preset by name
+      const midnight = PRESET_THEMES.dark.find(
+        (t) => t.name === "Midnight Dark"
+      );
+      defaultColors = midnight
+        ? {
+            primary: midnight.primary,
+            background: midnight.background,
+            cardBackground: midnight.cardBackground,
+            sidebar: midnight.sidebarBackground || midnight.cardBackground,
+          }
+        : {
+            primary: "#3686ff",
+            background: "#ffffff",
+            cardBackground: "#ffffff",
+            sidebar: "#f9fafb",
+          };
+    } else {
+      defaultColors = {
+        primary: "#3686ff",
+        background: "#ffffff",
+        cardBackground: "#ffffff",
+        sidebar: "#f9fafb",
+      };
+    }
+    return defaultColors;
+  });
 
   const updateColorSettings = (settings: ColorSettings) => {
     setColorSettings(settings);
@@ -182,6 +207,12 @@ export function ThemeProvider({
       .filter((prop) => prop.startsWith("--"))
       .forEach((prop) => root.style.removeProperty(prop));
 
+    const effectiveTheme: Theme =
+      theme === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : theme;
     if (theme === "image") {
       root.classList.add("image");
       if (bgImage) {
@@ -229,23 +260,31 @@ export function ThemeProvider({
         );
       }
     } else {
-      // normal theme: system or explicit light/dark
-      const systemTheme =
-        theme === "system"
-          ? window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light"
-          : theme;
-      root.classList.add(systemTheme);
+      root.classList.add(effectiveTheme);
     }
 
     // apply color variables for light/dark
-    if (theme === "light" || theme === "dark") {
+    if (effectiveTheme === "light" || effectiveTheme === "dark") {
       Object.entries(colorSettings).forEach(([key, value]) => {
         // convert camelCase key to kebab-case CSS variable
         const varName = `--${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
-        root.style.setProperty(varName, value);
+        root.style.setProperty(varName, value as string);
       });
+      // apply clock gradient from preset for palette themes
+      const palettePresets = PRESET_THEMES[effectiveTheme];
+      const matched = palettePresets.find(
+        (p) =>
+          p.primary === colorSettings.primary &&
+          p.background === colorSettings.background &&
+          p.cardBackground === colorSettings.cardBackground
+      );
+      if (matched?.clockGradientFrom && matched?.clockGradientTo) {
+        root.style.setProperty(
+          "--clock-gradient-from",
+          matched.clockGradientFrom
+        );
+        root.style.setProperty("--clock-gradient-to", matched.clockGradientTo);
+      }
     }
   };
 
