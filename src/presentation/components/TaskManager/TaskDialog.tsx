@@ -7,8 +7,6 @@ import {
   Copy,
   Check,
   Paperclip,
-  Tag,
-  CheckSquare,
   Calendar,
   Clock,
   File,
@@ -18,12 +16,15 @@ import {
   FileText,
   ChevronDown,
   Circle,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 
 interface TaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
+  folders: { id: string; title: string; emoji: string }[];
   onSave: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onDuplicate: (task: Task) => void;
@@ -33,6 +34,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
   onClose,
   task,
+  folders,
   onSave,
   onDelete,
   onDuplicate,
@@ -47,6 +49,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const [newTag, setNewTag] = useState("");
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const attachmentRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditedTask(task);
@@ -178,12 +181,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     urgent: "bg-red-500",
   };
 
-  const statusColors = {
-    backlog: "bg-gray-500",
-    todo: "bg-blue-500",
-    "in-progress": "bg-yellow-500",
-    done: "bg-green-500",
-    archive: "bg-purple-500",
+  const statusEmojis = {
+    backlog: "📥",
+    todo: "📋",
+    "in-progress": "🚧",
+    done: "✅",
+    archive: "🗄️",
   };
 
   if (!isOpen) return null;
@@ -193,14 +196,30 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       <div className="w-full max-w-4xl max-h-[90vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-5 border-b border-border-default flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-500/10 p-2 rounded-lg">
-              <CheckSquare size={24} className="text-blue-500" />
+          <div className="flex items-center gap-3 w-full">
+            <div className="relative w-full max-w-xs">
+              <select
+                value={editedTask.status}
+                onChange={(e) =>
+                  handleChange("status", e.target.value as Status)
+                }
+                className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none pr-8 text-text-primary font-medium"
+              >
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.emoji} {folder.title}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
+                <ChevronDown size={16} />
+              </div>
             </div>
+
             <input
               value={editedTask.title}
               onChange={(e) => handleChange("title", e.target.value)}
-              className="text-2xl font-bold bg-transparent border-none focus:ring-0 w-full max-w-md"
+              className="flex-1 text-2xl font-bold bg-transparent border-none focus:ring-0 text-text-primary"
               placeholder="Task title"
             />
           </div>
@@ -212,13 +231,16 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto grid grid-cols-3 gap-6 p-6">
+        <div className="flex-1 overflow-auto flex p-6">
           {/* Left Column */}
-          <div className="col-span-2 space-y-6">
+          <div
+            ref={leftPanelRef}
+            className="w-2/3 pr-6 space-y-6 overflow-auto max-h-[calc(100vh-200px)]"
+          >
             {/* Description */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-primary flex items-center gap-2">
-                <span className="text-blue-500">•</span> Description
+              <h3 className="font-semibold text-lg text-text-primary">
+                Description
               </h3>
               <textarea
                 value={editedTask.description || ""}
@@ -232,12 +254,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {/* Subtasks */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-lg text-primary flex items-center gap-2">
-                  <span className="text-green-500">•</span> SUE-TASKS
+                <h3 className="font-semibold text-lg text-text-primary">
+                  SUB-TASKS
                 </h3>
                 {(editedTask.subtasks?.length ?? 0) > 0 && (
                   <div className="flex items-center">
-                    <span className="text-sm font-medium mr-2 text-primary">
+                    <span className="text-sm font-medium mr-2 text-text-primary">
                       {completionPercentage}%
                     </span>
                     <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -277,7 +299,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       onChange={(e) =>
                         handleSubtaskChange(subtask.id, "title", e.target.value)
                       }
-                      className="flex-1 bg-transparent border-none focus:ring-0"
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-text-primary"
                       placeholder="Subtask title"
                     />
                     <button
@@ -294,7 +316,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Add new subtask"
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
-                    className="flex-1 bg-input-background rounded-lg p-3 border border-border-default "
+                    className="flex-1 bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
                     onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
                   />
                   <button
@@ -309,8 +331,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
             {/* Attachments */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-primary flex items-center gap-2">
-                <span className="text-amber-500">•</span> Attachment
+              <h3 className="font-semibold text-lg text-text-primary">
+                Attachment
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -328,7 +350,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           href={att.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary font-medium truncate block max-w-[140px] hover:underline"
+                          className="text-text-primary font-medium truncate block max-w-[140px] hover:underline"
                         >
                           {att.title || "Attachment"}
                         </a>
@@ -363,7 +385,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           title: e.target.value,
                         }))
                       }
-                      className="w-full bg-input-background rounded-lg p-3 border border-border-default "
+                      className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
                     />
                   </div>
                   <div>
@@ -372,7 +394,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     </label>
                     <div className="relative" ref={attachmentRef}>
                       <button
-                        className="w-full bg-input-background rounded-lg p-3 border border-border-default flex justify-between items-center"
+                        className="w-full bg-input-background rounded-lg p-3 border border-border-default flex justify-between items-center text-text-primary"
                         onClick={() =>
                           setShowAttachmentOptions(!showAttachmentOptions)
                         }
@@ -393,7 +415,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           ).map((type) => (
                             <button
                               key={type}
-                              className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 capitalize"
+                              className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 capitalize text-text-primary"
                               onClick={() => {
                                 setNewAttachment((prev) => ({ ...prev, type }));
                                 setShowAttachmentOptions(false);
@@ -422,7 +444,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         url: e.target.value,
                       }))
                     }
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
                   />
                 </div>
 
@@ -437,75 +459,36 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           </div>
 
           {/* Right Column */}
-          <div className="col-span-1 space-y-6">
+          <div className="w-1/3 pl-6 space-y-6">
             {/* Attributes */}
             <div className="space-y-6">
-              <h3 className="font-semibold text-lg text-primary">ATTRIBUTES</h3>
+              <h3 className="font-semibold text-lg text-text-primary">
+                ATTRIBUTES
+              </h3>
 
               <div className="space-y-4">
-                {/* Status */}
-                <div>
-                  <label className="block mb-2 text-muted-foreground">
-                    Status
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={editedTask.status}
-                      onChange={(e) =>
-                        handleChange("status", e.target.value as Status)
-                      }
-                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none  pr-8"
-                    >
-                      <option value="backlog">Backlog</option>
-                      <option value="todo">To Do</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="done">Done</option>
-                      <option value="archive">Archive</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
-                      <ChevronDown size={16} />
-                    </div>
-                  </div>
-                </div>
-
                 {/* Priority */}
                 <div>
                   <label className="block mb-2 text-muted-foreground">
                     Priority
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["low", "medium", "high", "urgent"] as Priority[]).map(
-                      (priority) => (
-                        <button
-                          key={priority}
-                          className={`flex items-center gap-2 p-3 rounded-lg border ${
-                            editedTask.priority === priority
-                              ? "border-blue-500 bg-blue-500/10"
-                              : "border-border"
-                          }`}
-                          onClick={() => handleChange("priority", priority)}
-                        >
-                          <div
-                            className={`w-3 h-3 rounded-full ${priorityColors[priority]}`}
-                          />
-                          <span className="capitalize">{priority}</span>
-                        </button>
-                      )
-                    )}
+                  <div className="relative">
+                    <select
+                      value={editedTask.priority}
+                      onChange={(e) =>
+                        handleChange("priority", e.target.value as Priority)
+                      }
+                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none pr-8 text-text-primary"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
+                      <ChevronDown size={16} />
+                    </div>
                   </div>
-                </div>
-
-                {/* Assignee */}
-                <div>
-                  <label className="block mb-2 text-muted-foreground">
-                    Assignee
-                  </label>
-                  <input
-                    value={editedTask.assignee || ""}
-                    onChange={(e) => handleChange("assignee", e.target.value)}
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
-                    placeholder="Assignee"
-                  />
                 </div>
 
                 {/* Due Date */}
@@ -525,19 +508,41 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     onChange={(e) =>
                       handleChange("dueDate", new Date(e.target.value))
                     }
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default "
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Responsive Section */}
+            {/* Action Section */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-primary">Responsive</h3>
+              <h3 className="font-semibold text-lg text-text-primary">
+                ACTIONS
+              </h3>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => onDuplicate(editedTask)}
+                  className="flex items-center gap-2 p-3 text-text-primary hover:bg-button-second-bg-hover rounded-lg transition-colors border border-border"
+                >
+                  <Copy size={16} />
+                  Duplicate task
+                </button>
+                <button
+                  onClick={() => editedTask.id && onDelete(editedTask.id)}
+                  className="flex items-center gap-2 p-3 text-destructive hover:bg-button-second-bg-hover rounded-lg transition-colors border border-border"
+                >
+                  <Trash2 size={16} />
+                  Delete task
+                </button>
+              </div>
+            </div>
+
+            {/* Responsive Section */}
+            <div className="space-y-4 mt-auto pt-6">
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-3 border border-border-default rounded-lg hover:bg-button-second-bg-hover transition-colors"
+                  className="flex-1 py-3 border border-border-default rounded-lg hover:bg-button-second-bg-hover transition-colors text-text-primary"
                 >
                   Discard
                 </button>

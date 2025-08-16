@@ -184,11 +184,11 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-bold">
+        <h2 className="text-lg font-bold">
           Tuần {format(weekDays[0], "d MMM")} -{" "}
           {format(weekDays[6], "d MMM, yyyy")}
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {events.length + tasks.length} sự kiện và công việc
         </p>
       </div>
@@ -210,7 +210,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
             {Array.from({ length: 24 }).map((_, hour) => (
               <div
                 key={hour}
-                className="h-16 border-b border-gray-100 dark:border-gray-700 flex items-center justify-end pr-2 text-sm text-gray-500 dark:text-gray-400"
+                className="h-16 border-b border-gray-100 dark:border-gray-700 flex items-center justify-end pr-2 text-xs text-gray-500 dark:text-gray-400"
               >
                 {format(new Date().setHours(hour, 0), "h a")}
               </div>
@@ -231,7 +231,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                     : ""
                 }`}
               >
-                <div className="text-center py-1 text-sm font-medium border-b dark:border-gray-700">
+                <div className="text-center py-1 text-xs font-medium border-b dark:border-gray-700">
                   {format(day, "EEE d")}
                 </div>
 
@@ -254,51 +254,45 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                         const widthPercent = 100 / totalItems;
                         const left = itemIndex * widthPercent;
 
+                        // Determine item type and styling
+                        const isEvent = "start" in item;
+                        const bgColor = isEvent
+                          ? "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200"
+                          : item.completed
+                          ? "bg-green-100 border-green-200 dark:bg-green-900/30 dark:border-green-800 hover:bg-green-200"
+                          : "bg-yellow-100 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 hover:bg-yellow-200";
+
+                        const dotColor = isEvent
+                          ? "bg-blue-500"
+                          : item.completed
+                          ? "bg-green-500"
+                          : "bg-yellow-500";
+
                         return (
                           <div
                             key={`${item.id}-${hour}`}
-                            className={`absolute rounded p-2 text-xs cursor-pointer transition-all ${
-                              "start" in item
-                                ? "bg-blue-100 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200"
-                                : item.completed
-                                ? "bg-green-100 border border-green-200 dark:bg-green-900/30 dark:border-green-800 hover:bg-green-200"
-                                : "bg-yellow-100 border border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 hover:bg-yellow-200"
-                            }`}
+                            className={`absolute rounded p-1.5 cursor-pointer transition-all text-xs shadow-sm ${bgColor}`}
                             style={{
                               top: `${top}px`,
-                              height: "28px",
+                              height: "30px",
                               width: `${widthPercent}%`,
                               left: `${left}%`,
                               zIndex: 5 + itemIndex,
                             }}
                             onClick={() => toggleItem(item.id)}
                           >
-                            <div className="flex items-center h-full">
+                            <div className="flex items-center h-full gap-1">
+                              <span
+                                className={`w-2 h-2 rounded-full ${dotColor}`}
+                              ></span>
                               <span className="truncate flex-1 font-medium">
                                 {item.title}
                               </span>
-                              <div className="ml-2 flex items-center gap-1">
-                                {itemDate && (
-                                  <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                                    {format(itemDate, "h:mm")}
-                                  </span>
-                                )}
-                                {"start" in item ? (
-                                  <span className="bg-blue-500 text-white text-[10px] px-1 rounded">
-                                    E
-                                  </span>
-                                ) : (
-                                  <span
-                                    className={`text-[10px] px-1 rounded ${
-                                      item.completed
-                                        ? "bg-green-500 text-white"
-                                        : "bg-yellow-500 text-white"
-                                    }`}
-                                  >
-                                    T
-                                  </span>
-                                )}
-                              </div>
+                              {itemDate && (
+                                <span className="text-[10px] text-gray-600 dark:text-gray-300">
+                                  {format(itemDate, "h:mm")}
+                                </span>
+                              )}
                             </div>
 
                             {isExpanded && (
@@ -306,7 +300,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                                 className="absolute z-50 top-full left-0 right-0 mt-1 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-60"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <div className="font-medium mb-1">
+                                <div className="font-medium mb-1 text-sm">
                                   {item.title}
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
@@ -314,13 +308,13 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                                 </div>
 
                                 {"description" in item && item.description && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
+                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
                                     {item.description}
                                   </div>
                                 )}
 
                                 {"notes" in item && item.notes && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
+                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
                                     {item.notes}
                                   </div>
                                 )}
@@ -347,7 +341,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         {/* Empty state */}
         {!hasItems && !loading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-gray-500 dark:text-gray-400">
+            <div className="text-center text-gray-500 dark:text-gray-400 p-4">
               <svg
                 className="w-16 h-16 mx-auto mb-4 opacity-50"
                 fill="none"
@@ -361,8 +355,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4l6 6m0-6l-6 6"
                 />
               </svg>
-              <p className="text-lg font-medium mb-2">Không có sự kiện nào</p>
-              <p className="text-sm">
+              <p className="text-sm font-medium mb-1">Không có sự kiện nào</p>
+              <p className="text-xs">
                 Không có sự kiện hoặc công việc nào trong tuần này
               </p>
             </div>

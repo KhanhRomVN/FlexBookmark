@@ -191,7 +191,7 @@ const TaskAndEvent: React.FC = () => {
   if (!authState.isAuthenticated) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
-        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md">
+        <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md">
           <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg
               className="w-8 h-8 text-white"
@@ -208,16 +208,16 @@ const TaskAndEvent: React.FC = () => {
             </svg>
           </div>
 
-          <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+          <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">
             Kết nối với Google
           </h3>
 
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
             Đăng nhập để đồng bộ lịch và công việc từ tài khoản Google của bạn
           </p>
 
           {authState.error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-xs">
               {authState.error}
             </div>
           )}
@@ -225,7 +225,7 @@ const TaskAndEvent: React.FC = () => {
           <button
             onClick={handleLogin}
             disabled={authState.loading}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
           >
             {authState.loading ? (
               <>
@@ -264,18 +264,18 @@ const TaskAndEvent: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
             Lịch & Công việc
           </h1>
           {authState.user && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
               {authState.user.picture && (
                 <img
                   src={authState.user.picture}
                   alt={authState.user.name}
-                  className="w-6 h-6 rounded-full"
+                  className="w-5 h-5 rounded-full"
                 />
               )}
               <span>{authState.user.name}</span>
@@ -287,11 +287,11 @@ const TaskAndEvent: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
+            className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
             title="Làm mới dữ liệu"
           >
             <svg
-              className={`w-5 h-5 ${loading ? "animate-spin" : ""}`}
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -307,11 +307,11 @@ const TaskAndEvent: React.FC = () => {
 
           <button
             onClick={handleLogout}
-            className="p-2 text-red-600 hover:text-red-700 transition-colors"
+            className="p-1.5 text-red-600 hover:text-red-700 transition-colors"
             title="Đăng xuất"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -329,10 +329,10 @@ const TaskAndEvent: React.FC = () => {
 
       {/* Error banner */}
       {error && (
-        <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+        <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <div className="flex items-center gap-2 text-red-700 dark:text-red-400 text-xs">
             <svg
-              className="w-5 h-5 flex-shrink-0"
+              className="w-4 h-4 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -344,13 +344,13 @@ const TaskAndEvent: React.FC = () => {
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-sm">{error}</span>
+            <span className="flex-1">{error}</span>
             <button
               onClick={() => setError(null)}
               className="ml-auto text-red-500 hover:text-red-700"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3 h-3"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -369,7 +369,7 @@ const TaskAndEvent: React.FC = () => {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+        <div className="w-1/4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
           <CalendarPanel
             selectedDate={selectedDate}
             onDateChange={handleDateChange}
@@ -378,7 +378,7 @@ const TaskAndEvent: React.FC = () => {
           />
         </div>
 
-        <div className="w-2/3 overflow-y-auto">
+        <div className="w-3/4 overflow-y-auto">
           <TimeLinePanel
             date={selectedDate}
             events={filteredEvents}

@@ -16,7 +16,7 @@ import {
 } from "../../utils/GGTask";
 import ChromeAuthManager from "../../utils/chromeAuth";
 import type { AuthState } from "../../utils/chromeAuth";
-import TaskDialog from "../components/TaskManager/TaskDialog"; // Changed from TaskDrawer to TaskDialog
+import TaskDialog from "../components/TaskManager/TaskDialog";
 import { Input } from "../components/ui/input";
 import {
   Select,
@@ -25,21 +25,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Button } from "../components/ui/button";
-import { Plus } from "lucide-react";
 import { Priority, Status, Task } from "../types/task";
 
 const folders = [
-  { id: "backlog", title: "Backlog" },
-  { id: "todo", title: "To Do" },
-  { id: "in-progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-  { id: "archive", title: "Archive" },
+  { id: "backlog", title: "Backlog", emoji: "📥" },
+  { id: "todo", title: "To Do", emoji: "📋" },
+  { id: "in-progress", title: "In Progress", emoji: "🚧" },
+  { id: "done", title: "Done", emoji: "✅" },
+  { id: "archive", title: "Archive", emoji: "🗄️" },
 ];
 
 interface TaskList {
   id: string;
   title: string;
+  emoji: string;
   tasks: Task[];
 }
 
@@ -56,12 +55,14 @@ const TaskManager: React.FC = () => {
     folders.map((f) => ({ ...f, tasks: [] }))
   );
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // Changed from isDrawerOpen to isDialogOpen
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [quickAddStatus, setQuickAddStatus] = useState<Status | null>(null);
+  const [quickAddTitle, setQuickAddTitle] = useState("");
 
   const authManager = ChromeAuthManager.getInstance();
 
@@ -112,7 +113,6 @@ const TaskManager: React.FC = () => {
     try {
       const tasks = await fetchGoogleTasks(token, activeGroup);
 
-      // Distribute tasks to folders
       const updatedLists = [...lists].map((list) => ({
         ...list,
         tasks: tasks.filter((task: Task) => task.status === list.id),
@@ -147,13 +147,11 @@ const TaskManager: React.FC = () => {
       const activeIndex = activeList.tasks.findIndex((t) => t.id === active.id);
 
       if (activeListIndex === overListIndex) {
-        // Same list: reorder within list
         const newTasks = arrayMove(activeList.tasks, activeIndex, activeIndex);
         const newLists = [...lists];
         newLists[activeListIndex].tasks = newTasks;
         setLists(newLists);
       } else {
-        // Move task to another list
         const movedTask = activeList.tasks[activeIndex];
         movedTask.status = overList.id as Status;
 
@@ -181,10 +179,12 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  const handleAddTask = (status: Status) => {
-    setSelectedTask({
+  const handleQuickAddTask = async (status: Status) => {
+    if (!quickAddTitle.trim() || !authState.user || !activeGroup) return;
+
+    const newTask: Task = {
       id: "",
-      title: "New Task",
+      title: quickAddTitle,
       description: "",
       status,
       priority: "medium",
@@ -199,8 +199,26 @@ const TaskManager: React.FC = () => {
       activityLog: [],
       prevTaskId: null,
       nextTaskId: null,
-    });
-    setIsDialogOpen(true);
+    };
+
+    const token = authState.user.accessToken;
+    try {
+      const createdTask = await createGoogleTask(token, newTask, activeGroup);
+      const listIndex = lists.findIndex((list) => list.id === status);
+      if (listIndex !== -1) {
+        const newLists = [...lists];
+        newLists[listIndex].tasks = [...newLists[listIndex].tasks, createdTask];
+        setLists(newLists);
+      }
+      setSelectedTask(createdTask);
+      setIsDialogOpen(true);
+    } catch (err) {
+      console.error("Failed to create task:", err);
+      setError("Failed to create task");
+    } finally {
+      setQuickAddTitle("");
+      setQuickAddStatus(null);
+    }
   };
 
   const handleTaskClick = (task: Task) => {
@@ -209,7 +227,6 @@ const TaskManager: React.FC = () => {
   };
 
   const handleCreateGroup = async () => {
-    // Implement group creation logic here
     console.log("Create new group");
   };
 
@@ -218,7 +235,6 @@ const TaskManager: React.FC = () => {
     const token = authState.user.accessToken;
     try {
       await deleteGoogleTask(token, taskId, activeGroup);
-      // Remove the task from state
       const newLists = lists.map((list) => ({
         ...list,
         tasks: list.tasks.filter((t) => t.id !== taskId),
@@ -239,7 +255,6 @@ const TaskManager: React.FC = () => {
     const token = authState.user.accessToken;
 
     try {
-      // Create a new task with the same data but a new ID
       const newTask = {
         ...task,
         id: "",
@@ -247,7 +262,6 @@ const TaskManager: React.FC = () => {
         activityLog: [],
       };
       const createdTask = await createGoogleTask(token, newTask, activeGroup);
-      // Add the new task to the same folder
       const listIndex = lists.findIndex((list) => list.id === task.status);
       if (listIndex !== -1) {
         const newLists = [...lists];
@@ -266,16 +280,13 @@ const TaskManager: React.FC = () => {
 
     try {
       if (task.id) {
-        // Update existing task
         await updateGoogleTask(token, task.id, task, activeGroup);
-        // Update state
         const newLists = lists.map((list) => ({
           ...list,
           tasks: list.tasks.map((t) => (t.id === task.id ? task : t)),
         }));
         setLists(newLists);
       } else {
-        // Create new task
         const createdTask = await createGoogleTask(token, task, activeGroup);
         const listIndex = lists.findIndex((list) => list.id === task.status);
         if (listIndex !== -1) {
@@ -295,7 +306,6 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  // Filter tasks based on search term and filters
   const filteredLists = useMemo(() => {
     return lists.map((list) => ({
       ...list,
@@ -374,10 +384,6 @@ const TaskManager: React.FC = () => {
               <SelectItem value="archive">Archive</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => handleAddTask("backlog")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-          </Button>
         </div>
 
         <DndContext
@@ -394,9 +400,18 @@ const TaskManager: React.FC = () => {
                 <FolderCard
                   id={list.id}
                   title={list.title}
+                  emoji={list.emoji}
                   tasks={list.tasks}
                   onTaskClick={handleTaskClick}
-                  onAddTask={() => handleAddTask(list.id as Status)}
+                  isAdding={quickAddStatus === list.id}
+                  newTaskTitle={quickAddStatus === list.id ? quickAddTitle : ""}
+                  setNewTaskTitle={setQuickAddTitle}
+                  onAddTask={() => {
+                    setQuickAddStatus(list.id as Status);
+                    setQuickAddTitle("");
+                  }}
+                  onCancelAdd={() => setQuickAddStatus(null)}
+                  onSubmitAdd={() => handleQuickAddTask(list.id as Status)}
                 />
               </SortableContext>
             ))}
@@ -404,7 +419,6 @@ const TaskManager: React.FC = () => {
         </DndContext>
       </div>
 
-      {/* Replaced TaskDrawer with TaskDialog */}
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={() => {
@@ -412,6 +426,7 @@ const TaskManager: React.FC = () => {
           setSelectedTask(null);
         }}
         task={selectedTask}
+        folders={folders}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}

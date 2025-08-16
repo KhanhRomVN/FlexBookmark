@@ -78,6 +78,19 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     return itemsByDate[dayKey] || { events: 0, tasks: 0 };
   };
 
+  // Calculate monthly summary
+  const monthlySummary = useMemo(() => {
+    let totalEvents = 0;
+    let totalTasks = 0;
+
+    Object.values(itemsByDate).forEach((day) => {
+      totalEvents += day.events;
+      totalTasks += day.tasks;
+    });
+
+    return { totalEvents, totalTasks };
+  }, [itemsByDate]);
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 p-4">
       <div className="flex justify-between items-center mb-4">
@@ -88,7 +101,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
         >
           &lt;
         </button>
-        <h2 className="text-xl font-bold">
+        <h2 className="text-lg font-bold">
           {format(currentMonth, "MMMM yyyy")}
         </h2>
         <button
@@ -154,6 +167,21 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
             </button>
           );
         })}
+      </div>
+
+      {/* Summary Section */}
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <h3 className="font-medium mb-2 text-sm">Tổng quan tháng</h3>
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center">
+            <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
+            <span>Sự kiện: {monthlySummary.totalEvents}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+            <span>Công việc: {monthlySummary.totalTasks}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
