@@ -2,16 +2,11 @@ import React, { useState, useEffect } from "react";
 import { ThemeProvider } from "@/presentation/providers/theme-provider";
 import { HelmetProvider } from "react-helmet-async";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/presentation/components/ui/tabs";
+import { Tabs, TabsContent } from "@/presentation/components/ui/tabs";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
 import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
+import TaskManager from "@/presentation/tab/TaskManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,11 +20,11 @@ const queryClient = new QueryClient({
 });
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "manager" | "tasks">(
-    "dashboard"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "manager" | "tasks" | "taskManager"
+  >("dashboard");
 
-  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Tasks
+  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Tasks, 4 = Task Manager
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       // support top-row and numpad keys
@@ -41,6 +36,9 @@ const App: React.FC = () => {
       }
       if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
         setActiveTab("tasks");
+      }
+      if (e.key === "4" || e.code === "Digit4" || e.code === "Numpad4") {
+        setActiveTab("taskManager");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -54,7 +52,8 @@ const App: React.FC = () => {
         result.flexbookmark_active_tab &&
         (result.flexbookmark_active_tab === "dashboard" ||
           result.flexbookmark_active_tab === "manager" ||
-          result.flexbookmark_active_tab === "tasks")
+          result.flexbookmark_active_tab === "tasks" ||
+          result.flexbookmark_active_tab === "taskManager")
       ) {
         setActiveTab(result.flexbookmark_active_tab);
       }
@@ -74,7 +73,9 @@ const App: React.FC = () => {
             <Tabs
               value={activeTab}
               onValueChange={(v) =>
-                setActiveTab(v as "dashboard" | "manager" | "tasks")
+                setActiveTab(
+                  v as "dashboard" | "manager" | "tasks" | "taskManager"
+                )
               }
             >
               <TabsContent value="dashboard" className="flex-1 overflow-auto">
@@ -85,6 +86,9 @@ const App: React.FC = () => {
               </TabsContent>
               <TabsContent value="tasks" className="flex-1 overflow-auto">
                 <TaskAndEvent />
+              </TabsContent>
+              <TabsContent value="taskManager" className="flex-1 overflow-auto">
+                <TaskManager />
               </TabsContent>
             </Tabs>
           </div>

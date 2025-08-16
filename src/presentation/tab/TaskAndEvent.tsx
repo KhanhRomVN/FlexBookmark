@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import CalendarPanel from "../components/TaskAndEvent/CalendarPanel";
 import TimeLinePanel from "../components/TaskAndEvent/TimeLinePanel";
-import DetailPanel from "../components/TaskAndEvent/DetailPanel";
-import { fetchGoogleEvents, fetchGoogleTasks } from "../../utils/googleApi";
+import { fetchGoogleEvents } from "../../utils/GGCalender";
+import { fetchGoogleTasks, fetchGoogleTaskGroups } from "../../utils/GGTask";
 import ChromeAuthManager, { AuthState } from "../../utils/chromeAuth";
 
 export interface CalendarEvent {
@@ -16,6 +16,7 @@ export interface CalendarEvent {
 }
 
 export interface Task {
+  folder: any;
   id: string;
   title: string;
   due?: Date;
@@ -39,6 +40,7 @@ const TaskAndEvent: React.FC = () => {
   );
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [taskLists, setTaskLists] = useState<any[]>([]);
 
   const authManager = ChromeAuthManager.getInstance();
 
@@ -62,38 +64,34 @@ const TaskAndEvent: React.FC = () => {
     setError(null);
 
     try {
+      // First, get task lists
+      const taskListsData = await fetchGoogleTaskGroups(
+        authState.user.accessToken
+      );
+      setTaskLists(taskListsData);
+
+      // Use the first task list (usually the default one) or '@default'
+      const defaultTaskListId =
+        taskListsData.length > 0 ? taskListsData[0].id : "@default";
+
       const [eventsData, tasksData] = await Promise.all([
         fetchGoogleEvents(authState.user.accessToken),
-        fetchGoogleTasks(authState.user.accessToken),
+        fetchGoogleTasks(authState.user.accessToken, defaultTaskListId),
       ]);
 
       setEvents(eventsData);
       setTasks(tasksData);
     } catch (err) {
       console.error("API Error:", err);
-
-      // Handle token refresh for unauthorized errors
-      if (err instanceof Error && err.message === "UNAUTHORIZED") {
-        try {
-          const newToken = await authManager.refreshToken();
-          // Retry with new token
-          const [eventsData, tasksData] = await Promise.all([
-            fetchGoogleEvents(newToken),
-            fetchGoogleTasks(newToken),
-          ]);
-          setEvents(eventsData);
-          setTasks(tasksData);
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        }
+      if (err instanceof Error) {
+        setError(`Lỗi kết nối với Google APIs: ${err.message}`);
       } else {
         setError("Lỗi kết nối với Google APIs");
       }
     } finally {
       setLoading(false);
     }
-  }, [authState.isAuthenticated, authState.user?.accessToken, authManager]);
+  }, [authState.isAuthenticated, authState.user?.accessToken]);
 
   // Fetch data when authenticated
   useEffect(() => {
@@ -106,7 +104,6 @@ const TaskAndEvent: React.FC = () => {
   const handleLogin = async () => {
     try {
       await authManager.login();
-      // fetchData will be called automatically due to useEffect dependency
     } catch (err) {
       console.error("Login error:", err);
       setError("Đăng nhập thất bại. Vui lòng thử lại.");
@@ -119,6 +116,7 @@ const TaskAndEvent: React.FC = () => {
       await authManager.logout();
       setEvents([]);
       setTasks([]);
+      setTaskLists([]);
       setSelectedItem(null);
       setError(null);
     } catch (err) {
@@ -126,13 +124,15 @@ const TaskAndEvent: React.FC = () => {
     }
   };
 
-  // Select item handlers
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+  };
+
   const handleSelectItem = (item: CalendarEvent | Task) => {
     setSelectedItem(item);
   };
 
-  const handleDateChange = (date: Date) => {
-    setSelectedDate(date);
+  const handleCloseModal = () => {
     setSelectedItem(null);
   };
 
@@ -141,10 +141,35 @@ const TaskAndEvent: React.FC = () => {
     fetchData();
   };
 
-  // Panel widths
-  const calendarWidth = selectedItem ? "30%" : "40%";
-  const timelineWidth = selectedItem ? "40%" : "60%";
-  const detailWidth = selectedItem ? "30%" : "0%";
+  // Helper function to safely compare dates
+  const isSameDate = (date1: Date, date2: Date): boolean => {
+    try {
+      return (
+        date1.getDate() === date2.getDate() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getFullYear() === date2.getFullYear()
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  // Filter events and tasks for the selected date with error handling
+  const filteredEvents = events.filter((e) => {
+    try {
+      return e.start && isSameDate(e.start, selectedDate);
+    } catch {
+      return false;
+    }
+  });
+
+  const filteredTasks = tasks.filter((t) => {
+    try {
+      return t.due && isSameDate(t.due, selectedDate);
+    } catch {
+      return false;
+    }
+  });
 
   // Show loading spinner during initialization
   if (authState.loading) {
@@ -232,7 +257,6 @@ const TaskAndEvent: React.FC = () => {
     );
   }
 
-  // Main authenticated view
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -259,7 +283,7 @@ const TaskAndEvent: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
             title="Làm mới dữ liệu"
           >
             <svg
@@ -279,7 +303,7 @@ const TaskAndEvent: React.FC = () => {
 
           <button
             onClick={handleLogout}
-            className="px-3 py-2 text-red-600 hover:text-red-700 transition-colors"
+            className="p-2 text-red-600 hover:text-red-700 transition-colors"
             title="Đăng xuất"
           >
             <svg
@@ -292,7 +316,7 @@ const TaskAndEvent: React.FC = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1"
               />
             </svg>
           </button>
@@ -341,10 +365,7 @@ const TaskAndEvent: React.FC = () => {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <div
-          className="h-full transition-all duration-300 ease-in-out overflow-y-auto"
-          style={{ width: calendarWidth }}
-        >
+        <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
           <CalendarPanel
             selectedDate={selectedDate}
             onDateChange={handleDateChange}
@@ -353,36 +374,16 @@ const TaskAndEvent: React.FC = () => {
           />
         </div>
 
-        <div
-          className="h-full transition-all duration-300 ease-in-out border-l border-r border-gray-200 dark:border-gray-700"
-          style={{ width: timelineWidth }}
-        >
+        <div className="w-2/3 overflow-y-auto">
           <TimeLinePanel
             date={selectedDate}
-            events={events.filter(
-              (e) => e.start.toDateString() === selectedDate.toDateString()
-            )}
-            tasks={tasks.filter(
-              (t) =>
-                t.due && t.due.toDateString() === selectedDate.toDateString()
-            )}
+            events={filteredEvents}
+            tasks={filteredTasks}
             onSelectItem={handleSelectItem}
             loading={loading}
             error={error}
           />
         </div>
-
-        {selectedItem && (
-          <div
-            className="h-full transition-all duration-300 ease-in-out overflow-y-auto"
-            style={{ width: detailWidth }}
-          >
-            <DetailPanel
-              item={selectedItem}
-              onClose={() => setSelectedItem(null)}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

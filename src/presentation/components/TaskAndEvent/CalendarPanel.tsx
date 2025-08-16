@@ -1,5 +1,3 @@
-// FlexBookmark/src/presentation/components/TaskAndEvent/CalendarPanel.tsx
-
 import React, { useState, useMemo } from "react";
 import {
   format,
@@ -13,8 +11,10 @@ import {
   isSameMonth,
   isSameDay,
   parseISO,
+  startOfDay,
 } from "date-fns";
 import { CalendarEvent, Task } from "../../tab/TaskAndEvent";
+import { FixedSizeGrid as Grid } from "react-window";
 
 interface CalendarPanelProps {
   selectedDate: Date;
@@ -29,43 +29,112 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
   events,
   tasks,
 }) => {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(
+    startOfMonth(new Date())
+  );
 
-  const weeks = useMemo(() => {
+  const { days, weekCount } = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-    return eachDayOfInterval({ start: startDate, end: endDate }).reduce<
-      Date[][]
-    >((acc, day, index) => {
-      if (index % 7 === 0) acc.push([]);
-      acc[acc.length - 1].push(day);
-      return acc;
-    }, []);
+    return {
+      days,
+      weekCount: Math.ceil(days.length / 7),
+    };
   }, [currentMonth]);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
-  // Đếm sự kiện và công việc cho ngày cụ thể
-  const getDayEventsCount = (day: Date) => {
-    const dayEvents = events.filter((e) =>
-      isSameDay(parseISO(e.start.toString()), day)
+  const itemsByDate = useMemo(() => {
+    const dateMap: { [dateKey: string]: { events: number; tasks: number } } =
+      {};
+
+    // Process events
+    events.forEach((event) => {
+      const eventStart =
+        event.start instanceof Date
+          ? event.start
+          : parseISO(event.start as string);
+      const dayKey = startOfDay(eventStart).toISOString();
+      if (!dateMap[dayKey]) dateMap[dayKey] = { events: 0, tasks: 0 };
+      dateMap[dayKey].events += 1;
+    });
+
+    // Process tasks
+    tasks.forEach((task) => {
+      if (!task.due) return;
+      const taskDue =
+        task.due instanceof Date ? task.due : parseISO(task.due as string);
+      const dayKey = startOfDay(taskDue).toISOString();
+      if (!dateMap[dayKey]) dateMap[dayKey] = { events: 0, tasks: 0 };
+      dateMap[dayKey].tasks += 1;
+    });
+
+    return dateMap;
+  }, [events, tasks]);
+
+  const getDayEvents = (day: Date) => {
+    const dayKey = startOfDay(day).toISOString();
+    return itemsByDate[dayKey] || { events: 0, tasks: 0 };
+  };
+
+  // Grid cell renderer
+  const Cell = ({ columnIndex, rowIndex, style }: any) => {
+    const index = rowIndex * 7 + columnIndex;
+    if (index >= days.length) return <div style={style} />;
+
+    const day = days[index];
+    const { events: eventCount, tasks: taskCount } = getDayEvents(day);
+    const isCurrentMonth = isSameMonth(day, currentMonth);
+    const isSelected = isSameDay(day, selectedDate);
+    const isToday = isSameDay(day, new Date());
+
+    return (
+      <button
+        onClick={() => onDateChange(day)}
+        style={style}
+        className={`flex flex-col items-center justify-start p-1 h-full w-full rounded-lg transition-all
+          ${
+            isCurrentMonth
+              ? "text-gray-900 dark:text-white"
+              : "text-gray-400 dark:text-gray-500"
+          } 
+          ${
+            isSelected
+              ? "bg-blue-500 text-white dark:bg-blue-600"
+              : "hover:bg-gray-100 dark:hover:bg-gray-700"
+          }
+          ${
+            isToday && !isSelected
+              ? "ring-2 ring-blue-400 dark:ring-blue-500"
+              : ""
+          }`}
+      >
+        <span className="text-sm font-medium mb-1">{format(day, "d")}</span>
+
+        <div className="flex flex-wrap justify-center gap-0.5">
+          {eventCount > 0 && (
+            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+          )}
+          {taskCount > 0 && (
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+          )}
+        </div>
+      </button>
     );
-    const dayTasks = tasks.filter(
-      (t) => t.due && isSameDay(parseISO(t.due.toString()), day)
-    );
-    return dayEvents.length + dayTasks.length;
   };
 
   return (
-    <div className="h-full p-4 bg-white dark:bg-gray-800">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 p-4">
       <div className="flex justify-between items-center mb-4">
         <button
           onClick={prevMonth}
           className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          aria-label="Previous month"
         >
           &lt;
         </button>
@@ -75,72 +144,34 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
         <button
           onClick={nextMonth}
           className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          aria-label="Next month"
         >
           &gt;
         </button>
       </div>
 
-      <div
-        className="flex flex-col gap-4 overflow-y-auto"
-        style={{ maxHeight: "calc(100% - 60px)" }}
-      >
-        {weeks.map((week, weekIndex) => (
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
           <div
-            key={weekIndex}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow p-4"
+            key={day}
+            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1"
           >
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs font-medium text-gray-500 dark:text-gray-400"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-1">
-              {week.map((day, dayIndex) => {
-                const dayEventsCount = getDayEventsCount(day);
-                const isCurrentMonth = isSameMonth(day, currentMonth);
-                const isSelected = isSameDay(day, selectedDate);
-
-                return (
-                  <button
-                    key={dayIndex}
-                    onClick={() => onDateChange(day)}
-                    className={`h-14 flex flex-col items-center justify-center rounded-lg transition-all
-                      ${
-                        isCurrentMonth
-                          ? "text-gray-900 dark:text-white"
-                          : "text-gray-400 dark:text-gray-500"
-                      } 
-                      ${
-                        isSelected
-                          ? "bg-blue-500 text-white dark:bg-blue-600"
-                          : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                  >
-                    <span className="text-sm">{format(day, "d")}</span>
-                    {dayEventsCount > 0 && (
-                      <span
-                        className={`text-xs ${
-                          isSelected
-                            ? "text-white"
-                            : "text-blue-500 dark:text-blue-400"
-                        }`}
-                      >
-                        {dayEventsCount}{" "}
-                        {dayEventsCount === 1 ? "item" : "items"}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {day}
           </div>
         ))}
+      </div>
+
+      <div className="flex-1">
+        <Grid
+          columnCount={7}
+          columnWidth={32}
+          height={weekCount * 40}
+          rowCount={weekCount}
+          rowHeight={40}
+          width={"100%"}
+        >
+          {Cell}
+        </Grid>
       </div>
     </div>
   );
