@@ -19,19 +19,22 @@
       "openid",
       "email",
       "profile",
-      "https://www.googleapis.com/auth/calendar.readonly",
-      "https://www.googleapis.com/auth/tasks.readonly"
+      "https://www.googleapis.com/auth/tasks",
+      "https://www.googleapis.com/auth/tasks.readonly",
+      "https://www.googleapis.com/auth/calendar.readonly"
     ]
   },
   "host_permissions": [
     "https://www.googleapis.com/*",
-    "https://api.open-meteo.com/*"
+    "https://api.open-meteo.com/*",
+    "https://tasks.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
   ],
   "background": {
     "service_worker": "service-worker.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://www.googleapis.com https://api.open-meteo.com https://*.gstatic.com;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://tasks.googleapis.com https://www.googleapis.com https://api.open-meteo.com https://oauth2.googleapis.com https://*.gstatic.com;"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"

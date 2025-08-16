@@ -27,6 +27,13 @@ const App: React.FC = () => {
   // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Tasks, 4 = Task Manager
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) ||
+          el.isContentEditable)
+      )
+        return;
       // support top-row and numpad keys
       if (e.key === "1" || e.code === "Digit1" || e.code === "Numpad1") {
         setActiveTab("dashboard");

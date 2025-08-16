@@ -1,3 +1,5 @@
+// src/presentation/tab/TaskManager.tsx - Fixed version
+
 import React, { useState, useEffect, useMemo } from "react";
 import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
 import {
@@ -13,6 +15,7 @@ import {
   createGoogleTask,
   fetchGoogleTaskGroups,
   deleteGoogleTask,
+  verifyTokenScopes,
 } from "../../utils/GGTask";
 import ChromeAuthManager from "../../utils/chromeAuth";
 import type { AuthState } from "../../utils/chromeAuth";
@@ -66,6 +69,28 @@ const TaskManager: React.FC = () => {
 
   const authManager = ChromeAuthManager.getInstance();
 
+  // Helper function to get fresh token
+  const getFreshToken = async (): Promise<string> => {
+    try {
+      // Clear any cached tokens first
+      if (authState.user?.accessToken) {
+        await new Promise<void>((resolve) =>
+          chrome.identity.removeCachedAuthToken(
+            { token: authState.user!.accessToken },
+            () => resolve()
+          )
+        );
+      }
+
+      // Get new token with proper scopes
+      const user = await authManager.login();
+      return user.accessToken;
+    } catch (error) {
+      console.error("Failed to get fresh token:", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = authManager.subscribe((newState: any) => {
       setAuthState(newState);
@@ -84,8 +109,17 @@ const TaskManager: React.FC = () => {
 
   const loadTaskGroups = async () => {
     if (!authState.user) return;
-    const token = authState.user!.accessToken;
+
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token has correct scopes
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        console.log("Token missing tasks scope, getting fresh token...");
+        token = await getFreshToken();
+      }
+
       const groups = await fetchGoogleTaskGroups(token);
       setGroups(groups);
       if (groups.length > 0) {
@@ -93,7 +127,7 @@ const TaskManager: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load task groups:", err);
-      setError("Failed to load task groups");
+      setError("Failed to load task groups. Please try logging in again.");
     }
   };
 
@@ -105,12 +139,19 @@ const TaskManager: React.FC = () => {
 
   const loadTasks = async () => {
     if (!authState.user || !activeGroup) return;
-    const token = authState.user!.accessToken;
 
     setLoading(true);
     setError(null);
 
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token before using
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        token = await getFreshToken();
+      }
+
       const tasks = await fetchGoogleTasks(token, activeGroup);
 
       const updatedLists = [...lists].map((list) => ({
@@ -120,7 +161,7 @@ const TaskManager: React.FC = () => {
 
       setLists(updatedLists);
     } catch (err) {
-      setError("Failed to load tasks");
+      setError("Failed to load tasks. Please try logging in again.");
       console.error("Task load error:", err);
     } finally {
       setLoading(false);
@@ -169,13 +210,22 @@ const TaskManager: React.FC = () => {
 
   const saveTask = async (task: Task) => {
     if (!authState.user || !activeGroup) return;
-    const token = authState.user!.accessToken;
 
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token before using
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        token = await getFreshToken();
+      }
+
       await updateGoogleTask(token, task.id, task, activeGroup);
     } catch (err) {
       console.error("Failed to save task:", err);
-      setError("Failed to save task changes");
+      setError("Failed to save task changes. Please try again.");
+      // Reload tasks to revert UI changes
+      loadTasks();
     }
   };
 
@@ -190,8 +240,6 @@ const TaskManager: React.FC = () => {
       priority: "medium",
       startTime: null,
       endTime: null,
-      dueDate: null,
-      assignee: "",
       completed: false,
       subtasks: [],
       attachments: [],
@@ -201,20 +249,28 @@ const TaskManager: React.FC = () => {
       nextTaskId: null,
     };
 
-    const token = authState.user.accessToken;
     try {
+      let token = authState.user.accessToken;
+
+      // Always get fresh token for create operations to ensure proper scopes
+      token = await getFreshToken();
+
       const createdTask = await createGoogleTask(token, newTask, activeGroup);
+
       const listIndex = lists.findIndex((list) => list.id === status);
       if (listIndex !== -1) {
         const newLists = [...lists];
         newLists[listIndex].tasks = [...newLists[listIndex].tasks, createdTask];
         setLists(newLists);
       }
+
       setSelectedTask(createdTask);
       setIsDialogOpen(true);
     } catch (err) {
       console.error("Failed to create task:", err);
-      setError("Failed to create task");
+      setError(
+        "Failed to create task. Please check your permissions and try again."
+      );
     } finally {
       setQuickAddTitle("");
       setQuickAddStatus(null);
@@ -232,36 +288,55 @@ const TaskManager: React.FC = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     if (!authState.user || !activeGroup) return;
-    const token = authState.user.accessToken;
+
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token before using
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        token = await getFreshToken();
+      }
+
       await deleteGoogleTask(token, taskId, activeGroup);
+
       const newLists = lists.map((list) => ({
         ...list,
         tasks: list.tasks.filter((t) => t.id !== taskId),
       }));
       setLists(newLists);
+
       if (selectedTask && selectedTask.id === taskId) {
         setIsDialogOpen(false);
         setSelectedTask(null);
       }
     } catch (err) {
       console.error("Failed to delete task:", err);
-      setError("Failed to delete task");
+      setError("Failed to delete task. Please try again.");
     }
   };
 
   const handleDuplicateTask = async (task: Task) => {
     if (!authState.user || !activeGroup) return;
-    const token = authState.user.accessToken;
 
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token before using
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        token = await getFreshToken();
+      }
+
       const newTask = {
         ...task,
         id: "",
         title: task.title + " (Copy)",
         activityLog: [],
       };
+
       const createdTask = await createGoogleTask(token, newTask, activeGroup);
+
       const listIndex = lists.findIndex((list) => list.id === task.status);
       if (listIndex !== -1) {
         const newLists = [...lists];
@@ -270,15 +345,22 @@ const TaskManager: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to duplicate task:", err);
-      setError("Failed to duplicate task");
+      setError("Failed to duplicate task. Please try again.");
     }
   };
 
   const handleSaveTaskDetail = async (task: Task) => {
     if (!authState.user || !activeGroup) return;
-    const token = authState.user.accessToken;
 
     try {
+      let token = authState.user.accessToken;
+
+      // Verify token before using
+      const tokenInfo = await verifyTokenScopes(token);
+      if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
+        token = await getFreshToken();
+      }
+
       if (task.id) {
         await updateGoogleTask(token, task.id, task, activeGroup);
         const newLists = lists.map((list) => ({
@@ -302,7 +384,7 @@ const TaskManager: React.FC = () => {
       setSelectedTask(null);
     } catch (err) {
       console.error("Failed to save task:", err);
-      setError("Failed to save task");
+      setError("Failed to save task. Please try again.");
     }
   };
 
@@ -350,6 +432,19 @@ const TaskManager: React.FC = () => {
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto p-4 flex flex-col">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+            <button
+              onClick={() => setError(null)}
+              className="ml-2 text-red-900 hover:text-red-700"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Search and Filter Bar */}
         <div className="mb-4 flex gap-4">
           <Input
