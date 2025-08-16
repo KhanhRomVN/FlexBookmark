@@ -23,7 +23,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className="bg-gray-100 dark:bg-gray-700 rounded-xl shadow w-full flex flex-col min-h-[500px]"
+      className="bg-gray-100 dark:bg-gray-700 rounded-xl shadow w-full flex flex-col"
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-600">
         <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -34,7 +34,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         </h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="overflow-y-auto p-3 space-y-3">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}

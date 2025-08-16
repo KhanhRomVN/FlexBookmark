@@ -17,8 +17,9 @@ module.exports = {
           secondary: "var(--text-secondary)",
         },
         border: {
-          default: "var(--border)",
-          hover: "var(--border-hover)",
+            default: "var(--border)",
+            hover: "var(--border-hover)",
+            focus: "var(--border-focus)",
         },
         card: {
           background: "var(--card-background)",

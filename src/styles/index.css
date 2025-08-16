@@ -17,6 +17,7 @@
     /* Border Color */
     --border: #e2e8f0;
     --border-hover: #cbd5e1;
+    --border-focus: #cbd5e1;
 
     /* Card colors */
     --card-background: #ffffff;
@@ -67,7 +68,8 @@
 
     /* Border Color */
     --border: #353535;
-    --border-hover: #418dfe;
+    --border-hover: #414141;
+    --border-focus: #414141;
 
     /* Card colors */
     --card-background: #242424;
@@ -119,7 +121,8 @@
 
     /* Border Color */
     --border: #444444;
-    --border-hover: #636363;
+    --border-hover: rgb(110, 110, 110);
+    --border-focus: #383838;
 
     /* Card colors */
     --card-background: rgba(0, 0, 0, 0.3);

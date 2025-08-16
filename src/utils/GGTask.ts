@@ -50,7 +50,21 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
     const data = await response.json();
 
     return (data.items || []).map((item: any) => {
-        const dueDate = item.due ? safeDateParse(item.due) : undefined;
+        // Parse due date from API or from our custom metadata in notes
+        let dueDate = item.due ? safeDateParse(item.due) : undefined;
+        try {
+            const meta = JSON.parse(item.notes || "{}");
+            if (meta.endTime) {
+                const parsedEnd = typeof meta.endTime === "string"
+                    ? safeDateParse(meta.endTime)
+                    : undefined;
+                if (parsedEnd) {
+                    dueDate = parsedEnd;
+                }
+            }
+        } catch (error) {
+            console.warn(`Failed to parse task notes for time metadata:`, error);
+        }
 
         const task = {
             id: item.id,
@@ -64,6 +78,11 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
         // Log any tasks that had invalid dates for debugging
         if (item.due && !task.due) {
             console.warn(`Task "${task.title}" had invalid due date: ${item.due}`);
+        }
+
+        // Debug log for non-completed tasks
+        if (!task.completed && dueDate) {
+            console.log(`[fetchGoogleTasks] Non-completed task "${task.title}" due at ${dueDate.toISOString()}`);
         }
 
         return task;

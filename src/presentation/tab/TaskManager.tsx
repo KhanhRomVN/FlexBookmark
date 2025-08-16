@@ -16,7 +16,7 @@ import {
 } from "../../utils/GGTask";
 import ChromeAuthManager from "../../utils/chromeAuth";
 import type { AuthState } from "../../utils/chromeAuth";
-import TaskDetailDrawer from "../components/TaskManager/TaskDetailDrawer";
+import TaskDialog from "../components/TaskManager/TaskDialog"; // Changed from TaskDrawer to TaskDialog
 import { Input } from "../components/ui/input";
 import {
   Select,
@@ -56,7 +56,7 @@ const TaskManager: React.FC = () => {
     folders.map((f) => ({ ...f, tasks: [] }))
   );
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // Changed from isDrawerOpen to isDialogOpen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -190,6 +190,8 @@ const TaskManager: React.FC = () => {
       priority: "medium",
       startTime: null,
       endTime: null,
+      dueDate: null,
+      assignee: "",
       completed: false,
       subtasks: [],
       attachments: [],
@@ -198,12 +200,12 @@ const TaskManager: React.FC = () => {
       prevTaskId: null,
       nextTaskId: null,
     });
-    setIsDrawerOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
-    setIsDrawerOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleCreateGroup = async () => {
@@ -223,7 +225,7 @@ const TaskManager: React.FC = () => {
       }));
       setLists(newLists);
       if (selectedTask && selectedTask.id === taskId) {
-        setIsDrawerOpen(false);
+        setIsDialogOpen(false);
         setSelectedTask(null);
       }
     } catch (err) {
@@ -285,7 +287,7 @@ const TaskManager: React.FC = () => {
           setLists(newLists);
         }
       }
-      setIsDrawerOpen(false);
+      setIsDialogOpen(false);
       setSelectedTask(null);
     } catch (err) {
       console.error("Failed to save task:", err);
@@ -382,7 +384,7 @@ const TaskManager: React.FC = () => {
           collisionDetection={closestCorners}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 flex-1 min-h-0 w-full">
+          <div className="flex gap-4 flex-1 min-h-0 w-full items-start">
             {filteredLists.map((list) => (
               <SortableContext
                 key={list.id}
@@ -402,10 +404,11 @@ const TaskManager: React.FC = () => {
         </DndContext>
       </div>
 
-      <TaskDetailDrawer
-        isOpen={isDrawerOpen}
+      {/* Replaced TaskDrawer with TaskDialog */}
+      <TaskDialog
+        isOpen={isDialogOpen}
         onClose={() => {
-          setIsDrawerOpen(false);
+          setIsDialogOpen(false);
           setSelectedTask(null);
         }}
         task={selectedTask}
