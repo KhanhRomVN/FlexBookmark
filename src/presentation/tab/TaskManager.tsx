@@ -99,7 +99,9 @@ const TaskManager: React.FC = () => {
       // Distribute tasks to folders
       const updatedLists = [...lists].map((list) => ({
         ...list,
-        tasks: tasks.filter((task) => task.folder === list.id),
+        tasks: tasks.filter(
+          (task: { folder: string }) => task.folder === list.id
+        ),
       }));
 
       setLists(updatedLists);
@@ -211,7 +213,7 @@ const TaskManager: React.FC = () => {
 
   if (!authState.isAuthenticated) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md">
           <h3 className="text-xl font-bold mb-4">Login Required</h3>
           <p className="mb-6">Please login with Google to manage your tasks.</p>
@@ -227,7 +229,7 @@ const TaskManager: React.FC = () => {
   }
 
   return (
-    <div className="flex h-full bg-gray-100 dark:bg-gray-900">
+    <div className="flex w-full min-h-screen bg-gray-100 dark:bg-gray-900">
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
@@ -235,12 +237,12 @@ const TaskManager: React.FC = () => {
         onCreateGroup={handleCreateGroup}
       />
 
-      <div className="flex-1 overflow-x-auto p-4">
+      <div className="flex-1 w-full min-h-screen overflow-auto p-4 flex flex-col">
         <DndContext
           collisionDetection={closestCorners}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex space-x-4 h-full">
+          <div className="flex space-x-4 flex-1 min-h-0">
             {lists.map((list) => (
               <SortableContext
                 key={list.id}
