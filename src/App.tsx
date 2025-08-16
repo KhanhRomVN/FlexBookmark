@@ -46,17 +46,24 @@ const App: React.FC = () => {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-  // Load persisted activeTab
+
+  // Load persisted activeTab from chrome.storage
   useEffect(() => {
-    const stored = window.localStorage.getItem("activeTab");
-    if (stored === "dashboard" || stored === "manager" || stored === "tasks") {
-      setActiveTab(stored);
-    }
+    chrome.storage.local.get(["flexbookmark_active_tab"], (result) => {
+      if (
+        result.flexbookmark_active_tab &&
+        (result.flexbookmark_active_tab === "dashboard" ||
+          result.flexbookmark_active_tab === "manager" ||
+          result.flexbookmark_active_tab === "tasks")
+      ) {
+        setActiveTab(result.flexbookmark_active_tab);
+      }
+    });
   }, []);
 
-  // Persist activeTab in localStorage
+  // Persist activeTab in chrome.storage
   useEffect(() => {
-    window.localStorage.setItem("activeTab", activeTab);
+    chrome.storage.local.set({ flexbookmark_active_tab: activeTab });
   }, [activeTab]);
 
   return (

@@ -102,8 +102,23 @@ class ChromeAuthManager {
         return new Promise((resolve, reject) => {
             chrome.identity.getAuthToken(
                 { interactive: false },
-                async (result: chrome.identity.GetAuthTokenResult) => {
-                    if (chrome.runtime.lastError || !result?.token) {
+                async (result: any) => {
+                    console.log('Silent getAuthToken result:', chrome.runtime.lastError, result);
+
+                    if (chrome.runtime.lastError) {
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false
+                        });
+                        resolve();
+                        return;
+                    }
+
+                    // Handle both possible return formats
+                    const token = typeof result === 'string' ? result : result?.token;
+
+                    if (!token) {
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -114,7 +129,7 @@ class ChromeAuthManager {
                     }
 
                     try {
-                        const user = await this.getUserInfo(result.token);
+                        const user = await this.getUserInfo(token);
                         await this.cacheUser(user);
                         this.updateState({
                             isAuthenticated: true,
@@ -143,9 +158,26 @@ class ChromeAuthManager {
         return new Promise((resolve, reject) => {
             chrome.identity.getAuthToken(
                 { interactive: true },
-                async (result: chrome.identity.GetAuthTokenResult) => {
-                    if (chrome.runtime.lastError || !result?.token) {
-                        const error = chrome.runtime.lastError?.message || 'Failed to get auth token';
+                async (result: any) => {
+                    console.log('Interactive getAuthToken result:', chrome.runtime.lastError, result);
+
+                    if (chrome.runtime.lastError) {
+                        const error = chrome.runtime.lastError.message || 'Failed to get auth token';
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false,
+                            error
+                        });
+                        reject(new Error(error));
+                        return;
+                    }
+
+                    // Handle both possible return formats
+                    const token = typeof result === 'string' ? result : result?.token;
+
+                    if (!token) {
+                        const error = 'No auth token received';
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -157,7 +189,7 @@ class ChromeAuthManager {
                     }
 
                     try {
-                        const user = await this.getUserInfo(result.token);
+                        const user = await this.getUserInfo(token);
                         await this.cacheUser(user);
                         this.updateState({
                             isAuthenticated: true,
