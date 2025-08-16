@@ -1,7 +1,7 @@
 import React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import TaskCard from "./TaskCard";
-import { Task } from "../../tab/TaskAndEvent";
+import type { Task } from "../../types/task";
 
 interface FolderCardProps {
   id: string;
@@ -23,7 +23,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className="bg-gray-100 dark:bg-gray-700 rounded-xl shadow w-72 flex-shrink-0 h-full flex flex-col"
+      className="bg-gray-100 dark:bg-gray-700 rounded-xl shadow w-full flex flex-col min-h-[500px]"
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-600">
         <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">

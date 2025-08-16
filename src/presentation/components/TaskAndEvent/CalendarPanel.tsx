@@ -13,7 +13,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import { CalendarEvent, Task } from "../../tab/TaskAndEvent";
+import type { CalendarEvent, Task } from "../../tab/TaskAndEvent";
 
 interface CalendarPanelProps {
   selectedDate: Date;
@@ -60,9 +60,11 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
 
     // Process tasks
     tasks.forEach((task) => {
-      if (!task.due) return;
+      if (!task.endTime) return;
       const taskDue =
-        task.due instanceof Date ? task.due : parseISO(task.due as string);
+        task.endTime instanceof Date
+          ? task.endTime
+          : parseISO(task.endTime as string);
       const dayKey = startOfDay(taskDue).toISOString();
       if (!dateMap[dayKey]) dateMap[dayKey] = { events: 0, tasks: 0 };
       dateMap[dayKey].tasks += 1;

@@ -8,18 +8,19 @@ import ChromeAuthManager, { AuthState } from "../../utils/chromeAuth";
 export interface CalendarEvent {
   id: string;
   title: string;
-  start: Date;
-  end: Date;
+  start: Date | string;
+  end: Date | string;
   description?: string;
   location?: string;
   attendees?: string[];
 }
 
 export interface Task {
+  endTime: Date | string;
   folder: any;
   id: string;
   title: string;
-  due?: Date;
+  due?: Date | string;
   completed: boolean;
   notes?: string;
 }
@@ -157,7 +158,8 @@ const TaskAndEvent: React.FC = () => {
   // Filter events and tasks for the selected date with error handling
   const filteredEvents = events.filter((e) => {
     try {
-      return e.start && isSameDate(e.start, selectedDate);
+      const eventDate = e.start instanceof Date ? e.start : new Date(e.start);
+      return isSameDate(eventDate, selectedDate);
     } catch {
       return false;
     }
@@ -165,7 +167,9 @@ const TaskAndEvent: React.FC = () => {
 
   const filteredTasks = tasks.filter((t) => {
     try {
-      return t.due && isSameDate(t.due, selectedDate);
+      if (!t.due) return false;
+      const taskDate = t.due instanceof Date ? t.due : new Date(t.due);
+      return isSameDate(taskDate, selectedDate);
     } catch {
       return false;
     }

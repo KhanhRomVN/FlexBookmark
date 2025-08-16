@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -12,10 +12,22 @@ import {
   updateGoogleTask,
   createGoogleTask,
   fetchGoogleTaskGroups,
+  deleteGoogleTask,
 } from "../../utils/GGTask";
 import ChromeAuthManager from "../../utils/chromeAuth";
-import { Task } from "./TaskAndEvent";
 import type { AuthState } from "../../utils/chromeAuth";
+import TaskDetailDrawer from "../components/TaskManager/TaskDetailDrawer";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Button } from "../components/ui/button";
+import { Plus } from "lucide-react";
+import { Priority, Status, Task } from "../types/task";
 
 const folders = [
   { id: "backlog", title: "Backlog" },
@@ -44,8 +56,12 @@ const TaskManager: React.FC = () => {
     folders.map((f) => ({ ...f, tasks: [] }))
   );
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const authManager = ChromeAuthManager.getInstance();
 
@@ -99,9 +115,7 @@ const TaskManager: React.FC = () => {
       // Distribute tasks to folders
       const updatedLists = [...lists].map((list) => ({
         ...list,
-        tasks: tasks.filter(
-          (task: { folder: string }) => task.folder === list.id
-        ),
+        tasks: tasks.filter((task: Task) => task.status === list.id),
       }));
 
       setLists(updatedLists);
@@ -141,7 +155,7 @@ const TaskManager: React.FC = () => {
       } else {
         // Move task to another list
         const movedTask = activeList.tasks[activeIndex];
-        movedTask.folder = overList.id;
+        movedTask.status = overList.id as Status;
 
         const newLists = [...lists];
         newLists[activeListIndex].tasks = activeList.tasks.filter(
@@ -160,56 +174,142 @@ const TaskManager: React.FC = () => {
     const token = authState.user!.accessToken;
 
     try {
-      await updateGoogleTask(
-        token,
-        task.id,
-        {
-          ...task,
-          folder: task.folder,
-        },
-        activeGroup
-      );
+      await updateGoogleTask(token, task.id, task, activeGroup);
     } catch (err) {
       console.error("Failed to save task:", err);
       setError("Failed to save task changes");
     }
   };
 
-  const handleAddTask = async (folderId: string) => {
-    if (!authState.user || !activeGroup) return;
-    const token = authState.user!.accessToken;
-
-    try {
-      const newTask = await createGoogleTask(
-        token,
-        {
-          title: "New Task",
-          folder: folderId,
-          completed: false,
-        },
-        activeGroup
-      );
-
-      const listIndex = lists.findIndex((list) => list.id === folderId);
-      if (listIndex !== -1) {
-        const newLists = [...lists];
-        newLists[listIndex].tasks = [...newLists[listIndex].tasks, newTask];
-        setLists(newLists);
-      }
-    } catch (err) {
-      console.error("Failed to create task:", err);
-      setError("Failed to create new task");
-    }
+  const handleAddTask = (status: Status) => {
+    setSelectedTask({
+      id: "",
+      title: "New Task",
+      description: "",
+      status,
+      priority: "medium",
+      startTime: null,
+      endTime: null,
+      completed: false,
+      subtasks: [],
+      attachments: [],
+      tags: [],
+      activityLog: [],
+      prevTaskId: null,
+      nextTaskId: null,
+    });
+    setIsDrawerOpen(true);
   };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
+    setIsDrawerOpen(true);
   };
 
   const handleCreateGroup = async () => {
     // Implement group creation logic here
     console.log("Create new group");
   };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!authState.user || !activeGroup) return;
+    const token = authState.user.accessToken;
+    try {
+      await deleteGoogleTask(token, taskId, activeGroup);
+      // Remove the task from state
+      const newLists = lists.map((list) => ({
+        ...list,
+        tasks: list.tasks.filter((t) => t.id !== taskId),
+      }));
+      setLists(newLists);
+      if (selectedTask && selectedTask.id === taskId) {
+        setIsDrawerOpen(false);
+        setSelectedTask(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      setError("Failed to delete task");
+    }
+  };
+
+  const handleDuplicateTask = async (task: Task) => {
+    if (!authState.user || !activeGroup) return;
+    const token = authState.user.accessToken;
+
+    try {
+      // Create a new task with the same data but a new ID
+      const newTask = {
+        ...task,
+        id: "",
+        title: task.title + " (Copy)",
+        activityLog: [],
+      };
+      const createdTask = await createGoogleTask(token, newTask, activeGroup);
+      // Add the new task to the same folder
+      const listIndex = lists.findIndex((list) => list.id === task.status);
+      if (listIndex !== -1) {
+        const newLists = [...lists];
+        newLists[listIndex].tasks = [...newLists[listIndex].tasks, createdTask];
+        setLists(newLists);
+      }
+    } catch (err) {
+      console.error("Failed to duplicate task:", err);
+      setError("Failed to duplicate task");
+    }
+  };
+
+  const handleSaveTaskDetail = async (task: Task) => {
+    if (!authState.user || !activeGroup) return;
+    const token = authState.user.accessToken;
+
+    try {
+      if (task.id) {
+        // Update existing task
+        await updateGoogleTask(token, task.id, task, activeGroup);
+        // Update state
+        const newLists = lists.map((list) => ({
+          ...list,
+          tasks: list.tasks.map((t) => (t.id === task.id ? task : t)),
+        }));
+        setLists(newLists);
+      } else {
+        // Create new task
+        const createdTask = await createGoogleTask(token, task, activeGroup);
+        const listIndex = lists.findIndex((list) => list.id === task.status);
+        if (listIndex !== -1) {
+          const newLists = [...lists];
+          newLists[listIndex].tasks = [
+            ...newLists[listIndex].tasks,
+            createdTask,
+          ];
+          setLists(newLists);
+        }
+      }
+      setIsDrawerOpen(false);
+      setSelectedTask(null);
+    } catch (err) {
+      console.error("Failed to save task:", err);
+      setError("Failed to save task");
+    }
+  };
+
+  // Filter tasks based on search term and filters
+  const filteredLists = useMemo(() => {
+    return lists.map((list) => ({
+      ...list,
+      tasks: list.tasks.filter((task) => {
+        const matchesSearch =
+          task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (task.description &&
+            task.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesPriority =
+          filterPriority === "all" || task.priority === filterPriority;
+        const matchesStatus =
+          filterStatus === "all" || task.status === filterStatus;
+        return matchesSearch && matchesPriority && matchesStatus;
+      }),
+    }));
+  }, [lists, searchTerm, filterPriority, filterStatus]);
 
   if (!authState.isAuthenticated) {
     return (
@@ -238,12 +338,52 @@ const TaskManager: React.FC = () => {
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto p-4 flex flex-col">
+        {/* Search and Filter Bar */}
+        <div className="mb-4 flex gap-4">
+          <Input
+            type="text"
+            placeholder="Search tasks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-1/3"
+          />
+          <Select value={filterPriority} onValueChange={setFilterPriority}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="backlog">Backlog</SelectItem>
+              <SelectItem value="todo">To Do</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="archive">Archive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => handleAddTask("backlog")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Task
+          </Button>
+        </div>
+
         <DndContext
           collisionDetection={closestCorners}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex space-x-4 flex-1 min-h-0">
-            {lists.map((list) => (
+          <div className="flex gap-4 flex-1 min-h-0 w-full">
+            {filteredLists.map((list) => (
               <SortableContext
                 key={list.id}
                 items={list.tasks.map((t) => t.id)}
@@ -254,13 +394,25 @@ const TaskManager: React.FC = () => {
                   title={list.title}
                   tasks={list.tasks}
                   onTaskClick={handleTaskClick}
-                  onAddTask={() => handleAddTask(list.id)}
+                  onAddTask={() => handleAddTask(list.id as Status)}
                 />
               </SortableContext>
             ))}
           </div>
         </DndContext>
       </div>
+
+      <TaskDetailDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        onSave={handleSaveTaskDetail}
+        onDelete={handleDeleteTask}
+        onDuplicate={handleDuplicateTask}
+      />
     </div>
   );
 };
