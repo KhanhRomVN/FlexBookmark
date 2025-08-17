@@ -9,16 +9,12 @@ import {
   Check,
   Paperclip,
   Calendar,
-  Clock,
   File,
   Image,
   Video,
   Radio,
   FileText,
   ChevronDown,
-  Circle,
-  ArrowDown,
-  ArrowUp,
   MoreVertical,
   Move,
   Archive,
@@ -29,6 +25,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { calculateTaskMetadataSize } from "../../../utils/GGTask";
+import ModernDateTimePicker from "../../components/common/ModernDateTimePicker";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -70,6 +67,17 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const prevTaskRef = useRef<HTMLDivElement>(null);
   const nextTaskRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+
+  // Helper functions
+  const formatDisplayDate = (date: Date | null) => {
+    if (!date) return "Select date";
+    return new Date(date).toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   useEffect(() => {
     setEditedTask(task);
@@ -645,96 +653,61 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 </div>
 
                 {/* Date & Time Fields */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="mb-2 text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <Calendar size={16} />
-                      Start Date & Time
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        value={
-                          editedTask.startDate
-                            ? new Date(editedTask.startDate)
-                                .toISOString()
-                                .split("T")[0]
-                            : ""
-                        }
-                        onChange={(e) =>
-                          handleChange(
-                            "startDate",
-                            e.target.value ? new Date(e.target.value) : null
-                          )
-                        }
-                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
-                      />
-                      <input
-                        type="time"
-                        value={
-                          editedTask.startTime
-                            ? new Date(editedTask.startTime)
-                                .toISOString()
-                                .slice(11, 16)
-                            : ""
-                        }
-                        onChange={(e) =>
-                          handleChange(
-                            "startTime",
-                            e.target.value
-                              ? new Date("1970-01-01T" + e.target.value)
-                              : null
-                          )
-                        }
-                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="mb-2 text-sm font-medium text-text-secondary flex items-center gap-2">
-                      <Clock size={16} />
-                      Due Date & Time
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        value={
-                          editedTask.endDate
-                            ? new Date(editedTask.endDate)
-                                .toISOString()
-                                .split("T")[0]
-                            : ""
-                        }
-                        onChange={(e) =>
-                          handleChange(
-                            "endDate",
-                            e.target.value ? new Date(e.target.value) : null
-                          )
-                        }
-                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
-                      />
-                      <input
-                        type="time"
-                        value={
-                          editedTask.endTime
-                            ? new Date(editedTask.endTime)
-                                .toISOString()
-                                .slice(11, 16)
-                            : ""
-                        }
-                        onChange={(e) =>
-                          handleChange(
-                            "endTime",
-                            e.target.value
-                              ? new Date("1970-01-01T" + e.target.value)
-                              : null
-                          )
-                        }
-                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
-                      />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Start Date & Time */}
+                  <ModernDateTimePicker
+                    selectedDate={editedTask.startDate}
+                    selectedTime={editedTask.startTime}
+                    onDateChange={(date) => handleChange("startDate", date)}
+                    onTimeChange={(time) => handleChange("startTime", time)}
+                    label="Start Date & Time"
+                    color="green"
+                    placeholder="Select start date & time"
+                  />
+
+                  {/* Due Date & Time */}
+                  <ModernDateTimePicker
+                    selectedDate={editedTask.endDate}
+                    selectedTime={editedTask.endTime}
+                    onDateChange={(date) => handleChange("endDate", date)}
+                    onTimeChange={(time) => handleChange("endTime", time)}
+                    label="Due Date & Time"
+                    color="red"
+                    placeholder="Select due date & time"
+                  />
                 </div>
+
+                {/* Duration Display */}
+                {editedTask.startDate && editedTask.endDate && (
+                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                        <Calendar
+                          size={16}
+                          className="text-blue-600 dark:text-blue-400"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-blue-900 dark:text-blue-100">
+                          Task Duration:{" "}
+                          {Math.max(
+                            1,
+                            Math.ceil(
+                              (new Date(editedTask.endDate).getTime() -
+                                new Date(editedTask.startDate).getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            )
+                          )}{" "}
+                          day(s)
+                        </p>
+                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                          From {formatDisplayDate(editedTask.startDate)} to{" "}
+                          {formatDisplayDate(editedTask.endDate)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div>
