@@ -251,10 +251,6 @@ export function ThemeProvider({
         );
         // Dialog background transparency for image theme
         root.style.setProperty(
-          "--dialog-background",
-          `rgba(0,0,0,${imageThemeSettings.dialogOpacity / 100})`
-        );
-        root.style.setProperty(
           "--card-opacity",
           imageThemeSettings.cardOpacity.toString()
         );

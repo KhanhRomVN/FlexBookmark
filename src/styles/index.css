@@ -131,7 +131,7 @@
     --input-background: rgba(0, 0, 0, 0.3);
 
     /* Dialog colors */
-    --dialog-background: transparent;
+    --dialog-background: #1e1e1e;
 
     /* Dropdown colors */
     --dropdown-background: rgba(0, 0, 0, 0.8);
