@@ -79,13 +79,13 @@ const TaskManager: React.FC = () => {
 
   // Function to handle create new task - opens TaskDialog in create mode
   const handleCreateTask = () => {
-    // Create a new empty task for create mode
+    // Create a new empty task for create mode with proper types
     const newTask = {
       id: "",
       title: "",
       description: "",
       status: "todo" as const,
-      priority: "medium" as const,
+      priority: "medium" as const, // Fix: Use valid Priority type instead of empty string
       startTime: null,
       endTime: null,
       startDate: null,
@@ -97,8 +97,8 @@ const TaskManager: React.FC = () => {
       activityLog: [],
       prevTaskId: null,
       nextTaskId: null,
-      createdAt: "",
-      updatedAt: "",
+      createdAt: "", // Fix: Add missing required property
+      updatedAt: "", // Fix: Add missing required property
     };
 
     setSelectedTask(newTask);

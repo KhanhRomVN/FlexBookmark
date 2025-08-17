@@ -1,4 +1,4 @@
-// src/utils/GGTask.ts - Updated version with complete JSON format
+// src/utils/GGTask.ts - Updated version with fixed auto-set default times
 
 import type { Task } from "../presentation/types/task";
 
@@ -129,39 +129,35 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         const metadata: any = {
             // Core fields
             description: task.description || "",
-            status: task.status || 'todo',
-            priority: task.priority || 'medium',
+            status: task.status || 'backlog',
+            priority: task.priority || "",
         };
 
-        // Format dates and times consistently
+        // Format dates and times consistently - CHỈ KHI CÓ GIÁ TRỊ
         if (task.startTime && task.startTime instanceof Date && !isNaN(task.startTime.getTime())) {
-            // Format as HH:MM:SS.sssZ (time only)
             const timeStr = task.startTime.toISOString().split('T')[1];
             metadata.startTime = timeStr;
         } else {
-            metadata.startTime = "";
+            metadata.startTime = ""; // Để trống
         }
 
         if (task.endTime && task.endTime instanceof Date && !isNaN(task.endTime.getTime())) {
-            // Format as HH:MM:SS.sssZ (time only)
             const timeStr = task.endTime.toISOString().split('T')[1];
             metadata.endTime = timeStr;
         } else {
-            metadata.endTime = "";
+            metadata.endTime = ""; // Để trống
         }
 
         if (task.startDate && task.startDate instanceof Date && !isNaN(task.startDate.getTime())) {
-            // Format as YYYY-MM-DD (date only)
             metadata.startDate = task.startDate.toISOString().split('T')[0];
         } else {
-            metadata.startDate = "";
+            metadata.startDate = ""; // Để trống
         }
 
         if (task.endDate && task.endDate instanceof Date && !isNaN(task.endDate.getTime())) {
-            // Format as YYYY-MM-DD (date only)
             metadata.endDate = task.endDate.toISOString().split('T')[0];
         } else {
-            metadata.endDate = "";
+            metadata.endDate = ""; // Để trống
         }
 
         // Always include arrays (empty if not provided)
@@ -169,16 +165,16 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         metadata.attachments = task.attachments || [];
         metadata.tags = task.tags || [];
 
-        // Activity log - add creation entry if this is a new task
+        // Activity log - chỉ thêm khi thực sự là task mới
         let activityLog = task.activityLog || [];
 
-        // If this is a new task (no existing activity log), add creation entry
+        // If this is a new task (no existing activity log AND no ID), add creation entry
         if (activityLog.length === 0 && !task.id) {
             const now = new Date();
             const entryId = `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`;
             const creationEntry = {
                 id: entryId,
-                details: `Successfully created a task at ${now.toLocaleString('en-US', {
+                details: `Task created at ${now.toLocaleString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -198,7 +194,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         metadata.prevTaskId = task.prevTaskId || "";
         metadata.nextTaskId = task.nextTaskId || "";
 
-        let jsonString = JSON.stringify(metadata, null, 0); // No indentation to save space
+        let jsonString = JSON.stringify(metadata, null, 0);
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
@@ -210,7 +206,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
 
             // First, limit activity log entries
             if (metadata.activityLog && metadata.activityLog.length > 5) {
-                metadata.activityLog = metadata.activityLog.slice(-5); // Keep last 5 entries
+                metadata.activityLog = metadata.activityLog.slice(-5);
                 jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
@@ -274,7 +270,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     subtasks: [],
                     attachments: [],
                     tags: [],
-                    activityLog: metadata.activityLog?.slice(-1) || [], // Keep at least one entry
+                    activityLog: metadata.activityLog?.slice(-1) || [],
                     prevTaskId: "",
                     nextTaskId: ""
                 };
@@ -287,11 +283,11 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         return { notes: jsonString, characterCount, isOverLimit };
     } catch (error) {
         console.error('Error creating task notes:', error);
-        // Return minimal safe metadata with full structure
+        // Return minimal safe metadata without default times
         const safeMetadata = {
             description: task.description || "",
-            status: task.status || 'todo',
-            priority: task.priority || 'medium',
+            status: task.status || 'backlog',
+            priority: task.priority || "",
             startTime: "",
             endTime: "",
             startDate: "",
@@ -325,7 +321,6 @@ function formatDueDateTime(date: Date | null | undefined): string | undefined {
     }
 
     try {
-        // Google Tasks API expects RFC 3339 format with timezone
         return date.toISOString();
     } catch (error) {
         console.error('Error formatting due date:', error);
@@ -369,7 +364,7 @@ function validateTaskData(taskData: any): { isValid: boolean; errors: string[] }
     return { isValid: errors.length === 0, errors };
 }
 
-// Auto-set default dates and times for new tasks
+// Modified function - chỉ set default times khi được yêu cầu explicit
 function setDefaultTaskTimes(): { startTime: Date; endTime: Date; startDate: Date; endDate: Date } {
     const now = new Date();
 
@@ -428,7 +423,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             title: item.title || "Untitled Task",
             description: taskData.description || "",
             status: taskData.status || (item.status === 'completed' ? 'done' : 'todo'),
-            priority: taskData.priority || 'medium',
+            priority: taskData.priority || "",
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
             endTime: taskData.endTime ? safeDateParse(taskData.endTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
@@ -440,11 +435,14 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             activityLog: taskData.activityLog || [],
             prevTaskId: taskData.prevTaskId || null,
             nextTaskId: taskData.nextTaskId || null,
+            updatedAt: "",
+            createdAt: ""
         };
 
         return task;
     });
 }
+
 
 export const createGoogleTask = async (
     accessToken: string,
@@ -458,16 +456,8 @@ export const createGoogleTask = async (
             priority: task.priority,
         });
 
-        // Auto-set default times if not provided
-        let taskWithDefaults = { ...task };
-        if (!task.startTime && !task.endTime && !task.startDate && !task.endDate) {
-            const defaultTimes = setDefaultTaskTimes();
-            taskWithDefaults = {
-                ...task,
-                ...defaultTimes
-            };
-            console.log('Auto-set default times:', defaultTimes);
-        }
+        // KHÔNG TỰ ĐỘNG SET DEFAULT TIMES - chỉ dùng những gì user nhập
+        const taskWithDefaults = { ...task };
 
         // Prepare minimal task data for Google Tasks API
         const googleTaskData: any = {
@@ -477,7 +467,7 @@ export const createGoogleTask = async (
         // Set status (Google Tasks only supports 'needsAction' and 'completed')
         googleTaskData.status = taskWithDefaults.completed ? 'completed' : 'needsAction';
 
-        // Add due date if available (use endDate or endTime)
+        // Add due date CHỈ KHI CÓ (use endDate or endTime)
         const dueDate = taskWithDefaults.endDate || taskWithDefaults.endTime;
         if (dueDate instanceof Date && !isNaN(dueDate.getTime())) {
             googleTaskData.due = formatDueDateTime(dueDate);
@@ -527,7 +517,6 @@ export const createGoogleTask = async (
             const errorText = await response.text();
             console.error('Create task error response:', errorText);
 
-            // Try to parse error details
             try {
                 const errorData = JSON.parse(errorText);
                 console.error('Detailed error:', errorData);
@@ -545,13 +534,15 @@ export const createGoogleTask = async (
         const data = await response.json();
         console.log('Task created successfully:', data.id);
 
-        // Return the task with all original data preserved
+        // Return the task với chỉ những gì user đã nhập - KHÔNG thêm default times
+        // Fix: Ensure all required Task properties are included
         return {
             id: data.id,
             title: data.title || taskWithDefaults.title || "New Task",
             description: taskWithDefaults.description || "",
             status: taskWithDefaults.status || 'todo',
-            priority: taskWithDefaults.priority || 'medium',
+            priority: taskWithDefaults.priority || 'medium', // Fix: Use valid Priority type
+            // CHỈ GIỮ LẠI THỜI GIAN NẾU USER ĐÃ NHẬP
             startTime: taskWithDefaults.startTime || null,
             endTime: taskWithDefaults.endTime || null,
             startDate: taskWithDefaults.startDate || null,
@@ -563,6 +554,8 @@ export const createGoogleTask = async (
             activityLog: taskWithDefaults.activityLog || [],
             prevTaskId: taskWithDefaults.prevTaskId || null,
             nextTaskId: taskWithDefaults.nextTaskId || null,
+            createdAt: data.updated || new Date().toISOString(), // Fix: Add required property
+            updatedAt: data.updated || new Date().toISOString(), // Fix: Add required property
         };
     } catch (error) {
         console.error('Error in createGoogleTask:', error);
