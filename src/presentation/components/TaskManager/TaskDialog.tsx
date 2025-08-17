@@ -362,48 +362,95 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   </div>
                 </div>
 
-                {/* Date Fields - Same Row */}
+                {/* Date & Time Fields */}
                 <div className="grid grid-cols-2 gap-6">
-                  <div>
+                  <div className="space-y-2">
                     <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                       <Calendar size={16} />
-                      Start Date
+                      Start Date & Time
                     </label>
-                    <input
-                      type="date"
-                      value={
-                        editedTask.startTime
-                          ? new Date(editedTask.startTime)
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        handleChange("startTime", new Date(e.target.value))
-                      }
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
-                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={
+                          editedTask.startDate
+                            ? new Date(editedTask.startDate)
+                                .toISOString()
+                                .split("T")[0]
+                            : ""
+                        }
+                        onChange={(e) =>
+                          handleChange(
+                            "startDate",
+                            e.target.value ? new Date(e.target.value) : null
+                          )
+                        }
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      />
+                      <input
+                        type="time"
+                        value={
+                          editedTask.startTime
+                            ? new Date(editedTask.startTime)
+                                .toISOString()
+                                .slice(11, 16)
+                            : ""
+                        }
+                        onChange={(e) =>
+                          handleChange(
+                            "startTime",
+                            e.target.value
+                              ? new Date("1970-01-01T" + e.target.value)
+                              : null
+                          )
+                        }
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      />
+                    </div>
                   </div>
-
-                  <div>
+                  <div className="space-y-2">
                     <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
                       <Clock size={16} />
-                      Due Date
+                      Due Date & Time
                     </label>
-                    <input
-                      type="date"
-                      value={
-                        editedTask.endTime
-                          ? new Date(editedTask.endTime)
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        handleChange("endTime", new Date(e.target.value))
-                      }
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
-                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={
+                          editedTask.endDate
+                            ? new Date(editedTask.endDate)
+                                .toISOString()
+                                .split("T")[0]
+                            : ""
+                        }
+                        onChange={(e) =>
+                          handleChange(
+                            "endDate",
+                            e.target.value ? new Date(e.target.value) : null
+                          )
+                        }
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      />
+                      <input
+                        type="time"
+                        value={
+                          editedTask.endTime
+                            ? new Date(editedTask.endTime)
+                                .toISOString()
+                                .slice(11, 16)
+                            : ""
+                        }
+                        onChange={(e) =>
+                          handleChange(
+                            "endTime",
+                            e.target.value
+                              ? new Date("1970-01-01T" + e.target.value)
+                              : null
+                          )
+                        }
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
