@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { getBookmarks, createFolder } from "../../utils/api";
-import MainLayout from "../components/layout/MainLayout";
-import BookmarkLayout from "../components/BookmarkManager/BookmarkLayout";
-import BookmarkSearchLayout from "../components/BookmarkManager/BookmarkSearchLayout";
-import { useSearchStore } from "../store/searchStore";
+import { getBookmarks, createFolder } from "../../../utils/api";
+import MainLayout from "../../components/layout/MainLayout";
+import BookmarkLayout from "../../components/BookmarkManager/BookmarkLayout";
+import BookmarkSearchLayout from "../../components/BookmarkManager/BookmarkSearchLayout";
+import { useSearchStore } from "../../store/searchStore";
 
 interface BookmarkNode {
   parentId: string;

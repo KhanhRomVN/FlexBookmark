@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useTheme } from "../providers/theme-provider";
-import { getBookmarks } from "../../utils/api";
-import Clock from "../components/Dashboard/Clock";
-import WeatherWidget from "../components/Dashboard/WeatherWidget";
-import SearchBar from "../components/Dashboard/SearchBar";
-import BookmarkGrid from "../components/Dashboard/BookmarkGrid";
-import ThemeDrawer from "../components/drawer/ThemeDrawer";
-import BookmarkBarDrawer from "../components/Dashboard/BookmarkBarDrawer";
-import useWindowSize from "../../hooks/useWindowSize";
+import { useTheme } from "../../providers/theme-provider";
+import { getBookmarks } from "../../../utils/api";
+import Clock from "../../components/Dashboard/Clock";
+import WeatherWidget from "../../components/Dashboard/WeatherWidget";
+import SearchBar from "../../components/Dashboard/SearchBar";
+import BookmarkGrid from "../../components/Dashboard/BookmarkGrid";
+import ThemeDrawer from "../../components/drawer/ThemeDrawer";
+import BookmarkBarDrawer from "../../components/Dashboard/BookmarkBarDrawer";
+import useWindowSize from "../../../hooks/useWindowSize";
 
 export interface BookmarkNode {
   id: string;

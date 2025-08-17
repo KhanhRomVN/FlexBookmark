@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import CalendarPanel from "../components/TaskAndEvent/CalendarPanel";
-import TimeLinePanel from "../components/TaskAndEvent/TimeLinePanel";
-import { fetchGoogleEvents } from "../../utils/GGCalender";
-import { fetchGoogleTasks, fetchGoogleTaskGroups } from "../../utils/GGTask";
-import ChromeAuthManager, { AuthState } from "../../utils/chromeAuth";
+import CalendarPanel from "../../components/TaskAndEvent/CalendarPanel";
+import TimeLinePanel from "../../components/TaskAndEvent/TimeLinePanel";
+import { fetchGoogleEvents } from "../../../utils/GGCalender";
+import { fetchGoogleTasks, fetchGoogleTaskGroups } from "../../../utils/GGTask";
+import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
 
 export interface CalendarEvent {
   id: string;
