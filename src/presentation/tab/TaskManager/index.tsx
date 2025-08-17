@@ -9,6 +9,7 @@ import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader from "../../components/TaskManager/TasKHeader";
 import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
+import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 
@@ -64,6 +65,9 @@ const TaskManager: React.FC = () => {
     archivedTasks,
     handleClearFilters,
   } = useTaskManager();
+
+  // Theme drawer state
+  const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
 
   const [isCreateMode, setIsCreateMode] = React.useState(false);
 
@@ -184,6 +188,7 @@ const TaskManager: React.FC = () => {
           sortOrder={sortOrder}
           setSortOrder={setSortOrder}
           setShowArchiveDrawer={setShowArchiveDrawer}
+          onOpenTheme={() => setShowThemeDrawer(true)}
           onRefresh={handleRefresh}
           onCreateTask={handleCreateTask}
           onClearFilters={handleClearFilters}
@@ -238,6 +243,11 @@ const TaskManager: React.FC = () => {
         onDeleteTask={handleDeleteTask}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+      />
+      {/* Theme Drawer */}
+      <ThemeDrawer
+        isOpen={showThemeDrawer}
+        onClose={() => setShowThemeDrawer(false)}
       />
 
       {/* Enhanced Task Dialog with Create/Edit modes */}

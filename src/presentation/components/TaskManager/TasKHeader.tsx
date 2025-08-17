@@ -13,6 +13,7 @@ import {
   User,
   MoreVertical,
   Archive,
+  Palette,
 } from "lucide-react";
 
 interface TaskHeaderProps {
@@ -42,6 +43,7 @@ interface TaskHeaderProps {
   setShowArchiveDrawer: (show: boolean) => void;
   onRefresh: () => void;
   onCreateTask: () => void;
+  onOpenTheme: () => void;
   onClearFilters: () => void;
 }
 
@@ -77,6 +79,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   setShowArchiveDrawer,
   onRefresh,
   onCreateTask,
+  onOpenTheme,
   onClearFilters,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -197,6 +200,17 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 
               {showMenu && (
                 <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
+                  <button
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
+                    onClick={() => {
+                      onOpenTheme();
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Palette className="w-4 h-4" />
+                    Theme
+                  </button>
+
                   <button
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
                     onClick={() => {

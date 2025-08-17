@@ -349,7 +349,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 onChange={(e) =>
                   handleChange("status", e.target.value as Status)
                 }
-                className="bg-white dark:bg-gray-800 rounded-xl px-4 py-2 border border-gray-300 dark:border-gray-600 appearance-none pr-10 text-gray-800 dark:text-gray-200 font-medium shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="bg-white dark:bg-gray-800 rounded-lg px-4 py-2 border border-gray-300 dark:border-gray-600 appearance-none pr-10 text-text-default font-medium  "
               >
                 {folders.map((folder) => (
                   <option key={folder.id} value={folder.id}>
@@ -389,13 +389,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               <div className="relative" ref={actionMenuRef}>
                 <button
                   onClick={() => setShowActionMenu(!showActionMenu)}
-                  className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
+                  className="p-2 rounded-lg hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
                 >
                   <MoreVertical size={20} />
                 </button>
 
                 {showActionMenu && (
-                  <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
+                  <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
                     <button
                       className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
                       onClick={() => setShowActionMenu(false)}
@@ -442,7 +442,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
+              className="p-2 rounded-lg hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
             >
               <X size={20} />
             </button>
@@ -481,7 +481,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {/* Description */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-text-default">
                   Description
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -490,7 +490,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 value={editedTask.description || ""}
                 onChange={(e) => handleChange("description", e.target.value)}
                 rows={4}
-                className="w-full bg-white dark:bg-gray-800 rounded-xl p-4 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-sm"
+                className="w-full bg-input-background rounded-lg p-4 border border-border-default text-text-primary  resize-none "
                 placeholder="Add detailed description, notes, or context..."
               />
             </div>
@@ -498,7 +498,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {/* Task Linking */}
             <div className="space-y-6">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-text-default">
                   Task Linking
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -507,13 +507,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               <div className="grid grid-cols-2 gap-6">
                 {/* Previous Task */}
                 <div className="space-y-2">
-                  <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                  <label className="flex mb-2 text-sm font-medium text-text-secondary items-center gap-2">
                     <Link size={16} />
                     Previous Task
                   </label>
                   <div className="relative" ref={prevTaskRef}>
                     <button
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default flex justify-between items-center text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      className="w-full bg-input-background rounded-lg px-4 py-3 border border-border-default flex justify-between items-center text-text-default  "
                       onClick={() => setShowPrevTaskList(!showPrevTaskList)}
                     >
                       <span className="truncate">
@@ -526,7 +526,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       <ChevronDown size={16} />
                     </button>
                     {showPrevTaskList && (
-                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                         <button
                           className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors border-b border-gray-100 dark:border-gray-700"
                           onClick={() => {
@@ -558,13 +558,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
                 {/* Next Task */}
                 <div className="space-y-2">
-                  <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                  <label className="mb-2 text-sm font-medium text-text-secondary flex items-center gap-2">
                     <Link size={16} />
                     Next Task
                   </label>
                   <div className="relative" ref={nextTaskRef}>
                     <button
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default flex justify-between items-center text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      className="w-full bg-input-background rounded-lg px-4 py-3 border border-border-default flex justify-between items-center text-text-default  "
                       onClick={() => setShowNextTaskList(!showNextTaskList)}
                     >
                       <span className="truncate">
@@ -577,7 +577,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       <ChevronDown size={16} />
                     </button>
                     {showNextTaskList && (
-                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                      <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                         <button
                           className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors border-b border-gray-100 dark:border-gray-700"
                           onClick={() => {
@@ -612,7 +612,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {/* Attributes */}
             <div className="space-y-6">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-text-default">
                   Attributes
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -630,10 +630,10 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         <button
                           key={level}
                           onClick={() => handleChange("priority", level)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
                             editedTask.priority === level
                               ? priorityColors[level]
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-border-default hover:bg-gray-200 dark:hover:bg-gray-700"
+                              : "bg-button-secondBg text-text-secondary border border-border-default"
                           }`}
                         >
                           {priorityIcons[level]}
@@ -647,7 +647,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 {/* Date & Time Fields */}
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <label className="mb-2 text-sm font-medium text-text-secondary flex items-center gap-2">
                       <Calendar size={16} />
                       Start Date & Time
                     </label>
@@ -667,7 +667,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             e.target.value ? new Date(e.target.value) : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
                       />
                       <input
                         type="time"
@@ -686,12 +686,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                               : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <label className="mb-2 text-sm font-medium text-text-secondary flex items-center gap-2">
                       <Clock size={16} />
                       Due Date & Time
                     </label>
@@ -711,7 +711,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             e.target.value ? new Date(e.target.value) : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
                       />
                       <input
                         type="time"
@@ -730,7 +730,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                               : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-default  "
                       />
                     </div>
                   </div>
@@ -738,7 +738,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
                 {/* Tags */}
                 <div>
-                  <label className="block mb-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <label className="block mb-3 text-sm font-medium text-text-secondary">
                     Tags
                   </label>
                   <div className="space-y-3">
@@ -746,7 +746,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       {editedTask.tags?.map((tag) => (
                         <div
                           key={tag}
-                          className="flex items-center gap-2 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm"
+                          className="flex items-center gap-2 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-full text-sm font-medium "
                         >
                           {tag}
                           <button
@@ -763,12 +763,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         placeholder="Add a tag..."
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
-                        className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-2 border border-border-default text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="flex-1 bg-white dark:bg-gray-800 rounded-lg px-4 py-2 border border-border-default text-text-default text-sm  "
                         onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
                       />
                       <button
                         onClick={handleAddTag}
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
                       >
                         <Plus size={16} />
                       </button>
@@ -782,7 +782,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                  <h3 className="font-semibold text-lg text-text-default">
                     Subtasks
                   </h3>
                   <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -806,7 +806,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 {editedTask.subtasks?.map((subtask) => (
                   <div
                     key={subtask.id}
-                    className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/70 rounded-xl transition-all duration-200 shadow-sm border border-gray-100 dark:border-gray-700"
+                    className="flex items-center gap-4 p-4 bg-button-secondBg hover:bg-button-secondBgHover rounded-lg transition-all duration-200 border-b border-border-default"
                   >
                     <button
                       onClick={() =>
@@ -832,7 +832,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       className={`flex-1 bg-transparent border-none focus:ring-0 transition-all ${
                         subtask.completed
                           ? "text-gray-500 dark:text-gray-400 line-through"
-                          : "text-gray-800 dark:text-gray-200"
+                          : "text-text-default"
                       }`}
                       placeholder="Subtask title"
                     />
@@ -850,12 +850,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Add new subtask..."
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
-                    className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    className="flex-1 bg-input-background rounded-lg px-4 py-3 border border-border-default text-text-default  "
                     onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
                   />
                   <button
                     onClick={handleAddSubtask}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all shadow-md font-medium"
+                    className="flex items-center gap-2 bg-button-bg hover:bg-button-bgHover text-button-bgText px-6 py-3 rounded-lg font-medium"
                   >
                     <Plus size={16} />
                     Add
@@ -867,7 +867,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {/* Attachments */}
             <div className="space-y-6">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-text-default">
                   Attachments
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -877,7 +877,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 {editedTask.attachments?.map((att) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-border-default shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex items-center justify-between p-4 bg-input-background rounded-lg border border-border-default"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-2.5 rounded-lg">
@@ -888,7 +888,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           href={att.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-gray-800 dark:text-gray-200 font-medium truncate block hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          className="text-text-default font-medium truncate block hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         >
                           {att.title || "Attachment"}
                         </a>
@@ -908,7 +908,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 ))}
               </div>
 
-              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-border-default">
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border-default">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm mb-2 block font-medium text-gray-600 dark:text-gray-400">
@@ -923,7 +923,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           title: e.target.value,
                         }))
                       }
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      className="w-full bg-white dark:bg-gray-800 rounded-lg px-4 py-3 border border-border-default text-text-default  "
                     />
                   </div>
                   <div>
@@ -932,7 +932,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     </label>
                     <div className="relative" ref={attachmentRef}>
                       <button
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default flex justify-between items-center text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-lg px-4 py-3 border border-border-default flex justify-between items-center text-text-default  "
                         onClick={() =>
                           setShowAttachmentOptions(!showAttachmentOptions)
                         }
@@ -944,7 +944,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         <ChevronDown size={16} />
                       </button>
                       {showAttachmentOptions && (
-                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden">
+                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-xl overflow-hidden">
                           {(
                             [
                               "image",
@@ -985,13 +985,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         url: e.target.value,
                       }))
                     }
-                    className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    className="w-full bg-white dark:bg-gray-800 rounded-lg px-4 py-3 border border-border-default text-text-default  "
                   />
                 </div>
 
                 <button
                   onClick={handleAddAttachment}
-                  className="flex items-center gap-2 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-md font-medium justify-center"
+                  className="flex items-center gap-2 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-md font-medium justify-center"
                 >
                   <Paperclip size={16} />
                   Add Attachment
@@ -1004,7 +1004,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           {!isCreateMode && (
             <div className="w-1/3 p-6 bg-dialog-background border-l border-border-default">
               <div className="flex items-center gap-2 mb-6">
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-text-default">
                   Activity Log
                 </h3>
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
@@ -1021,7 +1021,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     .map((activity, index) => (
                       <div
                         key={activity.id || index}
-                        className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                        className="bg-white dark:bg-gray-800 p-4 rounded-lg  border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-200"
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
@@ -1031,7 +1031,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                                 className="text-blue-600 dark:text-blue-400"
                               />
                             </div>
-                            <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm capitalize">
+                            <div className="font-semibold text-text-default text-sm capitalize">
                               {activity.action.replace("_", " ")}
                             </div>
                           </div>
@@ -1084,13 +1084,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-gray-700 dark:text-gray-300 font-medium"
+              className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-gray-700 dark:text-gray-300 font-medium"
             >
               Cancel
             </button>
             <button
               onClick={() => onSave(editedTask)}
-              className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-md font-medium"
+              className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all shadow-md font-medium"
             >
               {isCreateMode ? "Create Task" : "Save Task"}
             </button>
