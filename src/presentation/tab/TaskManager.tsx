@@ -1,5 +1,3 @@
-// src/presentation/tab/TaskManager.tsx - Improved Design
-
 import React, { useState, useEffect, useMemo } from "react";
 import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
 import {
@@ -241,14 +239,27 @@ const TaskManager: React.FC = () => {
   const handleQuickAddTask = async (status: Status) => {
     if (!quickAddTitle.trim() || !authState.user || !activeGroup) return;
 
+    // Set default dates and times
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000); // Add 1 hour
+
+    // Create start and end dates for the same day
+    const startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0); // Start of day
+
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999); // End of day
+
     const newTask: Task = {
       id: "",
       title: quickAddTitle,
       description: "",
       status,
       priority: "medium",
-      startTime: null,
-      endTime: null,
+      startTime: now, // Current time
+      endTime: oneHourLater, // Current time + 1 hour
+      startDate: startDate, // Today's start
+      endDate: endDate, // Today's end
       completed: false,
       subtasks: [],
       attachments: [],
