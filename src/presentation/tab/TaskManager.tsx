@@ -1,4 +1,4 @@
-// src/presentation/tab/TaskManager.tsx - Fixed version
+// src/presentation/tab/TaskManager.tsx - Improved Design
 
 import React, { useState, useEffect, useMemo } from "react";
 import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
@@ -29,6 +29,15 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Priority, Status, Task } from "../types/task";
+import {
+  Search,
+  Filter,
+  RefreshCw,
+  Zap,
+  AlertCircle,
+  CheckCircle,
+  Globe,
+} from "lucide-react";
 
 const folders = [
   { id: "backlog", title: "Backlog", emoji: "📥" },
@@ -347,6 +356,7 @@ const TaskManager: React.FC = () => {
       setError("Failed to duplicate task. Please try again.");
     }
   };
+
   // Move task from dialog
   const handleMove = (taskId: string, newStatus: Status) => {
     const taskToMove = lists
@@ -426,17 +436,45 @@ const TaskManager: React.FC = () => {
     }));
   }, [lists, searchTerm, filterPriority, filterStatus]);
 
+  // Calculate stats
+  const totalTasks = lists.reduce((acc, list) => acc + list.tasks.length, 0);
+  const completedTasks =
+    lists.find((list) => list.id === "done")?.tasks.length || 0;
+  const urgentTasks = lists.reduce(
+    (acc, list) =>
+      acc + list.tasks.filter((task) => task.priority === "urgent").length,
+    0
+  );
+
   if (!authState.isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md">
-          <h3 className="text-xl font-bold mb-4">Login Required</h3>
-          <p className="mb-6">Please login with Google to manage your tasks.</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
+        <div className="text-center p-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 max-w-md transform hover:scale-105 transition-all duration-300">
+          {/* Animated icon */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+            <div className="relative p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full shadow-2xl shadow-blue-500/25">
+              <Globe
+                className="w-12 h-12 text-white animate-spin"
+                style={{ animationDuration: "3s" }}
+              />
+            </div>
+          </div>
+
+          <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">
+            Welcome to TaskFlow
+          </h3>
+          <p className="mb-8 text-gray-600 dark:text-gray-300 leading-relaxed">
+            Connect with Google to sync and manage your tasks across all devices
+          </p>
           <button
             onClick={() => authManager.login()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:scale-105 active:scale-95 transition-all duration-200 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
           >
-            Login with Google
+            <span className="flex items-center gap-3">
+              <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" />
+              Connect with Google
+            </span>
           </button>
         </div>
       </div>
@@ -444,7 +482,7 @@ const TaskManager: React.FC = () => {
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/30">
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
@@ -452,87 +490,162 @@ const TaskManager: React.FC = () => {
         onCreateGroup={handleCreateGroup}
       />
 
-      <div className="flex-1 w-full min-h-screen overflow-auto p-4 flex flex-col">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-            <button
-              onClick={() => setError(null)}
-              className="ml-2 text-red-900 hover:text-red-700"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+      <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
+        {/* Enhanced Header */}
+        <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+          <div className="p-6">
+            {/* Stats Bar */}
+            <div className="flex items-center gap-6 mb-6">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg">
+                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {totalTasks}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  total tasks
+                </span>
+              </div>
 
-        {/* Search and Filter Bar */}
-        <div className="mb-4 flex gap-4">
-          <Input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-1/3"
-          />
-          <Select value={filterPriority} onValueChange={setFilterPriority}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="backlog">Backlog</SelectItem>
-              <SelectItem value="todo">To Do</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-              <SelectItem value="archive">Archive</SelectItem>
-            </SelectContent>
-          </Select>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="p-2 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-lg">
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {completedTasks}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  completed
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <div className="p-2 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 rounded-lg">
+                  <Zap className="w-4 h-4 text-red-600 dark:text-red-400" />
+                </div>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {urgentTasks}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400">urgent</span>
+              </div>
+
+              <div className="ml-auto flex items-center gap-3">
+                <button
+                  onClick={() => loadTasks()}
+                  className="group p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
+                  disabled={loading}
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200 ${
+                      loading ? "animate-spin" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200/60 dark:border-red-700/60 text-red-700 dark:text-red-400 rounded-xl shadow-sm animate-in slide-in-from-top duration-300">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <span className="flex-1">{error}</span>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 transition-colors duration-200"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Enhanced Search and Filter Bar */}
+            <div className="flex gap-4 items-center">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all duration-200"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <Select
+                  value={filterPriority}
+                  onValueChange={setFilterPriority}
+                >
+                  <SelectTrigger className="w-[140px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent className="backdrop-blur-sm">
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="low">🌱 Low</SelectItem>
+                    <SelectItem value="medium">📋 Medium</SelectItem>
+                    <SelectItem value="high">⚡ High</SelectItem>
+                    <SelectItem value="urgent">🔥 Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-[140px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="backdrop-blur-sm">
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="backlog">📥 Backlog</SelectItem>
+                    <SelectItem value="todo">📋 To Do</SelectItem>
+                    <SelectItem value="in-progress">🚧 In Progress</SelectItem>
+                    <SelectItem value="done">✅ Done</SelectItem>
+                    <SelectItem value="archive">🗄️ Archive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <DndContext
-          collisionDetection={closestCorners}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 flex-1 min-h-0 w-full items-start">
-            {filteredLists.map((list) => (
-              <SortableContext
-                key={list.id}
-                items={list.tasks.map((t) => t.id)}
-                strategy={horizontalListSortingStrategy}
-              >
-                <FolderCard
-                  id={list.id}
-                  title={list.title}
-                  emoji={list.emoji}
-                  tasks={list.tasks}
-                  onTaskClick={handleTaskClick}
-                  isAdding={quickAddStatus === list.id}
-                  newTaskTitle={quickAddStatus === list.id ? quickAddTitle : ""}
-                  setNewTaskTitle={setQuickAddTitle}
-                  onAddTask={() => {
-                    setQuickAddStatus(list.id as Status);
-                    setQuickAddTitle("");
-                  }}
-                  onCancelAdd={() => setQuickAddStatus(null)}
-                  onSubmitAdd={() => handleQuickAddTask(list.id as Status)}
-                />
-              </SortableContext>
-            ))}
-          </div>
-        </DndContext>
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          <DndContext
+            collisionDetection={closestCorners}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-6 flex-1 min-h-0 w-full items-start">
+              {filteredLists.map((list) => (
+                <SortableContext
+                  key={list.id}
+                  items={list.tasks.map((t) => t.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <FolderCard
+                    id={list.id}
+                    title={list.title}
+                    emoji={list.emoji}
+                    tasks={list.tasks}
+                    onTaskClick={handleTaskClick}
+                    isAdding={quickAddStatus === list.id}
+                    newTaskTitle={
+                      quickAddStatus === list.id ? quickAddTitle : ""
+                    }
+                    setNewTaskTitle={setQuickAddTitle}
+                    onAddTask={() => {
+                      setQuickAddStatus(list.id as Status);
+                      setQuickAddTitle("");
+                    }}
+                    onCancelAdd={() => setQuickAddStatus(null)}
+                    onSubmitAdd={() => handleQuickAddTask(list.id as Status)}
+                  />
+                </SortableContext>
+              ))}
+            </div>
+          </DndContext>
+        </div>
       </div>
 
       <TaskDialog

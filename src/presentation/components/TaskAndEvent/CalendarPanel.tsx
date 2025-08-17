@@ -92,96 +92,284 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
   }, [itemsByDate]);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 p-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="h-full flex flex-col p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
         <button
           onClick={prevMonth}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="group p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-200 hover:scale-110"
           aria-label="Previous month"
         >
-          &lt;
+          <svg
+            className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
         </button>
-        <h2 className="text-lg font-bold">
-          {format(currentMonth, "MMMM yyyy")}
-        </h2>
+
+        <div className="text-center">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
+            {format(currentMonth, "MMMM")}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            {format(currentMonth, "yyyy")}
+          </p>
+        </div>
+
         <button
           onClick={nextMonth}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="group p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-200 hover:scale-110"
           aria-label="Next month"
         >
-          &gt;
+          <svg
+            className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+      {/* Week days header */}
+      <div className="grid grid-cols-7 gap-2 mb-4">
+        {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((day) => (
           <div
             key={day}
-            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1"
+            className="text-center text-sm font-semibold text-slate-500 dark:text-slate-400 py-3"
           >
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 flex-1">
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-2 flex-1 mb-6">
         {days.map((day, index) => {
           const { events: eventCount, tasks: taskCount } = getDayEvents(day);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
+          const hasActivity = eventCount > 0 || taskCount > 0;
 
           return (
             <button
               key={index}
               onClick={() => onDateChange(day)}
-              className={`flex flex-col items-center justify-start p-1 rounded-lg transition-all
+              className={`group relative flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 hover:scale-105 min-h-[60px]
                 ${
                   isCurrentMonth
-                    ? "text-gray-900 dark:text-white"
-                    : "text-gray-400 dark:text-gray-500"
+                    ? "text-slate-900 dark:text-white"
+                    : "text-slate-400 dark:text-slate-500"
                 } 
                 ${
                   isSelected
-                    ? "bg-blue-500 text-white dark:bg-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl ring-4 ring-blue-200 dark:ring-blue-800"
+                    : isToday
+                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 ring-2 ring-blue-300 dark:ring-blue-700"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-700/50"
                 }
                 ${
-                  isToday && !isSelected
-                    ? "ring-2 ring-blue-400 dark:ring-blue-500"
+                  hasActivity && !isSelected && !isToday
+                    ? "bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20"
                     : ""
                 }`}
             >
-              <span className="text-sm font-medium mb-1">
+              <span
+                className={`text-base font-bold mb-1 ${
+                  isSelected ? "text-white" : ""
+                }`}
+              >
                 {format(day, "d")}
               </span>
 
-              <div className="flex flex-wrap justify-center gap-0.5">
+              {/* Activity indicators */}
+              <div className="flex items-center justify-center gap-1 min-h-[12px]">
                 {eventCount > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <div
+                    className={`flex items-center gap-0.5 ${
+                      isSelected ? "text-blue-100" : "text-blue-500"
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        isSelected ? "bg-blue-200" : "bg-blue-500"
+                      } animate-pulse`}
+                    ></div>
+                    {eventCount > 1 && (
+                      <span className="text-xs font-semibold">
+                        {eventCount}
+                      </span>
+                    )}
+                  </div>
                 )}
                 {taskCount > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  <div
+                    className={`flex items-center gap-0.5 ${
+                      isSelected ? "text-emerald-100" : "text-emerald-500"
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        isSelected ? "bg-emerald-200" : "bg-emerald-500"
+                      } animate-pulse`}
+                    ></div>
+                    {taskCount > 1 && (
+                      <span className="text-xs font-semibold">{taskCount}</span>
+                    )}
+                  </div>
                 )}
               </div>
+
+              {/* Hover effect */}
+              {!isSelected && (
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 transition-all duration-300"></div>
+              )}
+
+              {/* Today indicator */}
+              {isToday && !isSelected && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white dark:border-slate-800 animate-bounce"></div>
+              )}
             </button>
           );
         })}
       </div>
 
       {/* Summary Section */}
-      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="font-medium mb-2 text-sm">Tổng quan tháng</h3>
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center">
-            <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-            <span>Sự kiện: {monthlySummary.totalEvents}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-            <span>Công việc: {monthlySummary.totalTasks}</span>
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800/50 dark:to-blue-900/20 rounded-2xl p-6 border border-slate-200/50 dark:border-slate-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-blue-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z"
+              />
+            </svg>
+            Tổng quan tháng
+          </h3>
+          <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
+            {format(currentMonth, "MMM yyyy")}
           </div>
         </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-white/70 dark:bg-slate-700/30 rounded-xl border border-slate-200/30 dark:border-slate-600/30">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 9l6 6m0-6l-6 6"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">
+                  Sự kiện
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Lịch hẹn & cuộc họp
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {monthlySummary.totalEvents}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                sự kiện
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-white/70 dark:bg-slate-700/30 rounded-xl border border-slate-200/30 dark:border-slate-600/30">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">
+                  Công việc
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Task & deadline
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {monthlySummary.totalTasks}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                công việc
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress indicator */}
+        {(monthlySummary.totalEvents > 0 || monthlySummary.totalTasks > 0) && (
+          <div className="mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-600/50">
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-2">
+              <span>Hoạt động trong tháng</span>
+              <span>
+                {monthlySummary.totalEvents + monthlySummary.totalTasks} tổng
+                cộng
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-blue-500 to-emerald-500 h-2 rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (monthlySummary.totalEvents + monthlySummary.totalTasks) * 4
+                  )}%`,
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
