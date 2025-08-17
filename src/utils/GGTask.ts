@@ -169,7 +169,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
 
 export const createGoogleTask = async (
     accessToken: string,
-    task: Task,
+    task: Partial<Task>,
     taskListId: string
 ): Promise<Task> => {
     // Prepare the task data for Google Tasks API

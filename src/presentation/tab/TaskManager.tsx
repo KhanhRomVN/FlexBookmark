@@ -264,8 +264,7 @@ const TaskManager: React.FC = () => {
         setLists(newLists);
       }
 
-      setSelectedTask(createdTask);
-      setIsDialogOpen(true);
+      // do not auto-open dialog after quick-add
     } catch (err) {
       console.error("Failed to create task:", err);
       setError(
@@ -347,6 +346,28 @@ const TaskManager: React.FC = () => {
       console.error("Failed to duplicate task:", err);
       setError("Failed to duplicate task. Please try again.");
     }
+  };
+  // Move task from dialog
+  const handleMove = (taskId: string, newStatus: Status) => {
+    const taskToMove = lists
+      .flatMap((list) => list.tasks)
+      .find((t) => t.id === taskId);
+    if (!taskToMove) return;
+    const updatedTask: Task = { ...taskToMove, status: newStatus };
+    // Update UI lists
+    const updatedLists = lists.map((list) => ({
+      ...list,
+      tasks:
+        list.id === newStatus
+          ? [...list.tasks, updatedTask]
+          : list.tasks.filter((t) => t.id !== taskId),
+    }));
+    setLists(updatedLists);
+    // Persist change
+    saveTask(updatedTask);
+    // Close dialog
+    setIsDialogOpen(false);
+    setSelectedTask(null);
   };
 
   const handleSaveTaskDetail = async (task: Task) => {
@@ -525,6 +546,7 @@ const TaskManager: React.FC = () => {
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
+        onMove={handleMove}
       />
     </div>
   );

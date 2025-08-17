@@ -18,6 +18,9 @@ import {
   Circle,
   ArrowDown,
   ArrowUp,
+  MoreVertical,
+  Move,
+  Archive,
 } from "lucide-react";
 
 interface TaskDialogProps {
@@ -28,6 +31,7 @@ interface TaskDialogProps {
   onSave: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onDuplicate: (task: Task) => void;
+  onMove: (taskId: string, newStatus: Status) => void;
 }
 
 const TaskDialog: React.FC<TaskDialogProps> = ({
@@ -38,6 +42,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   onSave,
   onDelete,
   onDuplicate,
+  onMove,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -48,7 +53,9 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   });
   const [newTag, setNewTag] = useState("");
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const attachmentRef = useRef<HTMLDivElement>(null);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +69,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         !attachmentRef.current.contains(event.target as Node)
       ) {
         setShowAttachmentOptions(false);
+      }
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowActionMenu(false);
       }
     };
 
@@ -181,29 +194,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     urgent: "bg-red-500",
   };
 
-  const statusEmojis = {
-    backlog: "📥",
-    todo: "📋",
-    "in-progress": "🚧",
-    done: "✅",
-    archive: "🗄️",
-  };
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-4xl max-h-[90vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-5 border-b border-border-default flex justify-between items-center">
+        <div className="p-3 border-b border-border-default flex justify-between items-center">
           <div className="flex items-center gap-3 w-full">
-            <div className="relative w-full max-w-xs">
+            <div className="relative">
               <select
                 value={editedTask.status}
                 onChange={(e) =>
                   handleChange("status", e.target.value as Status)
                 }
-                className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none pr-8 text-text-primary font-medium"
+                className="bg-input-background rounded-lg p-2 border border-border-default appearance-none pr-8 text-text-primary font-medium"
               >
                 {folders.map((folder) => (
                   <option key={folder.id} value={folder.id}>
@@ -215,20 +220,60 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <ChevronDown size={16} />
               </div>
             </div>
-
-            <input
-              value={editedTask.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              className="flex-1 text-2xl font-bold bg-transparent border-none focus:ring-0 text-text-primary"
-              placeholder="Task title"
-            />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-button-second-bg-hover text-muted-foreground"
-          >
-            <X size={24} />
-          </button>
+
+          <div className="relative" ref={actionMenuRef}>
+            <button
+              onClick={() => setShowActionMenu(!showActionMenu)}
+              className="p-2 rounded-lg hover:bg-button-second-bg-hover text-muted-foreground"
+            >
+              <MoreVertical size={20} />
+            </button>
+
+            {showActionMenu && (
+              <div className="absolute z-20 right-0 mt-1 bg-dropdown-background border border-border-default rounded-lg shadow-lg overflow-hidden w-40">
+                <button
+                  className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 text-text-primary"
+                  onClick={() => {
+                    setShowActionMenu(false);
+                  }}
+                >
+                  <Move size={16} />
+                  Move
+                </button>
+                <button
+                  className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 text-text-primary"
+                  onClick={() => {
+                    onDuplicate(editedTask);
+                    setShowActionMenu(false);
+                  }}
+                >
+                  <Copy size={16} />
+                  Copy
+                </button>
+                <button
+                  className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 text-text-primary"
+                  onClick={() => {
+                    onMove(editedTask.id, "archive");
+                    setShowActionMenu(false);
+                  }}
+                >
+                  <Archive size={16} />
+                  Archive
+                </button>
+                <button
+                  className="w-full text-left p-3 hover:bg-dropdown-item-hover flex items-center gap-2 text-destructive"
+                  onClick={() => {
+                    if (editedTask.id) onDelete(editedTask.id);
+                    setShowActionMenu(false);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto flex p-6">
@@ -249,6 +294,129 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 className="w-full bg-input-background rounded-lg p-4 border border-border-default"
                 placeholder="Add a detailed description..."
               />
+            </div>
+
+            {/* Title */}
+            <div className="space-y-4">
+              <input
+                value={editedTask.title}
+                onChange={(e) => handleChange("title", e.target.value)}
+                className="w-full text-2xl font-bold bg-transparent border-none focus:ring-0 text-text-primary placeholder:text-muted-foreground"
+                placeholder="Task title"
+              />
+            </div>
+
+            {/* Attributes */}
+            <div className="space-y-6">
+              <h3 className="font-semibold text-lg text-text-primary">
+                ATTRIBUTES
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Priority */}
+                <div>
+                  <label className="block mb-2 text-muted-foreground">
+                    Priority
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={editedTask.priority}
+                      onChange={(e) =>
+                        handleChange("priority", e.target.value as Priority)
+                      }
+                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none pr-8 text-text-primary"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Start Date */}
+                <div>
+                  <label className="block mb-2 text-muted-foreground">
+                    Start date
+                  </label>
+                  <input
+                    type="date"
+                    value={
+                      editedTask.startTime
+                        ? new Date(editedTask.startTime)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      handleChange("startTime", new Date(e.target.value))
+                    }
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
+                  />
+                </div>
+
+                {/* Due Date */}
+                <div>
+                  <label className="block mb-2 text-muted-foreground">
+                    Due date
+                  </label>
+                  <input
+                    type="date"
+                    value={
+                      editedTask.endTime
+                        ? new Date(editedTask.endTime)
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      handleChange("endTime", new Date(e.target.value))
+                    }
+                    className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block mb-2 text-muted-foreground">
+                    Tags
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {editedTask.tags?.map((tag) => (
+                      <div
+                        key={tag}
+                        className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full text-sm"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => handleDeleteTag(tag)}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <input
+                        placeholder="Add tag"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        className="flex-1 bg-input-background rounded-lg p-2 border border-border-default text-text-primary text-sm"
+                        onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                      />
+                      <button
+                        onClick={handleAddTag}
+                        className="bg-blue-500 text-white p-2 rounded-lg"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Subtasks */}
@@ -458,103 +626,53 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             </div>
           </div>
 
-          {/* Right Column */}
+          {/* Right Column - Activity Log */}
           <div className="w-1/3 pl-6 space-y-6">
-            {/* Attributes */}
-            <div className="space-y-6">
-              <h3 className="font-semibold text-lg text-text-primary">
-                ATTRIBUTES
-              </h3>
+            <h3 className="font-semibold text-lg text-text-primary">
+              ACTIVITY LOG
+            </h3>
 
-              <div className="space-y-4">
-                {/* Priority */}
-                <div>
-                  <label className="block mb-2 text-muted-foreground">
-                    Priority
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={editedTask.priority}
-                      onChange={(e) =>
-                        handleChange("priority", e.target.value as Priority)
-                      }
-                      className="w-full bg-input-background rounded-lg p-3 border border-border-default appearance-none pr-8 text-text-primary"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
-                      <ChevronDown size={16} />
+            <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto">
+              {editedTask.activityLog?.map((activity, index) => (
+                <div key={index} className="bg-input-background p-3 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div className="font-medium text-text-primary">
+                      {activity.action}
                     </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </span>
                   </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {activity.details}
+                  </p>
                 </div>
+              ))}
 
-                {/* Due Date */}
-                <div>
-                  <label className="block mb-2 text-muted-foreground">
-                    Due date
-                  </label>
-                  <input
-                    type="date"
-                    value={
-                      editedTask.dueDate
-                        ? new Date(editedTask.dueDate)
-                            .toISOString()
-                            .split("T")[0]
-                        : ""
-                    }
-                    onChange={(e) =>
-                      handleChange("dueDate", new Date(e.target.value))
-                    }
-                    className="w-full bg-input-background rounded-lg p-3 border border-border-default text-text-primary"
-                  />
+              {(!editedTask.activityLog ||
+                editedTask.activityLog.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No activity yet
                 </div>
-              </div>
-            </div>
-
-            {/* Action Section */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg text-text-primary">
-                ACTIONS
-              </h3>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => onDuplicate(editedTask)}
-                  className="flex items-center gap-2 p-3 text-text-primary hover:bg-button-second-bg-hover rounded-lg transition-colors border border-border"
-                >
-                  <Copy size={16} />
-                  Duplicate task
-                </button>
-                <button
-                  onClick={() => editedTask.id && onDelete(editedTask.id)}
-                  className="flex items-center gap-2 p-3 text-destructive hover:bg-button-second-bg-hover rounded-lg transition-colors border border-border"
-                >
-                  <Trash2 size={16} />
-                  Delete task
-                </button>
-              </div>
-            </div>
-
-            {/* Responsive Section */}
-            <div className="space-y-4 mt-auto pt-6">
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 border border-border-default rounded-lg hover:bg-button-second-bg-hover transition-colors text-text-primary"
-                >
-                  Discard
-                </button>
-                <button
-                  onClick={() => onSave(editedTask)}
-                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all"
-                >
-                  Save task
-                </button>
-              </div>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border-default flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-border-default rounded-lg hover:bg-button-second-bg-hover transition-colors text-text-primary"
+          >
+            Discard
+          </button>
+          <button
+            onClick={() => onSave(editedTask)}
+            className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all"
+          >
+            Save task
+          </button>
         </div>
       </div>
     </div>

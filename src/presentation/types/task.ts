@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export type Priority = "low" | "medium" | "high" | "urgent";
 export type Status = "backlog" | "todo" | "in-progress" | "done" | "archive";
 
@@ -15,6 +17,7 @@ export interface Attachment {
 }
 
 export interface ActivityLog {
+    details: ReactNode;
     id: string;
     action: string;
     userId: string;

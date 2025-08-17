@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Edit } from "lucide-react";
 
 interface TaskCardProps {
   task: Task;
@@ -31,6 +31,15 @@ const getPriorityColor = (priority: Priority) => {
   }
 };
 
+const formatDate = (date: Date | null | undefined) => {
+  if (!date) return "";
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
 const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -41,29 +50,35 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
     transform: CSS.Translate.toString(transform),
   };
 
+  const completedSubtasks =
+    task.subtasks?.filter((st) => st.completed).length || 0;
+  const totalSubtasks = task.subtasks?.length || 0;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 cursor-grab hover:shadow-md transition-all"
     >
-      <div className="flex justify-between items-start">
-        <h4
-          onClick={onClick}
-          className="font-medium text-gray-900 dark:text-white hover:underline flex-1 pr-2"
-        >
-          {task.title}
-        </h4>
+      {/* Line 1: Date and Edit */}
+      <div className="flex justify-between items-center mb-3">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {formatDate(task.endTime)}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-6 w-6"
+              className="h-6 w-6 p-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <Edit className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -75,36 +90,25 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </DropdownMenu>
       </div>
 
-      {task.endTime && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <span>{task.endTime.toLocaleDateString()}</span>
-        </div>
-      )}
+      {/* Line 2: Title */}
+      <h4
+        onClick={onClick}
+        className="font-medium text-gray-900 dark:text-white hover:underline mb-3 line-clamp-2"
+      >
+        {task.title}
+      </h4>
 
-      <div className="mt-3 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-3 h-3 rounded-full ${
-              task.completed ? "bg-green-500" : "bg-yellow-500"
-            }`}
-          />
-          <span className="text-xs">
-            {task.completed ? "Completed" : "Pending"}
-          </span>
+      {/* Line 3: Subtasks and Priority */}
+      <div className="flex justify-between items-center mt-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          {totalSubtasks > 0 && (
+            <>
+              <span className="bg-gray-200 dark:bg-gray-700 rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {completedSubtasks}/{totalSubtasks}
+              </span>
+              <span>Subtasks</span>
+            </>
+          )}
         </div>
 
         {task.priority && (
