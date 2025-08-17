@@ -54,8 +54,6 @@ const TaskManager: React.FC = () => {
     completedTasks,
     urgentTasks,
     overdueTasks,
-    handleCopyTasks,
-    handleMoveTasks,
     handleArchiveTasks,
     handleDeleteTasks,
     handleSortTasks,

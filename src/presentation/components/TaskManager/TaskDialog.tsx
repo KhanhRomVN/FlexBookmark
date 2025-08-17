@@ -67,6 +67,147 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const prevTaskRef = useRef<HTMLDivElement>(null);
   const nextTaskRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      attachmentRef.current &&
+      !attachmentRef.current.contains(event.target as Node)
+    ) {
+      setShowAttachmentOptions(false);
+    }
+    if (
+      actionMenuRef.current &&
+      !actionMenuRef.current.contains(event.target as Node)
+    ) {
+      setShowActionMenu(false);
+    }
+    if (
+      prevTaskRef.current &&
+      !prevTaskRef.current.contains(event.target as Node)
+    ) {
+      setShowPrevTaskList(false);
+    }
+    if (
+      nextTaskRef.current &&
+      !nextTaskRef.current.contains(event.target as Node)
+    ) {
+      setShowNextTaskList(false);
+    }
+    if (
+      statusDropdownRef.current &&
+      !statusDropdownRef.current.contains(event.target as Node)
+    ) {
+      setShowStatusDropdown(false);
+    }
+  };
+
+  const handleStatusChange = (newStatus: Status) => {
+    if (!editedTask) return;
+
+    const currentDateTime = new Date();
+    const oldStatus = editedTask.status;
+
+    // Create updated task with new status
+    let updatedTask = { ...editedTask, status: newStatus };
+
+    // Handle transition OUT of old status
+    switch (oldStatus) {
+      case "in-progress":
+        if (newStatus !== "done") {
+          updatedTask.actualStartDate = null;
+          updatedTask.actualStartTime = null;
+        }
+        break;
+      case "done":
+        updatedTask.actualEndDate = null;
+        updatedTask.actualEndTime = null;
+        break;
+    }
+
+    // Handle transition INTO new status
+    switch (newStatus) {
+      case "in-progress":
+        updatedTask.actualStartDate = currentDateTime;
+        updatedTask.actualStartTime = currentDateTime
+          .toTimeString()
+          .slice(0, 5);
+        break;
+      case "done":
+        updatedTask.actualEndDate = currentDateTime;
+        updatedTask.actualEndTime = currentDateTime.toTimeString().slice(0, 5);
+        if (!updatedTask.actualStartDate) {
+          updatedTask.actualStartDate = currentDateTime;
+          updatedTask.actualStartTime = currentDateTime
+            .toTimeString()
+            .slice(0, 5);
+        }
+        break;
+    }
+
+    const StatusBar = () => {
+      const statusOptions = [
+        { value: "backlog", label: "Backlog", color: "bg-gray-500" },
+        { value: "todo", label: "Todo", color: "bg-blue-500" },
+        { value: "in-progress", label: "In Progress", color: "bg-yellow-500" },
+        { value: "done", label: "Done", color: "bg-green-500" },
+        { value: "overdue", label: "Overdue", color: "bg-red-500" },
+      ];
+
+      const currentIndex = statusOptions.findIndex(
+        (s) => s.value === editedTask.status
+      );
+
+      return (
+        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-2 border border-border-default">
+          {statusOptions.map((status, index) => (
+            <div key={status.value} className="flex items-center">
+              <button
+                onClick={() => handleStatusChange(status.value as Status)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  editedTask.status === status.value
+                    ? `${status.color} text-white shadow-md`
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                }`}
+              >
+                {status.label}
+              </button>
+              {index < statusOptions.length - 1 && (
+                <div
+                  className={`h-px w-4 ${
+                    index < currentIndex
+                      ? "bg-green-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode) {
+      const activityEntry = {
+        id: `${currentDateTime.getTime()}-${Math.random()
+          .toString(36)
+          .substring(2, 8)}`,
+        details: `Status changed from "${oldStatus}" to "${newStatus}"`,
+        action: "status_changed",
+        userId: "user",
+        timestamp: currentDateTime,
+      };
+      updatedTask.activityLog = [
+        ...(updatedTask.activityLog || []),
+        activityEntry,
+      ];
+    }
+
+    setEditedTask(updatedTask);
+    setShowStatusDropdown(false);
+  };
 
   // Helper functions
   const formatDisplayDate = (date: Date | null) => {
@@ -349,26 +490,11 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
       <div className="w-full max-w-5xl max-h-[95vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border-default  flex justify-between items-center">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-border-default flex justify-between items-center">
           <div className="flex items-center gap-4 w-full">
-            <div className="relative">
-              <select
-                value={editedTask.status}
-                onChange={(e) =>
-                  handleChange("status", e.target.value as Status)
-                }
-                className="bg-white dark:bg-gray-800 rounded-lg px-4 py-2 border border-gray-300 dark:border-gray-600 appearance-none pr-10 text-text-default font-medium  "
-              >
-                {folders.map((folder) => (
-                  <option key={folder.id} value={folder.id}>
-                    {folder.emoji} {folder.title}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
-                <ChevronDown size={16} className="text-gray-400" />
-              </div>
-            </div>
+            {/* Status Bar - only show in edit mode */}
+            {!isCreateMode && <StatusBar />}
 
             {/* Character Counter - only show in edit mode */}
             {!isCreateMode && (
@@ -676,6 +802,52 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Select due date & time"
                   />
                 </div>
+
+                {/* Actual Date & Time Fields - only show in edit mode and when relevant */}
+                {!isCreateMode &&
+                  (editedTask.actualStartDate || editedTask.actualEndDate) && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <div className="text-sm font-medium text-blue-800 dark:text-blue-300 col-span-full mb-2">
+                        📊 Actual Timeline
+                      </div>
+
+                      {/* Actual Start Date & Time */}
+                      {editedTask.actualStartDate && (
+                        <ModernDateTimePicker
+                          selectedDate={editedTask.actualStartDate}
+                          selectedTime={editedTask.actualStartTime}
+                          onDateChange={(date) =>
+                            handleChange("actualStartDate", date)
+                          }
+                          onTimeChange={(time) =>
+                            handleChange("actualStartTime", time)
+                          }
+                          label="Actual Start Date & Time"
+                          color="blue"
+                          placeholder="Actual start date & time"
+                          disabled={true} // Make it read-only since it's system generated
+                        />
+                      )}
+
+                      {/* Actual End Date & Time */}
+                      {editedTask.actualEndDate && (
+                        <ModernDateTimePicker
+                          selectedDate={editedTask.actualEndDate}
+                          selectedTime={editedTask.actualEndTime}
+                          onDateChange={(date) =>
+                            handleChange("actualEndDate", date)
+                          }
+                          onTimeChange={(time) =>
+                            handleChange("actualEndTime", time)
+                          }
+                          label="Actual End Date & Time"
+                          color="purple"
+                          placeholder="Actual end date & time"
+                          disabled={true} // Make it read-only since it's system generated
+                        />
+                      )}
+                    </div>
+                  )}
 
                 {/* Duration Display */}
                 {editedTask.startDate && editedTask.endDate && (
