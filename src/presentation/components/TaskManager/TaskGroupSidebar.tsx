@@ -19,17 +19,17 @@ const TaskGroupSidebar: React.FC<SidebarProps> = ({
   onCreateGroup,
 }) => {
   return (
-    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg font-bold p-4 border-b dark:border-gray-700">
+    <div className="w-64 bg-sidebar-background border-r border-border-default">
+      <h2 className="text-lg font-bold p-4 border-b border-border-default">
         Task Groups
       </h2>
       <ul className="p-2">
         {groups.map((group) => (
           <li
             key={group.id}
-            className={`cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg ${
+            className={`cursor-pointer px-4 py-2 hover:bg-sidebar-itemHover rounded-lg ${
               activeGroup === group.id
-                ? "bg-green-100 dark:bg-green-900/30 font-semibold"
+                ? "bg-sidebar-itemFocus font-semibold"
                 : ""
             }`}
             onClick={() => onSelectGroup(group.id)}
@@ -40,7 +40,7 @@ const TaskGroupSidebar: React.FC<SidebarProps> = ({
       </ul>
       <button
         onClick={onCreateGroup}
-        className="mx-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center gap-2"
+        className="mx-4 px-4 py-2 bg-button-bg hover:bg-button-bgHover text-text-primary rounded-lg flex items-center gap-2"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

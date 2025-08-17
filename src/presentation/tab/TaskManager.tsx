@@ -448,7 +448,7 @@ const TaskManager: React.FC = () => {
 
   if (!authState.isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center p-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 max-w-md transform hover:scale-105 transition-all duration-300">
           {/* Animated icon */}
           <div className="relative mb-8">
@@ -482,7 +482,7 @@ const TaskManager: React.FC = () => {
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/30">
+    <div className="flex w-full min-h-screen bg-background">
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
@@ -492,7 +492,7 @@ const TaskManager: React.FC = () => {
 
       <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
         {/* Enhanced Header */}
-        <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/60 dark:border-gray-700/60 shadow-sm">
+        <div className="sticky top-0 z-10 bg-background border-b border-border-default shadow-sm">
           <div className="p-6">
             {/* Stats Bar */}
             <div className="flex items-center gap-6 mb-6">

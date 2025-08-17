@@ -35,15 +35,12 @@ const FolderCard: React.FC<FolderCardProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className="bg-gray-100 dark:bg-gray-700 rounded-xl shadow w-full flex flex-col"
+      className="bg-card-background rounded-xl w-full flex flex-col"
     >
-      <div className="p-4 border-b border-gray-200 dark:border-gray-600">
-        <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+      <div className="p-4 border-b border-border-default">
+        <h3 className="font-bold text-text-primary flex items-center gap-2">
           {emoji && <span>{emoji}</span>}
           <span className="flex-1">{title}</span>
-          <span className="bg-gray-200 dark:bg-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs">
-            {tasks.length}
-          </span>
         </h3>
       </div>
 
