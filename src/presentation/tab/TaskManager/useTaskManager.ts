@@ -13,21 +13,6 @@ import ChromeAuthManager from "../../../utils/chromeAuth";
 import type { AuthState } from "../../../utils/chromeAuth";
 import type { Task, Status } from "../../types/task";
 
-export const folders = [
-    { id: "backlog", title: "Backlog", emoji: "📥" },
-    { id: "todo", title: "To Do", emoji: "📋" },
-    { id: "in-progress", title: "In Progress", emoji: "🚧" },
-    { id: "done", title: "Done", emoji: "✅" },
-    { id: "archive", title: "Archive", emoji: "🗄️" },
-];
-
-interface TaskList {
-    id: string;
-    title: string;
-    emoji: string;
-    tasks: Task[];
-}
-
 export function useTaskManager() {
     const [authState, setAuthState] = useState<AuthState>({
         isAuthenticated: false,
@@ -122,9 +107,18 @@ export function useTaskManager() {
                 token = await getFreshToken();
             }
             const tasks: Task[] = await fetchGoogleTasks(token, activeGroup);
+
+            // Ensure all tasks have activity log
+            const tasksWithActivityLog = tasks.map(task => ({
+                ...task,
+                activityLog: task.activityLog && task.activityLog.length > 0
+                    ? task.activityLog
+                    : createInitialActivityLog()
+            }));
+
             const updated = folders.map((f) => ({
                 ...f,
-                tasks: tasks.filter((t) => t.status === f.id),
+                tasks: tasksWithActivityLog.filter((t) => t.status === f.id),
             }));
             setLists(updated);
         } catch (err) {
@@ -174,12 +168,21 @@ export function useTaskManager() {
                 setLists(copy);
             } else {
                 const moved = source.tasks[itemIndex];
-                moved.status = dest.id as Status;
+                const oldStatus = moved.status;
+                const newStatus = dest.id as Status;
+
+                // Add activity log for status change
+                const updatedTask = addActivityLogEntry(
+                    { ...moved, status: newStatus },
+                    "status_changed",
+                    `Status changed from "${folders.find(f => f.id === oldStatus)?.title}" to "${folders.find(f => f.id === newStatus)?.title}"`
+                );
+
                 const copy = [...lists];
                 copy[fromIndex].tasks = source.tasks.filter((t) => t.id !== active.id);
-                copy[toIndex].tasks = [...dest.tasks, moved];
+                copy[toIndex].tasks = [...dest.tasks, updatedTask];
                 setLists(copy);
-                saveTask(moved);
+                saveTask(updatedTask);
             }
         }
     };
@@ -208,7 +211,7 @@ export function useTaskManager() {
             subtasks: [],
             attachments: [],
             tags: [],
-            activityLog: [],
+            activityLog: createInitialActivityLog(),
             prevTaskId: null,
             nextTaskId: null,
         };
@@ -216,10 +219,19 @@ export function useTaskManager() {
         try {
             const token = await getFreshToken();
             const created = await createGoogleTask(token, newTask, activeGroup);
+
+            // Ensure created task has activity log
+            const taskWithActivityLog = {
+                ...created,
+                activityLog: created.activityLog && created.activityLog.length > 0
+                    ? created.activityLog
+                    : createInitialActivityLog()
+            };
+
             const idx = lists.findIndex((l) => l.id === status);
             if (idx !== -1) {
                 const copy = [...lists];
-                copy[idx].tasks = [...copy[idx].tasks, created];
+                copy[idx].tasks = [...copy[idx].tasks, taskWithActivityLog];
                 setLists(copy);
             }
         } catch (err) {
@@ -232,7 +244,15 @@ export function useTaskManager() {
     };
 
     const handleTaskClick = (task: Task) => {
-        setSelectedTask(task);
+        // Ensure task has activity log before opening dialog
+        const taskWithActivityLog = {
+            ...task,
+            activityLog: task.activityLog && task.activityLog.length > 0
+                ? task.activityLog
+                : createInitialActivityLog()
+        };
+
+        setSelectedTask(taskWithActivityLog);
         setIsDialogOpen(true);
     };
 
@@ -271,12 +291,26 @@ export function useTaskManager() {
             const token = tokenInfo.scope?.includes("tasks")
                 ? authState.user.accessToken
                 : await getFreshToken();
-            const clone = { ...task, id: "", title: task.title + " (Copy)", activityLog: [] };
+            const clone = {
+                ...task,
+                id: "",
+                title: task.title + " (Copy)",
+                activityLog: createInitialActivityLog()
+            };
             const created = await createGoogleTask(token, clone, activeGroup);
+
+            // Ensure duplicated task has activity log
+            const taskWithActivityLog = {
+                ...created,
+                activityLog: created.activityLog && created.activityLog.length > 0
+                    ? created.activityLog
+                    : createInitialActivityLog()
+            };
+
             const idx = lists.findIndex((l) => l.id === task.status);
             if (idx !== -1) {
                 const copy = [...lists];
-                copy[idx].tasks = [...copy[idx].tasks, created];
+                copy[idx].tasks = [...copy[idx].tasks, taskWithActivityLog];
                 setLists(copy);
             }
         } catch (err) {
@@ -288,17 +322,24 @@ export function useTaskManager() {
     const handleMove = (taskId: string, newStatus: Status) => {
         const found = lists.flatMap((l) => l.tasks).find((t) => t.id === taskId);
         if (!found) return;
-        const updated = { ...found, status: newStatus };
+
+        const oldStatus = found.status;
+        const updatedTask = addActivityLogEntry(
+            { ...found, status: newStatus },
+            "status_changed",
+            `Status changed from "${folders.find(f => f.id === oldStatus)?.title}" to "${folders.find(f => f.id === newStatus)?.title}"`
+        );
+
         setLists((prev) =>
             prev.map((l) => ({
                 ...l,
                 tasks:
                     l.id === newStatus
-                        ? [...l.tasks, updated]
+                        ? [...l.tasks, updatedTask]
                         : l.tasks.filter((t) => t.id !== taskId),
             }))
         );
-        saveTask(updated);
+        saveTask(updatedTask);
         setIsDialogOpen(false);
         setSelectedTask(null);
     };
@@ -310,16 +351,39 @@ export function useTaskManager() {
             const token = tokenInfo.scope?.includes("tasks")
                 ? authState.user.accessToken
                 : await getFreshToken();
+
             if (task.id) {
-                await updateGoogleTask(token, task.id, task, activeGroup);
+                // Add update activity log entry
+                const updatedTask = addActivityLogEntry(
+                    task,
+                    "updated",
+                    `Task details updated at ${new Date().toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    })}`
+                );
+
+                await updateGoogleTask(token, task.id, updatedTask, activeGroup);
                 setLists((prev) =>
                     prev.map((l) => ({
                         ...l,
-                        tasks: l.tasks.map((t) => (t.id === task.id ? task : t)),
+                        tasks: l.tasks.map((t) => (t.id === task.id ? updatedTask : t)),
                     }))
                 );
             } else {
-                const created = await createGoogleTask(token, task, activeGroup);
+                // Ensure new task has activity log
+                const taskWithActivityLog = {
+                    ...task,
+                    activityLog: task.activityLog && task.activityLog.length > 0
+                        ? task.activityLog
+                        : createInitialActivityLog()
+                };
+
+                const created = await createGoogleTask(token, taskWithActivityLog, activeGroup);
                 const idx = lists.findIndex((l) => l.id === task.status);
                 if (idx !== -1) {
                     const copy = [...lists];
@@ -392,4 +456,53 @@ export function useTaskManager() {
         completedTasks,
         urgentTasks,
     };
+} const folders = [
+    { id: "backlog", title: "Backlog", emoji: "📥" },
+    { id: "todo", title: "To Do", emoji: "📋" },
+    { id: "in-progress", title: "In Progress", emoji: "🚧" },
+    { id: "done", title: "Done", emoji: "✅" },
+    { id: "archive", title: "Archive", emoji: "🗄️" },
+];
+
+interface TaskList {
+    id: string;
+    title: string;
+    emoji: string;
+    tasks: Task[];
 }
+
+// Helper function to add activity log entry
+const addActivityLogEntry = (task: Task, action: string, details: string, userId: string = "user"): Task => {
+    const now = new Date();
+    const activityEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details,
+        action,
+        userId,
+        timestamp: now
+    };
+
+    return {
+        ...task,
+        activityLog: [...(task.activityLog || []), activityEntry]
+    };
+};
+
+// Helper function to create initial activity log for new tasks
+const createInitialActivityLog = (): any[] => {
+    const now = new Date();
+    return [{
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Task created at ${now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        })}`,
+        action: "created",
+        userId: "user",
+        timestamp: now
+    }];
+};

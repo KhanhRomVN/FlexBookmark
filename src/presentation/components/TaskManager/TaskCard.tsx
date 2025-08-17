@@ -81,13 +81,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
       {...listeners}
       onClick={onClick}
       onPointerUp={onClick}
-      className="bg-card-background rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
+      className="bg-card-background rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 min-h-[120px] flex flex-col"
     >
       {/* 1. Due Date & Time + Edit Button */}
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex justify-between items-start mb-3 flex-shrink-0">
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <Calendar className="w-4 h-4" />
-          <span className="font-medium">
+          <Calendar className="w-4 h-4 flex-shrink-0" />
+          <span className="font-medium truncate">
             {formatDateTime(task.endDate, task.endTime) || "No due date"}
           </span>
         </div>
@@ -97,7 +97,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -129,53 +129,59 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </DropdownMenu>
       </div>
 
-      {/* 2. Title with max 2 lines */}
-      <h4
-        onClick={onClick}
-        className="font-semibold text-gray-900 dark:text-white mb-3 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-5"
-        style={{
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {task.title}
-      </h4>
+      {/* 2. Title with proper word wrapping and max 3 lines */}
+      <div className="flex-1 mb-3 min-h-0">
+        <h4
+          onClick={onClick}
+          className="font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 leading-5 break-words hyphens-auto"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            hyphens: "auto",
+          }}
+          title={task.title} // Show full title on hover
+        >
+          {task.title}
+        </h4>
+      </div>
 
       {/* 3. Additional Information - All in one horizontal line */}
-      <div className="flex items-center justify-between gap-4 text-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-2 text-sm flex-shrink-0 mt-auto">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {/* Subtasks */}
           {totalSubtasks > 0 && (
-            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 flex-shrink-0">
               <CheckSquare className="w-4 h-4" />
-              <span>
+              <span className="text-xs">
                 {completedSubtasks}/{totalSubtasks}
               </span>
               {completedSubtasks === totalSubtasks && totalSubtasks > 0 && (
-                <span className="text-green-600 dark:text-green-400">✓</span>
+                <span className="text-green-600 dark:text-green-400 text-xs">
+                  ✓
+                </span>
               )}
             </div>
           )}
 
           {/* Attachments */}
           {hasAttachments && (
-            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 flex-shrink-0">
               <Paperclip className="w-4 h-4" />
-              <span>
-                {task.attachments!.length}
-                {task.attachments!.length !== 1 ? "s" : ""}
-              </span>
+              <span className="text-xs">{task.attachments!.length}</span>
             </div>
           )}
 
           {/* Priority Level - Simple text with color */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 min-w-0">
             <span
-              className={`font-medium capitalize ${getPriorityTextColor(
+              className={`font-medium capitalize text-xs truncate ${getPriorityTextColor(
                 task.priority
               )}`}
+              title={task.priority} // Show full priority on hover
             >
               {task.priority}
             </span>
@@ -183,7 +189,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </div>
 
         {/* Completion Status Indicator */}
-        <div className="flex items-center">
+        <div className="flex items-center flex-shrink-0">
           <span
             className={`w-2 h-2 rounded-full ${
               task.completed
@@ -192,6 +198,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
                 ? "bg-blue-500"
                 : "bg-gray-400"
             }`}
+            title={
+              task.completed
+                ? "Completed"
+                : task.status === "in-progress"
+                ? "In Progress"
+                : "Pending"
+            }
           />
         </div>
       </div>
