@@ -39,6 +39,7 @@ interface TaskDialogProps {
   onDelete: (taskId: string) => void;
   onDuplicate: (task: Task) => void;
   onMove: (taskId: string, newStatus: Status) => void;
+  isCreateMode?: boolean; // Add this prop
 }
 
 const TaskDialog: React.FC<TaskDialogProps> = ({
@@ -50,6 +51,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   onDelete,
   onDuplicate,
   onMove,
+  isCreateMode = false, // Default to false
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -140,19 +142,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }));
     setNewSubtask("");
 
-    // Add activity log entry
-    const now = new Date();
-    const activityEntry = {
-      id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-      details: `Added subtask: "${newSubtask}"`,
-      action: "subtask_added",
-      userId: "user",
-      timestamp: now,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      activityLog: [...(prev!.activityLog || []), activityEntry],
-    }));
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode) {
+      const now = new Date();
+      const activityEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Added subtask: "${newSubtask}"`,
+        action: "subtask_added",
+        userId: "user",
+        timestamp: now,
+      };
+      setEditedTask((prev) => ({
+        ...prev!,
+        activityLog: [...(prev!.activityLog || []), activityEntry],
+      }));
+    }
   };
 
   const handleDeleteSubtask = (id: string) => {
@@ -162,8 +166,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       subtasks: prev!.subtasks?.filter((st) => st.id !== id) || [],
     }));
 
-    // Add activity log entry
-    if (subtask) {
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode && subtask) {
       const now = new Date();
       const activityEntry = {
         id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
@@ -193,19 +197,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }));
     setNewAttachment({ title: "", url: "", type: "file" });
 
-    // Add activity log entry
-    const now = new Date();
-    const activityEntry = {
-      id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-      details: `Added attachment: "${newAtt.title}" (${newAtt.type})`,
-      action: "attachment_added",
-      userId: "user",
-      timestamp: now,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      activityLog: [...(prev!.activityLog || []), activityEntry],
-    }));
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode) {
+      const now = new Date();
+      const activityEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Added attachment: "${newAtt.title}" (${newAtt.type})`,
+        action: "attachment_added",
+        userId: "user",
+        timestamp: now,
+      };
+      setEditedTask((prev) => ({
+        ...prev!,
+        activityLog: [...(prev!.activityLog || []), activityEntry],
+      }));
+    }
   };
 
   const handleDeleteAttachment = (id: string) => {
@@ -215,8 +221,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       attachments: prev!.attachments?.filter((att) => att.id !== id) || [],
     }));
 
-    // Add activity log entry
-    if (attachment) {
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode && attachment) {
       const now = new Date();
       const activityEntry = {
         id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
@@ -240,19 +246,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }));
     setNewTag("");
 
-    // Add activity log entry
-    const now = new Date();
-    const activityEntry = {
-      id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-      details: `Added tag: "${newTag}"`,
-      action: "tag_added",
-      userId: "user",
-      timestamp: now,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      activityLog: [...(prev!.activityLog || []), activityEntry],
-    }));
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode) {
+      const now = new Date();
+      const activityEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Added tag: "${newTag}"`,
+        action: "tag_added",
+        userId: "user",
+        timestamp: now,
+      };
+      setEditedTask((prev) => ({
+        ...prev!,
+        activityLog: [...(prev!.activityLog || []), activityEntry],
+      }));
+    }
   };
 
   const handleDeleteTag = (tag: string) => {
@@ -261,19 +269,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       tags: prev!.tags?.filter((t) => t !== tag) || [],
     }));
 
-    // Add activity log entry
-    const now = new Date();
-    const activityEntry = {
-      id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-      details: `Removed tag: "${tag}"`,
-      action: "tag_removed",
-      userId: "user",
-      timestamp: now,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      activityLog: [...(prev!.activityLog || []), activityEntry],
-    }));
+    // Add activity log entry only if not in create mode
+    if (!isCreateMode) {
+      const now = new Date();
+      const activityEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Removed tag: "${tag}"`,
+        action: "tag_removed",
+        userId: "user",
+        timestamp: now,
+      };
+      setEditedTask((prev) => ({
+        ...prev!,
+        activityLog: [...(prev!.activityLog || []), activityEntry],
+      }));
+    }
   };
 
   const completionPercentage =
@@ -352,78 +362,84 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               </div>
             </div>
 
-            {/* Character Counter */}
-            <div className="ml-auto flex items-center gap-2 text-sm">
-              <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                  metadataInfo.isOverLimit
-                    ? "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400"
-                    : metadataInfo.characterCount > 7000
-                    ? "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                }`}
-              >
-                {metadataInfo.isOverLimit && <AlertTriangle size={14} />}
-                <span>
-                  {metadataInfo.characterCount.toLocaleString()} / 4095
-                </span>
+            {/* Character Counter - only show in edit mode */}
+            {!isCreateMode && (
+              <div className="ml-auto flex items-center gap-2 text-sm">
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                    metadataInfo.isOverLimit
+                      ? "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+                      : metadataInfo.characterCount > 7000
+                      ? "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                  }`}
+                >
+                  {metadataInfo.isOverLimit && <AlertTriangle size={14} />}
+                  <span>
+                    {metadataInfo.characterCount.toLocaleString()} / 4095
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-4">
-            <div className="relative" ref={actionMenuRef}>
-              <button
-                onClick={() => setShowActionMenu(!showActionMenu)}
-                className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
-              >
-                <MoreVertical size={20} />
-              </button>
+            {/* Action Menu - only show in edit mode */}
+            {!isCreateMode && (
+              <div className="relative" ref={actionMenuRef}>
+                <button
+                  onClick={() => setShowActionMenu(!showActionMenu)}
+                  className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
+                >
+                  <MoreVertical size={20} />
+                </button>
 
-              {showActionMenu && (
-                <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
-                  <button
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                    onClick={() => setShowActionMenu(false)}
-                  >
-                    <Move size={16} />
-                    Move
-                  </button>
-                  <button
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                    onClick={() => {
-                      onDuplicate(editedTask);
-                      setShowActionMenu(false);
-                    }}
-                  >
-                    <Copy size={16} />
-                    Duplicate
-                  </button>
-                  <button
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                    onClick={() => {
-                      onMove(editedTask.id, "archive");
-                      setShowActionMenu(false);
-                    }}
-                  >
-                    <Archive size={16} />
-                    Archive
-                  </button>
-                  <div className="border-t border-border-default">
+                {showActionMenu && (
+                  <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
                     <button
-                      className="w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 text-red-600 transition-colors"
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
+                      onClick={() => setShowActionMenu(false)}
+                    >
+                      <Move size={16} />
+                      Move
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
                       onClick={() => {
-                        if (editedTask.id) onDelete(editedTask.id);
+                        onDuplicate(editedTask);
                         setShowActionMenu(false);
                       }}
                     >
-                      <Trash2 size={16} />
-                      Delete
+                      <Copy size={16} />
+                      Duplicate
                     </button>
+                    <button
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
+                      onClick={() => {
+                        onMove(editedTask.id, "archive");
+                        setShowActionMenu(false);
+                      }}
+                    >
+                      <Archive size={16} />
+                      Archive
+                    </button>
+                    <div className="border-t border-border-default">
+                      <button
+                        className="w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 text-red-600 transition-colors"
+                        onClick={() => {
+                          if (editedTask.id) onDelete(editedTask.id);
+                          setShowActionMenu(false);
+                        }}
+                      >
+                        <Trash2 size={16} />
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={onClose}
               className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-all duration-200"
@@ -433,11 +449,17 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto flex">
-          {/* Left Column */}
+        <div
+          className={`flex-1 overflow-auto flex ${
+            isCreateMode ? "justify-center" : ""
+          }`}
+        >
+          {/* Left Column - Main Content */}
           <div
             ref={leftPanelRef}
-            className="w-2/3 p-6 space-y-8 overflow-auto max-h-[calc(100vh-200px)]"
+            className={`${
+              isCreateMode ? "w-full max-w-4xl" : "w-2/3"
+            } p-6 space-y-8 overflow-auto max-h-[calc(100vh-200px)]`}
           >
             {/* Title */}
             <div className="space-y-2">
@@ -978,84 +1000,86 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             </div>
           </div>
 
-          {/* Right Column - Activity Log */}
-          <div className="w-1/3 p-6 bg-dialog-background border-l border-border-default">
-            <div className="flex items-center gap-2 mb-6">
-              <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
-                Activity Log
-              </h3>
-              <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
-            </div>
+          {/* Right Column - Activity Log (only show in edit mode) */}
+          {!isCreateMode && (
+            <div className="w-1/3 p-6 bg-dialog-background border-l border-border-default">
+              <div className="flex items-center gap-2 mb-6">
+                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                  Activity Log
+                </h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
+              </div>
 
-            <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
-              {editedTask.activityLog && editedTask.activityLog.length > 0 ? (
-                editedTask.activityLog
-                  .sort(
-                    (a, b) =>
-                      new Date(b.timestamp).getTime() -
-                      new Date(a.timestamp).getTime()
-                  )
-                  .map((activity, index) => (
-                    <div
-                      key={activity.id || index}
-                      className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Activity
-                              size={12}
-                              className="text-blue-600 dark:text-blue-400"
-                            />
+              <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
+                {editedTask.activityLog && editedTask.activityLog.length > 0 ? (
+                  editedTask.activityLog
+                    .sort(
+                      (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                    )
+                    .map((activity, index) => (
+                      <div
+                        key={activity.id || index}
+                        className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <Activity
+                                size={12}
+                                className="text-blue-600 dark:text-blue-400"
+                              />
+                            </div>
+                            <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm capitalize">
+                              {activity.action.replace("_", " ")}
+                            </div>
                           </div>
-                          <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm capitalize">
-                            {activity.action.replace("_", " ")}
-                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                            {new Date(activity.timestamp).toLocaleString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true,
+                              }
+                            )}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                          {new Date(activity.timestamp).toLocaleString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true,
-                            }
-                          )}
-                        </span>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                          {activity.details}
+                        </p>
+                        {activity.userId && activity.userId !== "system" && (
+                          <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                            by {activity.userId}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                        {activity.details}
-                      </p>
-                      {activity.userId && activity.userId !== "system" && (
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-                          by {activity.userId}
-                        </div>
-                      )}
+                    ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Activity size={24} className="text-gray-400" />
                     </div>
-                  ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Activity size={24} className="text-gray-400" />
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                      No activity recorded yet
+                    </p>
+                    <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+                      Changes will appear here
+                    </p>
                   </div>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    No activity recorded yet
-                  </p>
-                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                    Changes will appear here
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-border-default bg-dialog-background flex justify-between items-center">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {editedTask.id ? "Editing task" : "Creating new task"}
+            {isCreateMode ? "Creating new task" : "Editing task"}
           </div>
           <div className="flex gap-3">
             <button
@@ -1068,7 +1092,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               onClick={() => onSave(editedTask)}
               className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-md font-medium"
             >
-              Save Task
+              {isCreateMode ? "Create Task" : "Save Task"}
             </button>
           </div>
         </div>

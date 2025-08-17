@@ -2,15 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import TaskCard from "./TaskCard";
 import type { Task } from "../../types/task";
-import {
-  MoreVertical,
-  Plus,
-  Copy,
-  Move,
-  ArrowUpDown,
-  Archive,
-  Trash2,
-} from "lucide-react";
+import { MoreVertical, ArrowUpDown, Archive, Trash2 } from "lucide-react";
 
 interface FolderCardProps {
   id: string;
@@ -18,14 +10,12 @@ interface FolderCardProps {
   emoji?: string;
   tasks: Task[];
   onTaskClick: (task: Task) => void;
-  isAdding?: boolean;
-  newTaskTitle?: string;
-  setNewTaskTitle?: (title: string) => void;
+  isAdding: boolean;
+  newTaskTitle: string;
+  setNewTaskTitle: React.Dispatch<React.SetStateAction<string>>;
   onAddTask: () => void;
-  onCancelAdd?: () => void;
-  onSubmitAdd?: () => void;
-  onCopyTasks?: (folderId: string) => void;
-  onMoveTasks?: (folderId: string, targetFolderId: string) => void;
+  onCancelAdd: () => void;
+  onSubmitAdd: () => void;
   onArchiveTasks?: (folderId: string) => void;
   onDeleteTasks?: (folderId: string) => void;
   onSortTasks?: (folderId: string, sortType: string) => void;
@@ -37,14 +27,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
   emoji,
   tasks,
   onTaskClick,
-  isAdding = false,
-  newTaskTitle = "",
-  setNewTaskTitle,
-  onAddTask,
-  onCancelAdd,
-  onSubmitAdd,
-  onCopyTasks,
-  onMoveTasks,
   onArchiveTasks,
   onDeleteTasks,
   onSortTasks,
@@ -52,19 +34,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
   const { setNodeRef } = useDroppable({ id });
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showMoveMenu, setShowMoveMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sortMenuRef = useRef<HTMLDivElement>(null);
-  const moveMenuRef = useRef<HTMLDivElement>(null);
-
-  // Available folders for moving tasks
-  const availableFolders = [
-    { id: "backlog", title: "Backlog", emoji: "📥" },
-    { id: "todo", title: "To Do", emoji: "📋" },
-    { id: "in-progress", title: "In Progress", emoji: "🚧" },
-    { id: "overdue", title: "Overdue", emoji: "⏰" },
-    { id: "done", title: "Done", emoji: "✅" },
-  ].filter((folder) => folder.id !== id);
 
   const sortOptions = [
     { id: "priority-high", label: "Priority (High to Low)" },
@@ -76,6 +47,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
     { id: "created-asc", label: "Created Date (Oldest First)" },
     { id: "created-desc", label: "Created Date (Newest First)" },
     { id: "completion", label: "Completion Status" },
+    { id: "tag-count", label: "Tag Count" },
   ];
 
   useEffect(() => {
@@ -92,12 +64,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
       ) {
         setShowSortMenu(false);
       }
-      if (
-        moveMenuRef.current &&
-        !moveMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowMoveMenu(false);
-      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -106,15 +72,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
 
   const handleMenuAction = (action: string, value?: string) => {
     switch (action) {
-      case "add":
-        onAddTask();
-        break;
-      case "copy":
-        onCopyTasks?.(id);
-        break;
-      case "move":
-        if (value) onMoveTasks?.(id, value);
-        break;
       case "sort":
         if (value) onSortTasks?.(id, value);
         break;
@@ -127,7 +84,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
     }
     setShowDropdown(false);
     setShowSortMenu(false);
-    setShowMoveMenu(false);
   };
 
   return (
@@ -159,50 +115,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
 
               {showDropdown && (
                 <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden w-48 animate-in fade-in-0 zoom-in-95">
-                  <button
-                    onClick={() => handleMenuAction("add")}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                  >
-                    <Plus size={16} />
-                    Add Task
-                  </button>
-
-                  <button
-                    onClick={() => handleMenuAction("copy")}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                    disabled={tasks.length === 0}
-                  >
-                    <Copy size={16} />
-                    Copy Tasks
-                  </button>
-
-                  {/* Move Tasks Submenu */}
-                  <div className="relative" ref={moveMenuRef}>
-                    <button
-                      onClick={() => setShowMoveMenu(!showMoveMenu)}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                      disabled={tasks.length === 0}
-                    >
-                      <Move size={16} />
-                      Move Tasks
-                    </button>
-
-                    {showMoveMenu && (
-                      <div className="absolute left-full top-0 ml-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
-                        {availableFolders.map((folder) => (
-                          <button
-                            key={folder.id}
-                            onClick={() => handleMenuAction("move", folder.id)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
-                          >
-                            <span>{folder.emoji}</span>
-                            {folder.title}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
                   {/* Sort Tasks Submenu */}
                   <div className="relative" ref={sortMenuRef}>
                     <button
@@ -264,42 +176,11 @@ const FolderCard: React.FC<FolderCardProps> = ({
           />
         ))}
 
-        {isAdding ? (
-          <div className="w-full flex gap-2">
-            <input
-              type="text"
-              placeholder="Task title"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle?.(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onSubmitAdd?.();
-                }
-              }}
-              className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none"
-              autoFocus
-            />
-            <button
-              onClick={onSubmitAdd}
-              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
-            >
-              Save
-            </button>
-            <button
-              onClick={onCancelAdd}
-              className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded transition-colors"
-            >
-              Cancel
-            </button>
+        {tasks.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-4xl mb-2">{emoji}</div>
+            <p className="text-sm">No tasks yet</p>
           </div>
-        ) : (
-          <button
-            onClick={onAddTask}
-            className="w-full py-2 px-3 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-lg text-gray-700 dark:text-gray-300 flex items-center gap-2 transition-colors"
-          >
-            <Plus size={16} />
-            Add task
-          </button>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, Priority } from "../../types/task";
@@ -17,8 +17,6 @@ import {
   Paperclip,
   CheckSquare,
   Edit3,
-  Move,
-  Copy,
   Archive,
   Trash2,
 } from "lucide-react";
@@ -50,22 +48,10 @@ export const PREDEFINED_TAGS = [
 interface TaskCardProps {
   task: Task;
   onClick: () => void;
-  availableTasks?: Task[]; // For prev/next task selection
   onEditTask?: (task: Task) => void;
-  onMoveTask?: (taskId: string, targetStatus: string) => void;
-  onCopyTask?: (task: Task) => void;
   onArchiveTask?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
 }
-
-// Available folders for moving individual tasks
-const AVAILABLE_FOLDERS = [
-  { id: "backlog", title: "Backlog", emoji: "📥" },
-  { id: "todo", title: "To Do", emoji: "📋" },
-  { id: "in-progress", title: "In Progress", emoji: "🚧" },
-  { id: "overdue", title: "Overdue", emoji: "⏰" },
-  { id: "done", title: "Done", emoji: "✅" },
-];
 
 const getPriorityTextColor = (priority: Priority) => {
   switch (priority) {
@@ -125,10 +111,7 @@ const getTagStyle = (tagName: string) => {
 const TaskCard: React.FC<TaskCardProps> = ({
   task,
   onClick,
-  availableTasks = [],
   onEditTask,
-  onMoveTask,
-  onCopyTask,
   onArchiveTask,
   onDeleteTask,
 }) => {
@@ -136,11 +119,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
     id: task.id,
     data: { status: task.status },
   });
-
-  const [showMoveMenu, setShowMoveMenu] = useState(false);
-  const [showCopyMenu, setShowCopyMenu] = useState(false);
-  const moveMenuRef = useRef<HTMLDivElement>(null);
-  const copyMenuRef = useRef<HTMLDivElement>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -151,48 +129,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const totalSubtasks = task.subtasks?.length || 0;
   const hasAttachments = task.attachments && task.attachments.length > 0;
 
-  // Filter available folders to exclude current status
-  const availableFolders = AVAILABLE_FOLDERS.filter(
-    (folder) => folder.id !== task.status
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        moveMenuRef.current &&
-        !moveMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowMoveMenu(false);
-      }
-      if (
-        copyMenuRef.current &&
-        !copyMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowCopyMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleMenuAction = (action: string, value?: string) => {
+  const handleMenuAction = (action: string) => {
     switch (action) {
       case "edit":
         onEditTask?.(task);
-        break;
-      case "move":
-        if (value) onMoveTask?.(task.id, value);
-        break;
-      case "copy":
-        if (value) {
-          // Copy task to target folder
-          const copiedTask = { ...task, status: value as any };
-          onCopyTask?.(copiedTask);
-        } else {
-          // Copy to same folder
-          onCopyTask?.(task);
-        }
         break;
       case "archive":
         onArchiveTask?.(task.id);
@@ -201,8 +141,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
         onDeleteTask?.(task.id);
         break;
     }
-    setShowMoveMenu(false);
-    setShowCopyMenu(false);
   };
 
   return (
@@ -246,77 +184,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 <Edit3 className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-
-              {/* Move To Submenu */}
-              <div className="relative" ref={moveMenuRef}>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMoveMenu(!showMoveMenu);
-                  }}
-                >
-                  <Move className="mr-2 h-4 w-4" />
-                  Move To
-                </DropdownMenuItem>
-
-                {showMoveMenu && (
-                  <div className="absolute left-full top-0 ml-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg overflow-hidden w-36 z-50">
-                    {availableFolders.map((folder) => (
-                      <button
-                        key={folder.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMenuAction("move", folder.id);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span>{folder.emoji}</span>
-                        {folder.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Copy To Submenu */}
-              <div className="relative" ref={copyMenuRef}>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCopyMenu(!showCopyMenu);
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy To
-                </DropdownMenuItem>
-
-                {showCopyMenu && (
-                  <div className="absolute left-full top-0 ml-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg overflow-hidden w-36 z-50">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMenuAction("copy");
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      Same Folder
-                    </button>
-                    {AVAILABLE_FOLDERS.map((folder) => (
-                      <button
-                        key={folder.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMenuAction("copy", folder.id);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span>{folder.emoji}</span>
-                        {folder.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               <DropdownMenuSeparator />
               <DropdownMenuItem

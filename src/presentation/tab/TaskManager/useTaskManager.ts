@@ -11,7 +11,7 @@ import {
 } from "../../../utils/GGTask";
 import ChromeAuthManager from "../../../utils/chromeAuth";
 import type { AuthState } from "../../../utils/chromeAuth";
-import type { Task, Status, Priority } from "../../types/task";
+import type { Task, Status } from "../../types/task";
 
 // Updated folders to include overdue and exclude archive from main board
 export const folders = [
@@ -49,6 +49,9 @@ export function useTaskManager() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterPriority, setFilterPriority] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [filterTags, setFilterTags] = useState<string>("");
+    const [sortBy, setSortBy] = useState<string>("created-desc");
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [quickAddStatus, setQuickAddStatus] = useState<Status | null>(null);
     const [quickAddTitle, setQuickAddTitle] = useState("");
     const [showArchiveDrawer, setShowArchiveDrawer] = useState(false);
@@ -114,21 +117,103 @@ export function useTaskManager() {
         }
     }, [activeGroup]);
 
+    // Smart task status determination based on dates and times
+    const determineTaskStatus = (task: Task): Status => {
+        const now = new Date();
+
+        // If task is completed, it goes to Done
+        if (task.completed) {
+            return "done";
+        }
+
+        // If task has no start date/time, it stays in Backlog
+        if (!task.startDate && !task.startTime) {
+            return "backlog";
+        }
+
+        // Get effective start and end times
+        let startDateTime: Date | null = null;
+        let endDateTime: Date | null = null;
+
+        if (task.startDate && task.startTime) {
+            startDateTime = new Date(
+                task.startDate.getFullYear(),
+                task.startDate.getMonth(),
+                task.startDate.getDate(),
+                task.startTime.getHours(),
+                task.startTime.getMinutes(),
+                task.startTime.getSeconds()
+            );
+        } else if (task.startDate) {
+            startDateTime = new Date(task.startDate);
+        } else if (task.startTime) {
+            const today = new Date();
+            startDateTime = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                task.startTime.getHours(),
+                task.startTime.getMinutes(),
+                task.startTime.getSeconds()
+            );
+        }
+
+        if (task.endDate && task.endTime) {
+            endDateTime = new Date(
+                task.endDate.getFullYear(),
+                task.endDate.getMonth(),
+                task.endDate.getDate(),
+                task.endTime.getHours(),
+                task.endTime.getMinutes(),
+                task.endTime.getSeconds()
+            );
+        } else if (task.endDate) {
+            endDateTime = new Date(task.endDate);
+        } else if (task.endTime) {
+            const today = new Date();
+            endDateTime = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                task.endTime.getHours(),
+                task.endTime.getMinutes(),
+                task.endTime.getSeconds()
+            );
+        }
+
+        // Check for overdue first (has due date and past due)
+        if (endDateTime && now > endDateTime) {
+            return "overdue";
+        }
+
+        // If not started yet, keep in Todo
+        if (startDateTime && now < startDateTime) {
+            return "todo";
+        }
+
+        // If started but not overdue, it's in progress
+        if (startDateTime && now >= startDateTime) {
+            // If no end date/time specified, it stays in progress until manually moved
+            if (!endDateTime) {
+                return "in-progress";
+            }
+            // If within the time window, it's in progress
+            return "in-progress";
+        }
+
+        // Default fallback
+        return task.status || "backlog";
+    };
+
     // Check for overdue tasks and move them automatically
     const checkAndMoveOverdueTasks = (tasks: Task[]): Task[] => {
-        const now = new Date();
         return tasks.map(task => {
-            if (
-                task.status !== "done" &&
-                task.status !== "overdue" &&
-                task.status !== "archive" &&
-                task.endDate &&
-                new Date(task.endDate) < now
-            ) {
+            const newStatus = determineTaskStatus(task);
+            if (newStatus !== task.status && task.status !== "done") {
                 return addActivityLogEntry(
-                    { ...task, status: "overdue" },
+                    { ...task, status: newStatus },
                     "status_changed",
-                    `Task moved to overdue automatically due to missed deadline`
+                    `Status automatically changed from "${folders.find(f => f.id === task.status)?.title}" to "${folders.find(f => f.id === newStatus)?.title}" based on timing`
                 );
             }
             return task;
@@ -147,11 +232,11 @@ export function useTaskManager() {
             }
             const tasks: Task[] = await fetchGoogleTasks(token, activeGroup);
 
-            // Check for overdue tasks
-            const tasksWithOverdueCheck = checkAndMoveOverdueTasks(tasks);
+            // Check for overdue tasks and auto-update status
+            const tasksWithStatusCheck = checkAndMoveOverdueTasks(tasks);
 
             // Ensure all tasks have activity log
-            const tasksWithActivityLog = tasksWithOverdueCheck.map(task => ({
+            const tasksWithActivityLog = tasksWithStatusCheck.map(task => ({
                 ...task,
                 activityLog: task.activityLog && task.activityLog.length > 0
                     ? task.activityLog
@@ -188,51 +273,53 @@ export function useTaskManager() {
         }
     };
 
-    // Sort tasks based on different criteria
-    const sortTasks = (tasks: Task[], sortType: string): Task[] => {
+    // Enhanced sort tasks based on different criteria
+    const sortTasks = (tasks: Task[], sortType: string, order: 'asc' | 'desc' = 'desc'): Task[] => {
         const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+        const sortedTasks = [...tasks];
 
         switch (sortType) {
             case "priority-high":
-                return [...tasks].sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
             case "priority-low":
-                return [...tasks].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+                sortedTasks.sort((a, b) => {
+                    const comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+                    return sortType === "priority-low" ? -comparison : comparison;
+                });
+                break;
             case "due-date-asc":
-                return [...tasks].sort((a, b) => {
-                    const dateA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
-                    const dateB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
-                    return dateA - dateB;
-                });
             case "due-date-desc":
-                return [...tasks].sort((a, b) => {
-                    const dateA = a.endDate ? new Date(a.endDate).getTime() : -Infinity;
-                    const dateB = b.endDate ? new Date(b.endDate).getTime() : -Infinity;
-                    return dateB - dateA;
+                sortedTasks.sort((a, b) => {
+                    const dateA = a.endDate ? new Date(a.endDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
+                    const dateB = b.endDate ? new Date(b.endDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
+                    return sortType === "due-date-asc" ? dateA - dateB : dateB - dateA;
                 });
+                break;
             case "title-asc":
-                return [...tasks].sort((a, b) => a.title.localeCompare(b.title));
             case "title-desc":
-                return [...tasks].sort((a, b) => b.title.localeCompare(a.title));
+                sortedTasks.sort((a, b) => {
+                    const comparison = a.title.localeCompare(b.title);
+                    return sortType === "title-desc" ? -comparison : comparison;
+                });
+                break;
             case "created-asc":
-                return [...tasks].sort((a, b) => {
-                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                    return dateA - dateB;
-                });
             case "created-desc":
-                return [...tasks].sort((a, b) => {
+                sortedTasks.sort((a, b) => {
                     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                    return dateB - dateA;
+                    return sortType === "created-asc" ? dateA - dateB : dateB - dateA;
                 });
+                break;
             case "completion":
-                return [...tasks].sort((a, b) => {
+                sortedTasks.sort((a, b) => {
                     if (a.completed === b.completed) return 0;
                     return a.completed ? 1 : -1;
                 });
+                break;
             default:
                 return tasks;
         }
+
+        return order === 'asc' ? sortedTasks : sortedTasks.reverse();
     };
 
     // Handle drag-n-drop between lists
@@ -276,7 +363,7 @@ export function useTaskManager() {
         }
     };
 
-    // Quick Add
+    // Quick Add with smart status determination
     const handleQuickAddTask = async (status: Status) => {
         if (!quickAddTitle.trim() || !authState.user || !activeGroup) return;
         const now = new Date();
@@ -292,10 +379,10 @@ export function useTaskManager() {
             description: "",
             status,
             priority: "medium",
-            startTime: now,
-            endTime: oneHourLater,
-            startDate,
-            endDate,
+            startTime: status === "backlog" ? null : now,
+            endTime: status === "backlog" ? null : oneHourLater,
+            startDate: status === "backlog" ? null : startDate,
+            endDate: status === "backlog" ? null : endDate,
             completed: false,
             subtasks: [],
             attachments: [],
@@ -303,8 +390,13 @@ export function useTaskManager() {
             activityLog: createInitialActivityLog(),
             prevTaskId: null,
             nextTaskId: null,
-            createdAt: ""
+            createdAt: "",
+            updatedAt: ""
         };
+
+        // Determine the smart status
+        const smartStatus = determineTaskStatus(newTask);
+        newTask.status = smartStatus;
 
         try {
             const token = await getFreshToken();
@@ -318,7 +410,7 @@ export function useTaskManager() {
                     : createInitialActivityLog()
             };
 
-            const idx = lists.findIndex((l) => l.id === status);
+            const idx = lists.findIndex((l) => l.id === smartStatus);
             if (idx !== -1) {
                 const copy = [...lists];
                 copy[idx].tasks = [...copy[idx].tasks, taskWithActivityLog];
@@ -443,9 +535,13 @@ export function useTaskManager() {
                 : await getFreshToken();
 
             if (task.id) {
+                // Check if status needs to be updated based on timing
+                const smartStatus = determineTaskStatus(task);
+                const finalTask = { ...task, status: smartStatus };
+
                 // Add update activity log entry
                 const updatedTask = addActivityLogEntry(
-                    task,
+                    finalTask,
                     "updated",
                     `Task details updated at ${new Date().toLocaleString('en-US', {
                         year: 'numeric',
@@ -461,20 +557,26 @@ export function useTaskManager() {
                 setLists((prev) =>
                     prev.map((l) => ({
                         ...l,
-                        tasks: l.tasks.map((t) => (t.id === task.id ? updatedTask : t)),
+                        tasks: l.id === smartStatus
+                            ? [...l.tasks.filter((t) => t.id !== task.id), updatedTask]
+                            : l.tasks.filter((t) => t.id !== task.id),
                     }))
                 );
             } else {
+                // Determine smart status for new task
+                const smartStatus = determineTaskStatus(task);
+                const newTask = { ...task, status: smartStatus };
+
                 // Ensure new task has activity log
                 const taskWithActivityLog = {
-                    ...task,
-                    activityLog: task.activityLog && task.activityLog.length > 0
-                        ? task.activityLog
+                    ...newTask,
+                    activityLog: newTask.activityLog && newTask.activityLog.length > 0
+                        ? newTask.activityLog
                         : createInitialActivityLog()
                 };
 
                 const created = await createGoogleTask(token, taskWithActivityLog, activeGroup);
-                const idx = lists.findIndex((l) => l.id === task.status);
+                const idx = lists.findIndex((l) => l.id === smartStatus);
                 if (idx !== -1) {
                     const copy = [...lists];
                     copy[idx].tasks = [...copy[idx].tasks, created];
@@ -603,7 +705,7 @@ export function useTaskManager() {
     const handleSortTasks = (folderId: string, sortType: string) => {
         setLists(prev => prev.map(l => ({
             ...l,
-            tasks: l.id === folderId ? sortTasks(l.tasks, sortType) : l.tasks
+            tasks: l.id === folderId ? sortTasks(l.tasks, sortType, sortOrder) : l.tasks
         })));
     };
 
@@ -664,20 +766,39 @@ export function useTaskManager() {
         await saveTask(archivedTask);
     };
 
+    // Clear all filters function
+    const handleClearFilters = () => {
+        setSearchTerm("");
+        setFilterPriority("all");
+        setFilterStatus("all");
+        setFilterTags("");
+        setSortBy("created-desc");
+        setSortOrder("desc");
+    };
+
+    // Enhanced filtering and sorting logic
     const filteredLists = useMemo(() => {
         return lists.map((l) => ({
             ...l,
-            tasks: l.tasks.filter((t) => {
-                const matchesSearch =
-                    t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-                const matchesPriority =
-                    filterPriority === "all" || t.priority === filterPriority;
-                const matchesStatus = filterStatus === "all" || t.status === filterStatus;
-                return matchesSearch && matchesPriority && matchesStatus;
-            }),
+            tasks: l.tasks
+                .filter((t) => {
+                    const matchesSearch =
+                        t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+                        (t.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ?? false);
+
+                    const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
+                    const matchesStatus = filterStatus === "all" || t.status === filterStatus;
+                    const matchesTags = filterTags === "" ||
+                        (t.tags?.some(tag => tag.toLowerCase().includes(filterTags.toLowerCase())) ?? false);
+
+                    return matchesSearch && matchesPriority && matchesStatus && matchesTags;
+                })
+                .sort((a, b) => {
+                    return sortTasks([a, b], sortBy, sortOrder)[0] === a ? -1 : 1;
+                }),
         }));
-    }, [lists, searchTerm, filterPriority, filterStatus]);
+    }, [lists, searchTerm, filterPriority, filterStatus, filterTags, sortBy, sortOrder]);
 
     const totalTasks = lists.filter(l => l.id !== 'archive').reduce((sum, l) => sum + l.tasks.length, 0);
     const completedTasks = lists.find((l) => l.id === "done")?.tasks.length ?? 0;
@@ -703,6 +824,12 @@ export function useTaskManager() {
         setFilterPriority,
         filterStatus,
         setFilterStatus,
+        filterTags,
+        setFilterTags,
+        sortBy,
+        setSortBy,
+        sortOrder,
+        setSortOrder,
         quickAddStatus,
         setQuickAddStatus,
         quickAddTitle,
@@ -735,6 +862,7 @@ export function useTaskManager() {
         showArchiveDrawer,
         setShowArchiveDrawer,
         archivedTasks,
+        handleClearFilters,
     };
 }
 

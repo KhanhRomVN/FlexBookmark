@@ -8,7 +8,8 @@ import FolderCard from "../../components/TaskManager/FolderCard";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader from "../../components/TaskManager/TasKHeader";
-import { Globe, Archive, X } from "lucide-react";
+import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
+import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 
 const TaskManager: React.FC = () => {
@@ -17,7 +18,6 @@ const TaskManager: React.FC = () => {
     groups,
     activeGroup,
     setActiveGroup,
-    lists,
     filteredLists,
     loading,
     error,
@@ -27,6 +27,12 @@ const TaskManager: React.FC = () => {
     setFilterPriority,
     filterStatus,
     setFilterStatus,
+    filterTags,
+    setFilterTags,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
     quickAddStatus,
     setQuickAddStatus,
     quickAddTitle,
@@ -52,14 +58,14 @@ const TaskManager: React.FC = () => {
     handleArchiveTasks,
     handleDeleteTasks,
     handleSortTasks,
-    handleEditTask,
     handleMoveTask,
-    handleCopyTask,
-    handleArchiveTask,
     showArchiveDrawer,
     setShowArchiveDrawer,
     archivedTasks,
+    handleClearFilters,
   } = useTaskManager();
+
+  const [isCreateMode, setIsCreateMode] = React.useState(false);
 
   // Function to handle refresh
   const handleRefresh = () => {
@@ -67,10 +73,46 @@ const TaskManager: React.FC = () => {
     window.location.reload();
   };
 
-  // Function to handle create new task
+  // Function to handle create new task - opens TaskDialog in create mode
   const handleCreateTask = () => {
-    setQuickAddStatus("todo"); // Default to todo list
-    setQuickAddTitle("");
+    // Create a new empty task for create mode
+    const newTask = {
+      id: "",
+      title: "",
+      description: "",
+      status: "todo" as const,
+      priority: "medium" as const,
+      startTime: null,
+      endTime: null,
+      startDate: null,
+      endDate: null,
+      completed: false,
+      subtasks: [],
+      attachments: [],
+      tags: [],
+      activityLog: [],
+      prevTaskId: null,
+      nextTaskId: null,
+      createdAt: "",
+      updatedAt: "",
+    };
+
+    setSelectedTask(newTask);
+    setIsCreateMode(true);
+    setIsDialogOpen(true);
+  };
+
+  // Handle dialog close
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setSelectedTask(null);
+    setIsCreateMode(false);
+  };
+
+  // Handle task click - opens TaskDialog in edit mode
+  const handleTaskClickWrapper = (task: any) => {
+    setIsCreateMode(false);
+    handleTaskClick(task);
   };
 
   if (!authState.isAuthenticated) {
@@ -119,7 +161,7 @@ const TaskManager: React.FC = () => {
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
-        {/* Use TaskHeader component instead of inline header */}
+        {/* Enhanced TaskHeader component */}
         <TaskHeader
           authState={authState}
           totalTasks={totalTasks}
@@ -135,9 +177,16 @@ const TaskManager: React.FC = () => {
           setFilterPriority={setFilterPriority}
           filterStatus={filterStatus}
           setFilterStatus={setFilterStatus}
+          filterTags={filterTags}
+          setFilterTags={setFilterTags}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
           setShowArchiveDrawer={setShowArchiveDrawer}
           onRefresh={handleRefresh}
           onCreateTask={handleCreateTask}
+          onClearFilters={handleClearFilters}
         />
 
         <div className="flex-1 p-6">
@@ -157,7 +206,7 @@ const TaskManager: React.FC = () => {
                     title={list.title}
                     emoji={list.emoji}
                     tasks={list.tasks}
-                    onTaskClick={handleTaskClick}
+                    onTaskClick={handleTaskClickWrapper}
                     isAdding={quickAddStatus === list.id}
                     newTaskTitle={
                       quickAddStatus === list.id ? quickAddTitle : ""
@@ -169,8 +218,6 @@ const TaskManager: React.FC = () => {
                     }}
                     onCancelAdd={() => setQuickAddStatus(null)}
                     onSubmitAdd={() => handleQuickAddTask(list.id as any)}
-                    onCopyTasks={handleCopyTasks}
-                    onMoveTasks={handleMoveTasks}
                     onArchiveTasks={handleArchiveTasks}
                     onDeleteTasks={handleDeleteTasks}
                     onSortTasks={handleSortTasks}
@@ -182,80 +229,28 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Archive Drawer */}
-      {showArchiveDrawer && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div
-            className="flex-1 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowArchiveDrawer(false)}
-          />
+      {/* Enhanced Archive Drawer */}
+      <ArchiveDrawer
+        isOpen={showArchiveDrawer}
+        onClose={() => setShowArchiveDrawer(false)}
+        archivedTasks={archivedTasks}
+        onRestoreTask={(taskId) => handleMoveTask(taskId, "todo")}
+        onDeleteTask={handleDeleteTask}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
 
-          {/* Drawer */}
-          <div className="w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Archive className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Archived Tasks
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setShowArchiveDrawer(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                {archivedTasks.length} archived tasks
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {archivedTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-                >
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-2">
-                    {task.title}
-                  </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    Archived •{" "}
-                    {new Date(
-                      task.updatedAt || task.createdAt || Date.now()
-                    ).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-
-              {archivedTasks.length === 0 && (
-                <div className="text-center py-12">
-                  <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No archived tasks yet
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Enhanced Task Dialog with Create/Edit modes */}
       <TaskDialog
         isOpen={isDialogOpen}
-        onClose={() => {
-          setIsDialogOpen(false);
-          setSelectedTask(null);
-        }}
+        onClose={handleDialogClose}
         task={selectedTask}
         folders={folders.filter((f) => f.id !== "archive")}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
         onMove={handleMove}
+        isCreateMode={isCreateMode}
       />
     </div>
   );
