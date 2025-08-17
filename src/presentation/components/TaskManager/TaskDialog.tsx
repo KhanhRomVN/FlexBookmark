@@ -207,10 +207,10 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-      <div className="w-full max-w-5xl max-h-[95vh] bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
+      <div className="w-full max-w-5xl max-h-[95vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 flex justify-between items-center">
+        <div className="px-6 py-4 border-b border-border-default bg-dialog-background flex justify-between items-center">
           <div className="flex items-center gap-4 w-full">
             <div className="relative">
               <select
@@ -242,7 +242,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               </button>
 
               {showActionMenu && (
-                <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
+                <div className="absolute z-20 right-0 mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden w-44 animate-in fade-in-0 zoom-in-95">
                   <button
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors"
                     onClick={() => setShowActionMenu(false)}
@@ -270,7 +270,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     <Archive size={16} />
                     Archive
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700">
+                  <div className="border-t border-border-default">
                     <button
                       className="w-full text-left px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 text-red-600 transition-colors"
                       onClick={() => {
@@ -322,7 +322,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 value={editedTask.description || ""}
                 onChange={(e) => handleChange("description", e.target.value)}
                 rows={4}
-                className="w-full bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-sm"
+                className="w-full bg-white dark:bg-gray-800 rounded-xl p-4 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-sm"
                 placeholder="Add detailed description, notes, or context..."
               />
             </div>
@@ -351,7 +351,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
                             editedTask.priority === level
                               ? priorityColors[level]
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-border-default hover:bg-gray-200 dark:hover:bg-gray-700"
                           }`}
                         >
                           {priorityIcons[level]}
@@ -385,7 +385,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             e.target.value ? new Date(e.target.value) : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                       />
                       <input
                         type="time"
@@ -404,7 +404,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                               : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                       />
                     </div>
                   </div>
@@ -429,7 +429,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             e.target.value ? new Date(e.target.value) : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                       />
                       <input
                         type="time"
@@ -448,7 +448,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                               : null
                           )
                         }
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl p-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                       />
                     </div>
                   </div>
@@ -481,7 +481,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         placeholder="Add a tag..."
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
-                        className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-2 border border-border-default text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                         onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
                       />
                       <button
@@ -568,7 +568,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Add new subtask..."
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
-                    className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    className="flex-1 bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                     onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
                   />
                   <button
@@ -595,7 +595,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 {editedTask.attachments?.map((att) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-border-default shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-2.5 rounded-lg">
@@ -626,7 +626,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 ))}
               </div>
 
-              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-border-default">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm mb-2 block font-medium text-gray-600 dark:text-gray-400">
@@ -641,7 +641,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                           title: e.target.value,
                         }))
                       }
-                      className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                     />
                   </div>
                   <div>
@@ -650,7 +650,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     </label>
                     <div className="relative" ref={attachmentRef}>
                       <button
-                        className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700 flex justify-between items-center text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default flex justify-between items-center text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                         onClick={() =>
                           setShowAttachmentOptions(!showAttachmentOptions)
                         }
@@ -662,7 +662,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         <ChevronDown size={16} />
                       </button>
                       {showAttachmentOptions && (
-                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
+                        <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-border-default rounded-xl shadow-xl overflow-hidden">
                           {(
                             [
                               "image",
@@ -703,7 +703,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                         url: e.target.value,
                       }))
                     }
-                    className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                    className="w-full bg-white dark:bg-gray-800 rounded-xl px-4 py-3 border border-border-default text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                   />
                 </div>
 
@@ -719,7 +719,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           </div>
 
           {/* Right Column - Activity Log */}
-          <div className="w-1/3 p-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-l border-gray-200 dark:border-gray-700">
+          <div className="w-1/3 p-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-l border-border-default">
             <div className="flex items-center gap-2 mb-6">
               <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
                 Activity Log
@@ -766,7 +766,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 flex justify-between items-center">
+        <div className="px-6 py-4 border-t border-border-default bg-dialog-background flex justify-between items-center">
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {editedTask.id ? "Editing task" : "Creating new task"}
           </div>

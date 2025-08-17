@@ -1,4 +1,4 @@
-// src/utils/GGTask.ts - Fixed version with proper Google Tasks API handling
+// src/utils/GGTask.ts - Updated version with complete JSON format
 
 import type { Task } from "../presentation/types/task";
 
@@ -11,12 +11,21 @@ function safeDateParse(dateStr: string): Date | undefined {
     if (!dateStr) return undefined;
 
     try {
-        // Handle date-only format (YYYY-MM-DD)
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            return new Date(`${dateStr}T00:00:00.000Z`);
+        // Handle time-only format (HH:MM:SS.sssZ)
+        if (/^\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(dateStr)) {
+            // Create a date for today and set the time
+            const today = new Date();
+            const timeDate = new Date(`${today.toISOString().split('T')[0]}T${dateStr}`);
+            return isNaN(timeDate.getTime()) ? undefined : timeDate;
         }
 
-        // Handle date-time format
+        // Handle date-only format (YYYY-MM-DD)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const date = new Date(`${dateStr}T00:00:00.000Z`);
+            return isNaN(date.getTime()) ? undefined : date;
+        }
+
+        // Handle full date-time format
         let normalizedDateStr = dateStr;
 
         // If it has T but no timezone, add Z
@@ -113,10 +122,10 @@ async function makeAuthenticatedRequest(
     }
 }
 
-// Helper to create simplified task notes
+// Helper to create simplified task notes with full format
 function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: number; isOverLimit: boolean } {
     try {
-        // Build simplified metadata object
+        // Build complete metadata object with consistent format
         const metadata: any = {
             // Core fields
             description: task.description || "",
@@ -124,67 +133,116 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             priority: task.priority || 'medium',
         };
 
-        // Add dates only if they exist and are valid
+        // Format dates and times consistently
         if (task.startTime && task.startTime instanceof Date && !isNaN(task.startTime.getTime())) {
-            metadata.startTime = task.startTime.toISOString();
+            // Format as HH:MM:SS.sssZ (time only)
+            const timeStr = task.startTime.toISOString().split('T')[1];
+            metadata.startTime = timeStr;
+        } else {
+            metadata.startTime = "";
         }
+
         if (task.endTime && task.endTime instanceof Date && !isNaN(task.endTime.getTime())) {
-            metadata.endTime = task.endTime.toISOString();
+            // Format as HH:MM:SS.sssZ (time only)
+            const timeStr = task.endTime.toISOString().split('T')[1];
+            metadata.endTime = timeStr;
+        } else {
+            metadata.endTime = "";
         }
+
         if (task.startDate && task.startDate instanceof Date && !isNaN(task.startDate.getTime())) {
-            metadata.startDate = task.startDate.toISOString();
+            // Format as YYYY-MM-DD (date only)
+            metadata.startDate = task.startDate.toISOString().split('T')[0];
+        } else {
+            metadata.startDate = "";
         }
+
         if (task.endDate && task.endDate instanceof Date && !isNaN(task.endDate.getTime())) {
-            metadata.endDate = task.endDate.toISOString();
+            // Format as YYYY-MM-DD (date only)
+            metadata.endDate = task.endDate.toISOString().split('T')[0];
+        } else {
+            metadata.endDate = "";
         }
 
-        // Add arrays with size limits
-        if (task.subtasks && task.subtasks.length > 0) {
-            metadata.subtasks = task.subtasks.slice(0, 10); // Limit to 10 subtasks
-        }
-        if (task.attachments && task.attachments.length > 0) {
-            metadata.attachments = task.attachments.slice(0, 5); // Limit to 5 attachments
-        }
-        if (task.tags && task.tags.length > 0) {
-            metadata.tags = task.tags.slice(0, 10); // Limit to 10 tags
-        }
+        // Always include arrays (empty if not provided)
+        metadata.subtasks = task.subtasks || [];
+        metadata.attachments = task.attachments || [];
+        metadata.tags = task.tags || [];
 
-        // Include linking fields
-        if (task.prevTaskId) metadata.prevTaskId = task.prevTaskId;
-        if (task.nextTaskId) metadata.nextTaskId = task.nextTaskId;
+        // Activity log - add creation entry if this is a new task
+        let activityLog = task.activityLog || [];
 
-        let jsonString = JSON.stringify(metadata);
+        // If this is a new task (no existing activity log), add creation entry
+        if (activityLog.length === 0 && !task.id) {
+            const now = new Date();
+            const entryId = `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`;
+            const creationEntry = {
+                id: entryId,
+                details: `Successfully created a task at ${now.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                })}`,
+                action: "created",
+                userId: "system",
+                timestamp: now
+            };
+            activityLog = [creationEntry];
+        }
+        metadata.activityLog = activityLog;
+
+        // Linking fields (always include, empty string if not provided)
+        metadata.prevTaskId = task.prevTaskId || "";
+        metadata.nextTaskId = task.nextTaskId || "";
+
+        let jsonString = JSON.stringify(metadata, null, 0); // No indentation to save space
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
         console.log(`Metadata JSON length: ${characterCount}/${MAX_NOTES_LENGTH}`);
 
-        // If over limit, progressively reduce size
+        // If over limit, progressively reduce size while maintaining format
         if (isOverLimit) {
             console.warn(`Metadata too large (${characterCount}/${MAX_NOTES_LENGTH}), reducing size...`);
 
-            // Remove attachments first
-            if (metadata.attachments) {
-                delete metadata.attachments;
-                jsonString = JSON.stringify(metadata);
+            // First, limit activity log entries
+            if (metadata.activityLog && metadata.activityLog.length > 5) {
+                metadata.activityLog = metadata.activityLog.slice(-5); // Keep last 5 entries
+                jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
                 if (!isOverLimit) {
-                    console.log('Reduced size by removing attachments');
+                    console.log('Reduced size by limiting activity log entries');
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
 
-            // Remove subtasks
-            if (metadata.subtasks) {
-                delete metadata.subtasks;
-                jsonString = JSON.stringify(metadata);
+            // Remove attachments if still too large
+            if (metadata.attachments && metadata.attachments.length > 0) {
+                metadata.attachments = [];
+                jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
                 if (!isOverLimit) {
-                    console.log('Reduced size by removing subtasks');
+                    console.log('Reduced size by clearing attachments');
+                    return { notes: jsonString, characterCount, isOverLimit: false };
+                }
+            }
+
+            // Limit subtasks
+            if (metadata.subtasks && metadata.subtasks.length > 5) {
+                metadata.subtasks = metadata.subtasks.slice(0, 5);
+                jsonString = JSON.stringify(metadata, null, 0);
+                characterCount = jsonString.length;
+                isOverLimit = characterCount > MAX_NOTES_LENGTH;
+
+                if (!isOverLimit) {
+                    console.log('Reduced size by limiting subtasks');
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -192,7 +250,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             // Truncate description
             if (metadata.description && metadata.description.length > 500) {
                 metadata.description = metadata.description.substring(0, 500) + "...";
-                jsonString = JSON.stringify(metadata);
+                jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
@@ -202,15 +260,25 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
-            // Last resort: minimal metadata
+            // Last resort: keep minimal structure but maintain format
             if (isOverLimit) {
                 console.warn('Using minimal metadata due to size constraints');
                 const minimalMetadata = {
-                    status: task.status || 'todo',
-                    priority: task.priority || 'medium',
-                    description: (task.description || "").substring(0, 100)
+                    description: (metadata.description || "").substring(0, 100),
+                    status: metadata.status,
+                    priority: metadata.priority,
+                    startTime: "",
+                    endTime: "",
+                    startDate: "",
+                    endDate: "",
+                    subtasks: [],
+                    attachments: [],
+                    tags: [],
+                    activityLog: metadata.activityLog?.slice(-1) || [], // Keep at least one entry
+                    prevTaskId: "",
+                    nextTaskId: ""
                 };
-                jsonString = JSON.stringify(minimalMetadata);
+                jsonString = JSON.stringify(minimalMetadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
             }
@@ -219,13 +287,29 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         return { notes: jsonString, characterCount, isOverLimit };
     } catch (error) {
         console.error('Error creating task notes:', error);
-        // Return minimal safe metadata
+        // Return minimal safe metadata with full structure
         const safeMetadata = {
             description: task.description || "",
             status: task.status || 'todo',
-            priority: task.priority || 'medium'
+            priority: task.priority || 'medium',
+            startTime: "",
+            endTime: "",
+            startDate: "",
+            endDate: "",
+            subtasks: [],
+            attachments: [],
+            tags: [],
+            activityLog: [{
+                id: `${new Date().getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+                details: `Task created at ${new Date().toLocaleString()}`,
+                action: "created",
+                userId: "system",
+                timestamp: new Date()
+            }],
+            prevTaskId: "",
+            nextTaskId: ""
         };
-        const jsonString = JSON.stringify(safeMetadata);
+        const jsonString = JSON.stringify(safeMetadata, null, 0);
         return {
             notes: jsonString,
             characterCount: jsonString.length,
@@ -298,13 +382,11 @@ function setDefaultTaskTimes(): { startTime: Date; endTime: Date; startDate: Dat
     // Set end time to 1 hour after start time
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
-    // Set start date to today (beginning of day)
-    const startDate = new Date(now);
-    startDate.setHours(0, 0, 0, 0);
+    // Set start date to today (beginning of day in UTC to avoid timezone issues)
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Set end date to today (end of day)
-    const endDate = new Date(now);
-    endDate.setHours(23, 59, 59, 999);
+    // Set end date to tomorrow (beginning of day in UTC)
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     return { startTime, endTime, startDate, endDate };
 }

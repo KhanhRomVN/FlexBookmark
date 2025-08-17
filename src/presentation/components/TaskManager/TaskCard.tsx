@@ -23,33 +23,18 @@ interface TaskCardProps {
   onClick: () => void;
 }
 
-const getPriorityColor = (priority: Priority) => {
+const getPriorityTextColor = (priority: Priority) => {
   switch (priority) {
     case "low":
-      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-700";
+      return "text-green-600 dark:text-green-400";
     case "medium":
-      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700";
+      return "text-yellow-600 dark:text-yellow-400";
     case "high":
-      return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200 dark:border-orange-700";
+      return "text-orange-600 dark:text-orange-400";
     case "urgent":
-      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-700";
+      return "text-red-600 dark:text-red-400";
     default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600";
-  }
-};
-
-const getPriorityIcon = (priority: Priority) => {
-  switch (priority) {
-    case "low":
-      return "🌱";
-    case "medium":
-      return "📋";
-    case "high":
-      return "⚡";
-    case "urgent":
-      return "🔥";
-    default:
-      return "📋";
+      return "text-gray-600 dark:text-gray-400";
   }
 };
 
@@ -158,57 +143,56 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         {task.title}
       </h4>
 
-      {/* 3. Additional Information */}
-      <div className="space-y-2">
-        {/* Subtasks */}
-        {totalSubtasks > 0 && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <CheckSquare className="w-4 h-4" />
-            <span>
-              {completedSubtasks}/{totalSubtasks} subtasks
-            </span>
-            {completedSubtasks === totalSubtasks && totalSubtasks > 0 && (
-              <span className="text-green-600 dark:text-green-400">✓</span>
-            )}
-          </div>
-        )}
+      {/* 3. Additional Information - All in one horizontal line */}
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <div className="flex items-center gap-4">
+          {/* Subtasks */}
+          {totalSubtasks > 0 && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <CheckSquare className="w-4 h-4" />
+              <span>
+                {completedSubtasks}/{totalSubtasks}
+              </span>
+              {completedSubtasks === totalSubtasks && totalSubtasks > 0 && (
+                <span className="text-green-600 dark:text-green-400">✓</span>
+              )}
+            </div>
+          )}
 
-        {/* Attachments */}
-        {hasAttachments && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Paperclip className="w-4 h-4" />
-            <span>
-              {task.attachments!.length} attachment
-              {task.attachments!.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
+          {/* Attachments */}
+          {hasAttachments && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <Paperclip className="w-4 h-4" />
+              <span>
+                {task.attachments!.length}
+                {task.attachments!.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
 
-        {/* Priority Level */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* Priority Level - Simple text with color */}
+          <div className="flex items-center gap-1">
             <span
-              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${getPriorityColor(
+              className={`font-medium capitalize ${getPriorityTextColor(
                 task.priority
               )}`}
             >
-              <span>{getPriorityIcon(task.priority)}</span>
-              <span className="font-medium capitalize">{task.priority}</span>
+              {task.priority}
             </span>
           </div>
+        </div>
 
-          {/* Completion Status Indicator */}
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                task.completed
-                  ? "bg-green-500"
-                  : task.status === "in-progress"
-                  ? "bg-blue-500"
-                  : "bg-gray-400"
-              }`}
-            />
-          </div>
+        {/* Completion Status Indicator */}
+        <div className="flex items-center">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              task.completed
+                ? "bg-green-500"
+                : task.status === "in-progress"
+                ? "bg-blue-500"
+                : "bg-gray-400"
+            }`}
+          />
         </div>
       </div>
     </div>
