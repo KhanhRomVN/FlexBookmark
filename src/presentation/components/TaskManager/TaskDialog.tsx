@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Textarea } from "../ui/textarea";
 import { Task, Priority, Status, Subtask, Attachment } from "../../types/task";
 import {
   X,
@@ -364,7 +365,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               >
                 {metadataInfo.isOverLimit && <AlertTriangle size={14} />}
                 <span>
-                  {metadataInfo.characterCount.toLocaleString()} / 8,192
+                  {metadataInfo.characterCount.toLocaleString()} / 4095
                 </span>
               </div>
             </div>
@@ -440,18 +441,15 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           >
             {/* Title */}
             <div className="space-y-2">
-              <textarea
+              <Textarea
                 value={editedTask.title}
                 onChange={(e) => handleChange("title", e.target.value)}
-                className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 transition-all resize-none overflow-hidden"
                 placeholder="What needs to be done?"
                 rows={1}
-                style={{
-                  minHeight: "3.5rem",
-                  maxHeight: "10rem",
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
+                className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 transition-all resize-none overflow-hidden"
+                style={{ minHeight: "3.5rem", maxHeight: "10rem" }}
+                onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                  const target = e.currentTarget;
                   target.style.height = "auto";
                   target.style.height = target.scrollHeight + "px";
                 }}

@@ -3,8 +3,8 @@
 import type { Task } from "../presentation/types/task";
 
 // Google Tasks API limits
-const MAX_NOTES_LENGTH = 8192; // Google Tasks notes limit
-const MAX_TITLE_LENGTH = 1024; // Google Tasks title limit
+const MAX_NOTES_LENGTH = 4095; // Google Tasks notes limit
+const MAX_TITLE_LENGTH = 1023; // Google Tasks title limit
 
 // Helper function to safely parse dates
 function safeDateParse(dateStr: string): Date | undefined {

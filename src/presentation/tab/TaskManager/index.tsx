@@ -1,5 +1,5 @@
 import React from "react";
-import { DndContext, DragEndEvent, closestCorners } from "@dnd-kit/core";
+import { DndContext, closestCorners } from "@dnd-kit/core";
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -7,23 +7,8 @@ import {
 import FolderCard from "../../components/TaskManager/FolderCard";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
-import { Input } from "../../components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "../../components/ui/select";
-import {
-  Search,
-  Filter,
-  RefreshCw,
-  Zap,
-  AlertCircle,
-  CheckCircle,
-  Globe,
-} from "lucide-react";
+import TaskHeader from "../../components/TaskManager/TasKHeader";
+import { Globe, Archive, X } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 
 const TaskManager: React.FC = () => {
@@ -61,7 +46,32 @@ const TaskManager: React.FC = () => {
     totalTasks,
     completedTasks,
     urgentTasks,
+    overdueTasks,
+    handleCopyTasks,
+    handleMoveTasks,
+    handleArchiveTasks,
+    handleDeleteTasks,
+    handleSortTasks,
+    handleEditTask,
+    handleMoveTask,
+    handleCopyTask,
+    handleArchiveTask,
+    showArchiveDrawer,
+    setShowArchiveDrawer,
+    archivedTasks,
   } = useTaskManager();
+
+  // Function to handle refresh
+  const handleRefresh = () => {
+    // Add your refresh logic here
+    window.location.reload();
+  };
+
+  // Function to handle create new task
+  const handleCreateTask = () => {
+    setQuickAddStatus("todo"); // Default to todo list
+    setQuickAddTitle("");
+  };
 
   if (!authState.isAuthenticated) {
     return (
@@ -96,6 +106,9 @@ const TaskManager: React.FC = () => {
     );
   }
 
+  // Filter lists to exclude archive for main board
+  const mainBoardLists = filteredLists.filter((list) => list.id !== "archive");
+
   return (
     <div className="flex w-full min-h-screen bg-background">
       <TaskGroupSidebar
@@ -106,114 +119,26 @@ const TaskManager: React.FC = () => {
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
-        <div className="sticky top-0 z-10 bg-background border-b border-border-default shadow-sm">
-          <div className="p-6">
-            <div className="flex items-center gap-6 mb-6">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg">
-                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {totalTasks}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400">
-                  total tasks
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="p-2 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 rounded-lg">
-                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                </div>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {completedTasks}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400">
-                  completed
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="p-2 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 rounded-lg">
-                  <Zap className="w-4 h-4 text-red-600 dark:text-red-400" />
-                </div>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {urgentTasks}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400">urgent</span>
-              </div>
-              <div className="ml-auto flex items-center gap-3">
-                <button
-                  onClick={() => void handleDragEnd as any}
-                  className="group p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                  disabled={loading}
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-200 ${
-                      loading ? "animate-spin" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200/60 dark:border-red-700/60 text-red-700 dark:text-red-400 rounded-xl shadow-sm animate-in slide-in-from-top duration-300">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <span className="flex-1">{error}</span>
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 transition-colors duration-200"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-4 items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all duration-200"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-400" />
-                <Select
-                  value={filterPriority}
-                  onValueChange={setFilterPriority}
-                >
-                  <SelectTrigger className="w-[140px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent className="backdrop-blur-sm">
-                    <SelectItem value="all">All Priorities</SelectItem>
-                    <SelectItem value="low">🌱 Low</SelectItem>
-                    <SelectItem value="medium">📋 Medium</SelectItem>
-                    <SelectItem value="high">⚡ High</SelectItem>
-                    <SelectItem value="urgent">🔥 Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-[140px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200/60 dark:border-gray-700/60">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent className="backdrop-blur-sm">
-                    {folders.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.emoji} {f.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Use TaskHeader component instead of inline header */}
+        <TaskHeader
+          authState={authState}
+          totalTasks={totalTasks}
+          completedTasks={completedTasks}
+          urgentTasks={urgentTasks}
+          overdueTasks={overdueTasks}
+          archivedTasks={archivedTasks}
+          loading={loading}
+          error={error}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterPriority={filterPriority}
+          setFilterPriority={setFilterPriority}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          setShowArchiveDrawer={setShowArchiveDrawer}
+          onRefresh={handleRefresh}
+          onCreateTask={handleCreateTask}
+        />
 
         <div className="flex-1 p-6">
           <DndContext
@@ -221,7 +146,7 @@ const TaskManager: React.FC = () => {
             onDragEnd={handleDragEnd as unknown as any}
           >
             <div className="flex gap-6 flex-1 min-h-0 w-full items-start">
-              {filteredLists.map((list) => (
+              {mainBoardLists.map((list) => (
                 <SortableContext
                   key={list.id}
                   items={list.tasks.map((t) => t.id)}
@@ -244,6 +169,11 @@ const TaskManager: React.FC = () => {
                     }}
                     onCancelAdd={() => setQuickAddStatus(null)}
                     onSubmitAdd={() => handleQuickAddTask(list.id as any)}
+                    onCopyTasks={handleCopyTasks}
+                    onMoveTasks={handleMoveTasks}
+                    onArchiveTasks={handleArchiveTasks}
+                    onDeleteTasks={handleDeleteTasks}
+                    onSortTasks={handleSortTasks}
                   />
                 </SortableContext>
               ))}
@@ -252,6 +182,68 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
 
+      {/* Archive Drawer */}
+      {showArchiveDrawer && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="flex-1 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowArchiveDrawer(false)}
+          />
+
+          {/* Drawer */}
+          <div className="w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Archive className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Archived Tasks
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowArchiveDrawer(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                {archivedTasks.length} archived tasks
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {archivedTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                >
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-2">
+                    {task.title}
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Archived •{" "}
+                    {new Date(
+                      task.updatedAt || task.createdAt || Date.now()
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+
+              {archivedTasks.length === 0 && (
+                <div className="text-center py-12">
+                  <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No archived tasks yet
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={() => {
@@ -259,7 +251,7 @@ const TaskManager: React.FC = () => {
           setSelectedTask(null);
         }}
         task={selectedTask}
-        folders={folders}
+        folders={folders.filter((f) => f.id !== "archive")}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}

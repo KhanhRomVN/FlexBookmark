@@ -26,6 +26,8 @@ export interface ActivityLog {
 }
 
 export interface Task {
+    updatedAt: string | number | Date;
+    createdAt: string | number | Date;
     startDate?: Date | null;
     endDate?: Date | null;
     id: string;
