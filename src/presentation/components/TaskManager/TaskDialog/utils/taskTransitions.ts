@@ -1,4 +1,4 @@
-import { Task, Status } from "../../../../../types/task";
+import { Task, Status } from "../../../../types/task";
 
 interface TransitionScenario {
     title: string;

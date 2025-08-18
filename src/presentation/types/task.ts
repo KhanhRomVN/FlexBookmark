@@ -28,15 +28,18 @@ export interface ActivityLog {
 export interface Task {
     updatedAt: string | number | Date;
     createdAt: string | number | Date;
-    startDate?: Date | null;
-    endDate?: Date | null;
     id: string;
     title: string;
     description?: string;
     status: Status;
     priority: Priority;
+
     startTime?: Date | null;
-    endTime?: Date | null;
+    startDate?: Date | null;
+
+    dueTime?: Date | null;
+    dueDate?: Date | null;
+
     actualStartDate?: Date | null;
     actualStartTime?: Date | null;
     actualEndDate?: Date | null;
