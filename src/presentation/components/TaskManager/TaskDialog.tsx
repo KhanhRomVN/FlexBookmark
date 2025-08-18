@@ -104,48 +104,132 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }
   };
 
-  // StatusBar moved to top-level so it’s in scope for rendering
+  // Thay thế StatusBar component hiện tại bằng code này:
+
   const StatusBar = () => {
     const statusOptions = [
-      { value: "backlog", label: "Backlog", color: "bg-gray-500" },
-      { value: "todo", label: "Todo", color: "bg-blue-500" },
-      { value: "in-progress", label: "In Progress", color: "bg-yellow-500" },
-      { value: "done", label: "Done", color: "bg-green-500" },
-      { value: "overdue", label: "Overdue", color: "bg-red-500" },
+      {
+        value: "backlog",
+        label: "BACKLOG",
+        barColor: "bg-slate-500",
+        dotColor: "bg-slate-500",
+      },
+      {
+        value: "todo",
+        label: "TODO",
+        barColor: "bg-blue-500",
+        dotColor: "bg-blue-500",
+      },
+      {
+        value: "in-progress",
+        label: "IN PROGRESS",
+        barColor: "bg-amber-500",
+        dotColor: "bg-amber-500",
+      },
+      {
+        value: "done",
+        label: "DONE",
+        barColor: "bg-emerald-500",
+        dotColor: "bg-emerald-500",
+      },
+      {
+        value: "overdue",
+        label: "OVERDUE",
+        barColor: "bg-red-500",
+        dotColor: "bg-red-500",
+      },
     ];
 
     const currentIndex = statusOptions.findIndex(
       (s) => s.value === editedTask!.status
     );
 
+    const currentStatus = statusOptions[currentIndex];
+    const progressPercentage =
+      ((currentIndex + 1) / statusOptions.length) * 100;
+
     return (
-      <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-2 border border-border-default">
-        {statusOptions.map((status, index) => (
-          <div key={status.value} className="flex items-center">
-            <button
-              onClick={() => handleStatusChange(status.value as Status)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                editedTask!.status === status.value
-                  ? `${status.color} text-white shadow-md`
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-              }`}
-            >
-              {status.label}
-            </button>
-            {index < statusOptions.length - 1 && (
-              <div
-                className={`h-px w-4 ${
-                  index < currentIndex
-                    ? "bg-green-500"
-                    : "bg-gray-300 dark:bg-gray-600"
-                }`}
+      <div className="flex items-center gap-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl px-4 py-3 border border-gray-200/60 dark:border-gray-700/60 shadow-sm min-w-fit">
+        {/* Status Labels - Horizontal Layout */}
+        <div className="flex items-center gap-6">
+          {statusOptions.map((status, index) => {
+            const isActive = editedTask!.status === status.value;
+            const isPassed = index <= currentIndex;
+
+            return (
+              <button
+                key={status.value}
+                onClick={() => handleStatusChange(status.value as Status)}
+                className={`
+                relative text-xs font-semibold tracking-wider transition-all duration-300 whitespace-nowrap
+                ${
+                  isActive
+                    ? "text-gray-900 dark:text-white"
+                    : isPassed
+                    ? "text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                    : "text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400"
+                }
+              `}
+              >
+                {status.label}
+
+                {/* Active underline */}
+                {isActive && (
+                  <div
+                    className={`
+                  absolute -bottom-1 left-0 right-0 h-0.5 ${status.barColor} rounded-full
+                  animate-in slide-in-from-left-3 duration-300
+                `}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden min-w-[120px]">
+          <div
+            className={`
+            h-full ${currentStatus?.barColor || "bg-gray-400"} rounded-full
+            transition-all duration-700 ease-out
+            shadow-sm
+          `}
+            style={{
+              width: `${progressPercentage}%`,
+              transition: "width 0.7s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          />
+        </div>
+
+        {/* Status Dots */}
+        <div className="flex items-center gap-1.5">
+          {statusOptions.map((status, index) => {
+            const isActive = editedTask!.status === status.value;
+            const isPassed = index <= currentIndex;
+
+            return (
+              <button
+                key={`dot-${status.value}`}
+                onClick={() => handleStatusChange(status.value as Status)}
+                className={`
+                w-2.5 h-2.5 rounded-full transition-all duration-300 hover:scale-125
+                ${
+                  isActive
+                    ? `${status.dotColor} shadow-md ring-2 ring-white dark:ring-gray-800 ring-opacity-60`
+                    : isPassed
+                    ? `${status.dotColor} opacity-80`
+                    : "bg-gray-300 dark:bg-gray-600 opacity-40"
+                }
+              `}
               />
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
     );
   };
+
   const handleStatusChange = (newStatus: Status) => {
     if (!editedTask) return;
 
