@@ -483,7 +483,7 @@ Dưới đây là phân tích chi tiết các trường hợp **"cưỡng ép" c
 
 1. **Quy tắc thời gian**:
    - Task không thể ở `todo` nếu `startDateTime` đã qua → Hệ thống tự động chuyển sang `in-progress` hoặc `overdue`.
-   - Có `endDate` → Bắt buộc phải có `startDate` (áp dụng cho `actual` và `due`).
+   - Có `dueDate` → Bắt buộc phải có `startDate` (áp dụng cho `actual` và `due`).
 2. **Giao diện người dùng**:
    - Khi chuyển `todo` → `in-progress`/`done`: Không hiển thị form nhập thời gian (vì đã có `startDate/startTime`).
    - Khi chuyển `todo` → `overdue` mà thiếu `dueDate/dueTime`: Hiển thị form bắt buộc nhập `dueDate/dueTime` (với giá trị trong quá khứ).

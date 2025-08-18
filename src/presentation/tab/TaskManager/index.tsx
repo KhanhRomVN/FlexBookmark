@@ -85,16 +85,14 @@ const TaskManager: React.FC = () => {
       status: "todo" as const,
       priority: "medium" as const, // Fix: Use valid Priority type instead of empty string
       startTime: null,
-      endTime: null,
+      dueTime: null,
       startDate: null,
-      endDate: null,
+      dueDate: null,
       completed: false,
       subtasks: [],
       attachments: [],
       tags: [],
       activityLog: [],
-      prevTaskId: null,
-      nextTaskId: null,
       createdAt: "", // Fix: Add missing required property
       updatedAt: "", // Fix: Add missing required property
     };

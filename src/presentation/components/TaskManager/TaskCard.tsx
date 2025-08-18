@@ -158,7 +158,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <Calendar className="w-4 h-4 flex-shrink-0" />
           <span className="font-medium truncate">
-            {formatDateTime(task.endDate, task.endTime) || "No due date"}
+            {formatDateTime(task.dueDate, task.dueTime) || "No due date"}
           </span>
         </div>
 

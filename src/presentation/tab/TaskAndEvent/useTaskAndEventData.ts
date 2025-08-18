@@ -16,7 +16,7 @@ export interface CalendarEvent {
 }
 
 export interface Task {
-    endTime: Date | string;
+    dueTime: Date | string;
     folder: any;
     id: string;
     title: string;

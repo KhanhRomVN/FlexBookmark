@@ -49,6 +49,4 @@ export interface Task {
     attachments?: Attachment[];
     tags?: string[];
     activityLog?: ActivityLog[];
-    prevTaskId?: string | null;
-    nextTaskId?: string | null;
 }

@@ -489,7 +489,7 @@ export function useTaskManager() {
             );
         }
 
-        // Fixed: Use dueDate and dueTime instead of endDate and endTime for overdue checking
+        // Fixed: Use dueDate and dueTime instead of dueDate and dueTime for overdue checking
         if (task.dueDate && task.dueTime) {
             dueDateTime = new Date(
                 task.dueDate.getFullYear(),
@@ -801,8 +801,6 @@ export function useTaskManager() {
             attachments: [],
             tags: [],
             activityLog: createInitialActivityLog(),
-            prevTaskId: null,
-            nextTaskId: null,
             createdAt: "",
             updatedAt: ""
         };

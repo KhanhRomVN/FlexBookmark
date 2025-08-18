@@ -141,11 +141,11 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             metadata.startTime = ""; // Để trống
         }
 
-        if (task.endTime && task.endTime instanceof Date && !isNaN(task.endTime.getTime())) {
-            const timeStr = task.endTime.toISOString().split('T')[1];
-            metadata.endTime = timeStr;
+        if (task.dueTime && task.dueTime instanceof Date && !isNaN(task.dueTime.getTime())) {
+            const timeStr = task.dueTime.toISOString().split('T')[1];
+            metadata.dueTime = timeStr;
         } else {
-            metadata.endTime = ""; // Để trống
+            metadata.dueTime = ""; // Để trống
         }
 
         if (task.startDate && task.startDate instanceof Date && !isNaN(task.startDate.getTime())) {
@@ -154,10 +154,10 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             metadata.startDate = ""; // Để trống
         }
 
-        if (task.endDate && task.endDate instanceof Date && !isNaN(task.endDate.getTime())) {
-            metadata.endDate = task.endDate.toISOString().split('T')[0];
+        if (task.dueDate && task.dueDate instanceof Date && !isNaN(task.dueDate.getTime())) {
+            metadata.dueDate = task.dueDate.toISOString().split('T')[0];
         } else {
-            metadata.endDate = ""; // Để trống
+            metadata.dueDate = ""; // Để trống
         }
 
         // Always include arrays (empty if not provided)
@@ -190,9 +190,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         }
         metadata.activityLog = activityLog;
 
-        // Linking fields (always include, empty string if not provided)
-        metadata.prevTaskId = task.prevTaskId || "";
-        metadata.nextTaskId = task.nextTaskId || "";
 
         let jsonString = JSON.stringify(metadata, null, 0);
         let characterCount = jsonString.length;
@@ -264,15 +261,13 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     status: metadata.status,
                     priority: metadata.priority,
                     startTime: "",
-                    endTime: "",
+                    dueTime: "",
                     startDate: "",
-                    endDate: "",
+                    dueDate: "",
                     subtasks: [],
                     attachments: [],
                     tags: [],
                     activityLog: metadata.activityLog?.slice(-1) || [],
-                    prevTaskId: "",
-                    nextTaskId: ""
                 };
                 jsonString = JSON.stringify(minimalMetadata, null, 0);
                 characterCount = jsonString.length;
@@ -289,9 +284,9 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             status: task.status || 'backlog',
             priority: task.priority || "",
             startTime: "",
-            endTime: "",
+            dueTime: "",
             startDate: "",
-            endDate: "",
+            dueDate: "",
             subtasks: [],
             attachments: [],
             tags: [],
@@ -302,8 +297,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 userId: "system",
                 timestamp: new Date()
             }],
-            prevTaskId: "",
-            nextTaskId: ""
         };
         const jsonString = JSON.stringify(safeMetadata, null, 0);
         return {
@@ -365,7 +358,7 @@ function validateTaskData(taskData: any): { isValid: boolean; errors: string[] }
 }
 
 // Modified function - chỉ set default times khi được yêu cầu explicit
-function setDefaultTaskTimes(): { startTime: Date; endTime: Date; startDate: Date; endDate: Date } {
+function setDefaultTaskTimes(): { startTime: Date; dueTime: Date; startDate: Date; dueDate: Date } {
     const now = new Date();
 
     // Set start time to current time (rounded to next 15-minute interval)
@@ -375,15 +368,15 @@ function setDefaultTaskTimes(): { startTime: Date; endTime: Date; startDate: Dat
     startTime.setMinutes(roundedMinutes, 0, 0);
 
     // Set end time to 1 hour after start time
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+    const dueTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
     // Set start date to today (beginning of day in UTC to avoid timezone issues)
     const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     // Set end date to tomorrow (beginning of day in UTC)
-    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-    return { startTime, endTime, startDate, endDate };
+    return { startTime, dueTime, startDate, dueDate };
 }
 
 export async function fetchGoogleTasks(token: string, tasklistId: string = '@default') {
@@ -425,16 +418,14 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             status: taskData.status || (item.status === 'completed' ? 'done' : 'todo'),
             priority: taskData.priority || "",
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
-            endTime: taskData.endTime ? safeDateParse(taskData.endTime) : null,
+            dueTime: taskData.dueTime ? safeDateParse(taskData.dueTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
-            endDate: taskData.endDate ? safeDateParse(taskData.endDate) : null,
+            dueDate: taskData.dueDate ? safeDateParse(taskData.dueDate) : null,
             completed: item.status === 'completed',
             subtasks: taskData.subtasks || [],
             attachments: taskData.attachments || [],
             tags: taskData.tags || [],
             activityLog: taskData.activityLog || [],
-            prevTaskId: taskData.prevTaskId || null,
-            nextTaskId: taskData.nextTaskId || null,
             updatedAt: "",
             createdAt: ""
         };
@@ -467,8 +458,8 @@ export const createGoogleTask = async (
         // Set status (Google Tasks only supports 'needsAction' and 'completed')
         googleTaskData.status = taskWithDefaults.completed ? 'completed' : 'needsAction';
 
-        // Add due date CHỈ KHI CÓ (use endDate or endTime)
-        const dueDate = taskWithDefaults.endDate || taskWithDefaults.endTime;
+        // Add due date CHỈ KHI CÓ (use dueDate or dueTime)
+        const dueDate = taskWithDefaults.dueDate || taskWithDefaults.dueTime;
         if (dueDate instanceof Date && !isNaN(dueDate.getTime())) {
             googleTaskData.due = formatDueDateTime(dueDate);
         }
@@ -544,16 +535,14 @@ export const createGoogleTask = async (
             priority: taskWithDefaults.priority || 'medium', // Fix: Use valid Priority type
             // CHỈ GIỮ LẠI THỜI GIAN NẾU USER ĐÃ NHẬP
             startTime: taskWithDefaults.startTime || null,
-            endTime: taskWithDefaults.endTime || null,
+            dueTime: taskWithDefaults.dueTime || null,
             startDate: taskWithDefaults.startDate || null,
-            endDate: taskWithDefaults.endDate || null,
+            dueDate: taskWithDefaults.dueDate || null,
             completed: data.status === 'completed',
             subtasks: taskWithDefaults.subtasks || [],
             attachments: taskWithDefaults.attachments || [],
             tags: taskWithDefaults.tags || [],
             activityLog: taskWithDefaults.activityLog || [],
-            prevTaskId: taskWithDefaults.prevTaskId || null,
-            nextTaskId: taskWithDefaults.nextTaskId || null,
             createdAt: data.updated || new Date().toISOString(), // Fix: Add required property
             updatedAt: data.updated || new Date().toISOString(), // Fix: Add required property
         };
@@ -580,7 +569,7 @@ export const updateGoogleTask = async (
         googleTaskData.status = task.completed ? 'completed' : 'needsAction';
 
         // Add due date if available
-        const dueDate = task.endDate || task.endTime;
+        const dueDate = task.dueDate || task.dueTime;
         if (dueDate instanceof Date && !isNaN(dueDate.getTime())) {
             googleTaskData.due = formatDueDateTime(dueDate);
         }

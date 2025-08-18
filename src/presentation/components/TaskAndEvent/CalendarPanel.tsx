@@ -36,8 +36,8 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
-    return eachDayOfInterval({ start: startDate, end: endDate });
+    const dueDate = endOfWeek(monthEnd);
+    return eachDayOfInterval({ start: startDate, end: dueDate });
   }, [currentMonth]);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -60,11 +60,11 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
 
     // Process tasks
     tasks.forEach((task) => {
-      if (!task.endTime) return;
+      if (!task.dueTime) return;
       const taskDue =
-        task.endTime instanceof Date
-          ? task.endTime
-          : parseISO(task.endTime as string);
+        task.dueTime instanceof Date
+          ? task.dueTime
+          : parseISO(task.dueTime as string);
       const dayKey = startOfDay(taskDue).toISOString();
       if (!dateMap[dayKey]) dateMap[dayKey] = { events: 0, tasks: 0 };
       dateMap[dayKey].tasks += 1;

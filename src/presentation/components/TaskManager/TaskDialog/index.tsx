@@ -14,7 +14,6 @@ import { calculateTaskMetadataSize } from "../../../../utils/GGTask";
 import {
   TransitionConfirmationDialog,
   StatusBar,
-  TaskLinkingSection,
   PrioritySection,
   DateTimeSection,
   TagsSection,
@@ -427,12 +426,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 placeholder="Add detailed description, notes, or context..."
               />
             </div>
-
-            <TaskLinkingSection
-              editedTask={editedTask}
-              handleChange={handleChange}
-              availableTasks={availableTasks}
-            />
 
             {/* Attributes */}
             <div className="space-y-6">
