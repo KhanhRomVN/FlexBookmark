@@ -383,6 +383,12 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       ) {
         setShowNextTaskList(false);
       }
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowStatusDropdown(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
