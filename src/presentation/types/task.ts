@@ -37,6 +37,10 @@ export interface Task {
     priority: Priority;
     startTime?: Date | null;
     endTime?: Date | null;
+    actualStartDate?: Date | null;
+    actualStartTime?: Date | null;
+    actualEndDate?: Date | null;
+    actualEndTime?: Date | null;
     completed: boolean;
     subtasks?: Subtask[];
     attachments?: Attachment[];

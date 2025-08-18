@@ -15,7 +15,7 @@ interface ModernDateTimePickerProps {
   onDateChange: (date: Date | null) => void;
   onTimeChange: (time: Date | null) => void;
   label: string;
-  color?: "green" | "red";
+  color?: "green" | "red" | "blue" | "purple";
   placeholder?: string;
 }
 

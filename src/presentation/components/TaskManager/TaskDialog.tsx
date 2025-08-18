@@ -103,6 +103,48 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }
   };
 
+  // StatusBar moved to top-level so it’s in scope for rendering
+  const StatusBar = () => {
+    const statusOptions = [
+      { value: "backlog", label: "Backlog", color: "bg-gray-500" },
+      { value: "todo", label: "Todo", color: "bg-blue-500" },
+      { value: "in-progress", label: "In Progress", color: "bg-yellow-500" },
+      { value: "done", label: "Done", color: "bg-green-500" },
+      { value: "overdue", label: "Overdue", color: "bg-red-500" },
+    ];
+
+    const currentIndex = statusOptions.findIndex(
+      (s) => s.value === editedTask!.status
+    );
+
+    return (
+      <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-2 border border-border-default">
+        {statusOptions.map((status, index) => (
+          <div key={status.value} className="flex items-center">
+            <button
+              onClick={() => handleStatusChange(status.value as Status)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                editedTask!.status === status.value
+                  ? `${status.color} text-white shadow-md`
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              {status.label}
+            </button>
+            {index < statusOptions.length - 1 && (
+              <div
+                className={`h-px w-4 ${
+                  index < currentIndex
+                    ? "bg-green-500"
+                    : "bg-gray-300 dark:bg-gray-600"
+                }`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
   const handleStatusChange = (newStatus: Status) => {
     if (!editedTask) return;
 
@@ -130,18 +172,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     switch (newStatus) {
       case "in-progress":
         updatedTask.actualStartDate = currentDateTime;
-        updatedTask.actualStartTime = currentDateTime
-          .toTimeString()
-          .slice(0, 5);
+        updatedTask.actualStartTime = currentDateTime;
         break;
       case "done":
         updatedTask.actualEndDate = currentDateTime;
-        updatedTask.actualEndTime = currentDateTime.toTimeString().slice(0, 5);
+        updatedTask.actualEndTime = currentDateTime;
         if (!updatedTask.actualStartDate) {
           updatedTask.actualStartDate = currentDateTime;
-          updatedTask.actualStartTime = currentDateTime
-            .toTimeString()
-            .slice(0, 5);
+          updatedTask.actualStartTime = currentDateTime;
         }
         break;
     }
@@ -782,8 +820,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Start Date & Time */}
                   <ModernDateTimePicker
-                    selectedDate={editedTask.startDate}
-                    selectedTime={editedTask.startTime}
+                    selectedDate={editedTask.startDate ?? null}
+                    selectedTime={editedTask.startTime ?? null}
                     onDateChange={(date) => handleChange("startDate", date)}
                     onTimeChange={(time) => handleChange("startTime", time)}
                     label="Start Date & Time"
@@ -793,8 +831,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
                   {/* Due Date & Time */}
                   <ModernDateTimePicker
-                    selectedDate={editedTask.endDate}
-                    selectedTime={editedTask.endTime}
+                    selectedDate={editedTask.endDate ?? null}
+                    selectedTime={editedTask.endTime ?? null}
                     onDateChange={(date) => handleChange("endDate", date)}
                     onTimeChange={(time) => handleChange("endTime", time)}
                     label="Due Date & Time"
@@ -815,7 +853,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       {editedTask.actualStartDate && (
                         <ModernDateTimePicker
                           selectedDate={editedTask.actualStartDate}
-                          selectedTime={editedTask.actualStartTime}
+                          selectedTime={editedTask.actualStartTime ?? null}
                           onDateChange={(date) =>
                             handleChange("actualStartDate", date)
                           }
@@ -823,9 +861,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             handleChange("actualStartTime", time)
                           }
                           label="Actual Start Date & Time"
-                          color="blue"
+                          color="green"
                           placeholder="Actual start date & time"
-                          disabled={true} // Make it read-only since it's system generated
                         />
                       )}
 
@@ -833,7 +870,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                       {editedTask.actualEndDate && (
                         <ModernDateTimePicker
                           selectedDate={editedTask.actualEndDate}
-                          selectedTime={editedTask.actualEndTime}
+                          selectedTime={editedTask.actualEndTime ?? null}
                           onDateChange={(date) =>
                             handleChange("actualEndDate", date)
                           }
@@ -841,9 +878,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                             handleChange("actualEndTime", time)
                           }
                           label="Actual End Date & Time"
-                          color="purple"
+                          color="red"
                           placeholder="Actual end date & time"
-                          disabled={true} // Make it read-only since it's system generated
                         />
                       )}
                     </div>
