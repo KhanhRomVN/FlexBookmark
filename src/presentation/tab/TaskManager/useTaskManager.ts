@@ -445,6 +445,7 @@ export function useTaskManager() {
     }, [authState, loadTaskGroups]);
 
     // Advanced task status determination with performance optimization
+    // Advanced task status determination with performance optimization
     const determineTaskStatus = useCallback((task: Task): Status => {
         const now = new Date();
 
@@ -452,9 +453,9 @@ export function useTaskManager() {
         if (!task.startDate && !task.startTime) return "backlog";
 
         let startDateTime: Date | null = null;
-        let endDateTime: Date | null = null;
+        let dueDateTime: Date | null = null; // Changed from endDateTime to dueDateTime
 
-        // Optimized date handling
+        // Optimized date handling for start time
         if (task.startDate && task.startTime) {
             startDateTime = new Date(
                 task.startDate.getFullYear(),
@@ -478,34 +479,39 @@ export function useTaskManager() {
             );
         }
 
-        if (task.endDate && task.endTime) {
-            endDateTime = new Date(
-                task.endDate.getFullYear(),
-                task.endDate.getMonth(),
-                task.endDate.getDate(),
-                task.endTime.getHours(),
-                task.endTime.getMinutes(),
-                task.endTime.getSeconds()
+        // Fixed: Use dueDate and dueTime instead of endDate and endTime for overdue checking
+        if (task.dueDate && task.dueTime) {
+            dueDateTime = new Date(
+                task.dueDate.getFullYear(),
+                task.dueDate.getMonth(),
+                task.dueDate.getDate(),
+                task.dueTime.getHours(),
+                task.dueTime.getMinutes(),
+                task.dueTime.getSeconds()
             );
-        } else if (task.endDate) {
-            endDateTime = new Date(task.endDate);
-        } else if (task.endTime) {
+        } else if (task.dueDate) {
+            dueDateTime = new Date(task.dueDate);
+        } else if (task.dueTime) {
             const today = new Date();
-            endDateTime = new Date(
+            dueDateTime = new Date(
                 today.getFullYear(),
                 today.getMonth(),
                 today.getDate(),
-                task.endTime.getHours(),
-                task.endTime.getMinutes(),
-                task.endTime.getSeconds()
+                task.dueTime.getHours(),
+                task.dueTime.getMinutes(),
+                task.dueTime.getSeconds()
             );
         }
 
-        // Check for overdue first
-        if (endDateTime && now > endDateTime) return "overdue";
+        // Check for overdue first - using dueDateTime instead of endDateTime
+        if (dueDateTime && now > dueDateTime) return "overdue";
+
+        // Check scheduling status
         if (startDateTime && now < startDateTime) return "todo";
         if (startDateTime && now >= startDateTime) {
-            return !endDateTime ? "in-progress" : "in-progress";
+            // If task has started but no due date, it's in-progress
+            // If task has started and due date is in future, it's in-progress
+            return "in-progress";
         }
 
         return task.status || "backlog";
