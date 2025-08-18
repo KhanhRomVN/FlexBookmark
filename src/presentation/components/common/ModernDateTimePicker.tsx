@@ -227,6 +227,13 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       textColor: "text-indigo-800 dark:text-indigo-200",
       icon: "🌙",
     },
+    {
+      label: "Midnight",
+      value: "00:00",
+      color: "bg-gray-100 dark:bg-gray-900/30",
+      textColor: "text-gray-800 dark:text-gray-200",
+      icon: "🌌",
+    },
   ];
 
   const days = getDaysInMonth(currentMonth);
@@ -299,7 +306,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       `}</style>
 
       <div className="space-y-3">
-        <label className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+        <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
           <div className={`p-1 rounded-lg ${theme.bg}`}>
             <Calendar size={14} className={theme.text} />
           </div>
@@ -481,21 +488,13 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                   </p>
 
                   <div className="space-y-4">
-                    {/* Time Input */}
-                    <input
-                      type="time"
-                      value={selectedTimeString}
-                      onChange={(e) => handleTimeSelect(e.target.value)}
-                      className={`w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-4 ${theme.ring} focus:border-transparent transition-all text-center text-lg font-mono hover:border-gray-300 dark:hover:border-gray-600`}
-                    />
-
                     {/* Hour and Minute Wheels */}
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
                         <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
                           Hour
                         </div>
-                        <div className="h-28 bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700">
+                        <div className="h-40 bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700">
                           {Array.from({ length: 24 }, (_, i) =>
                             i.toString().padStart(2, "0")
                           ).map((hour) => (
@@ -526,7 +525,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                         <div className="text-center text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">
                           Min
                         </div>
-                        <div className="h-28 bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700">
+                        <div className="h-40 bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-y-auto scrollbar-hide border border-gray-200 dark:border-gray-700">
                           {Array.from({ length: 12 }, (_, i) =>
                             (i * 5).toString().padStart(2, "0")
                           ).map((minute) => (

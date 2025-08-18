@@ -9,6 +9,7 @@ import {
   Check,
   Paperclip,
   Calendar,
+  Clock,
   File,
   Image,
   Video,
@@ -255,6 +256,16 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       year: "numeric",
       month: "short",
       day: "numeric",
+    });
+  };
+
+  // helper to format a time for display
+  const formatDisplayTime = (time: Date | null) => {
+    if (!time) return "";
+    return new Date(time).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
@@ -793,7 +804,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               <div className="space-y-6">
                 {/* Priority Buttons */}
                 <div>
-                  <label className="block mb-3 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <label className="block mb-3 text-sm font-medium text-text-secondary">
                     Priority Level
                   </label>
                   <div className="flex items-center gap-3">
@@ -815,7 +826,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     )}
                   </div>
                 </div>
-
                 {/* Date & Time Fields */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Start Date & Time */}
@@ -840,51 +850,86 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     placeholder="Select due date & time"
                   />
                 </div>
-
-                {/* Actual Date & Time Fields - only show in edit mode and when relevant */}
+                {/* Actual Timeline display only */}
                 {!isCreateMode &&
                   (editedTask.actualStartDate || editedTask.actualEndDate) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800">
-                      <div className="text-sm font-medium text-blue-800 dark:text-blue-300 col-span-full mb-2">
-                        📊 Actual Timeline
+                    <div className="space-y-4">
+                      {/* Date & Time Fields - Same style as Start/Due */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Actual Start Date & Time */}
+                        {editedTask.actualStartDate && (
+                          <div className="space-y-3">
+                            <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                              <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50">
+                                <Calendar
+                                  size={14}
+                                  className="text-orange-700 dark:text-orange-300"
+                                />
+                              </div>
+                              Actual Start Date & Time
+                            </label>
+
+                            <div className="group w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-left flex items-center justify-between transition-all duration-300 shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 bg-orange-500 rounded-full shadow-sm"></div>
+                                <div className="space-y-1">
+                                  <div className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {formatDisplayDate(
+                                      editedTask.actualStartDate
+                                    )}
+                                  </div>
+                                  {editedTask.actualStartTime && (
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                      <Clock size={12} />
+                                      {formatDisplayTime(
+                                        editedTask.actualStartTime
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actual End Date & Time */}
+                        {editedTask.actualEndDate && (
+                          <div className="space-y-3">
+                            <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                              <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/50">
+                                <Calendar
+                                  size={14}
+                                  className="text-blue-700 dark:text-blue-300"
+                                />
+                              </div>
+                              Actual End Date & Time
+                            </label>
+
+                            <div className="group w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-left flex items-center justify-between transition-all duration-300 shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                                <div className="space-y-1">
+                                  <div className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {formatDisplayDate(
+                                      editedTask.actualEndDate
+                                    )}
+                                  </div>
+                                  {editedTask.actualEndTime && (
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                      <Clock size={12} />
+                                      {formatDisplayTime(
+                                        editedTask.actualEndTime
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Actual Start Date & Time */}
-                      {editedTask.actualStartDate && (
-                        <ModernDateTimePicker
-                          selectedDate={editedTask.actualStartDate}
-                          selectedTime={editedTask.actualStartTime ?? null}
-                          onDateChange={(date) =>
-                            handleChange("actualStartDate", date)
-                          }
-                          onTimeChange={(time) =>
-                            handleChange("actualStartTime", time)
-                          }
-                          label="Actual Start Date & Time"
-                          color="green"
-                          placeholder="Actual start date & time"
-                        />
-                      )}
-
-                      {/* Actual End Date & Time */}
-                      {editedTask.actualEndDate && (
-                        <ModernDateTimePicker
-                          selectedDate={editedTask.actualEndDate}
-                          selectedTime={editedTask.actualEndTime ?? null}
-                          onDateChange={(date) =>
-                            handleChange("actualEndDate", date)
-                          }
-                          onTimeChange={(time) =>
-                            handleChange("actualEndTime", time)
-                          }
-                          label="Actual End Date & Time"
-                          color="red"
-                          placeholder="Actual end date & time"
-                        />
-                      )}
                     </div>
                   )}
-
                 {/* Duration Display */}
                 {editedTask.startDate && editedTask.endDate && (
                   <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
@@ -916,7 +961,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     </div>
                   </div>
                 )}
-
                 {/* Tags */}
                 <div>
                   <label className="block mb-3 text-sm font-medium text-text-secondary">
