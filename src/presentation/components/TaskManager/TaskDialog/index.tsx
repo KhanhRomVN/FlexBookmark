@@ -22,7 +22,10 @@ import {
   AttachmentsSection,
   ActivityLogSection,
 } from "./components";
-import { getTransitionScenarios } from "./utils/taskTransitions";
+import {
+  getTransitionScenarios,
+  executeStatusTransition as executeTransition,
+} from "./utils/taskTransitions";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -236,7 +239,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   ) => {
     if (!editedTask) return;
 
-    const updatedTask = executeStatusTransition(
+    const updatedTask = executeTransition(
       editedTask,
       oldStatus,
       newStatus,
@@ -245,6 +248,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     );
 
     setEditedTask(updatedTask);
+    onSave(updatedTask);
   };
 
   const handleTransitionConfirm = (selectedOptions: Record<string, string>) => {

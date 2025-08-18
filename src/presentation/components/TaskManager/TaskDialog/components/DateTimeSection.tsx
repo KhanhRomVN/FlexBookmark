@@ -2,31 +2,13 @@ import React from "react";
 import ModernDateTimePicker from "../../../../components/common/ModernDateTimePicker";
 import { Calendar, Clock } from "lucide-react";
 import { Task } from "../../../../types/task";
+import { formatDisplayDate, formatDisplayTime } from "../utils/taskTransitions";
 
 interface DateTimeSectionProps {
   editedTask: Task;
   handleChange: (field: keyof Task, value: any) => void;
   isCreateMode: boolean;
 }
-
-const formatDisplayDate = (date: Date | null) => {
-  if (!date) return "Select date";
-  return new Date(date).toLocaleDateString("en-US", {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
-const formatDisplayTime = (time: Date | null) => {
-  if (!time) return "";
-  return new Date(time).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
 
 const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   editedTask,
