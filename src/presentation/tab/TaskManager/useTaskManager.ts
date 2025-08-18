@@ -53,7 +53,9 @@ class AdvancedCache {
         // Implement LRU eviction if cache is full
         if (this.cache.size >= this.maxSize) {
             const oldestKey = this.cache.keys().next().value;
-            this.cache.delete(oldestKey);
+            if (oldestKey !== undefined) {
+                this.cache.delete(oldestKey);
+            }
         }
 
         this.cache.set(key, {
@@ -179,12 +181,20 @@ const sortingAlgorithms = {
     multiCriteriaSort: (tasks: Task[], criteria: Array<{ key: keyof Task; order: 'asc' | 'desc' }>): Task[] => {
         return tasks.sort((a, b) => {
             for (const criterion of criteria) {
-                let comparison = 0;
                 const aVal = a[criterion.key];
                 const bVal = b[criterion.key];
 
-                if (aVal < bVal) comparison = -1;
-                else if (aVal > bVal) comparison = 1;
+                // Handle null or undefined values
+                if (aVal == null && bVal == null) continue;
+                if (aVal == null) return criterion.order === 'desc' ? 1 : -1;
+                if (bVal == null) return criterion.order === 'desc' ? -1 : 1;
+
+                let comparison = 0;
+                const aComp: any = aVal;
+                const bComp: any = bVal;
+
+                if (aComp < bComp) comparison = -1;
+                else if (aComp > bComp) comparison = 1;
 
                 if (comparison !== 0) {
                     return criterion.order === 'desc' ? -comparison : comparison;
@@ -267,7 +277,7 @@ const advancedFilters = {
             // Date range filtering
             let matchesDateRange = true;
             if (filters.dateRange?.start || filters.dateRange?.end) {
-                const taskDate = task.endDate || task.startDate;
+                const taskDate = task.dueDate || task.startDate;
                 if (taskDate) {
                     if (filters.dateRange.start && taskDate < filters.dateRange.start) {
                         matchesDateRange = false;
@@ -671,8 +681,8 @@ export function useTaskManager() {
                         return sortType === "priority-low" ? -comparison : comparison;
                     case "due-date-asc":
                     case "due-date-desc":
-                        const dateA = a.endDate ? new Date(a.endDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
-                        const dateB = b.endDate ? new Date(b.endDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
+                        const dateA = a.dueDate ? new Date(a.dueDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
+                        const dateB = b.dueDate ? new Date(b.dueDate).getTime() : (sortType === "due-date-asc" ? Infinity : -Infinity);
                         return sortType === "due-date-asc" ? dateA - dateB : dateB - dateA;
                     case "title-asc":
                     case "title-desc":
@@ -698,7 +708,7 @@ export function useTaskManager() {
                     criteria.push({ key: 'priority', order: 'desc' });
                     break;
                 case "due-date-asc":
-                    criteria.push({ key: 'endDate', order: 'asc' });
+                    criteria.push({ key: 'dueDate', order: 'asc' });
                     break;
                 case "title-asc":
                     criteria.push({ key: 'title', order: 'asc' });
@@ -773,8 +783,8 @@ export function useTaskManager() {
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
         const startDate = new Date(now);
         startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(now);
-        endDate.setHours(23, 59, 59, 999);
+        const dueDate = new Date(now);
+        dueDate.setHours(23, 59, 59, 999);
 
         const newTask: Task = {
             id: "",
@@ -783,9 +793,9 @@ export function useTaskManager() {
             status,
             priority: "medium",
             startTime: status === "backlog" ? null : now,
-            endTime: status === "backlog" ? null : oneHourLater,
+            dueTime: status === "backlog" ? null : oneHourLater,
             startDate: status === "backlog" ? null : startDate,
-            endDate: status === "backlog" ? null : endDate,
+            dueDate: status === "backlog" ? null : dueDate,
             completed: false,
             subtasks: [],
             attachments: [],
