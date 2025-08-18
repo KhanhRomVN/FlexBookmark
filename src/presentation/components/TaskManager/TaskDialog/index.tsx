@@ -36,6 +36,8 @@ interface TaskDialogProps {
   onDuplicate: (task: Task) => void;
   onMove: (taskId: string, newStatus: Status) => void;
   isCreateMode?: boolean;
+  availableTasks?: Task[]; // Thêm prop cho available tasks
+  onTaskClick?: (taskId: string) => void; // Thêm callback cho task click
 }
 
 const TaskDialog: React.FC<TaskDialogProps> = ({
@@ -48,6 +50,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   onDuplicate,
   onMove,
   isCreateMode = false,
+  availableTasks = [],
+  onTaskClick,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -266,14 +270,19 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setPendingTransition(null);
   };
 
+  // Handle task click for linked tasks
+  const handleLinkedTaskClick = (taskId: string) => {
+    if (onTaskClick) {
+      onTaskClick(taskId);
+    }
+  };
+
   if (!isOpen || !editedTask) return null;
 
-  // Mock available tasks for linking
-  const availableTasks = [
-    { id: "task1", title: "Review designs", status: "in-progress" },
-    { id: "task2", title: "Update documentation", status: "todo" },
-    { id: "task3", title: "Testing phase", status: "backlog" },
-  ].filter((t) => t.id !== editedTask.id);
+  // Filter available tasks (exclude current task)
+  const filteredAvailableTasks = availableTasks.filter(
+    (t) => t.id !== editedTask.id
+  );
 
   const metadataInfo = calculateTaskMetadataSize(editedTask);
 
@@ -463,6 +472,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               handleSubtaskChange={handleSubtaskChange}
               handleAddSubtask={handleAddSubtask}
               handleDeleteSubtask={handleDeleteSubtask}
+              availableTasks={filteredAvailableTasks}
+              onTaskClick={handleLinkedTaskClick}
             />
 
             <AttachmentsSection

@@ -62,6 +62,7 @@ const TaskManager: React.FC = () => {
     setShowArchiveDrawer,
     archivedTasks,
     handleClearFilters,
+    lists, // Thêm lists để lấy toàn bộ tasks
   } = useTaskManager();
 
   // Theme drawer state
@@ -113,6 +114,27 @@ const TaskManager: React.FC = () => {
   const handleTaskClickWrapper = (task: any) => {
     setIsCreateMode(false);
     handleTaskClick(task);
+  };
+
+  // Handle linked task click - opens linked task in dialog
+  const handleLinkedTaskClick = (taskId: string) => {
+    // Find the task in all lists
+    const allTasks = lists.flatMap((list) => list.tasks);
+    const linkedTask = allTasks.find((task) => task.id === taskId);
+
+    if (linkedTask) {
+      setIsCreateMode(false);
+      setSelectedTask(linkedTask);
+      setIsDialogOpen(true);
+    }
+  };
+
+  // Get all available tasks for linking (excluding archived tasks by default)
+  const getAvailableTasks = () => {
+    return lists
+      .filter((list) => list.id !== "archive") // Exclude archived tasks
+      .flatMap((list) => list.tasks)
+      .filter((task) => task.id !== selectedTask?.id); // Exclude current task
   };
 
   if (!authState.isAuthenticated) {
@@ -246,7 +268,7 @@ const TaskManager: React.FC = () => {
         onClose={() => setShowThemeDrawer(false)}
       />
 
-      {/* Enhanced Task Dialog with Create/Edit modes */}
+      {/* Enhanced Task Dialog with Create/Edit modes and Task Linking */}
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
@@ -257,6 +279,8 @@ const TaskManager: React.FC = () => {
         onDuplicate={handleDuplicateTask}
         onMove={handleMove}
         isCreateMode={isCreateMode}
+        availableTasks={getAvailableTasks()}
+        onTaskClick={handleLinkedTaskClick}
       />
     </div>
   );

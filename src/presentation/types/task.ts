@@ -6,7 +6,9 @@ export type Status = "backlog" | "todo" | "in-progress" | "done" | "archive" | "
 export interface Subtask {
     id: string;
     title: string;
+    description?: string;
     completed: boolean;
+    linkedTaskId?: string;
 }
 
 export interface Attachment {
