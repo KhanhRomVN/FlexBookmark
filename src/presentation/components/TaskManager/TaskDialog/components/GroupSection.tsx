@@ -262,12 +262,13 @@ const GroupSection: React.FC<GroupSectionProps> = ({
     setSearchTerm("");
   };
 
-  // Handle delete group with confirmation
+  // Handle delete group with confirmation - FIXED: Added proper null checking
   const handleDeleteGroup = (group: { id: string; title: string }) => {
-    // Find all tasks that use this group - safely handle undefined allTasks
-    const affectedTasks = allTasks
-      ? allTasks.filter((task) => task.group === group.title)
-      : [];
+    // Find all tasks that use this group - safely handle undefined/null allTasks
+    const safeTasks = Array.isArray(allTasks) ? allTasks : [];
+    const affectedTasks = safeTasks.filter(
+      (task) => task && task.group === group.title
+    );
 
     setGroupToDelete(group);
     setShowDeleteDialog(true);
@@ -320,17 +321,22 @@ const GroupSection: React.FC<GroupSectionProps> = ({
     setShowDropdown(false);
   };
 
+  // Get affected tasks for delete dialog - FIXED: Added proper null checking
+  const getAffectedTasks = (): Task[] => {
+    if (!groupToDelete) return [];
+    const safeTasks = Array.isArray(allTasks) ? allTasks : [];
+    return safeTasks.filter(
+      (task) => task && task.group === groupToDelete.title
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Delete Confirmation Dialog */}
       <DeleteGroupDialog
         isOpen={showDeleteDialog}
         groupName={groupToDelete?.title || ""}
-        affectedTasks={
-          allTasks
-            ? allTasks.filter((task) => task.group === groupToDelete?.title)
-            : []
-        }
+        affectedTasks={getAffectedTasks()}
         onConfirm={confirmDeleteGroup}
         onCancel={cancelDeleteGroup}
       />
