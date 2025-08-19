@@ -14,7 +14,11 @@ import {
   MoreVertical,
   Archive,
   Palette,
+  LayoutGrid,
+  List,
 } from "lucide-react";
+
+export type LayoutType = "kanban" | "list";
 
 interface TaskHeaderProps {
   authState: {
@@ -40,6 +44,8 @@ interface TaskHeaderProps {
   setSortBy: (sort: string) => void;
   sortOrder: "asc" | "desc";
   setSortOrder: (order: "asc" | "desc") => void;
+  layoutType: LayoutType;
+  setLayoutType: (layout: LayoutType) => void;
   setShowArchiveDrawer: (show: boolean) => void;
   onRefresh: () => void;
   onCreateTask: () => void;
@@ -76,6 +82,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   setSortBy,
   sortOrder,
   setSortOrder,
+  layoutType,
+  setLayoutType,
   setShowArchiveDrawer,
   onRefresh,
   onCreateTask,
@@ -113,7 +121,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 
   return (
     <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/80 shadow-lg">
-      <div className="p-">
+      <div className="p-6">
         {/* Top Row - User Info & Main Actions */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex gap-4 items-center mb-4">
@@ -135,6 +143,32 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                   <X className="w-4 h-4 text-gray-400" />
                 </button>
               )}
+            </div>
+
+            {/* Layout Toggle */}
+            <div className="flex items-center bg-white/80 dark:bg-gray-800/80 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-1">
+              <button
+                onClick={() => setLayoutType("kanban")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
+                  layoutType === "kanban"
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">Kanban</span>
+              </button>
+              <button
+                onClick={() => setLayoutType("list")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
+                  layoutType === "list"
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <List className="w-4 h-4" />
+                <span className="hidden sm:inline">List</span>
+              </button>
             </div>
 
             {/* Advanced Filters Toggle */}
@@ -181,10 +215,11 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
               />
             </button>
           </div>
+
           <div className="flex items-center gap-3">
             <button
               onClick={onCreateTask}
-              className="relative flex overflow-hidden px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText border-border-default  rounded-lg"
+              className="relative flex overflow-hidden px-4 py-2 bg-button-bg hover:bg-button-bgHover text-button-bgText border-border-default rounded-lg"
             >
               <Plus className="w-4 h-4" />
               New Task

@@ -1,17 +1,15 @@
-// src/presentation/tab/TaskManager/index.tsx - Fixed version with Google Tasks integration
+// src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle
 
 import React from "react";
-import { DndContext, closestCorners } from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import FolderCard from "../../components/TaskManager/KanbanStyle/FolderCard";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
-import TaskHeader from "../../components/TaskManager/TasKHeader";
+import TaskHeader, {
+  LayoutType,
+} from "../../components/TaskManager/TasKHeader";
 import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
+import KanbanLayout from "./layout/KanbanBoardLayout";
+import ListLayout from "./layout/ListLayout";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
@@ -69,6 +67,9 @@ const TaskManager: React.FC = () => {
     lists,
     setLists,
   } = useTaskManager();
+
+  // Layout state
+  const [layoutType, setLayoutType] = React.useState<LayoutType>("kanban");
 
   // Theme drawer state
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
@@ -136,6 +137,17 @@ const TaskManager: React.FC = () => {
       .filter((list) => list.id !== "archive")
       .flatMap((list) => list.tasks)
       .filter((task) => task.id !== selectedTask?.id);
+  };
+
+  // Handle toggle complete for list view
+  const handleToggleComplete = (taskId: string) => {
+    const allTasks = lists.flatMap((list) => list.tasks);
+    const task = allTasks.find((t) => t.id === taskId);
+
+    if (task) {
+      const updatedTask = { ...task, completed: !task.completed };
+      handleSaveTaskDetail(updatedTask);
+    }
   };
 
   // Google Tasks integration functions with fallbacks
@@ -332,6 +344,9 @@ const TaskManager: React.FC = () => {
   // Filter lists to exclude archive for main board
   const mainBoardLists = filteredLists.filter((list) => list.id !== "archive");
 
+  // Get all tasks for list view
+  const allTasks = mainBoardLists.flatMap((list) => list.tasks);
+
   return (
     <div className="flex w-full min-h-screen bg-background">
       <TaskGroupSidebar
@@ -363,6 +378,8 @@ const TaskManager: React.FC = () => {
           setSortBy={setSortBy}
           sortOrder={sortOrder}
           setSortOrder={setSortOrder}
+          layoutType={layoutType}
+          setLayoutType={setLayoutType}
           setShowArchiveDrawer={setShowArchiveDrawer}
           onOpenTheme={() => setShowThemeDrawer(true)}
           onRefresh={handleRefresh}
@@ -370,44 +387,32 @@ const TaskManager: React.FC = () => {
           onClearFilters={handleClearFilters}
         />
 
-        <div className="flex-1 p-6">
-          <DndContext
-            collisionDetection={closestCorners}
-            onDragEnd={handleDragEnd as unknown as any}
-          >
-            <div className="flex gap-6 flex-1 min-h-0 w-full items-start">
-              {mainBoardLists.map((list) => (
-                <SortableContext
-                  key={list.id}
-                  items={list.tasks.map((t) => t.id)}
-                  strategy={horizontalListSortingStrategy}
-                >
-                  <FolderCard
-                    id={list.id}
-                    title={list.title}
-                    emoji={list.emoji}
-                    tasks={list.tasks}
-                    onTaskClick={handleTaskClickWrapper}
-                    isAdding={quickAddStatus === list.id}
-                    newTaskTitle={
-                      quickAddStatus === list.id ? quickAddTitle : ""
-                    }
-                    setNewTaskTitle={setQuickAddTitle}
-                    onAddTask={() => {
-                      setQuickAddStatus(list.id as any);
-                      setQuickAddTitle("");
-                    }}
-                    onCancelAdd={() => setQuickAddStatus(null)}
-                    onSubmitAdd={() => handleQuickAddTask(list.id as any)}
-                    onArchiveTasks={handleArchiveTasks}
-                    onDeleteTasks={handleDeleteTasks}
-                    onSortTasks={handleSortTasks}
-                  />
-                </SortableContext>
-              ))}
-            </div>
-          </DndContext>
-        </div>
+        {/* Render layout based on selected type */}
+        {layoutType === "kanban" ? (
+          <KanbanLayout
+            filteredLists={mainBoardLists}
+            onTaskClick={handleTaskClickWrapper}
+            onDragEnd={handleDragEnd}
+            quickAddStatus={quickAddStatus}
+            setQuickAddStatus={setQuickAddStatus}
+            quickAddTitle={quickAddTitle}
+            setQuickAddTitle={setQuickAddTitle}
+            handleQuickAddTask={handleQuickAddTask}
+            onArchiveTasks={handleArchiveTasks}
+            onDeleteTasks={handleDeleteTasks}
+            onSortTasks={handleSortTasks}
+          />
+        ) : (
+          <ListLayout
+            tasks={allTasks}
+            onTaskClick={handleTaskClickWrapper}
+            onDragEnd={handleDragEnd}
+            onEditTask={handleTaskClickWrapper}
+            onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
+            onDeleteTask={handleDeleteTask}
+            onToggleComplete={handleToggleComplete}
+          />
+        )}
       </div>
 
       <ArchiveDrawer
