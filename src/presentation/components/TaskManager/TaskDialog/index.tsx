@@ -105,18 +105,36 @@ const RestoreConfirmationDialog: React.FC<{
 
         <div className="space-y-3 mb-6">
           <p className="text-gray-600 dark:text-gray-300">
-            <strong>"{taskTitle}"</strong> is already completed and Google Tasks
-            doesn't support restoring completed tasks directly.
+            <strong>"{taskTitle}"</strong> is already completed. Google Tasks
+            doesn't support directly changing completed tasks back to other
+            statuses.
           </p>
           <p className="text-gray-600 dark:text-gray-300">
             Would you like to create a new task with the same content in{" "}
             <strong>"{statusLabels[targetStatus] || targetStatus}"</strong>{" "}
             status instead?
           </p>
+
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 The new task will be marked as "Restored" and include all
-              original content, subtasks, and attachments.
+              💡 <strong>What will happen:</strong>
+            </p>
+            <ul className="text-sm text-blue-700 dark:text-blue-300 mt-1 space-y-1">
+              <li>• A new task "{taskTitle} (Restored)" will be created</li>
+              <li>• All content, subtasks, and attachments will be copied</li>
+              <li>• The original completed task will remain in Done</li>
+              <li>
+                • The new task will be placed in{" "}
+                {statusLabels[targetStatus] || targetStatus}
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900/20 p-3 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>Note:</strong> This limitation is due to Google Tasks API
+              restrictions. You can manually delete the original completed task
+              later if desired.
             </p>
           </div>
         </div>
@@ -130,8 +148,21 @@ const RestoreConfirmationDialog: React.FC<{
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
           >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
             Create New Task
           </button>
         </div>
@@ -333,21 +364,49 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const handleStatusChange = async (newStatus: Status) => {
     if (!editedTask) return;
 
-    // Check if this is a problematic transition (done -> other status)
-    if (editedTask.status === "done" && newStatus !== "done") {
-      // Show confirmation dialog for restore
-      setPendingRestoreStatus(newStatus);
-      setShowRestoreDialog(true);
-      return;
-    }
-
-    // Check for other transition scenarios
+    // Get transition scenarios
     const scenarios = getTransitionScenarios(
       editedTask.status,
       newStatus,
       editedTask
     );
 
+    // For done -> other status transitions, we need special handling
+    if (editedTask.status === "done" && newStatus !== "done") {
+      // If there are transition scenarios defined, show them but add Google Tasks context
+      if (scenarios.length > 0) {
+        // Add Google Tasks warning to the scenarios
+        const enhancedScenarios = [
+          {
+            title: "⚠️ Google Tasks Limitation",
+            options: [
+              {
+                label: "This will create a new task (Google Tasks limitation)",
+                value: "google_tasks_warning",
+                description:
+                  "Google Tasks doesn't allow direct restoration of completed tasks. A new task will be created with the same content.",
+              },
+            ],
+          },
+          ...scenarios,
+        ];
+
+        setPendingTransition({
+          from: editedTask.status,
+          to: newStatus,
+          scenarios: enhancedScenarios,
+        });
+        setShowTransitionDialog(true);
+        return;
+      } else {
+        // No specific scenarios, show the simple restore dialog
+        setPendingRestoreStatus(newStatus);
+        setShowRestoreDialog(true);
+        return;
+      }
+    }
+
+    // For non-done transitions, show scenarios if they exist
     if (scenarios.length > 0) {
       setPendingTransition({
         from: editedTask.status,
@@ -358,7 +417,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       return;
     }
 
-    // Direct status change
+    // Direct status change for simple transitions
     executeStatusTransition(editedTask.status, newStatus, {});
   };
 
@@ -381,8 +440,30 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     onSave(updatedTask);
   };
 
-  const handleTransitionConfirm = (selectedOptions: Record<string, string>) => {
+  // In TaskDialog/index.tsx - Updated handleTransitionConfirm function
+  const handleTransitionConfirm = async (
+    selectedOptions: Record<string, string>
+  ) => {
     if (!pendingTransition) return;
+
+    // Check if this is a Google Tasks restore scenario
+    const isGoogleTasksRestore =
+      pendingTransition.from === "done" &&
+      pendingTransition.to !== "done" &&
+      Object.values(selectedOptions).includes("google_tasks_warning");
+
+    if (isGoogleTasksRestore) {
+      // Close the transition dialog first
+      setShowTransitionDialog(false);
+      setPendingTransition(null);
+
+      // Now trigger the Google Tasks restore process
+      setPendingRestoreStatus(pendingTransition.to);
+      setShowRestoreDialog(true);
+      return;
+    }
+
+    // Handle normal transitions
     executeStatusTransition(
       pendingTransition.from,
       pendingTransition.to,
@@ -397,49 +478,94 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setPendingTransition(null);
   };
 
-  // Handle restore confirmation for Google Tasks
+  // In TaskDialog/index.tsx - handleRestoreConfirm function
   const handleRestoreConfirm = async () => {
     if (!editedTask || !pendingRestoreStatus) return;
 
     try {
       // Check if all required Google Tasks functions are available
-      if (!getFreshToken || !createGoogleTask || !activeGroup) {
+      if (
+        !getFreshToken ||
+        !createGoogleTask ||
+        !deleteGoogleTask ||
+        !activeGroup
+      ) {
         throw new Error("Google Tasks integration not properly configured");
       }
 
-      // Create new task instead of trying to restore
-      const newTask = await GoogleTasksStatusHandler.createTaskFromCompleted(
+      console.log(
+        "Starting restore process for task:",
+        editedTask.title,
+        "to status:",
+        pendingRestoreStatus
+      );
+
+      // Use the GoogleTasksStatusHandler with delete function provided
+      const result = await GoogleTasksStatusHandler.createTaskFromCompleted(
         editedTask,
         pendingRestoreStatus,
         async (taskData) => {
           // Use the provided create function
+          console.log("Creating restored task via Google Tasks API...");
           const token = await getFreshToken();
           return await createGoogleTask(token, taskData as Task, activeGroup);
         },
-        async (taskId) => {
-          // Optionally delete the original completed task
-          if (deleteGoogleTask) {
-            try {
-              const token = await getFreshToken();
-              await deleteGoogleTask(token, taskId, activeGroup);
-            } catch (error) {
-              console.warn("Failed to delete original completed task:", error);
-            }
-          }
-        }
+        // Provide delete function to enable deletion of original task
+        async (taskId: string) => {
+          console.log("Deleting original completed task:", taskId);
+          const token = await getFreshToken();
+          return await deleteGoogleTask(token, taskId, activeGroup);
+        },
+        true // Set to true to attempt deletion of original task
       );
 
-      if (newTask.success && newTask.task && lists && setLists) {
+      if (result.success && result.task) {
+        console.log("Task restored successfully:", result.task.id);
+
         // Update UI with new task
-        const idx = lists.findIndex((l) => l.id === pendingRestoreStatus);
-        if (idx !== -1 && startTransition) {
-          startTransition(() => {
-            setLists((prev) => {
-              const copy = [...prev];
-              copy[idx].tasks = [...copy[idx].tasks, newTask.task!];
-              return copy;
+        if (lists && setLists) {
+          const targetListIdx = lists.findIndex(
+            (l) => l.id === pendingRestoreStatus
+          );
+          const doneListIdx = lists.findIndex((l) => l.id === "done");
+
+          if (targetListIdx !== -1 && startTransition) {
+            startTransition(() => {
+              setLists((prev) => {
+                const copy = [...prev];
+
+                // Add new task to target list
+                copy[targetListIdx].tasks = [
+                  ...copy[targetListIdx].tasks,
+                  result.task!,
+                ];
+
+                // Remove original task from done list if deletion was successful
+                if (!result.originalTaskKept && doneListIdx !== -1) {
+                  copy[doneListIdx].tasks = copy[doneListIdx].tasks.filter(
+                    (t) => t.id !== editedTask.id
+                  );
+                }
+
+                return copy;
+              });
             });
-          });
+          }
+        }
+
+        // Show appropriate success message
+        if (result.originalTaskKept && setError) {
+          // Show warning if original task couldn't be deleted
+          console.warn(
+            "Original completed task couldn't be deleted but restoration succeeded"
+          );
+          if (setError) {
+            setError(
+              "Task restored successfully, but original completed task couldn't be deleted automatically. You may need to remove it manually."
+            );
+          }
+        } else {
+          console.log("Task restored and original deleted successfully");
         }
 
         // Close dialogs and reset state
@@ -449,9 +575,9 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         if (setSelectedTask) setSelectedTask(null);
         onClose();
 
-        console.log("Task restored successfully as new task");
+        console.log("Restore process completed successfully");
       } else {
-        throw new Error(newTask.error || "Failed to restore task");
+        throw new Error(result.error || "Failed to restore task");
       }
     } catch (error: any) {
       console.error("Failed to restore task:", error);

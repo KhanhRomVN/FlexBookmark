@@ -33,37 +33,56 @@ const TransitionConfirmationDialog: React.FC<TransitionConfirmationProps> = ({
         </div>
 
         <div className="p-6 space-y-6">
-          {transition.scenarios.map((scenario, index) => (
-            <div key={index} className="space-y-3">
-              <h4 className="font-medium text-gray-900 dark:text-white">
-                {scenario.title}
-              </h4>
-              <div className="space-y-2">
-                {scenario.options.map((option, optionIndex) => (
-                  <label
-                    key={optionIndex}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                  >
-                    <input
-                      type="radio"
-                      name={`scenario-${index}`}
-                      value={option.value}
-                      onChange={(e) =>
-                        setSelectedOptions((prev) => ({
-                          ...prev,
-                          [`scenario-${index}`]: e.target.value,
-                        }))
-                      }
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-gray-700 dark:text-gray-300">
-                      {option.label}
-                    </span>
-                  </label>
-                ))}
+          {transition.scenarios.map(
+            (
+              scenario: {
+                title:
+                  | string
+                  | number
+                  | boolean
+                  | React.ReactElement<
+                      any,
+                      string | React.JSXElementConstructor<any>
+                    >
+                  | Iterable<React.ReactNode>
+                  | React.ReactPortal
+                  | null
+                  | undefined;
+                options: any[];
+              },
+              index: React.Key | null | undefined
+            ) => (
+              <div key={index} className="space-y-3">
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  {scenario.title}
+                </h4>
+                <div className="space-y-2">
+                  {scenario.options.map((option, optionIndex) => (
+                    <label
+                      key={optionIndex}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name={`scenario-${index}`}
+                        value={option.value}
+                        onChange={(e) =>
+                          setSelectedOptions((prev) => ({
+                            ...prev,
+                            [`scenario-${index}`]: e.target.value,
+                          }))
+                        }
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-gray-700 dark:text-gray-300">
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
 
         <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">

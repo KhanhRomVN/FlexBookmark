@@ -153,68 +153,119 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
             break;
 
         // === DONE TRANSITIONS ===
+        // In taskTransitions.ts - Enhanced done transitions with Google Tasks awareness
         case "done-backlog":
+            scenarios.push({
+                title: "⚠️ Google Tasks Limitation Notice",
+                options: [
+                    {
+                        label: "I understand this will create a new task",
+                        value: "google_tasks_warning",
+                        description: "Google Tasks API doesn't allow direct restoration. Original completed task will remain."
+                    },
+                    { label: "Cancel", value: "cancel" },
+                ],
+            });
             scenarios.push({
                 title: "Reset Task Data",
                 options: [
                     {
                         label: "Reset all time fields",
                         value: "reset",
-                        description: "Clear all scheduling and actual times"
+                        description: "Clear all scheduling and actual times for the new task"
                     },
-                    { label: "Cancel", value: "cancel" },
+                    {
+                        label: "Keep original timestamps",
+                        value: "keep_times",
+                        description: "Preserve original time data in the new task"
+                    },
                 ],
             });
             break;
 
         case "done-todo":
             scenarios.push({
-                title: "Reset Task Data",
+                title: "⚠️ Google Tasks Limitation Notice",
                 options: [
                     {
-                        label: "Reset actual times and adjust start time",
-                        value: "reset",
-                        description: "Clear completion data and set future start time"
+                        label: "I understand this will create a new task",
+                        value: "google_tasks_warning",
+                        description: "Google Tasks API doesn't allow direct restoration. Original completed task will remain."
                     },
                     { label: "Cancel", value: "cancel" },
+                ],
+            });
+            scenarios.push({
+                title: "Schedule New Task",
+                options: [
+                    {
+                        label: "Set future start time",
+                        value: "set_future_start",
+                        description: "Schedule the new task to start in the future"
+                    },
+                    {
+                        label: "Start immediately",
+                        value: "start_now",
+                        description: "Set the new task to start right away"
+                    },
                 ],
             });
             break;
 
         case "done-in-progress":
             scenarios.push({
-                title: "Reopen Task",
+                title: "⚠️ Google Tasks Limitation Notice",
                 options: [
                     {
-                        label: "Keep actual start time",
-                        value: "keep_start",
-                        description: "Resume from previous start time"
-                    },
-                    {
-                        label: "Reset actual start time",
-                        value: "reset_start",
-                        description: "Start fresh from current time"
+                        label: "I understand this will create a new task",
+                        value: "google_tasks_warning",
+                        description: "Google Tasks API doesn't allow direct restoration. Original completed task will remain."
                     },
                     { label: "Cancel", value: "cancel" },
+                ],
+            });
+            scenarios.push({
+                title: "Work Resumption",
+                options: [
+                    {
+                        label: "Start fresh with current time",
+                        value: "fresh_start",
+                        description: "Begin working on the new task immediately"
+                    },
+                    {
+                        label: "Keep original start time reference",
+                        value: "keep_original_start",
+                        description: "Preserve reference to when work originally started"
+                    },
                 ],
             });
             break;
 
         case "done-overdue":
             scenarios.push({
-                title: "Reopen as Overdue",
+                title: "⚠️ Google Tasks Limitation Notice",
                 options: [
                     {
-                        label: "Set due date in past",
-                        value: "set_past_due",
-                        description: "Make task overdue by setting past due date"
-                    },
-                    {
-                        label: "Keep current due date",
-                        value: "keep_due",
-                        description: "Maintain existing due date if already past"
+                        label: "I understand this will create a new task",
+                        value: "google_tasks_warning",
+                        description: "Google Tasks API doesn't allow direct restoration. Original completed task will remain."
                     },
                     { label: "Cancel", value: "cancel" },
+                ],
+            });
+            scenarios.push({
+                title: "Overdue Task Setup",
+                options: [
+                    {
+                        label: "Set past due date to make overdue",
+                        value: "set_past_due",
+                        description: "Configure the new task as overdue with past due date"
+                    },
+                    {
+                        label: "Keep existing due date if past",
+                        value: "keep_due_if_past",
+                        description: "Maintain original due date if it's already past"
+                    },
                 ],
             });
             break;

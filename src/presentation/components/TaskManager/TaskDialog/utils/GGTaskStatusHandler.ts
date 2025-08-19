@@ -1,3 +1,5 @@
+// src/presentation/components/TaskManager/TaskDialog/utils/GGTaskStatusHandler.ts
+
 import type { Task, Status } from '../../../../types/task';
 
 /**
@@ -51,13 +53,15 @@ export class GoogleTasksStatusHandler {
 
     /**
      * Alternative solution: Create a new task instead of restoring
+     * Fixed version that doesn't attempt deletion by default
      */
     static async createTaskFromCompleted(
         completedTask: Task,
         newStatus: Status,
         createFunction: (task: Partial<Task>) => Promise<Task>,
-        deleteFunction: (taskId: string) => Promise<void>
-    ): Promise<{ success: boolean; task?: Task; error?: string }> {
+        deleteFunction?: (taskId: string) => Promise<void>,
+        shouldDeleteOriginal: boolean = false
+    ): Promise<{ success: boolean; task?: Task; error?: string; originalTaskKept?: boolean }> {
 
         if (completedTask.status !== 'done') {
             return {
@@ -68,8 +72,8 @@ export class GoogleTasksStatusHandler {
 
         try {
             // Create new task with same content but different status
-            const newTask = await createFunction({
-                title: completedTask.title + ' (Restored)',
+            const newTaskData: Partial<Task> = {
+                title: completedTask.title,
                 description: completedTask.description,
                 status: newStatus,
                 priority: completedTask.priority,
@@ -78,8 +82,14 @@ export class GoogleTasksStatusHandler {
                 startDate: completedTask.startDate,
                 dueDate: completedTask.dueDate,
                 completed: false,
-                subtasks: completedTask.subtasks,
-                attachments: completedTask.attachments,
+                subtasks: completedTask.subtasks?.map(subtask => ({
+                    ...subtask,
+                    id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+                })) || [],
+                attachments: completedTask.attachments?.map(attachment => ({
+                    ...attachment,
+                    id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+                })) || [],
                 tags: [...(completedTask.tags || []), 'restored'],
                 activityLog: [
                     ...(completedTask.activityLog || []),
@@ -91,13 +101,36 @@ export class GoogleTasksStatusHandler {
                         timestamp: new Date()
                     }
                 ]
-            });
+            };
 
-            // Optionally delete the old completed task
-            // await deleteFunction(completedTask.id);
+            console.log('Creating restored task with data:', newTaskData);
+            const newTask = await createFunction(newTaskData);
+            console.log('Restored task created successfully:', newTask.id);
 
-            return { success: true, task: newTask };
+            let originalTaskKept = true;
+
+            // Only attempt to delete original if explicitly requested and delete function is provided
+            if (shouldDeleteOriginal && deleteFunction && completedTask.id) {
+                try {
+                    console.log('Attempting to delete original completed task:', completedTask.id);
+                    await deleteFunction(completedTask.id);
+                    console.log('Original completed task deleted successfully');
+                    originalTaskKept = false;
+                } catch (deleteError: any) {
+                    // Don't fail the entire operation if deletion fails
+                    console.warn('Failed to delete original completed task, but restoration succeeded:', deleteError);
+                    // Original task is kept, which is fine
+                }
+            }
+
+            return {
+                success: true,
+                task: newTask,
+                originalTaskKept
+            };
+
         } catch (error: any) {
+            console.error('Failed to create restored task:', error);
             return {
                 success: false,
                 error: error.message || 'Failed to create restored task'
@@ -113,7 +146,7 @@ export const handleGoogleTasksStatusChange = async (
     operations: {
         update: (task: Task) => Promise<Task>;
         create: (task: Partial<Task>) => Promise<Task>;
-        delete: (taskId: string) => Promise<void>;
+        delete?: (taskId: string) => Promise<void>;
     }
 ): Promise<{ success: boolean; task?: Task; error?: string; requiresConfirmation?: boolean }> => {
 
@@ -144,7 +177,7 @@ export const enhancedHandleStatusChange = async (
     operations: {
         update: (task: Task) => Promise<Task>;
         create: (task: Partial<Task>) => Promise<Task>;
-        delete: (taskId: string) => Promise<void>;
+        delete?: (taskId: string) => Promise<void>;
     },
     onConfirmRestore?: () => void,
     onError?: (error: string) => void
@@ -176,7 +209,9 @@ export const createRestoreConfirmationDialog = (
 ) => ({
     title: "Restore Completed Task",
     message: `Google Tasks doesn't allow restoring completed tasks directly. 
-           Would you like to create a new task with the same content in "${targetStatus}" status instead?`,
+           Would you like to create a new task with the same content in "${targetStatus}" status instead?
+           
+           Note: The original completed task will remain in your Done list.`,
     confirmText: "Create New Task",
     cancelText: "Cancel",
     onConfirm,
