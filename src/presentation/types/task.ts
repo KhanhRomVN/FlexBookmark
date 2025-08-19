@@ -35,6 +35,7 @@ export interface Task {
     description?: string;
     status: Status;
     priority: Priority;
+    collection?: string; // Added collection field
 
     startTime?: Date | null;
     startDate?: Date | null;

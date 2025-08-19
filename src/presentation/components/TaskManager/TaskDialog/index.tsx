@@ -30,6 +30,7 @@ import {
   handleGoogleTasksStatusChange,
   createRestoreConfirmationDialog,
 } from "./utils/GGTaskStatusHandler";
+import CollectionSection from "./components/CollectionSection";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -782,6 +783,11 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <PrioritySection
                   editedTask={editedTask}
                   handleChange={handleChange}
+                />
+                <CollectionSection
+                  editedTask={editedTask}
+                  handleChange={handleChange}
+                  availableTasks={availableTasks}
                 />
                 <DateTimeSection
                   editedTask={editedTask}
