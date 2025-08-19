@@ -1,3 +1,5 @@
+// src/presentation/tab/TaskManager/index.tsx - Fixed version with Google Tasks integration
+
 import React from "react";
 import { DndContext, closestCorners } from "@dnd-kit/core";
 import {
@@ -12,6 +14,7 @@ import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
+import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
 
 const TaskManager: React.FC = () => {
   const {
@@ -22,6 +25,7 @@ const TaskManager: React.FC = () => {
     filteredLists,
     loading,
     error,
+    setError,
     searchTerm,
     setSearchTerm,
     filterPriority,
@@ -62,29 +66,27 @@ const TaskManager: React.FC = () => {
     setShowArchiveDrawer,
     archivedTasks,
     handleClearFilters,
-    lists, // Thêm lists để lấy toàn bộ tasks
+    lists,
+    setLists,
   } = useTaskManager();
 
   // Theme drawer state
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
-
   const [isCreateMode, setIsCreateMode] = React.useState(false);
 
   // Function to handle refresh
   const handleRefresh = () => {
-    // Add your refresh logic here
     window.location.reload();
   };
 
   // Function to handle create new task - opens TaskDialog in create mode
   const handleCreateTask = () => {
-    // Create a new empty task for create mode with proper types
     const newTask = {
       id: "",
       title: "",
       description: "",
       status: "todo" as const,
-      priority: "medium" as const, // Fix: Use valid Priority type instead of empty string
+      priority: "medium" as const,
       startTime: null,
       dueTime: null,
       startDate: null,
@@ -94,8 +96,8 @@ const TaskManager: React.FC = () => {
       attachments: [],
       tags: [],
       activityLog: [],
-      createdAt: "", // Fix: Add missing required property
-      updatedAt: "", // Fix: Add missing required property
+      createdAt: "",
+      updatedAt: "",
     };
 
     setSelectedTask(newTask);
@@ -118,7 +120,6 @@ const TaskManager: React.FC = () => {
 
   // Handle linked task click - opens linked task in dialog
   const handleLinkedTaskClick = (taskId: string) => {
-    // Find the task in all lists
     const allTasks = lists.flatMap((list) => list.tasks);
     const linkedTask = allTasks.find((task) => task.id === taskId);
 
@@ -129,12 +130,170 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  // Get all available tasks for linking (excluding archived tasks by default)
+  // Get all available tasks for linking
   const getAvailableTasks = () => {
     return lists
-      .filter((list) => list.id !== "archive") // Exclude archived tasks
+      .filter((list) => list.id !== "archive")
       .flatMap((list) => list.tasks)
-      .filter((task) => task.id !== selectedTask?.id); // Exclude current task
+      .filter((task) => task.id !== selectedTask?.id);
+  };
+
+  // Google Tasks integration functions with fallbacks
+  const getFreshToken = async (): Promise<string> => {
+    // First, try to use existing token from auth state
+    if (authState.user?.accessToken) {
+      console.log("Using existing token from auth state");
+      return authState.user.accessToken;
+    }
+
+    // If no existing token, try Chrome identity API
+    if (typeof chrome !== "undefined" && chrome.identity) {
+      return new Promise((resolve, reject) => {
+        console.log("Attempting to get fresh token via Chrome identity API...");
+
+        // First try without interactive to see if we have cached token
+        chrome.identity.getAuthToken(
+          {
+            interactive: false,
+            scopes: [
+              "openid",
+              "email",
+              "profile",
+              "https://www.googleapis.com/auth/tasks",
+              "https://www.googleapis.com/auth/tasks.readonly",
+            ],
+          },
+          (result) => {
+            if (result?.token) {
+              console.log("Got cached token");
+              resolve(result.token);
+              return;
+            }
+
+            // If no cached token, try interactive
+            console.log("No cached token, trying interactive auth...");
+            chrome.identity.getAuthToken(
+              {
+                interactive: true,
+                scopes: [
+                  "openid",
+                  "email",
+                  "profile",
+                  "https://www.googleapis.com/auth/tasks",
+                  "https://www.googleapis.com/auth/tasks.readonly",
+                ],
+              },
+              (interactiveResult) => {
+                if (chrome.runtime.lastError) {
+                  console.error(
+                    "Chrome identity error:",
+                    chrome.runtime.lastError
+                  );
+                  reject(
+                    new Error(
+                      `Chrome identity error: ${chrome.runtime.lastError.message}`
+                    )
+                  );
+                } else if (!interactiveResult?.token) {
+                  console.error("No token received from Chrome identity API");
+                  reject(
+                    new Error(
+                      "No token received from Chrome identity API. Please check extension permissions."
+                    )
+                  );
+                } else {
+                  console.log("Successfully got fresh token");
+                  resolve(interactiveResult.token);
+                }
+              }
+            );
+          }
+        );
+      });
+    }
+
+    // If Chrome identity API is not available, throw descriptive error
+    throw new Error(
+      "Chrome identity API not available. This feature requires a Chrome extension context with proper OAuth2 configuration."
+    );
+  };
+
+  const createGoogleTaskWrapper = async (
+    token: string,
+    taskData: any,
+    activeGroup: string
+  ) => {
+    try {
+      console.log("Creating Google task with token and data:", {
+        hasToken: !!token,
+        activeGroup,
+        taskTitle: taskData?.title,
+      });
+
+      if (!token) {
+        throw new Error("No authentication token provided");
+      }
+
+      if (!activeGroup) {
+        throw new Error("No active task list selected");
+      }
+
+      const result = await createGoogleTask(token, taskData, activeGroup);
+      console.log("Successfully created Google task:", result?.id);
+      return result;
+    } catch (error: any) {
+      console.error("Error creating Google task:", error);
+
+      // Re-throw with more context
+      if (error.message?.includes("No token received")) {
+        throw new Error(
+          "Authentication failed while creating task. Please sign in again."
+        );
+      }
+
+      throw error;
+    }
+  };
+
+  const deleteGoogleTaskWrapper = async (
+    token: string,
+    taskId: string,
+    activeGroup: string
+  ) => {
+    try {
+      console.log("Deleting Google task:", {
+        hasToken: !!token,
+        taskId,
+        activeGroup,
+      });
+
+      if (!token) {
+        throw new Error("No authentication token provided");
+      }
+
+      if (!activeGroup) {
+        throw new Error("No active task list selected");
+      }
+
+      await deleteGoogleTask(token, taskId, activeGroup);
+      console.log("Successfully deleted Google task:", taskId);
+    } catch (error: any) {
+      console.error("Error deleting Google task:", error);
+
+      // Re-throw with more context
+      if (error.message?.includes("No token received")) {
+        throw new Error(
+          "Authentication failed while deleting task. Please sign in again."
+        );
+      }
+
+      throw error;
+    }
+  };
+
+  // Transition start function for React 18 concurrent features
+  const startTransition = (callback: () => void) => {
+    React.startTransition(callback);
   };
 
   if (!authState.isAuthenticated) {
@@ -183,7 +342,6 @@ const TaskManager: React.FC = () => {
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
-        {/* Enhanced TaskHeader component */}
         <TaskHeader
           authState={authState}
           totalTasks={totalTasks}
@@ -252,7 +410,6 @@ const TaskManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Enhanced Archive Drawer */}
       <ArchiveDrawer
         isOpen={showArchiveDrawer}
         onClose={() => setShowArchiveDrawer(false)}
@@ -262,13 +419,13 @@ const TaskManager: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
       />
-      {/* Theme Drawer */}
+
       <ThemeDrawer
         isOpen={showThemeDrawer}
         onClose={() => setShowThemeDrawer(false)}
       />
 
-      {/* Enhanced Task Dialog with Create/Edit modes and Task Linking */}
+      {/* Enhanced Task Dialog with Google Tasks integration props */}
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
@@ -281,6 +438,17 @@ const TaskManager: React.FC = () => {
         isCreateMode={isCreateMode}
         availableTasks={getAvailableTasks()}
         onTaskClick={handleLinkedTaskClick}
+        // Google Tasks integration props
+        getFreshToken={getFreshToken}
+        createGoogleTask={createGoogleTaskWrapper}
+        deleteGoogleTask={deleteGoogleTaskWrapper}
+        activeGroup={activeGroup || ""}
+        lists={lists}
+        setLists={setLists}
+        setError={setError}
+        startTransition={startTransition}
+        setSelectedTask={setSelectedTask}
+        setIsDialogOpen={setIsDialogOpen}
       />
     </div>
   );

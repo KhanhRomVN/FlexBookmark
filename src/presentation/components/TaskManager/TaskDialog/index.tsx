@@ -25,6 +25,11 @@ import {
   getTransitionScenarios,
   executeStatusTransition as executeTransition,
 } from "./utils/taskTransitions";
+import {
+  GoogleTasksStatusHandler,
+  handleGoogleTasksStatusChange,
+  createRestoreConfirmationDialog,
+} from "./utils/GGTaskStatusHandler";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -36,9 +41,104 @@ interface TaskDialogProps {
   onDuplicate: (task: Task) => void;
   onMove: (taskId: string, newStatus: Status) => void;
   isCreateMode?: boolean;
-  availableTasks?: Task[]; // Thêm prop cho available tasks
-  onTaskClick?: (taskId: string) => void; // Thêm callback cho task click
+  availableTasks?: Task[]; // Available tasks prop
+  onTaskClick?: (taskId: string) => void; // Task click callback
+  // Google Tasks integration props
+  getFreshToken?: () => Promise<string>;
+  createGoogleTask?: (
+    token: string,
+    taskData: Task,
+    activeGroup: string
+  ) => Promise<any>;
+  deleteGoogleTask?: (
+    token: string,
+    taskId: string,
+    activeGroup: string
+  ) => Promise<any>;
+  activeGroup?: string;
+  lists?: any[];
+  setLists?: React.Dispatch<React.SetStateAction<any[]>>;
+  setError?: (error: string) => void;
+  startTransition?: (callback: () => void) => void;
+  setSelectedTask?: (task: Task | null) => void;
+  setIsDialogOpen?: (isOpen: boolean) => void;
 }
+
+// Restore Confirmation Dialog Component
+const RestoreConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  taskTitle: string;
+  targetStatus: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, taskTitle, targetStatus, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  const statusLabels: Record<string, string> = {
+    backlog: "Backlog",
+    todo: "To Do",
+    "in-progress": "In Progress",
+    overdue: "Overdue",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 max-w-md mx-4 shadow-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
+            <svg
+              className="w-5 h-5 text-amber-600 dark:text-amber-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Cannot Restore Completed Task
+          </h3>
+        </div>
+
+        <div className="space-y-3 mb-6">
+          <p className="text-gray-600 dark:text-gray-300">
+            <strong>"{taskTitle}"</strong> is already completed and Google Tasks
+            doesn't support restoring completed tasks directly.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300">
+            Would you like to create a new task with the same content in{" "}
+            <strong>"{statusLabels[targetStatus] || targetStatus}"</strong>{" "}
+            status instead?
+          </p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              💡 The new task will be marked as "Restored" and include all
+              original content, subtasks, and attachments.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Create New Task
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
@@ -52,6 +152,17 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   isCreateMode = false,
   availableTasks = [],
   onTaskClick,
+  // Google Tasks integration props
+  getFreshToken,
+  createGoogleTask,
+  deleteGoogleTask,
+  activeGroup,
+  lists,
+  setLists,
+  setError,
+  startTransition,
+  setSelectedTask,
+  setIsDialogOpen,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -69,6 +180,11 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     to: Status;
     scenarios: any[];
   } | null>(null);
+
+  // Google Tasks status handling states
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingRestoreStatus, setPendingRestoreStatus] =
+    useState<Status | null>(null);
 
   const attachmentRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
@@ -213,9 +329,19 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }));
   };
 
-  const handleStatusChange = (newStatus: Status) => {
+  // Updated handleStatusChange with Google Tasks integration
+  const handleStatusChange = async (newStatus: Status) => {
     if (!editedTask) return;
 
+    // Check if this is a problematic transition (done -> other status)
+    if (editedTask.status === "done" && newStatus !== "done") {
+      // Show confirmation dialog for restore
+      setPendingRestoreStatus(newStatus);
+      setShowRestoreDialog(true);
+      return;
+    }
+
+    // Check for other transition scenarios
     const scenarios = getTransitionScenarios(
       editedTask.status,
       newStatus,
@@ -232,6 +358,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       return;
     }
 
+    // Direct status change
     executeStatusTransition(editedTask.status, newStatus, {});
   };
 
@@ -270,6 +397,77 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setPendingTransition(null);
   };
 
+  // Handle restore confirmation for Google Tasks
+  const handleRestoreConfirm = async () => {
+    if (!editedTask || !pendingRestoreStatus) return;
+
+    try {
+      // Check if all required Google Tasks functions are available
+      if (!getFreshToken || !createGoogleTask || !activeGroup) {
+        throw new Error("Google Tasks integration not properly configured");
+      }
+
+      // Create new task instead of trying to restore
+      const newTask = await GoogleTasksStatusHandler.createTaskFromCompleted(
+        editedTask,
+        pendingRestoreStatus,
+        async (taskData) => {
+          // Use the provided create function
+          const token = await getFreshToken();
+          return await createGoogleTask(token, taskData as Task, activeGroup);
+        },
+        async (taskId) => {
+          // Optionally delete the original completed task
+          if (deleteGoogleTask) {
+            try {
+              const token = await getFreshToken();
+              await deleteGoogleTask(token, taskId, activeGroup);
+            } catch (error) {
+              console.warn("Failed to delete original completed task:", error);
+            }
+          }
+        }
+      );
+
+      if (newTask.success && newTask.task && lists && setLists) {
+        // Update UI with new task
+        const idx = lists.findIndex((l) => l.id === pendingRestoreStatus);
+        if (idx !== -1 && startTransition) {
+          startTransition(() => {
+            setLists((prev) => {
+              const copy = [...prev];
+              copy[idx].tasks = [...copy[idx].tasks, newTask.task!];
+              return copy;
+            });
+          });
+        }
+
+        // Close dialogs and reset state
+        setShowRestoreDialog(false);
+        setPendingRestoreStatus(null);
+        if (setIsDialogOpen) setIsDialogOpen(false);
+        if (setSelectedTask) setSelectedTask(null);
+        onClose();
+
+        console.log("Task restored successfully as new task");
+      } else {
+        throw new Error(newTask.error || "Failed to restore task");
+      }
+    } catch (error: any) {
+      console.error("Failed to restore task:", error);
+      if (setError) {
+        setError(`Failed to restore task: ${error.message}`);
+      }
+      setShowRestoreDialog(false);
+      setPendingRestoreStatus(null);
+    }
+  };
+
+  const handleRestoreCancel = () => {
+    setShowRestoreDialog(false);
+    setPendingRestoreStatus(null);
+  };
+
   // Handle task click for linked tasks
   const handleLinkedTaskClick = (taskId: string) => {
     if (onTaskClick) {
@@ -293,6 +491,15 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         transition={pendingTransition}
         onConfirm={handleTransitionConfirm}
         onCancel={handleTransitionCancel}
+      />
+
+      {/* Google Tasks Restore Confirmation Dialog */}
+      <RestoreConfirmationDialog
+        isOpen={showRestoreDialog}
+        taskTitle={editedTask?.title || ""}
+        targetStatus={pendingRestoreStatus || ""}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
       />
 
       <div className="w-full max-w-5xl max-h-[95vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
