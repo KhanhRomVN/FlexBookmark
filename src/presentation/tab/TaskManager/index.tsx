@@ -6,7 +6,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import FolderCard from "../../components/TaskManager/FolderCard";
+import FolderCard from "../../components/TaskManager/KanbanStyle/FolderCard";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader from "../../components/TaskManager/TasKHeader";

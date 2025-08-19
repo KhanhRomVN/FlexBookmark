@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import TaskCard from "./TaskCard";
-import type { Task } from "../../types/task";
+import type { Task } from "../../../types/task";
 import { MoreVertical, ArrowUpDown, Archive, Trash2 } from "lucide-react";
 
 interface FolderCardProps {
