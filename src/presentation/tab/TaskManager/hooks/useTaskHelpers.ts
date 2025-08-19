@@ -1,4 +1,3 @@
-// src/presentation/tab/TaskManager/hooks/useTaskHelpers.ts
 import type { Task, Status } from "../../../types/task";
 import { folders } from "../useTaskManager";
 
@@ -109,17 +108,26 @@ export const createInitialActivityLog = (): any[] => {
 };
 
 export const checkAndMoveOverdueTasks = (tasks: Task[]): Task[] => {
-    return tasks.map(task => {
-        const newStatus = determineTaskStatus(task);
-        if (newStatus !== task.status && task.status !== "done") {
-            return addActivityLogEntry(
-                { ...task, status: newStatus },
-                "status_changed",
-                `Status automatically changed from "${folders.find(f => f.id === task.status)?.title}" to "${folders.find(f => f.id === newStatus)?.title}" based on timing`
-            );
-        }
-        return task;
-    });
+    const BATCH_SIZE = 50;
+    const batchedTasks = [];
+
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+        const batch = tasks.slice(i, i + BATCH_SIZE);
+        const processedBatch = batch.map(task => {
+            const newStatus = determineTaskStatus(task);
+            if (newStatus !== task.status && task.status !== "done") {
+                return addActivityLogEntry(
+                    { ...task, status: newStatus },
+                    "status_changed",
+                    `Status automatically changed from "${folders.find(f => f.id === task.status)?.title}" to "${folders.find(f => f.id === newStatus)?.title}" based on timing`
+                );
+            }
+            return task;
+        });
+        batchedTasks.push(...processedBatch);
+    }
+
+    return batchedTasks;
 };
 
 export function useTaskHelpers() {

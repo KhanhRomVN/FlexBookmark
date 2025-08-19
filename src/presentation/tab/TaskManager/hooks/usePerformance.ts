@@ -1,4 +1,3 @@
-// src/presentation/tab/TaskManager/hooks/usePerformance.ts
 export class PerformanceMonitor {
     private metrics = new Map<string, number[]>();
 

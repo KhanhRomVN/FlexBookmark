@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Task, Status } from "../../../types/task";
 import { folders } from "../useTaskManager";
-import { useTaskHelpers } from "./useTaskHelpers";
 
 export interface TaskList {
     id: string;
@@ -23,8 +22,6 @@ export function useTaskState() {
     const [quickAddTitle, setQuickAddTitle] = useState("");
     const [showArchiveDrawer, setShowArchiveDrawer] = useState(false);
 
-    const { addActivityLogEntry, createInitialActivityLog } = useTaskHelpers();
-
     return {
         lists,
         setLists,
@@ -42,7 +39,5 @@ export function useTaskState() {
         setQuickAddTitle,
         showArchiveDrawer,
         setShowArchiveDrawer,
-        addActivityLogEntry,
-        createInitialActivityLog,
     };
 }

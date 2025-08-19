@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-import { useCallback, useMemo, useState } from "react";
+import { startTransition, useCallback, useMemo, useState, useRef } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useAuth } from "./hooks/useAuth";
@@ -29,7 +29,7 @@ export function useTaskManager() {
     const { performanceMonitor } = usePerformance();
 
     // Auth state
-    const { authState } = useAuth();
+    const { authState, getFreshToken } = useAuth();
 
     // Task groups
     const { groups, activeGroup, setActiveGroup } = useTaskGroups();
@@ -43,7 +43,9 @@ export function useTaskManager() {
         isDialogOpen,
         setIsDialogOpen,
         loading,
+        setLoading,
         error,
+        setError,
         quickAddStatus,
         setQuickAddStatus,
         quickAddTitle,
@@ -55,13 +57,32 @@ export function useTaskManager() {
     // Task operations
     const {
         saveTask,
+        loadTasks,
         handleDeleteTask,
         handleDuplicateTask,
         handleMove,
         handleQuickAddTask,
-        loadTasks,
+        handleSaveTaskDetail,
         handleBatchOperations,
-    } = useTaskOperations();
+    } = useTaskOperations(
+        lists,
+        setLists,
+        setError,
+        setLoading,
+        quickAddTitle,
+        setQuickAddTitle,
+        setQuickAddStatus,
+        selectedTask,
+        setSelectedTask,
+        setIsDialogOpen
+    );
+
+    // Task helpers
+    const {
+        determineTaskStatus,
+        addActivityLogEntry,
+        createInitialActivityLog,
+    } = useTaskHelpers();
 
     // Task filters
     const {
@@ -80,10 +101,9 @@ export function useTaskManager() {
         dateRange,
         setDateRange,
         handleClearFilters,
+        sortTasks,
+        getFilteredLists,
     } = useTaskFilters();
-
-    // Task helpers
-    const { determineTaskStatus } = useTaskHelpers();
 
     // Virtual scrolling state
     const [virtualScrollOffset, setVirtualScrollOffset] = useState(0);
@@ -102,52 +122,71 @@ export function useTaskManager() {
                 l => l.tasks.some(t => t.id === over.id) || l.id === over.id
             );
 
-            if (fromIndex === -1 || toIndex === -1) return;
+            if (fromIndex === -1 || toIndex === -1) {
+                endTimer();
+                return;
+            }
 
             const source = lists[fromIndex];
             const dest = lists[toIndex];
             const itemIndex = source.tasks.findIndex(t => t.id === active.id);
 
             if (fromIndex === toIndex) {
+                // Reordering within same list
                 const reordered = arrayMove(source.tasks, itemIndex, itemIndex);
-                setLists(prev =>
-                    prev.map((l, idx) =>
-                        idx === fromIndex ? { ...l, tasks: reordered } : l
-                    )
-                );
+                startTransition(() => {
+                    setLists(prev =>
+                        prev.map((l, idx) =>
+                            idx === fromIndex ? { ...l, tasks: reordered } : l
+                        )
+                    );
+                });
             } else {
+                // Moving between lists
                 const moved = source.tasks[itemIndex];
                 const oldStatus = moved.status;
                 const newStatus = dest.id as Status;
 
-                const updatedTask = {
-                    ...moved,
-                    status: newStatus,
-                };
-
-                setLists(prev =>
-                    prev.map((l, idx) => {
-                        if (idx === fromIndex) {
-                            return { ...l, tasks: l.tasks.filter(t => t.id !== active.id) };
-                        }
-                        if (idx === toIndex) {
-                            return { ...l, tasks: [...l.tasks, updatedTask] };
-                        }
-                        return l;
-                    })
+                const updatedTask = addActivityLogEntry(
+                    { ...moved, status: newStatus },
+                    "status_changed",
+                    `Status changed from "${folders.find(f => f.id === oldStatus)?.title}" to "${folders.find(f => f.id === newStatus)?.title}"`
                 );
+
+                startTransition(() => {
+                    setLists(prev =>
+                        prev.map((l, idx) => {
+                            if (idx === fromIndex) {
+                                return { ...l, tasks: l.tasks.filter(t => t.id !== active.id) };
+                            }
+                            if (idx === toIndex) {
+                                return { ...l, tasks: [...l.tasks, updatedTask] };
+                            }
+                            return l;
+                        })
+                    );
+                });
 
                 saveTask(updatedTask);
             }
         }
         endTimer();
-    }, [lists, saveTask, performanceMonitor]);
+    }, [lists, saveTask, performanceMonitor, addActivityLogEntry]);
 
     // Task click handler
     const handleTaskClick = useCallback((task: Task) => {
-        setSelectedTask(task);
-        setIsDialogOpen(true);
-    }, [setSelectedTask, setIsDialogOpen]);
+        const taskWithActivityLog = {
+            ...task,
+            activityLog: task.activityLog && task.activityLog.length > 0
+                ? task.activityLog
+                : createInitialActivityLog()
+        };
+
+        startTransition(() => {
+            setSelectedTask(taskWithActivityLog);
+            setIsDialogOpen(true);
+        });
+    }, [setSelectedTask, setIsDialogOpen, createInitialActivityLog]);
 
     // Enhanced handlers for individual tasks
     const handleEditTask = useCallback((task: Task) => {
@@ -159,13 +198,31 @@ export function useTaskManager() {
         handleMove(taskId, targetStatus as Status);
     }, [handleMove]);
 
-    const handleCopyTask = useCallback((task: Task) => {
-        handleDuplicateTask(task);
+    const handleCopyTask = useCallback(async (task: Task) => {
+        await handleDuplicateTask(task);
     }, [handleDuplicateTask]);
 
-    const handleArchiveTask = useCallback((taskId: string) => {
-        handleMove(taskId, 'archive' as Status);
-    }, [handleMove]);
+    const handleArchiveTask = useCallback(async (taskId: string) => {
+        const task = lists.flatMap(l => l.tasks).find(t => t.id === taskId);
+        if (!task) return;
+
+        const archivedTask = addActivityLogEntry(
+            { ...task, status: "archive" },
+            "archived",
+            "Task archived"
+        );
+
+        startTransition(() => {
+            setLists(prev => prev.map(l => ({
+                ...l,
+                tasks: l.id === "archive"
+                    ? [...l.tasks, archivedTask]
+                    : l.tasks.filter(t => t.id !== taskId)
+            })));
+        });
+
+        await saveTask(archivedTask);
+    }, [lists, saveTask, addActivityLogEntry, setLists]);
 
     // Folder operations
     const handleCopyTasks = useCallback(async (folderId: string) => {
@@ -188,88 +245,32 @@ export function useTaskManager() {
 
     const handleDeleteTasks = useCallback(async (folderId: string) => {
         const folder = lists.find(l => l.id === folderId);
-        if (!folder) return;
-        await handleBatchOperations.deleteMultiple(
-            folder.tasks.map(task => task.id)
-        );
-    }, [lists, handleBatchOperations]);
+        if (!folder || !authState.user || !activeGroup) return;
 
-    // Sorting function
-    const sortTasks = useCallback((tasks: Task[], sortType: string, order: 'asc' | 'desc'): Task[] => {
-        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+        if (!window.confirm(`Are you sure you want to delete all ${folder.tasks.length} tasks in ${folder.title}? This action cannot be undone.`)) {
+            return;
+        }
 
-        return [...tasks].sort((a, b) => {
-            switch (sortType) {
-                case "priority-high":
-                    return priorityOrder[b.priority] - priorityOrder[a.priority];
-                case "priority-low":
-                    return priorityOrder[a.priority] - priorityOrder[b.priority];
-                case "due-date-asc":
-                    return (a.dueDate?.getTime() || Infinity) - (b.dueDate?.getTime() || Infinity);
-                case "due-date-desc":
-                    return (b.dueDate?.getTime() || 0) - (a.dueDate?.getTime() || 0);
-                case "title-asc":
-                    return a.title.localeCompare(b.title);
-                case "title-desc":
-                    return b.title.localeCompare(a.title);
-                case "created-asc":
-                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-                case "created-desc":
-                default:
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            }
-        });
-    }, []);
+        const taskIds = folder.tasks.map(task => task.id);
+        await handleBatchOperations.deleteMultiple(taskIds);
+    }, [lists, authState, activeGroup, handleBatchOperations]);
 
     const handleSortTasks = useCallback((folderId: string, sortType: string) => {
-        setLists(prev =>
-            prev.map(l =>
-                l.id === folderId
-                    ? { ...l, tasks: sortTasks(l.tasks, sortType, sortOrder) }
-                    : l
-            )
-        );
-    }, [sortTasks, sortOrder]);
+        startTransition(() => {
+            setLists(prev =>
+                prev.map(l =>
+                    l.id === folderId
+                        ? { ...l, tasks: sortTasks(l.tasks, sortType, sortOrder) }
+                        : l
+                )
+            );
+        });
+    }, [sortTasks, sortOrder, setLists]);
 
-    // Filtered and sorted lists
+    // Filtered lists using the hook
     const filteredLists = useMemo(() => {
-        return lists.map(l => ({
-            ...l,
-            tasks: l.tasks
-                .filter(task => {
-                    const matchesSearch = searchTerm === '' ||
-                        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (task.description?.toLowerCase().includes(searchTerm.toLowerCase()));
-
-                    const matchesPriority = filterPriority === "all" ||
-                        task.priority === filterPriority;
-
-                    const matchesStatus = filterStatus === "all" ||
-                        task.status === filterStatus;
-
-                    const matchesTags = filterTags === "" ||
-                        task.tags?.some(tag =>
-                            tag.toLowerCase().includes(filterTags.toLowerCase()));
-
-                    let matchesDateRange = true;
-                    if (dateRange.start || dateRange.end) {
-                        const taskDate = task.dueDate || task.startDate;
-                        if (taskDate) {
-                            if (dateRange.start && taskDate < dateRange.start) {
-                                matchesDateRange = false;
-                            }
-                            if (dateRange.end && taskDate > dateRange.end) {
-                                matchesDateRange = false;
-                            }
-                        }
-                    }
-
-                    return matchesSearch && matchesPriority && matchesStatus &&
-                        matchesTags && matchesDateRange;
-                })
-                .sort((a, b) => sortTasks([a, b], sortBy, sortOrder)[0] === a ? -1 : 1)
-        }));
-    }, [lists, searchTerm, filterPriority, filterStatus, filterTags, dateRange, sortBy, sortOrder, sortTasks]);
+        return getFilteredLists(lists);
+    }, [lists, getFilteredLists]);
 
     // Virtual scrolling helpers
     const calculateVirtualScrollData = useCallback((tasks: Task[]) => {
@@ -289,14 +290,15 @@ export function useTaskManager() {
 
     // Statistics
     const statistics = useMemo(() => {
-        const totalTasks = lists.reduce((sum, l) => sum + l.tasks.length, 0);
-        const completedTasks = lists.find(l => l.id === "done")?.tasks.length || 0;
-        const overdueTasks = lists.find(l => l.id === "overdue")?.tasks.length || 0;
-        const urgentTasks = lists.reduce(
+        const totalTasks = lists.filter(l => l.id !== 'archive').reduce((sum, l) => sum + l.tasks.length, 0);
+        const completedTasks = lists.find(l => l.id === "done")?.tasks.length ?? 0;
+        const overdueTasks = lists.find(l => l.id === "overdue")?.tasks.length ?? 0;
+        const urgentTasks = lists.filter(l => l.id !== 'archive').reduce(
             (sum, l) => sum + l.tasks.filter(t => t.priority === "urgent").length,
             0
         );
-        const archivedTasks = lists.find(l => l.id === "archive")?.tasks || [];
+        const archivedTasks = lists.find(l => l.id === "archive")?.tasks ?? [];
+        const performanceStats = performanceMonitor.getStats();
 
         return {
             totalTasks,
@@ -304,8 +306,15 @@ export function useTaskManager() {
             urgentTasks,
             overdueTasks,
             archivedTasks,
+            performanceStats,
         };
-    }, [lists]);
+    }, [lists, performanceMonitor]);
+
+    // Create group handler
+    const handleCreateGroup = useCallback(async () => {
+        console.log("Create new group");
+        // Implementation would go here
+    }, []);
 
     return {
         // Core state
@@ -361,10 +370,11 @@ export function useTaskManager() {
         handleDragEnd,
         handleQuickAddTask,
         handleTaskClick,
+        handleCreateGroup,
         handleDeleteTask,
         handleDuplicateTask,
         handleMove,
-        saveTask,
+        handleSaveTaskDetail,
 
         // Folder operations
         handleCopyTasks,
@@ -388,5 +398,8 @@ export function useTaskManager() {
 
         // Statistics
         ...statistics,
+
+        // Performance monitoring
+        performanceStats: statistics.performanceStats,
     };
 }
