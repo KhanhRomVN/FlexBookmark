@@ -38,9 +38,14 @@ export function useTaskManager() {
         setActiveGroup,
         createGroup,
         deleteGroup,
-        renameGroup,
-        allGroups
+        renameGroup
     } = useTaskGroups();
+
+    // Combine built-in folders and custom groups for TaskDialog (with emoji)
+    const allGroups = [
+        ...folders.map(f => ({ id: f.id, title: f.title, emoji: f.emoji })),
+        ...groups.map(g => ({ id: g.id, title: g.title, emoji: "" }))
+    ];
 
     // Task state and UI state
     const {

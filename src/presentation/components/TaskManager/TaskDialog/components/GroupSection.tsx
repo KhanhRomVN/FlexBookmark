@@ -147,7 +147,7 @@ const EmojiPicker: React.FC<{
 
 const GroupSection: React.FC<GroupSectionProps> = ({
   editedTask,
-  groups,
+  groups = [],
   handleChange,
   onCreateGroup,
   onDeleteGroup,

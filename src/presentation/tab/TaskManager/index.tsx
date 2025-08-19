@@ -448,7 +448,7 @@ const TaskManager: React.FC = () => {
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         task={selectedTask}
-        groups={allGroups} // Use combined groups (default + custom)
+        groups={groupsForDialog} // Use combined groups (default + custom)
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
