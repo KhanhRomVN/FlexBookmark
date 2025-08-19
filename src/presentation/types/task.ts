@@ -1,3 +1,4 @@
+// src/presentation/types/task.ts
 import { ReactNode } from "react";
 
 export type Priority = "low" | "medium" | "high" | "urgent";
@@ -35,7 +36,7 @@ export interface Task {
     description?: string;
     status: Status;
     priority: Priority;
-    folder?: string;
+    group?: string; // Changed from folder to group
 
     startTime?: Date | null;
     startDate?: Date | null;

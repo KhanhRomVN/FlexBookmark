@@ -26,13 +26,13 @@ import {
   executeStatusTransition as executeTransition,
 } from "./utils/taskTransitions";
 import { GoogleTasksStatusHandler } from "./utils/GGTaskStatusHandler";
-import FolderSection from "./components/FolderSectiom";
+import GroupSection from "./components/GroupSection";
 
 interface TaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
-  folders: { id: string; title: string; emoji: string }[];
+  groups: { id: string; title: string; emoji: string }[];
   onSave: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onDuplicate: (task: Task) => void;
@@ -59,9 +59,9 @@ interface TaskDialogProps {
   startTransition?: (callback: () => void) => void;
   setSelectedTask?: (task: Task | null) => void;
   setIsDialogOpen?: (isOpen: boolean) => void;
-  onCreateFolder?: (folderName: string) => void;
-  onDeleteFolder?: (folderId: string) => void;
-  onRenameFolder?: (folderId: string, newName: string) => void;
+  onCreateGroup?: (groupName: string, emoji?: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
+  onRenameGroup?: (groupId: string, newName: string) => void;
 }
 
 // Restore Confirmation Dialog Component
@@ -175,7 +175,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
   onClose,
   task,
-  folders,
+  groups,
   onSave,
   onDelete,
   onDuplicate,
@@ -194,9 +194,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   startTransition,
   setSelectedTask,
   setIsDialogOpen,
-  onCreateFolder,
-  onDeleteFolder,
-  onRenameFolder,
+  onCreateGroup,
+  onDeleteGroup,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -546,7 +545,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 // Remove original task from done list if deletion was successful
                 if (!result.originalTaskKept && doneListIdx !== -1) {
                   copy[doneListIdx].tasks = copy[doneListIdx].tasks.filter(
-                    (t) => t.id !== editedTask.id
+                    (t: { id: string }) => t.id !== editedTask.id
                   );
                 }
 
@@ -791,13 +790,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   handleChange={handleChange}
                   isCreateMode={isCreateMode}
                 />
-                <FolderSection
+                <GroupSection
                   editedTask={editedTask}
-                  folders={folders}
+                  groups={groups}
                   handleChange={handleChange}
-                  onCreateFolder={onCreateFolder}
-                  onDeleteFolder={onDeleteFolder}
-                  onRenameFolder={onRenameFolder}
+                  onCreateGroup={onCreateGroup}
+                  onDeleteGroup={onDeleteGroup}
+                  allTasks={availableTasks}
                 />
                 <TagsSection
                   editedTask={editedTask}

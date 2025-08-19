@@ -1,4 +1,5 @@
-import React from "react";
+// src/presentation/tab/TaskManager/index.tsx
+import React, { useCallback } from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader, {
@@ -9,7 +10,7 @@ import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanBoardLayout";
 import ListLayout from "./layout/ListLayout";
 import { Globe } from "lucide-react";
-import { useTaskManager, folders } from "./useTaskManager";
+import { useTaskManager } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
 
 const TaskManager: React.FC = () => {
@@ -42,10 +43,10 @@ const TaskManager: React.FC = () => {
     isDialogOpen,
     setIsDialogOpen,
     setSelectedTask,
+    setLists,
     handleDragEnd,
     handleQuickAddTask,
     handleTaskClick,
-    handleCreateGroup,
     handleDeleteTask,
     handleDuplicateTask,
     handleMove,
@@ -63,113 +64,32 @@ const TaskManager: React.FC = () => {
     archivedTasks,
     handleClearFilters,
     lists,
-    setLists,
+    // Group management functions from the hook
+    handleCreateGroup,
+    handleDeleteGroup,
+    handleRenameGroup,
+    allGroups,
   } = useTaskManager();
 
   // Layout state
   const [layoutType, setLayoutType] = React.useState<LayoutType>("kanban");
-
-  // Theme drawer state
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
   const [isCreateMode, setIsCreateMode] = React.useState(false);
 
-  // Add folder management state
-  const [customFolders, setCustomFolders] = React.useState<
-    { id: string; title: string; emoji: string }[]
-  >([]);
-
-  // Load custom folders on mount
-  React.useEffect(() => {
-    const savedFolders = localStorage.getItem("taskflow-custom-folders");
-    if (savedFolders) {
-      try {
-        const parsed = JSON.parse(savedFolders);
-        setCustomFolders(parsed);
-      } catch (error) {
-        console.error("Error loading custom folders:", error);
-      }
-    }
-  }, []);
-
-  // Folder management functions
-  const handleCreateFolder = React.useCallback((folderName: string) => {
-    const newFolder = {
-      id: `folder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-      title: folderName,
-      emoji: "📁", // Default emoji, could be customizable
-    };
-
-    setCustomFolders((prev) => {
-      const updatedFolders = [...prev, newFolder];
-      // Save to localStorage
-      localStorage.setItem(
-        "taskflow-custom-folders",
-        JSON.stringify(updatedFolders)
-      );
-      return updatedFolders;
-    });
-  }, []);
-
-  const handleDeleteFolder = React.useCallback(
-    (folderId: string) => {
-      setCustomFolders((prev) => {
-        const updatedFolders = prev.filter((f) => f.id !== folderId);
-        // Update localStorage
-        localStorage.setItem(
-          "taskflow-custom-folders",
-          JSON.stringify(updatedFolders)
-        );
-        return updatedFolders;
-      });
-
-      // Update all tasks that were in this folder to have no folder
-      const updatedLists = lists.map((list) => ({
-        ...list,
-        tasks: list.tasks.map((task) =>
-          task.folder === folderId ? { ...task, folder: "" } : task
-        ),
-      }));
-      setLists(updatedLists);
-    },
-    [lists, setLists]
-  );
-
-  const handleRenameFolder = React.useCallback(
-    (folderId: string, newName: string) => {
-      setCustomFolders((prev) => {
-        const updatedFolders = prev.map((folder) =>
-          folder.id === folderId ? { ...folder, title: newName } : folder
-        );
-        // Update localStorage
-        localStorage.setItem(
-          "taskflow-custom-folders",
-          JSON.stringify(updatedFolders)
-        );
-        return updatedFolders;
-      });
-    },
-    []
-  );
-
-  // Combine default folders with custom folders
-  const allFolders = React.useMemo(() => {
-    return [...customFolders];
-  }, [customFolders]);
-
   // Function to handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     window.location.reload();
-  };
+  }, []);
 
   // Function to handle create new task - opens TaskDialog in create mode
-  const handleCreateTask = () => {
+  const handleCreateTask = useCallback(() => {
     const newTask = {
       id: "",
       title: "",
       description: "",
       status: "todo" as const,
       priority: "medium" as const,
-      folder: "", // Default to no folder
+      group: "",
       startTime: null,
       dueTime: null,
       startDate: null,
@@ -186,54 +106,63 @@ const TaskManager: React.FC = () => {
     setSelectedTask(newTask);
     setIsCreateMode(true);
     setIsDialogOpen(true);
-  };
+  }, [setSelectedTask, setIsDialogOpen]);
 
   // Handle dialog close
-  const handleDialogClose = () => {
+  const handleDialogClose = useCallback(() => {
     setIsDialogOpen(false);
     setSelectedTask(null);
     setIsCreateMode(false);
-  };
+  }, [setIsDialogOpen, setSelectedTask]);
 
   // Handle task click - opens TaskDialog in edit mode
-  const handleTaskClickWrapper = (task: any) => {
-    setIsCreateMode(false);
-    handleTaskClick(task);
-  };
+  const handleTaskClickWrapper = useCallback(
+    (task: any) => {
+      setIsCreateMode(false);
+      handleTaskClick(task);
+    },
+    [handleTaskClick]
+  );
 
   // Handle linked task click - opens linked task in dialog
-  const handleLinkedTaskClick = (taskId: string) => {
-    const allTasks = lists.flatMap((list) => list.tasks);
-    const linkedTask = allTasks.find((task) => task.id === taskId);
+  const handleLinkedTaskClick = useCallback(
+    (taskId: string) => {
+      const allTasks = lists.flatMap((list) => list.tasks);
+      const linkedTask = allTasks.find((task) => task.id === taskId);
 
-    if (linkedTask) {
-      setIsCreateMode(false);
-      setSelectedTask(linkedTask);
-      setIsDialogOpen(true);
-    }
-  };
+      if (linkedTask) {
+        setIsCreateMode(false);
+        setSelectedTask(linkedTask);
+        setIsDialogOpen(true);
+      }
+    },
+    [lists, setSelectedTask, setIsDialogOpen]
+  );
 
   // Get all available tasks for linking
-  const getAvailableTasks = () => {
+  const getAvailableTasks = useCallback(() => {
     return lists
       .filter((list) => list.id !== "archive")
       .flatMap((list) => list.tasks)
       .filter((task) => task.id !== selectedTask?.id);
-  };
+  }, [lists, selectedTask?.id]);
 
   // Handle toggle complete for list view
-  const handleToggleComplete = (taskId: string) => {
-    const allTasks = lists.flatMap((list) => list.tasks);
-    const task = allTasks.find((t) => t.id === taskId);
+  const handleToggleComplete = useCallback(
+    (taskId: string) => {
+      const allTasks = lists.flatMap((list) => list.tasks);
+      const task = allTasks.find((t) => t.id === taskId);
 
-    if (task) {
-      const updatedTask = { ...task, completed: !task.completed };
-      handleSaveTaskDetail(updatedTask);
-    }
-  };
+      if (task) {
+        const updatedTask = { ...task, completed: !task.completed };
+        handleSaveTaskDetail(updatedTask);
+      }
+    },
+    [lists, handleSaveTaskDetail]
+  );
 
   // Google Tasks integration functions with fallbacks
-  const getFreshToken = async (): Promise<string> => {
+  const getFreshToken = useCallback(async (): Promise<string> => {
     // First, try to use existing token from auth state
     if (authState.user?.accessToken) {
       console.log("Using existing token from auth state");
@@ -310,85 +239,87 @@ const TaskManager: React.FC = () => {
     throw new Error(
       "Chrome identity API not available. This feature requires a Chrome extension context with proper OAuth2 configuration."
     );
-  };
+  }, [authState.user?.accessToken]);
 
-  const createGoogleTaskWrapper = async (
-    token: string,
-    taskData: any,
-    activeGroup: string
-  ) => {
-    try {
-      console.log("Creating Google task with token and data:", {
-        hasToken: !!token,
-        activeGroup,
-        taskTitle: taskData?.title,
-      });
+  const createGoogleTaskWrapper = useCallback(
+    async (token: string, taskData: any, activeGroup: string) => {
+      try {
+        console.log("Creating Google task with token and data:", {
+          hasToken: !!token,
+          activeGroup,
+          taskTitle: taskData?.title,
+        });
 
-      if (!token) {
-        throw new Error("No authentication token provided");
+        if (!token) {
+          throw new Error("No authentication token provided");
+        }
+
+        if (!activeGroup) {
+          throw new Error("No active task list selected");
+        }
+
+        const result = await createGoogleTask(token, taskData, activeGroup);
+        console.log("Successfully created Google task:", result?.id);
+        return result;
+      } catch (error: any) {
+        console.error("Error creating Google task:", error);
+
+        // Re-throw with more context
+        if (error.message?.includes("No token received")) {
+          throw new Error(
+            "Authentication failed while creating task. Please sign in again."
+          );
+        }
+
+        throw error;
       }
+    },
+    []
+  );
 
-      if (!activeGroup) {
-        throw new Error("No active task list selected");
+  const deleteGoogleTaskWrapper = useCallback(
+    async (token: string, taskId: string, activeGroup: string) => {
+      try {
+        console.log("Deleting Google task:", {
+          hasToken: !!token,
+          taskId,
+          activeGroup,
+        });
+
+        if (!token) {
+          throw new Error("No authentication token provided");
+        }
+
+        if (!activeGroup) {
+          throw new Error("No active task list selected");
+        }
+
+        await deleteGoogleTask(token, taskId, activeGroup);
+        console.log("Successfully deleted Google task:", taskId);
+      } catch (error: any) {
+        console.error("Error deleting Google task:", error);
+
+        // Re-throw with more context
+        if (error.message?.includes("No token received")) {
+          throw new Error(
+            "Authentication failed while deleting task. Please sign in again."
+          );
+        }
+
+        throw error;
       }
-
-      const result = await createGoogleTask(token, taskData, activeGroup);
-      console.log("Successfully created Google task:", result?.id);
-      return result;
-    } catch (error: any) {
-      console.error("Error creating Google task:", error);
-
-      // Re-throw with more context
-      if (error.message?.includes("No token received")) {
-        throw new Error(
-          "Authentication failed while creating task. Please sign in again."
-        );
-      }
-
-      throw error;
-    }
-  };
-
-  const deleteGoogleTaskWrapper = async (
-    token: string,
-    taskId: string,
-    activeGroup: string
-  ) => {
-    try {
-      console.log("Deleting Google task:", {
-        hasToken: !!token,
-        taskId,
-        activeGroup,
-      });
-
-      if (!token) {
-        throw new Error("No authentication token provided");
-      }
-
-      if (!activeGroup) {
-        throw new Error("No active task list selected");
-      }
-
-      await deleteGoogleTask(token, taskId, activeGroup);
-      console.log("Successfully deleted Google task:", taskId);
-    } catch (error: any) {
-      console.error("Error deleting Google task:", error);
-
-      // Re-throw with more context
-      if (error.message?.includes("No token received")) {
-        throw new Error(
-          "Authentication failed while deleting task. Please sign in again."
-        );
-      }
-
-      throw error;
-    }
-  };
+    },
+    []
+  );
 
   // Transition start function for React 18 concurrent features
-  const startTransition = (callback: () => void) => {
-    React.startTransition(callback);
-  };
+  const startTransition = useCallback((callback: () => void) => {
+    if (React.startTransition) {
+      React.startTransition(callback);
+    } else {
+      callback();
+    }
+  }, []);
 
   if (!authState.isAuthenticated) {
     return (
@@ -512,12 +443,12 @@ const TaskManager: React.FC = () => {
         onClose={() => setShowThemeDrawer(false)}
       />
 
-      {/* Enhanced Task Dialog with folder management and Google Tasks integration props */}
+      {/* Enhanced Task Dialog with group management and Google Tasks integration props */}
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         task={selectedTask}
-        folders={allFolders} // Use combined folders (default + custom)
+        groups={allGroups} // Use combined groups (default + custom)
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
@@ -525,10 +456,10 @@ const TaskManager: React.FC = () => {
         isCreateMode={isCreateMode}
         availableTasks={getAvailableTasks()}
         onTaskClick={handleLinkedTaskClick}
-        // Folder management props
-        onCreateFolder={handleCreateFolder}
-        onDeleteFolder={handleDeleteFolder}
-        onRenameFolder={handleRenameFolder}
+        // Group management props
+        onCreateGroup={handleCreateGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onRenameGroup={handleRenameGroup}
         // Google Tasks integration props
         getFreshToken={getFreshToken}
         createGoogleTask={createGoogleTaskWrapper}
