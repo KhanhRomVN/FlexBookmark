@@ -35,6 +35,7 @@ export interface Task {
     description?: string;
     status: Status;
     priority: Priority;
+    folder?: string;
 
     startTime?: Date | null;
     startDate?: Date | null;

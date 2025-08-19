@@ -25,11 +25,8 @@ import {
   getTransitionScenarios,
   executeStatusTransition as executeTransition,
 } from "./utils/taskTransitions";
-import {
-  GoogleTasksStatusHandler,
-  handleGoogleTasksStatusChange,
-  createRestoreConfirmationDialog,
-} from "./utils/GGTaskStatusHandler";
+import { GoogleTasksStatusHandler } from "./utils/GGTaskStatusHandler";
+import FolderSection from "./components/FolderSectiom";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -62,6 +59,9 @@ interface TaskDialogProps {
   startTransition?: (callback: () => void) => void;
   setSelectedTask?: (task: Task | null) => void;
   setIsDialogOpen?: (isOpen: boolean) => void;
+  onCreateFolder?: (folderName: string) => void;
+  onDeleteFolder?: (folderId: string) => void;
+  onRenameFolder?: (folderId: string, newName: string) => void;
 }
 
 // Restore Confirmation Dialog Component
@@ -194,6 +194,9 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   startTransition,
   setSelectedTask,
   setIsDialogOpen,
+  onCreateFolder,
+  onDeleteFolder,
+  onRenameFolder,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -787,6 +790,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   editedTask={editedTask}
                   handleChange={handleChange}
                   isCreateMode={isCreateMode}
+                />
+                <FolderSection
+                  editedTask={editedTask}
+                  folders={folders}
+                  handleChange={handleChange}
+                  onCreateFolder={onCreateFolder}
+                  onDeleteFolder={onDeleteFolder}
+                  onRenameFolder={onRenameFolder}
                 />
                 <TagsSection
                   editedTask={editedTask}

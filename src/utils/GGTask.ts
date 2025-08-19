@@ -131,6 +131,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             description: task.description || "",
             status: task.status || 'backlog',
             priority: task.priority || "",
+            folder: task.folder || "", // ADD: Include folder field
         };
 
         // Format dates and times consistently - CHỈ KHI CÓ GIÁ TRỊ
@@ -189,7 +190,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             activityLog = [creationEntry];
         }
         metadata.activityLog = activityLog;
-
 
         let jsonString = JSON.stringify(metadata, null, 0);
         let characterCount = jsonString.length;
@@ -260,6 +260,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     description: (metadata.description || "").substring(0, 100),
                     status: metadata.status,
                     priority: metadata.priority,
+                    folder: metadata.folder,
                     startTime: "",
                     dueTime: "",
                     startDate: "",
@@ -283,6 +284,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             description: task.description || "",
             status: task.status || 'backlog',
             priority: task.priority || "",
+            folder: task.folder || "", // ADD: Include folder in safe metadata
             startTime: "",
             dueTime: "",
             startDate: "",
@@ -417,6 +419,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             description: taskData.description || "",
             status: taskData.status || (item.status === 'completed' ? 'done' : 'todo'),
             priority: taskData.priority || "",
+            folder: taskData.folder || "", // ADD: Parse folder field
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
             dueTime: taskData.dueTime ? safeDateParse(taskData.dueTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
@@ -433,7 +436,6 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
         return task;
     });
 }
-
 
 export const createGoogleTask = async (
     accessToken: string,

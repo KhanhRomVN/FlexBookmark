@@ -1,5 +1,3 @@
-// src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle
-
 import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
@@ -75,6 +73,89 @@ const TaskManager: React.FC = () => {
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
   const [isCreateMode, setIsCreateMode] = React.useState(false);
 
+  // Add folder management state
+  const [customFolders, setCustomFolders] = React.useState<
+    { id: string; title: string; emoji: string }[]
+  >([]);
+
+  // Load custom folders on mount
+  React.useEffect(() => {
+    const savedFolders = localStorage.getItem("taskflow-custom-folders");
+    if (savedFolders) {
+      try {
+        const parsed = JSON.parse(savedFolders);
+        setCustomFolders(parsed);
+      } catch (error) {
+        console.error("Error loading custom folders:", error);
+      }
+    }
+  }, []);
+
+  // Folder management functions
+  const handleCreateFolder = React.useCallback((folderName: string) => {
+    const newFolder = {
+      id: `folder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      title: folderName,
+      emoji: "📁", // Default emoji, could be customizable
+    };
+
+    setCustomFolders((prev) => {
+      const updatedFolders = [...prev, newFolder];
+      // Save to localStorage
+      localStorage.setItem(
+        "taskflow-custom-folders",
+        JSON.stringify(updatedFolders)
+      );
+      return updatedFolders;
+    });
+  }, []);
+
+  const handleDeleteFolder = React.useCallback(
+    (folderId: string) => {
+      setCustomFolders((prev) => {
+        const updatedFolders = prev.filter((f) => f.id !== folderId);
+        // Update localStorage
+        localStorage.setItem(
+          "taskflow-custom-folders",
+          JSON.stringify(updatedFolders)
+        );
+        return updatedFolders;
+      });
+
+      // Update all tasks that were in this folder to have no folder
+      const updatedLists = lists.map((list) => ({
+        ...list,
+        tasks: list.tasks.map((task) =>
+          task.folder === folderId ? { ...task, folder: "" } : task
+        ),
+      }));
+      setLists(updatedLists);
+    },
+    [lists, setLists]
+  );
+
+  const handleRenameFolder = React.useCallback(
+    (folderId: string, newName: string) => {
+      setCustomFolders((prev) => {
+        const updatedFolders = prev.map((folder) =>
+          folder.id === folderId ? { ...folder, title: newName } : folder
+        );
+        // Update localStorage
+        localStorage.setItem(
+          "taskflow-custom-folders",
+          JSON.stringify(updatedFolders)
+        );
+        return updatedFolders;
+      });
+    },
+    []
+  );
+
+  // Combine default folders with custom folders
+  const allFolders = React.useMemo(() => {
+    return [...customFolders];
+  }, [customFolders]);
+
   // Function to handle refresh
   const handleRefresh = () => {
     window.location.reload();
@@ -88,6 +169,7 @@ const TaskManager: React.FC = () => {
       description: "",
       status: "todo" as const,
       priority: "medium" as const,
+      folder: "", // Default to no folder
       startTime: null,
       dueTime: null,
       startDate: null,
@@ -430,12 +512,12 @@ const TaskManager: React.FC = () => {
         onClose={() => setShowThemeDrawer(false)}
       />
 
-      {/* Enhanced Task Dialog with Google Tasks integration props */}
+      {/* Enhanced Task Dialog with folder management and Google Tasks integration props */}
       <TaskDialog
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         task={selectedTask}
-        folders={folders.filter((f) => f.id !== "archive")}
+        folders={allFolders} // Use combined folders (default + custom)
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
@@ -443,6 +525,10 @@ const TaskManager: React.FC = () => {
         isCreateMode={isCreateMode}
         availableTasks={getAvailableTasks()}
         onTaskClick={handleLinkedTaskClick}
+        // Folder management props
+        onCreateFolder={handleCreateFolder}
+        onDeleteFolder={handleDeleteFolder}
+        onRenameFolder={handleRenameFolder}
         // Google Tasks integration props
         getFreshToken={getFreshToken}
         createGoogleTask={createGoogleTaskWrapper}
