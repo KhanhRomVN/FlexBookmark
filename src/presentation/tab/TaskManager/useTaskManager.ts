@@ -31,21 +31,8 @@ export function useTaskManager() {
     // Auth state
     const { authState, getFreshToken } = useAuth();
 
-    // Task groups with destructured management functions
-    const {
-        groups,
-        activeGroup,
-        setActiveGroup,
-        createGroup,
-        deleteGroup,
-        renameGroup
-    } = useTaskGroups();
-
-    // Combine built-in folders and custom groups for TaskDialog (with emoji)
-    const allGroups = [
-        ...folders.map(f => ({ id: f.id, title: f.title, emoji: f.emoji })),
-        ...groups.map(g => ({ id: g.id, title: g.title, emoji: "" }))
-    ];
+    // Task groups
+    const { groups, activeGroup, setActiveGroup } = useTaskGroups();
 
     // Task state and UI state
     const {
@@ -121,114 +108,6 @@ export function useTaskManager() {
     // Virtual scrolling state
     const [virtualScrollOffset, setVirtualScrollOffset] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
-
-    // Group management handlers
-    const handleCreateGroup = useCallback(async (groupName: string, emoji?: string) => {
-        try {
-            console.log('Creating group:', groupName, emoji);
-            await createGroup(groupName, emoji || '📁');
-        } catch (error) {
-            console.error('Failed to create group:', error);
-            setError(`Failed to create group: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    }, [createGroup, setError]);
-
-    const handleDeleteGroup = useCallback(async (groupId: string) => {
-        try {
-            console.log('Deleting group:', groupId);
-
-            // Find the group to get its title for confirmation
-            const group = allGroups.find((g: { id: string; }) => g.id === groupId);
-            if (!group) {
-                console.error('Group not found:', groupId);
-                return;
-            }
-
-            // Find tasks that use this group
-            const affectedTasks = lists.flatMap(list => list.tasks).filter(task => task.group === group.title);
-
-            if (affectedTasks.length > 0) {
-                const confirmed = window.confirm(
-                    `Are you sure you want to delete the group "${group.title}"? This will remove the group from ${affectedTasks.length} task(s), but the tasks themselves will not be deleted.`
-                );
-
-                if (!confirmed) {
-                    return;
-                }
-
-                // Update all affected tasks to remove the group
-                const updatedTasks = affectedTasks.map(task => ({
-                    ...task,
-                    group: '', // Remove group assignment
-                }));
-
-                // Update the lists state
-                startTransition(() => {
-                    setLists(prev => prev.map(list => ({
-                        ...list,
-                        tasks: list.tasks.map(task =>
-                            updatedTasks.find(updatedTask => updatedTask.id === task.id) || task
-                        )
-                    })));
-                });
-
-                // Save the updated tasks
-                for (const task of updatedTasks) {
-                    await saveTask(task);
-                }
-            }
-
-            await deleteGroup(groupId);
-        } catch (error) {
-            console.error('Failed to delete group:', error);
-            setError(`Failed to delete group: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    }, [deleteGroup, setError, allGroups, lists, setLists, saveTask]);
-
-    const handleRenameGroup = useCallback(async (groupId: string, newName: string) => {
-        try {
-            console.log('Renaming group:', groupId, 'to:', newName);
-
-            // Find the group to get its current title
-            const group = allGroups.find((g: { id: string; }) => g.id === groupId);
-            if (!group) {
-                console.error('Group not found:', groupId);
-                return;
-            }
-
-            const oldName = group.title;
-
-            // Find tasks that use this group and update them
-            const affectedTasks = lists.flatMap(list => list.tasks).filter(task => task.group === oldName);
-
-            if (affectedTasks.length > 0) {
-                const updatedTasks = affectedTasks.map(task => ({
-                    ...task,
-                    group: newName, // Update to new group name
-                }));
-
-                // Update the lists state
-                startTransition(() => {
-                    setLists(prev => prev.map(list => ({
-                        ...list,
-                        tasks: list.tasks.map(task =>
-                            updatedTasks.find(updatedTask => updatedTask.id === task.id) || task
-                        )
-                    })));
-                });
-
-                // Save the updated tasks
-                for (const task of updatedTasks) {
-                    await saveTask(task);
-                }
-            }
-
-            await renameGroup(groupId, newName);
-        } catch (error) {
-            console.error('Failed to rename group:', error);
-            setError(`Failed to rename group: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    }, [renameGroup, setError, allGroups, lists, setLists, saveTask]);
 
     // Enhanced drag and drop
     const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -431,6 +310,12 @@ export function useTaskManager() {
         };
     }, [lists, performanceMonitor]);
 
+    // Create group handler
+    const handleCreateGroup = useCallback(async () => {
+        console.log("Create new group");
+        // Implementation would go here
+    }, []);
+
     return {
         // Core state
         authState,
@@ -441,7 +326,6 @@ export function useTaskManager() {
         filteredLists,
         loading,
         error,
-        setError,
 
         // Filter state
         searchTerm,
@@ -470,7 +354,6 @@ export function useTaskManager() {
         isDialogOpen,
         setIsDialogOpen,
         setSelectedTask,
-        setLists,
 
         // Archive drawer
         showArchiveDrawer,
@@ -487,16 +370,11 @@ export function useTaskManager() {
         handleDragEnd,
         handleQuickAddTask,
         handleTaskClick,
+        handleCreateGroup,
         handleDeleteTask,
         handleDuplicateTask,
         handleMove,
         handleSaveTaskDetail,
-
-        // Group management handlers - These were missing!
-        handleCreateGroup,
-        handleDeleteGroup,
-        handleRenameGroup,
-        allGroups,
 
         // Folder operations
         handleCopyTasks,

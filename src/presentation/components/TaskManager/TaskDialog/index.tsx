@@ -25,14 +25,17 @@ import {
   getTransitionScenarios,
   executeStatusTransition as executeTransition,
 } from "./utils/taskTransitions";
-import { GoogleTasksStatusHandler } from "./utils/GGTaskStatusHandler";
-import GroupSection from "./components/GroupSection";
+import {
+  GoogleTasksStatusHandler,
+  handleGoogleTasksStatusChange,
+  createRestoreConfirmationDialog,
+} from "./utils/GGTaskStatusHandler";
 
 interface TaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
-  groups: { id: string; title: string; emoji: string }[];
+  folders: { id: string; title: string; emoji: string }[];
   onSave: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onDuplicate: (task: Task) => void;
@@ -59,9 +62,6 @@ interface TaskDialogProps {
   startTransition?: (callback: () => void) => void;
   setSelectedTask?: (task: Task | null) => void;
   setIsDialogOpen?: (isOpen: boolean) => void;
-  onCreateGroup?: (groupName: string, emoji?: string) => void;
-  onDeleteGroup?: (groupId: string) => void;
-  onRenameGroup?: (groupId: string, newName: string) => void;
 }
 
 // Restore Confirmation Dialog Component
@@ -175,7 +175,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
   onClose,
   task,
-  groups,
+  folders,
   onSave,
   onDelete,
   onDuplicate,
@@ -194,8 +194,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   startTransition,
   setSelectedTask,
   setIsDialogOpen,
-  onCreateGroup,
-  onDeleteGroup,
 }) => {
   const [editedTask, setEditedTask] = useState<Task | null>(task);
   const [newSubtask, setNewSubtask] = useState("");
@@ -545,7 +543,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 // Remove original task from done list if deletion was successful
                 if (!result.originalTaskKept && doneListIdx !== -1) {
                   copy[doneListIdx].tasks = copy[doneListIdx].tasks.filter(
-                    (t: { id: string }) => t.id !== editedTask.id
+                    (t) => t.id !== editedTask.id
                   );
                 }
 
@@ -789,14 +787,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   editedTask={editedTask}
                   handleChange={handleChange}
                   isCreateMode={isCreateMode}
-                />
-                <GroupSection
-                  editedTask={editedTask}
-                  groups={groups}
-                  handleChange={handleChange}
-                  onCreateGroup={onCreateGroup}
-                  onDeleteGroup={onDeleteGroup}
-                  allTasks={availableTasks}
                 />
                 <TagsSection
                   editedTask={editedTask}
