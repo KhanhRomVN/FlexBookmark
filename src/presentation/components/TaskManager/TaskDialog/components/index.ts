@@ -6,3 +6,4 @@ export { default as TagsSection } from './TagsSection';
 export { default as SubtasksSection } from './SubtasksSection';
 export { default as AttachmentsSection } from './AttachmentsSection';
 export { default as ActivityLogSection } from './ActivityLogSection';
+export { default as DateTimeStatusDialog } from './DateTimeStatusDialog';

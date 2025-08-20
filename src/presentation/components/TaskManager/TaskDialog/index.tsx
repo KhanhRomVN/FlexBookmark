@@ -22,6 +22,7 @@ import {
   SubtasksSection,
   AttachmentsSection,
   ActivityLogSection,
+  DateTimeStatusDialog,
 } from "./components";
 import {
   getTransitionScenarios,
@@ -216,6 +217,10 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const [pendingRestoreStatus, setPendingRestoreStatus] =
     useState<Status | null>(null);
 
+  const [showDateTimeDialog, setShowDateTimeDialog] = useState(false);
+  const [pendingDateTimeStatus, setPendingDateTimeStatus] =
+    useState<Status | null>(null);
+
   const attachmentRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -367,6 +372,25 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const handleStatusChange = async (newStatus: Status) => {
     if (!editedTask) return;
 
+    if (
+      (editedTask.status === "backlog" && newStatus === "in-progress") ||
+      (editedTask.status === "todo" && newStatus === "in-progress") ||
+      (editedTask.status === "backlog" && newStatus === "todo")
+    ) {
+      setPendingDateTimeStatus(newStatus);
+      setShowDateTimeDialog(true);
+      return;
+    }
+    if (
+      (editedTask.status === "backlog" && newStatus === "in-progress") ||
+      (editedTask.status === "todo" && newStatus === "in-progress") ||
+      (editedTask.status === "backlog" && newStatus === "todo")
+    ) {
+      setPendingDateTimeStatus(newStatus);
+      setShowDateTimeDialog(true);
+      return;
+    }
+
     if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
       setPendingTransition({
         from: editedTask.status,
@@ -500,6 +524,28 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         )
       );
     }, [availableTasks, currentTask.id]);
+
+    const handleDateTimeConfirm = (
+      startDate: Date | null,
+      dueDate: Date | null,
+      status: Status
+    ) => {
+      if (!editedTask) return;
+
+      const updatedTask = {
+        ...editedTask,
+        startDate,
+        dueDate,
+        status,
+        startTime: startDate,
+        dueTime: dueDate,
+      };
+
+      setEditedTask(updatedTask);
+      onSave(updatedTask);
+      setShowDateTimeDialog(false);
+      setPendingDateTimeStatus(null);
+    };
 
     if (linkedTasks.length === 0) return null;
 
@@ -713,6 +759,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
   const metadataInfo = calculateTaskMetadataSize(editedTask);
 
+  function handleDateTimeConfirm(
+    startDate: Date | null,
+    dueDate: Date | null,
+    status: Status
+  ): void {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
       <TransitionConfirmationDialog
@@ -720,6 +774,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
         transition={pendingTransition}
         onConfirm={handleTransitionConfirm}
         onCancel={handleTransitionCancel}
+      />
+
+      <DateTimeStatusDialog
+        isOpen={showDateTimeDialog}
+        onClose={() => setShowDateTimeDialog(false)}
+        onConfirm={handleDateTimeConfirm}
+        currentTask={editedTask!}
+        targetStatus={pendingDateTimeStatus!}
       />
 
       {/* Google Tasks Restore Confirmation Dialog */}
