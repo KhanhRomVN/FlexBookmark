@@ -1,3 +1,5 @@
+// src/presentation/components/TaskManager/TaskHeader.tsx
+
 import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
@@ -10,15 +12,16 @@ import {
   Tag,
   CheckCircle,
   ArrowUpDown,
-  User,
   MoreVertical,
   Archive,
   Palette,
   LayoutGrid,
   List,
+  Workflow,
+  Table,
 } from "lucide-react";
 
-export type LayoutType = "kanban" | "list";
+export type LayoutType = "kanban" | "list" | "flowchart" | "table";
 
 interface TaskHeaderProps {
   authState: {
@@ -63,10 +66,6 @@ const folders = [
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
   authState,
-  totalTasks,
-  completedTasks,
-  urgentTasks,
-  overdueTasks,
   archivedTasks,
   loading,
   error,
@@ -168,6 +167,28 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
               >
                 <List className="w-4 h-4" />
                 <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                onClick={() => setLayoutType("flowchart")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
+                  layoutType === "flowchart"
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <Workflow className="w-4 h-4" />
+                <span className="hidden sm:inline">Flowchart</span>
+              </button>
+              <button
+                onClick={() => setLayoutType("table")}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
+                  layoutType === "table"
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <Table className="w-4 h-4" />
+                <span className="hidden sm:inline">Table</span>
               </button>
             </div>
 

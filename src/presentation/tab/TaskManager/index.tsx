@@ -8,8 +8,12 @@ import TaskHeader, {
 } from "../../components/TaskManager/TasKHeader";
 import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
-import KanbanLayout from "./layout/KanbanBoardLayout";
+import KanbanLayout from "./layout/KanbanLayout";
 import ListLayout from "./layout/ListLayout";
+import TableLayout from "./layout/TableLayout";
+
+import FlowchartLayout from "./layout/FlowchartLayout";
+
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
@@ -396,8 +400,16 @@ const TaskManager: React.FC = () => {
           onClearFilters={handleClearFilters}
         />
 
-        {/* Render layout based on selected type */}
-        {layoutType === "kanban" ? (
+        {layoutType === "table" ? (
+          <TableLayout
+            tasks={allTasks}
+            onTaskClick={handleTaskClickWrapper}
+            onEditTask={handleTaskClickWrapper}
+            onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
+            onDeleteTask={handleDeleteTask}
+            onToggleComplete={handleToggleComplete}
+          />
+        ) : layoutType === "kanban" ? (
           <KanbanLayout
             filteredLists={mainBoardLists}
             onTaskClick={handleTaskClickWrapper}
@@ -415,7 +427,7 @@ const TaskManager: React.FC = () => {
             onDeleteTasks={handleDeleteTasks}
             onSortTasks={handleSortTasks}
           />
-        ) : (
+        ) : layoutType === "list" ? (
           <ListLayout
             tasks={allTasks}
             onTaskClick={handleTaskClickWrapper}
@@ -424,6 +436,24 @@ const TaskManager: React.FC = () => {
             onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
             onDeleteTask={handleDeleteTask}
             onToggleComplete={handleToggleComplete}
+          />
+        ) : (
+          <FlowchartLayout
+            filteredLists={mainBoardLists}
+            onTaskClick={handleTaskClickWrapper}
+            onDragEnd={handleDragEnd}
+            quickAddStatus={quickAddStatus}
+            setQuickAddStatus={(status) =>
+              setQuickAddStatus(status as Status | null)
+            }
+            quickAddTitle={quickAddTitle}
+            setQuickAddTitle={setQuickAddTitle}
+            handleQuickAddTask={(status) => {
+              void handleQuickAddTask(status as Status);
+            }}
+            onArchiveTasks={handleArchiveTasks}
+            onDeleteTasks={handleDeleteTasks}
+            onSortTasks={handleSortTasks}
           />
         )}
       </div>
