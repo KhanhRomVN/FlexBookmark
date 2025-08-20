@@ -667,24 +667,21 @@ export const executeStatusTransition = (
     let updatedTask = { ...task, status: newStatus };
     const currentDateTime = now;
 
-    // NEW: Handle missing actual start time/date when transitioning to in-progress
+    // Handle missing actual start time/date when transitioning to in-progress
     if (newStatus === "in-progress") {
         if (selectedOptions["use_planned_as_actual"] === "use_planned_as_actual") {
-            // Use planned start time/date as actual
             updatedTask.actualStartTime = updatedTask.startTime;
             updatedTask.actualStartDate = updatedTask.startDate;
         } else if (selectedOptions["set_actual_to_now"] === "set_actual_to_now") {
-            // Set actual start time/date to now
             updatedTask.actualStartTime = currentDateTime;
             updatedTask.actualStartDate = currentDateTime;
         } else if (!updatedTask.actualStartTime || !updatedTask.actualStartDate) {
-            // Default behavior if no option selected but fields are missing
             updatedTask.actualStartTime = updatedTask.startTime || currentDateTime;
             updatedTask.actualStartDate = updatedTask.startDate || currentDateTime;
         }
     }
 
-    // Handle transition OUT of old status (cleanup)
+    // Handle transition OUT of old status
     switch (oldStatus) {
         case "in-progress":
             if (newStatus !== "done" && newStatus !== "overdue") {
@@ -702,53 +699,46 @@ export const executeStatusTransition = (
 
     // Handle transition INTO new status with selected options
     switch (`${oldStatus}-${newStatus}`) {
-        // === OVERDUE TRANSITIONS ===
+        // OVERDUE transitions
         case "overdue-backlog":
             updatedTask.actualStartDate = null;
             updatedTask.actualStartTime = null;
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
             break;
-
         case "overdue-todo":
             updatedTask.actualStartDate = null;
             updatedTask.actualStartTime = null;
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
-
             if (selectedOptions["update_start"] === "update_start") {
                 const futureDate = new Date(now.getTime() + 60 * 60 * 1000);
                 updatedTask.startDate = futureDate;
                 updatedTask.startTime = null;
             }
             break;
-
         case "overdue-in-progress":
             if (!updatedTask.actualStartDate || selectedOptions["record_start"] === "record_start") {
                 updatedTask.actualStartDate = currentDateTime;
                 updatedTask.actualStartTime = currentDateTime;
             }
             break;
-
         case "overdue-done":
             if (!updatedTask.actualStartDate) {
-                if (selectedOptions["manual_start"] === "manual_start") {
-                    // Actual start will be set from form data
-                } else {
+                if (selectedOptions["manual_start"] !== "manual_start") {
                     updatedTask.actualStartDate = currentDateTime;
                     updatedTask.actualStartTime = currentDateTime;
                 }
             }
             updatedTask.actualEndDate = currentDateTime;
             updatedTask.actualEndTime = currentDateTime;
-
             if (selectedOptions["update_due_to_now"] === "update_due_to_now") {
                 updatedTask.dueDate = currentDateTime;
                 updatedTask.dueTime = null;
             }
             break;
 
-        // === DONE TRANSITIONS ===
+        // DONE transitions
         case "done-backlog":
             updatedTask.startDate = null;
             updatedTask.startTime = null;
@@ -759,59 +749,49 @@ export const executeStatusTransition = (
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
             break;
-
         case "done-todo":
             updatedTask.actualStartDate = null;
             updatedTask.actualStartTime = null;
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
-
-            // Auto-adjust start time to future if needed
             if (!updatedTask.startDate || new Date(updatedTask.startDate) <= now) {
                 const futureDate = new Date(now.getTime() + 60 * 60 * 1000);
                 updatedTask.startDate = futureDate;
                 updatedTask.startTime = null;
             }
             break;
-
         case "done-in-progress":
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
-
             if (selectedOptions["reset_start"] === "reset_start") {
                 updatedTask.actualStartDate = currentDateTime;
                 updatedTask.actualStartTime = currentDateTime;
             }
-            // Auto-adjust planned start if needed
             if (!updatedTask.startDate || new Date(updatedTask.startDate) > now) {
                 updatedTask.startDate = currentDateTime;
                 updatedTask.startTime = null;
             }
-            // Auto-adjust due date if it would cause immediate overdue
             if (updatedTask.dueDate && new Date(updatedTask.dueDate) < now) {
                 const futureDate = new Date(now.getTime() + 60 * 60 * 1000);
                 updatedTask.dueDate = futureDate;
                 updatedTask.dueTime = null;
             }
             break;
-
         case "done-overdue":
             updatedTask.actualEndDate = null;
             updatedTask.actualEndTime = null;
-
             if (selectedOptions["set_past_due"] === "set_past_due") {
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
                 updatedTask.dueDate = pastDate;
                 updatedTask.dueTime = null;
             } else if (!updatedTask.dueDate || new Date(updatedTask.dueDate) > now) {
-                // Force past due date if not already past
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
                 updatedTask.dueDate = pastDate;
                 updatedTask.dueTime = null;
             }
             break;
 
-        // === IN-PROGRESS TRANSITIONS ===
+        // IN-PROGRESS transitions
         case "in-progress-backlog":
             updatedTask.startDate = null;
             updatedTask.startTime = null;
@@ -820,47 +800,40 @@ export const executeStatusTransition = (
             updatedTask.actualStartDate = null;
             updatedTask.actualStartTime = null;
             break;
-
         case "in-progress-todo":
             if (selectedOptions["suggest_backlog"] === "suggest_backlog") {
-                // Redirect to backlog transition
                 return executeStatusTransition(task, oldStatus, "backlog", {}, isCreateMode);
             }
             updatedTask.actualStartDate = null;
             updatedTask.actualStartTime = null;
             break;
-
         case "in-progress-done":
             updatedTask.actualEndDate = currentDateTime;
             updatedTask.actualEndTime = currentDateTime;
-
             if (selectedOptions["update_due"] === "update_due") {
                 updatedTask.dueDate = currentDateTime;
                 updatedTask.dueTime = null;
             }
             break;
-
         case "in-progress-overdue":
             if (selectedOptions["new_due"] === "new_due") {
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
                 updatedTask.dueDate = pastDate;
                 updatedTask.dueTime = null;
             } else if (!updatedTask.dueDate || new Date(updatedTask.dueDate) > now) {
-                // Force past due date
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
                 updatedTask.dueDate = pastDate;
                 updatedTask.dueTime = null;
             }
             break;
 
-        // === TODO TRANSITIONS ===
+        // TODO transitions
         case "todo-backlog":
             updatedTask.startDate = null;
             updatedTask.startTime = null;
             updatedTask.dueDate = null;
             updatedTask.dueTime = null;
             break;
-
         case "todo-in-progress":
             if (selectedOptions["start_early"] === "start_early" || selectedOptions["start_now"] === "start_now") {
                 updatedTask.actualStartDate = currentDateTime;
@@ -873,7 +846,6 @@ export const executeStatusTransition = (
                 updatedTask.actualStartTime = currentDateTime;
             }
             break;
-
         case "todo-done":
             if (selectedOptions["auto_record"] === "auto_record") {
                 updatedTask.actualStartDate = currentDateTime;
@@ -881,9 +853,7 @@ export const executeStatusTransition = (
                 updatedTask.actualEndDate = currentDateTime;
                 updatedTask.actualEndTime = currentDateTime;
             }
-            // Manual times will be set from form data
             break;
-
         case "todo-overdue":
             if (selectedOptions["set_past_due"] === "set_past_due" || selectedOptions["force_past_due"] === "force_past_due") {
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
@@ -892,10 +862,9 @@ export const executeStatusTransition = (
             }
             break;
 
-        // === BACKLOG TRANSITIONS ===
+        // BACKLOG transitions
         case "backlog-todo":
             if (selectedOptions["switch_to_progress"] === "switch_to_progress") {
-                // Redirect to in-progress transition
                 return executeStatusTransition(task, oldStatus, "in-progress", { record_start: "record_start" }, isCreateMode);
             }
             if (!updatedTask.startDate || selectedOptions["set_start"] === "set_start" || selectedOptions["update_start"] === "update_start") {
@@ -904,12 +873,10 @@ export const executeStatusTransition = (
                 updatedTask.startTime = null;
             }
             break;
-
         case "backlog-in-progress":
             if (selectedOptions["record_start"] === "record_start") {
                 updatedTask.actualStartDate = currentDateTime;
                 updatedTask.actualStartTime = currentDateTime;
-                // Auto-set planned start if missing
                 if (!updatedTask.startDate) {
                     updatedTask.startDate = currentDateTime;
                     updatedTask.startTime = null;
@@ -922,7 +889,6 @@ export const executeStatusTransition = (
                 updatedTask.actualStartTime = currentDateTime;
             }
             break;
-
         case "backlog-done":
             if (selectedOptions["auto_record"] === "auto_record") {
                 updatedTask.startDate = currentDateTime;
@@ -932,15 +898,12 @@ export const executeStatusTransition = (
                 updatedTask.actualEndDate = currentDateTime;
                 updatedTask.actualEndTime = currentDateTime;
             }
-            // Manual times will be set from form data
             break;
-
         case "backlog-overdue":
             if (selectedOptions["set_past_due"] === "set_past_due" || selectedOptions["force_past_due"] === "force_past_due") {
                 const pastDate = new Date(now.getTime() - 60 * 60 * 1000);
                 updatedTask.dueDate = pastDate;
                 updatedTask.dueTime = null;
-                // Ensure start date exists and is before due date
                 if (!updatedTask.startDate) {
                     const startDate = new Date(pastDate.getTime() - 60 * 60 * 1000);
                     updatedTask.startDate = startDate;
@@ -950,25 +913,21 @@ export const executeStatusTransition = (
             break;
     }
 
-    // Add activity log entry
+    // Add activity log entry (without saving)
     if (!isCreateMode) {
         const activityEntry = {
-            id: `${currentDateTime.getTime()}-${Math.random()
-                .toString(36)
-                .substring(2, 8)}`,
+            id: `${currentDateTime.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
             details: `Status changed from "${oldStatus}" to "${newStatus}"`,
             action: "status_changed" as const,
             userId: "user",
             timestamp: currentDateTime,
         };
-        updatedTask.activityLog = [
-            ...(updatedTask.activityLog || []),
-            activityEntry,
-        ];
+        updatedTask.activityLog = [...(updatedTask.activityLog || []), activityEntry];
     }
 
     return updatedTask as Task;
 };
+
 
 export const formatDisplayDate = (date: Date | null) => {
     if (!date) return "Select date";

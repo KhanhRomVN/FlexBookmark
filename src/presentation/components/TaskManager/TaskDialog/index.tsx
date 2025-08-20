@@ -175,7 +175,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
   onClose,
   task,
-  folders,
   onSave,
   onDelete,
   onDuplicate,
@@ -203,7 +202,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     type: "file" as "image" | "video" | "audio" | "file" | "other",
   });
   const [newTag, setNewTag] = useState("");
-  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  const [, setShowAttachmentOptions] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [showTransitionDialog, setShowTransitionDialog] = useState(false);
   const [pendingTransition, setPendingTransition] = useState<{
@@ -525,28 +524,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       );
     }, [availableTasks, currentTask.id]);
 
-    const handleDateTimeConfirm = (
-      startDate: Date | null,
-      dueDate: Date | null,
-      status: Status
-    ) => {
-      if (!editedTask) return;
-
-      const updatedTask = {
-        ...editedTask,
-        startDate,
-        dueDate,
-        status,
-        startTime: startDate,
-        dueTime: dueDate,
-      };
-
-      setEditedTask(updatedTask);
-      onSave(updatedTask);
-      setShowDateTimeDialog(false);
-      setPendingDateTimeStatus(null);
-    };
-
     if (linkedTasks.length === 0) return null;
 
     return (
@@ -759,13 +736,26 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
   const metadataInfo = calculateTaskMetadataSize(editedTask);
 
-  function handleDateTimeConfirm(
+  const handleDateTimeConfirm = (
     startDate: Date | null,
     dueDate: Date | null,
     status: Status
-  ): void {
-    throw new Error("Function not implemented.");
-  }
+  ) => {
+    if (!editedTask) return;
+
+    const updatedTask = {
+      ...editedTask,
+      startDate,
+      dueDate,
+      status,
+      startTime: startDate,
+      dueTime: dueDate,
+    };
+
+    setEditedTask(updatedTask);
+    setShowDateTimeDialog(false);
+    setPendingDateTimeStatus(null);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
