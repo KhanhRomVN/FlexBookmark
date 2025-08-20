@@ -42,6 +42,35 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
         return scenarios;
     }
 
+    // NEW: Check for missing required fields when transitioning to in-progress
+    if (to === "in-progress") {
+        const hasRequiredFields = task.startTime && task.startDate && task.actualStartTime && task.actualStartDate;
+        const hasStartButNoActual = (task.startTime || task.startDate) && (!task.actualStartTime || !task.actualStartDate);
+
+        if (!hasRequiredFields) {
+            scenarios.push({
+                title: "Missing Required Fields",
+                options: [
+                    {
+                        label: "Use planned start as actual start time",
+                        value: "use_planned_as_actual",
+                        description: "Set actualStartTime/Date to match startTime/Date"
+                    },
+                    {
+                        label: "Set actual start time to now",
+                        value: "set_actual_to_now",
+                        description: "Record current time as actual start time"
+                    },
+                    {
+                        label: "Cancel transition",
+                        value: "cancel"
+                    }
+                ]
+            });
+            return scenarios; // Return early to prevent other scenarios
+        }
+    }
+
     switch (`${from}-${to}`) {
         // === OVERDUE TRANSITIONS ===
         case "overdue-backlog":
@@ -637,6 +666,23 @@ export const executeStatusTransition = (
     const now = new Date();
     let updatedTask = { ...task, status: newStatus };
     const currentDateTime = now;
+
+    // NEW: Handle missing actual start time/date when transitioning to in-progress
+    if (newStatus === "in-progress") {
+        if (selectedOptions["use_planned_as_actual"] === "use_planned_as_actual") {
+            // Use planned start time/date as actual
+            updatedTask.actualStartTime = updatedTask.startTime;
+            updatedTask.actualStartDate = updatedTask.startDate;
+        } else if (selectedOptions["set_actual_to_now"] === "set_actual_to_now") {
+            // Set actual start time/date to now
+            updatedTask.actualStartTime = currentDateTime;
+            updatedTask.actualStartDate = currentDateTime;
+        } else if (!updatedTask.actualStartTime || !updatedTask.actualStartDate) {
+            // Default behavior if no option selected but fields are missing
+            updatedTask.actualStartTime = updatedTask.startTime || currentDateTime;
+            updatedTask.actualStartDate = updatedTask.startDate || currentDateTime;
+        }
+    }
 
     // Handle transition OUT of old status (cleanup)
     switch (oldStatus) {

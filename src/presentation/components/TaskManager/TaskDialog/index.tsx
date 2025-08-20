@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Textarea } from "../../ui/textarea";
 import { Task, Status, Subtask, Attachment } from "../../../types/task";
 import {
@@ -9,6 +9,8 @@ import {
   Move,
   Archive,
   AlertTriangle,
+  ExternalLink,
+  Link,
 } from "lucide-react";
 import { calculateTaskMetadataSize } from "../../../../utils/GGTask";
 import {
@@ -25,11 +27,7 @@ import {
   getTransitionScenarios,
   executeStatusTransition as executeTransition,
 } from "./utils/taskTransitions";
-import {
-  GoogleTasksStatusHandler,
-  handleGoogleTasksStatusChange,
-  createRestoreConfirmationDialog,
-} from "./utils/GGTaskStatusHandler";
+import { GoogleTasksStatusHandler } from "./utils/GGTaskStatusHandler";
 import CollectionSection from "./components/CollectionSection";
 
 interface TaskDialogProps {
@@ -369,6 +367,32 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const handleStatusChange = async (newStatus: Status) => {
     if (!editedTask) return;
 
+    if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
+      setPendingTransition({
+        from: editedTask.status,
+        to: newStatus,
+        scenarios: [
+          {
+            title: "Incomplete Required Subtasks",
+            options: [
+              {
+                label: "Complete the task anyway",
+                value: "force_complete",
+                description:
+                  "Mark the task as done even though some required subtasks are incomplete",
+              },
+              {
+                label: "Cancel",
+                value: "cancel",
+              },
+            ],
+          },
+        ],
+      });
+      setShowTransitionDialog(true);
+      return;
+    }
+
     // Get transition scenarios
     const scenarios = getTransitionScenarios(
       editedTask.status,
@@ -433,6 +457,18 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   ) => {
     if (!editedTask) return;
 
+    if (selectedOptions["Incomplete Required Subtasks"] === "force_complete") {
+      const updatedTask = { ...editedTask, status: newStatus };
+      setEditedTask(updatedTask);
+      onSave(updatedTask);
+      return;
+    }
+
+    // If user chose to cancel, do nothing
+    if (selectedOptions["Incomplete Required Subtasks"] === "cancel") {
+      return;
+    }
+
     const updatedTask = executeTransition(
       editedTask,
       oldStatus,
@@ -443,6 +479,68 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
     setEditedTask(updatedTask);
     onSave(updatedTask);
+  };
+
+  const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
+    if (!task?.subtasks) return false;
+    return task.subtasks.some(
+      (subtask) => subtask.requiredCompleted && !subtask.completed
+    );
+  };
+
+  const LinkedTasksSection: React.FC<{
+    currentTask: Task;
+    availableTasks: Task[];
+    onTaskClick: (taskId: string) => void;
+  }> = ({ currentTask, availableTasks, onTaskClick }) => {
+    const linkedTasks = useMemo(() => {
+      return availableTasks.filter((task) =>
+        task.subtasks?.some(
+          (subtask) => subtask.linkedTaskId === currentTask.id
+        )
+      );
+    }, [availableTasks, currentTask.id]);
+
+    if (linkedTasks.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-lg text-text-default">
+            Linked From
+          </h3>
+          <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
+        </div>
+
+        <div className="space-y-2">
+          {linkedTasks.map((task) => (
+            <div
+              key={task.id}
+              className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+              onClick={() => onTaskClick(task.id)}
+            >
+              <Link size={14} className="text-blue-600 dark:text-blue-400" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  {task.title}
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400">
+                  {
+                    task.subtasks?.find(
+                      (st) => st.linkedTaskId === currentTask.id
+                    )?.title
+                  }
+                </div>
+              </div>
+              <ExternalLink
+                size={14}
+                className="text-blue-600 dark:text-blue-400"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   // In TaskDialog/index.tsx - Updated handleTransitionConfirm function
@@ -830,8 +928,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
           {/* Right Column - Activity Log */}
           {!isCreateMode && (
-            <div className="w-1/3 p-6 border-l border-border-default">
-              <div className="flex items-center gap-2 mb-6">
+            <div className="w-1/3 p-6 border-l border-border-default space-y-6">
+              <LinkedTasksSection
+                currentTask={editedTask}
+                availableTasks={filteredAvailableTasks}
+                onTaskClick={handleLinkedTaskClick}
+              />
+
+              <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-lg text-text-default">
                   Activity Log
                 </h3>

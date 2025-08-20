@@ -9,6 +9,7 @@ export interface Subtask {
     description?: string;
     completed: boolean;
     linkedTaskId?: string;
+    requiredCompleted?: boolean;
 }
 
 export interface Attachment {

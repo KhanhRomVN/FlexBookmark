@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, X, Check, Link, ExternalLink, Search } from "lucide-react";
+import {
+  Plus,
+  X,
+  Check,
+  Link,
+  ExternalLink,
+  Search,
+  Star,
+  Lock,
+} from "lucide-react";
 import { Subtask, Task } from "../../../../types/task";
 
 interface SubtasksSectionProps {
@@ -17,6 +26,7 @@ interface NewSubtaskForm {
   title: string;
   description: string;
   linkedTaskId: string | null;
+  requiredCompleted: boolean;
 }
 
 const SubtasksSection: React.FC<SubtasksSectionProps> = ({
@@ -34,6 +44,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     title: "",
     description: "",
     linkedTaskId: null,
+    requiredCompleted: false,
   });
 
   // Dropdown states
@@ -75,7 +86,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   // Handle new subtask form changes
   const handleFormChange = (
     field: keyof NewSubtaskForm,
-    value: string | null
+    value: string | null | boolean
   ) => {
     setNewSubtaskForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -99,6 +110,11 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     setSearchQuery("");
   };
 
+  // Add required completion handler
+  const handleRequiredToggle = (id: string, required: boolean) => {
+    handleSubtaskChange(id, "requiredCompleted", required);
+  };
+
   // Enhanced subtask addition
   const handleEnhancedAddSubtask = () => {
     if (!newSubtaskForm.title.trim()) return;
@@ -109,6 +125,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       description: newSubtaskForm.description || undefined,
       completed: false,
       linkedTaskId: newSubtaskForm.linkedTaskId || undefined,
+      requiredCompleted: newSubtaskForm.requiredCompleted,
     };
 
     // Add to subtasks array
@@ -141,6 +158,11 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                 newSubtaskForm.linkedTaskId
               );
             }
+            handleSubtaskChange(
+              lastSubtask.id,
+              "requiredCompleted",
+              newSubtaskForm.requiredCompleted
+            );
           }
         }
       }, 0);
@@ -151,6 +173,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       title: "",
       description: "",
       linkedTaskId: null,
+      requiredCompleted: false,
     });
     setSearchQuery("");
   };
@@ -159,6 +182,18 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   const handleEditingTaskSearch = (subtaskId: string, value: string) => {
     setEditingSearchQuery(value);
     setEditingTaskDropdown(subtaskId);
+  };
+
+  const handleSubtaskCompletion = (id: string, completed: boolean) => {
+    if (completed) {
+      // Check if this is a required subtask
+      const subtask = editedTask.subtasks?.find((st) => st.id === id);
+      if (subtask?.requiredCompleted) {
+        handleSubtaskChange(id, "completed", true);
+      }
+    } else {
+      handleSubtaskChange(id, "completed", completed);
+    }
   };
 
   // Handle task selection for editing subtask
@@ -242,40 +277,69 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
           return (
             <div
               key={subtask.id}
-              className="flex items-start gap-4 p-4 bg-button-secondBg hover:bg-button-secondBgHover rounded-lg transition-all duration-200 border border-border-default"
+              className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 group"
             >
-              <button
-                onClick={() =>
-                  handleSubtaskChange(
-                    subtask.id,
-                    "completed",
-                    !subtask.completed
-                  )
-                }
-                className={`h-5 w-5 rounded-lg flex items-center justify-center transition-all duration-200 mt-1 ${
-                  subtask.completed
-                    ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md"
-                    : "border-2 border-gray-300 dark:border-gray-600 hover:border-green-400"
-                }`}
-              >
-                {subtask.completed && <Check size={16} />}
-              </button>
+              {/* Checkbox with required indicator */}
+              <div className="flex flex-col items-center gap-2 mt-1">
+                <button
+                  onClick={() =>
+                    handleSubtaskChange(
+                      subtask.id,
+                      "completed",
+                      !subtask.completed
+                    )
+                  }
+                  className={`h-5 w-5 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    subtask.completed
+                      ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md"
+                      : "border-2 border-gray-300 dark:border-gray-600 hover:border-green-400"
+                  }`}
+                >
+                  {subtask.completed && <Check size={16} />}
+                </button>
+                {subtask.requiredCompleted && (
+                  <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                    <Lock size={10} />
+                    <span>Required</span>
+                  </div>
+                )}
+              </div>
 
               <div className="flex-1 space-y-3">
-                {/* Title */}
-                <div>
+                {/* Title with required indicator */}
+                <div className="flex items-center gap-2">
                   <input
                     value={subtask.title}
                     onChange={(e) =>
                       handleSubtaskChange(subtask.id, "title", e.target.value)
                     }
-                    className={`w-full bg-transparent border-none focus:ring-0 font-medium transition-all ${
+                    className={`flex-1 bg-transparent border-none focus:ring-0 font-medium transition-all ${
                       subtask.completed
                         ? "text-text-secondary line-through"
                         : "text-text-default"
                     }`}
                     placeholder="Subtask title"
                   />
+                  <button
+                    onClick={() =>
+                      handleRequiredToggle(
+                        subtask.id,
+                        !subtask.requiredCompleted
+                      )
+                    }
+                    className={`p-1 rounded-lg transition-colors ${
+                      subtask.requiredCompleted
+                        ? "text-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                        : "text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    }`}
+                    title={
+                      subtask.requiredCompleted
+                        ? "Remove required completion"
+                        : "Mark as required completion"
+                    }
+                  >
+                    <Lock size={14} />
+                  </button>
                 </div>
 
                 {/* Description */}
@@ -457,6 +521,32 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             />
           </div>
 
+          {/* Required Completion Toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() =>
+                handleFormChange(
+                  "requiredCompleted",
+                  !newSubtaskForm.requiredCompleted
+                )
+              }
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                newSubtaskForm.requiredCompleted
+                  ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+              }`}
+            >
+              <Lock size={14} />
+              <span className="text-sm">Required for completion</span>
+            </button>
+            {newSubtaskForm.requiredCompleted && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                This subtask must be completed before the main task can be
+                marked as done.
+              </span>
+            )}
+          </div>
+
           {/* Linked Task Field */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -576,6 +666,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                   title: "",
                   description: "",
                   linkedTaskId: null,
+                  requiredCompleted: false,
                 });
                 setSearchQuery("");
                 setShowTaskDropdown(false);
@@ -590,7 +681,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
         {/* Helper text */}
         <div className="text-xs text-gray-500 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
           💡 <strong>Pro tip:</strong> Link subtasks to other tasks to create
-          dependencies and track related work across your project.
+          dependencies and track related work across your project. Use the lock
+          icon to mark critical subtasks as required for completion.
         </div>
       </div>
     </div>
