@@ -249,7 +249,11 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   }, []);
 
   const handleChange = (field: keyof Task, value: any) => {
-    setEditedTask((prev) => ({ ...prev!, [field]: value }));
+    setEditedTask((prev) => {
+      const updated = { ...prev!, [field]: value };
+      // Collection sẽ được xử lý thông qua metadata trong notes
+      return updated;
+    });
   };
 
   const handleSubtaskChange = (
@@ -544,7 +548,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 // Remove original task from done list if deletion was successful
                 if (!result.originalTaskKept && doneListIdx !== -1) {
                   copy[doneListIdx].tasks = copy[doneListIdx].tasks.filter(
-                    (t) => t.id !== editedTask.id
+                    (t: { id: string }) => t.id !== editedTask.id
                   );
                 }
 

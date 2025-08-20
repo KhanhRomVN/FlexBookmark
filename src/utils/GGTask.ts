@@ -125,117 +125,115 @@ async function makeAuthenticatedRequest(
 // Helper to create simplified task notes with full format
 function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: number; isOverLimit: boolean } {
     try {
-        // Build complete metadata object with consistent format
+        // Build complete metadata object với định dạng thống nhất
         const metadata: any = {
             // Core fields
             description: task.description || "",
-            status: task.status || 'backlog',
+            status: task.status || "backlog",
             priority: task.priority || "",
+            collection: task.collection || "", // Thêm collection
         };
 
-        // Format dates and times consistently - CHỈ KHI CÓ GIÁ TRỊ
+        // Format thời gian và ngày tháng nhất quán - chỉ khi có giá trị
         if (task.startTime && task.startTime instanceof Date && !isNaN(task.startTime.getTime())) {
-            const timeStr = task.startTime.toISOString().split('T')[1];
+            const timeStr = task.startTime.toISOString().split("T")[1];
             metadata.startTime = timeStr;
         } else {
-            metadata.startTime = ""; // Để trống
+            metadata.startTime = "";
         }
 
         if (task.dueTime && task.dueTime instanceof Date && !isNaN(task.dueTime.getTime())) {
-            const timeStr = task.dueTime.toISOString().split('T')[1];
+            const timeStr = task.dueTime.toISOString().split("T")[1];
             metadata.dueTime = timeStr;
         } else {
-            metadata.dueTime = ""; // Để trống
+            metadata.dueTime = "";
         }
 
         if (task.startDate && task.startDate instanceof Date && !isNaN(task.startDate.getTime())) {
-            metadata.startDate = task.startDate.toISOString().split('T')[0];
+            metadata.startDate = task.startDate.toISOString().split("T")[0];
         } else {
-            metadata.startDate = ""; // Để trống
+            metadata.startDate = "";
         }
 
         if (task.dueDate && task.dueDate instanceof Date && !isNaN(task.dueDate.getTime())) {
-            metadata.dueDate = task.dueDate.toISOString().split('T')[0];
+            metadata.dueDate = task.dueDate.toISOString().split("T")[0];
         } else {
-            metadata.dueDate = ""; // Để trống
+            metadata.dueDate = "";
         }
 
-        // Always include arrays (empty if not provided)
+        // Luôn include array (rỗng nếu không có)
         metadata.subtasks = task.subtasks || [];
         metadata.attachments = task.attachments || [];
         metadata.tags = task.tags || [];
 
-        // Activity log - chỉ thêm khi thực sự là task mới
+        // Activity log
         let activityLog = task.activityLog || [];
 
-        // If this is a new task (no existing activity log AND no ID), add creation entry
+        // Nếu task mới (không có activity log và không có id) thì tạo entry "created"
         if (activityLog.length === 0 && !task.id) {
             const now = new Date();
             const entryId = `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`;
             const creationEntry = {
                 id: entryId,
-                details: `Task created at ${now.toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
+                details: `Task created at ${now.toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
                 })}`,
                 action: "created",
                 userId: "system",
-                timestamp: now
+                timestamp: now,
             };
             activityLog = [creationEntry];
         }
         metadata.activityLog = activityLog;
 
-
+        // Serialize JSON
         let jsonString = JSON.stringify(metadata, null, 0);
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
         console.log(`Metadata JSON length: ${characterCount}/${MAX_NOTES_LENGTH}`);
 
-        // If over limit, progressively reduce size while maintaining format
+        // Nếu quá limit -> tối ưu giảm size
         if (isOverLimit) {
             console.warn(`Metadata too large (${characterCount}/${MAX_NOTES_LENGTH}), reducing size...`);
 
-            // First, limit activity log entries
+            // Giới hạn activity log
             if (metadata.activityLog && metadata.activityLog.length > 5) {
                 metadata.activityLog = metadata.activityLog.slice(-5);
                 jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
-
                 if (!isOverLimit) {
-                    console.log('Reduced size by limiting activity log entries');
+                    console.log("Reduced size by limiting activity log entries");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
 
-            // Remove attachments if still too large
+            // Xoá attachments
             if (metadata.attachments && metadata.attachments.length > 0) {
                 metadata.attachments = [];
                 jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
-
                 if (!isOverLimit) {
-                    console.log('Reduced size by clearing attachments');
+                    console.log("Reduced size by clearing attachments");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
 
-            // Limit subtasks
+            // Giới hạn subtasks
             if (metadata.subtasks && metadata.subtasks.length > 5) {
                 metadata.subtasks = metadata.subtasks.slice(0, 5);
                 jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
-
                 if (!isOverLimit) {
-                    console.log('Reduced size by limiting subtasks');
+                    console.log("Reduced size by limiting subtasks");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -246,20 +244,20 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 jsonString = JSON.stringify(metadata, null, 0);
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
-
                 if (!isOverLimit) {
-                    console.log('Reduced size by truncating description');
+                    console.log("Reduced size by truncating description");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
 
-            // Last resort: keep minimal structure but maintain format
+            // Giải pháp cuối cùng: giữ metadata tối thiểu
             if (isOverLimit) {
-                console.warn('Using minimal metadata due to size constraints');
+                console.warn("Using minimal metadata due to size constraints");
                 const minimalMetadata = {
                     description: (metadata.description || "").substring(0, 100),
                     status: metadata.status,
                     priority: metadata.priority,
+                    collection: metadata.collection,
                     startTime: "",
                     dueTime: "",
                     startDate: "",
@@ -277,12 +275,13 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
 
         return { notes: jsonString, characterCount, isOverLimit };
     } catch (error) {
-        console.error('Error creating task notes:', error);
-        // Return minimal safe metadata without default times
+        console.error("Error creating task notes:", error);
+        // Safe fallback metadata
         const safeMetadata = {
             description: task.description || "",
-            status: task.status || 'backlog',
+            status: task.status || "backlog",
             priority: task.priority || "",
+            collection: task.collection || "",
             startTime: "",
             dueTime: "",
             startDate: "",
@@ -290,22 +289,25 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             subtasks: [],
             attachments: [],
             tags: [],
-            activityLog: [{
-                id: `${new Date().getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-                details: `Task created at ${new Date().toLocaleString()}`,
-                action: "created",
-                userId: "system",
-                timestamp: new Date()
-            }],
+            activityLog: [
+                {
+                    id: `${new Date().getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+                    details: `Task created at ${new Date().toLocaleString()}`,
+                    action: "created",
+                    userId: "system",
+                    timestamp: new Date(),
+                },
+            ],
         };
         const jsonString = JSON.stringify(safeMetadata, null, 0);
         return {
             notes: jsonString,
             characterCount: jsonString.length,
-            isOverLimit: jsonString.length > MAX_NOTES_LENGTH
+            isOverLimit: jsonString.length > MAX_NOTES_LENGTH,
         };
     }
 }
+
 
 // Helper to format due date for Google Tasks API (RFC 3339 date-time format)
 function formatDueDateTime(date: Date | null | undefined): string | undefined {
@@ -398,7 +400,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
     const data = await response.json();
 
     return (data.items || []).map((item: any) => {
-        // Parse metadata from notes
+        // Parse metadata từ notes
         let taskData: any = {};
 
         try {
@@ -407,7 +409,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
                 taskData = parsedNotes;
             }
         } catch (error) {
-            // If notes is not JSON, treat as description
+            // Nếu notes không phải JSON -> coi như description
             taskData.description = item.notes || "";
         }
 
@@ -415,13 +417,14 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             id: item.id,
             title: item.title || "Untitled Task",
             description: taskData.description || "",
-            status: taskData.status || (item.status === 'completed' ? 'done' : 'todo'),
+            status: taskData.status || (item.status === "completed" ? "done" : "todo"),
             priority: taskData.priority || "",
+            collection: taskData.collection || "", // <-- Thêm collection
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
             dueTime: taskData.dueTime ? safeDateParse(taskData.dueTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
             dueDate: taskData.dueDate ? safeDateParse(taskData.dueDate) : null,
-            completed: item.status === 'completed',
+            completed: item.status === "completed",
             subtasks: taskData.subtasks || [],
             attachments: taskData.attachments || [],
             tags: taskData.tags || [],
@@ -433,7 +436,6 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
         return task;
     });
 }
-
 
 export const createGoogleTask = async (
     accessToken: string,

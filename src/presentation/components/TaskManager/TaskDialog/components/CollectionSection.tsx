@@ -18,18 +18,19 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<string>("");
 
-  // Extract all unique collections from available tasks
+  // Get all existing collections from available tasks
   const allCollections = useMemo(() => {
-    const collections = new Set<string>();
+    const setCols = new Set<string>();
     availableTasks.forEach((task) => {
       if (task.collection) {
-        collections.add(task.collection);
+        setCols.add(task.collection);
       }
     });
+    // Add current task's collection if it exists
     if (editedTask.collection) {
-      collections.add(editedTask.collection);
+      setCols.add(editedTask.collection);
     }
-    return Array.from(collections).sort();
+    return Array.from(setCols).sort();
   }, [availableTasks, editedTask.collection]);
 
   // Filter collections based on search term
@@ -54,8 +55,9 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   };
 
   const handleCreateCollection = () => {
-    if (searchTerm.trim()) {
-      handleChange("collection", searchTerm.trim());
+    const newCol = searchTerm.trim();
+    if (newCol) {
+      handleChange("collection", newCol);
       setShowSearch(false);
       setSearchTerm("");
     }
@@ -71,22 +73,10 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   };
 
   const confirmDeleteCollection = () => {
-    // Remove this collection from all tasks that use it
-    const tasksToUpdate = availableTasks.filter(
-      (task) => task.collection === collectionToDelete
-    );
-
-    // Update all tasks that use this collection (this would need to be handled by parent)
-    tasksToUpdate.forEach((task) => {
-      // In a real implementation, you would update these tasks via API
-      console.log(`Removing collection from task: ${task.id}`);
-    });
-
-    // Remove from current task if it's using this collection
+    // Clear collection from current task if it uses the deleted collection
     if (editedTask.collection === collectionToDelete) {
       handleChange("collection", "");
     }
-
     setShowDeleteConfirm(false);
     setCollectionToDelete("");
   };

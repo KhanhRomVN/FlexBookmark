@@ -1,6 +1,6 @@
 // src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader, {
@@ -13,6 +13,7 @@ import ListLayout from "./layout/ListLayout";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
+import { Status } from "@/presentation/types/task";
 
 const TaskManager: React.FC = () => {
   const {
@@ -66,7 +67,15 @@ const TaskManager: React.FC = () => {
     handleClearFilters,
     lists,
     setLists,
+    collections,
+    setCollections,
   } = useTaskManager();
+
+  // Update collections handler
+  const handleCollectionUpdate = React.useCallback((updated: string[]) => {
+    setCollections(updated);
+    localStorage.setItem("collections", JSON.stringify(updated));
+  }, []);
 
   // Layout state
   const [layoutType, setLayoutType] = React.useState<LayoutType>("kanban");
@@ -394,10 +403,14 @@ const TaskManager: React.FC = () => {
             onTaskClick={handleTaskClickWrapper}
             onDragEnd={handleDragEnd}
             quickAddStatus={quickAddStatus}
-            setQuickAddStatus={setQuickAddStatus}
+            setQuickAddStatus={(status) =>
+              setQuickAddStatus(status as Status | null)
+            }
             quickAddTitle={quickAddTitle}
             setQuickAddTitle={setQuickAddTitle}
-            handleQuickAddTask={handleQuickAddTask}
+            handleQuickAddTask={(status) => {
+              void handleQuickAddTask(status as Status);
+            }}
             onArchiveTasks={handleArchiveTasks}
             onDeleteTasks={handleDeleteTasks}
             onSortTasks={handleSortTasks}

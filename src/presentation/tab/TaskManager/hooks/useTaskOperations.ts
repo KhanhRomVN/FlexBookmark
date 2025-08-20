@@ -21,7 +21,6 @@ import type { Task, Status } from "../../../types/task";
 import type { TaskList } from "./useTaskState";
 import { folders } from "../useTaskManager";
 
-const BATCH_SIZE = 50;
 const DEBOUNCE_DELAY = 300;
 
 export function useTaskOperations(
@@ -195,8 +194,16 @@ export function useTaskOperations(
                 await updateGoogleTask(token, task.id, task, activeGroup);
                 console.log('Task saved successfully:', task.id);
 
+                // Persist collection mapping for the task
+                try {
+                    const map = JSON.parse(localStorage.getItem('taskCollections') || '{}');
+                    map[task.id] = task.collection || '';
+                    localStorage.setItem('taskCollections', JSON.stringify(map));
+                } catch {
+                    // ignore storage errors
+                }
+
                 // Update cache
-                const cacheKey = `tasks_${activeGroup}_${authState.user.email}`;
                 cache.current.clear(); // Clear to force refresh
 
             } catch (err: any) {
@@ -549,7 +556,7 @@ export function useTaskOperations(
     const handleSaveTaskDetail = useCallback(async (task: Task) => {
         if (!authState.user || !activeGroup) return;
 
-        const endTimer = performanceMonitor.current.startTimer('saveTaskDetail');
+        const endTimer = performanceMonitor.current.startTimer("saveTaskDetail");
         try {
             const tokenInfo = await verifyTokenScopes(authState.user.accessToken);
             const token = tokenInfo?.scope?.includes("tasks")
@@ -561,45 +568,52 @@ export function useTaskOperations(
                 const finalTask = { ...task, status: smartStatus };
 
                 // Process subtasks with linked tasks
-                const processedSubtasks = task.subtasks?.map(subtask => {
-                    if (subtask.linkedTaskId) {
-                        // Add activity log to linked task if it exists
-                        const linkedTask = lists.flatMap(l => l.tasks).find(t => t.id === subtask.linkedTaskId);
-                        if (linkedTask) {
-                            const updatedLinkedTask = addActivityLogEntry(
-                                linkedTask,
-                                "subtask_linked",
-                                `Linked as subtask "${subtask.title}" in task "${task.title}"`
-                            );
-                            // Save the linked task
-                            saveTask(updatedLinkedTask);
+                const processedSubtasks =
+                    task.subtasks?.map((subtask) => {
+                        if (subtask.linkedTaskId) {
+                            // Add activity log to linked task if it exists
+                            const linkedTask = lists
+                                .flatMap((l) => l.tasks)
+                                .find((t) => t.id === subtask.linkedTaskId);
+                            if (linkedTask) {
+                                const updatedLinkedTask = addActivityLogEntry(
+                                    linkedTask,
+                                    "subtask_linked",
+                                    `Linked as subtask "${subtask.title}" in task "${task.title}"`
+                                );
+                                // Save the linked task
+                                saveTask(updatedLinkedTask);
+                            }
                         }
-                    }
-                    return subtask;
-                }) || [];
+                        return subtask;
+                    }) || [];
 
                 const updatedTask = addActivityLogEntry(
                     { ...finalTask, subtasks: processedSubtasks },
                     "updated",
-                    `Task details updated at ${new Date().toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
+                    `Task details updated at ${new Date().toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
                     })}`
                 );
 
                 await updateGoogleTask(token, task.id, updatedTask, activeGroup);
 
                 startTransition(() => {
-                    setLists(prev =>
-                        prev.map(l => ({
+                    setLists((prev) =>
+                        prev.map((l) => ({
                             ...l,
-                            tasks: l.id === smartStatus
-                                ? [...l.tasks.filter(t => t.id !== task.id), updatedTask]
-                                : l.tasks.filter(t => t.id !== task.id)
+                            tasks:
+                                l.id === smartStatus
+                                    ? [
+                                        ...l.tasks.filter((t) => t.id !== task.id),
+                                        updatedTask,
+                                    ]
+                                    : l.tasks.filter((t) => t.id !== task.id),
                         }))
                     );
                 });
@@ -608,36 +622,44 @@ export function useTaskOperations(
                 const newTask = { ...task, status: smartStatus };
 
                 // Process subtasks for new task
-                const processedSubtasks = task.subtasks?.map(subtask => {
-                    if (subtask.linkedTaskId) {
-                        // Add activity log to linked task if it exists
-                        const linkedTask = lists.flatMap(l => l.tasks).find(t => t.id === subtask.linkedTaskId);
-                        if (linkedTask) {
-                            const updatedLinkedTask = addActivityLogEntry(
-                                linkedTask,
-                                "subtask_linked",
-                                `Linked as subtask "${subtask.title}" in new task "${task.title}"`
-                            );
-                            // Save the linked task
-                            saveTask(updatedLinkedTask);
+                const processedSubtasks =
+                    task.subtasks?.map((subtask) => {
+                        if (subtask.linkedTaskId) {
+                            // Add activity log to linked task if it exists
+                            const linkedTask = lists
+                                .flatMap((l) => l.tasks)
+                                .find((t) => t.id === subtask.linkedTaskId);
+                            if (linkedTask) {
+                                const updatedLinkedTask = addActivityLogEntry(
+                                    linkedTask,
+                                    "subtask_linked",
+                                    `Linked as subtask "${subtask.title}" in new task "${task.title}"`
+                                );
+                                // Save the linked task
+                                saveTask(updatedLinkedTask);
+                            }
                         }
-                    }
-                    return subtask;
-                }) || [];
+                        return subtask;
+                    }) || [];
 
                 const taskWithActivityLog = {
                     ...newTask,
                     subtasks: processedSubtasks,
-                    activityLog: newTask.activityLog && newTask.activityLog.length > 0
-                        ? newTask.activityLog
-                        : createInitialActivityLog()
+                    activityLog:
+                        newTask.activityLog && newTask.activityLog.length > 0
+                            ? newTask.activityLog
+                            : createInitialActivityLog(),
                 };
 
-                const created = await createGoogleTask(token, taskWithActivityLog, activeGroup);
-                const idx = lists.findIndex(l => l.id === smartStatus);
+                const created = await createGoogleTask(
+                    token,
+                    taskWithActivityLog,
+                    activeGroup
+                );
+                const idx = lists.findIndex((l) => l.id === smartStatus);
                 if (idx !== -1) {
                     startTransition(() => {
-                        setLists(prev => {
+                        setLists((prev) => {
                             const copy = [...prev];
                             copy[idx].tasks = [...copy[idx].tasks, created];
                             return copy;
@@ -651,11 +673,12 @@ export function useTaskOperations(
             cache.current.clear();
         } catch (err: any) {
             console.error("Failed to save task:", err);
-            setError(`Failed to save task: ${err.message || 'Unknown error'}`);
+            setError(`Failed to save task: ${err.message || "Unknown error"}`);
         } finally {
             endTimer();
         }
     }, [authState, activeGroup, getFreshToken, lists, saveTask, setLists, setIsDialogOpen, setSelectedTask, setError]);
+
 
     return {
         saveTask,

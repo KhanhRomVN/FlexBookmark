@@ -1,4 +1,5 @@
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
+import type { Status } from "../../../types/task";
 import { DndContext, closestCorners } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -10,11 +11,11 @@ interface KanbanLayoutProps {
   filteredLists: any[];
   onTaskClick: (task: any) => void;
   onDragEnd: (event: any) => void;
-  quickAddStatus: string | null;
-  setQuickAddStatus: (status: string | null) => void;
+  quickAddStatus: Status | null;
+  setQuickAddStatus: Dispatch<SetStateAction<Status | null>>;
   quickAddTitle: string;
-  setQuickAddTitle: (title: string) => void;
-  handleQuickAddTask: (status: string) => void;
+  setQuickAddTitle: Dispatch<SetStateAction<string>>;
+  handleQuickAddTask: (status: Status) => Promise<void>;
   onArchiveTasks?: (folderId: string) => void;
   onDeleteTasks?: (folderId: string) => void;
   onSortTasks?: (folderId: string, sortType: string) => void;

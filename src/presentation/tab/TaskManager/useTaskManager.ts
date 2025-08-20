@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-import { startTransition, useCallback, useMemo, useState, useRef } from "react";
+import { startTransition, useCallback, useMemo, useState, useEffect, useRef } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useAuth } from "./hooks/useAuth";
@@ -401,5 +401,9 @@ export function useTaskManager() {
 
         // Performance monitoring
         performanceStats: statistics.performanceStats,
+
+        // Expose state setters
+        setLists,
+        setError,
     };
 }
