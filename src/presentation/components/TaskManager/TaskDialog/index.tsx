@@ -91,10 +91,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   setIsDialogOpen,
 }) => {
   // Use hooks for state management
-  const { editedTask, setEditedTask, handleChange } = useTaskState(
-    task,
-    isCreateMode
-  );
+  const {
+    editedTask,
+    setEditedTask,
+    handleChange,
+    suggestedStatus,
+    getEffectiveStatus,
+  } = useTaskState(task, isCreateMode);
+
   const { addActivityLog } = useActivityLog(
     editedTask,
     setEditedTask,
@@ -125,7 +129,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setPendingTransition,
     handleStatusChange,
     executeStatusTransition,
-  } = useStatusTransitions(editedTask, setEditedTask, onSave, isCreateMode);
+  } = useStatusTransitions(
+    editedTask,
+    setEditedTask,
+    onSave,
+    isCreateMode,
+    getEffectiveStatus
+  );
   const {
     showRestoreDialog,
     pendingRestoreStatus,
@@ -300,6 +310,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             {!isCreateMode && (
               <StatusBar
                 currentStatus={editedTask.status}
+                suggestedStatus={suggestedStatus}
+                effectiveStatus={getEffectiveStatus()}
                 onStatusChange={handleStatusChange}
               />
             )}

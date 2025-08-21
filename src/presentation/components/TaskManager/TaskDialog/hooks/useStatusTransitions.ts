@@ -1,4 +1,3 @@
-// src/presentation/components/TaskManager/TaskDialog/hooks/useStatusTransitions.ts
 import { useCallback, useState } from "react";
 import { Status, Task } from "../../../../types/task";
 import {
@@ -10,7 +9,8 @@ export const useStatusTransitions = (
     editedTask: Task | null,
     setEditedTask: (task: Task) => void,
     onSave: (task: Task) => void,
-    isCreateMode: boolean
+    isCreateMode: boolean,
+    getEffectiveStatus?: () => Status // Add this parameter
 ) => {
     const [pendingTransition, setPendingTransition] = useState<{
         from: Status;
@@ -30,16 +30,19 @@ export const useStatusTransitions = (
     const handleStatusChange = (newStatus: Status) => {
         if (!editedTask) return;
 
+        // Use effective status for transition logic
+        const currentStatus = getEffectiveStatus ? getEffectiveStatus() : editedTask.status;
+
         const scenarios = getTransitionScenarios(
-            editedTask.status,
+            currentStatus, // Use effective status instead of editedTask.status
             newStatus,
             editedTask
         );
 
-        // Nếu chuyển sang "done" nhưng còn subtasks bắt buộc chưa xong
+        // If transitioning to "done" but there are incomplete required subtasks
         if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
             setPendingTransition({
-                from: editedTask.status,
+                from: currentStatus,
                 to: newStatus,
                 scenarios: [
                     {
@@ -63,10 +66,10 @@ export const useStatusTransitions = (
             return;
         }
 
-        // Nếu có scenario yêu cầu lựa chọn
+        // If there are scenarios requiring user choice
         if (scenarios.length > 0) {
             setPendingTransition({
-                from: editedTask.status,
+                from: currentStatus,
                 to: newStatus,
                 scenarios,
             });
@@ -74,8 +77,8 @@ export const useStatusTransitions = (
             return;
         }
 
-        // Nếu không có gì đặc biệt -> chuyển trực tiếp
-        executeStatusTransition(editedTask.status, newStatus, {});
+        // Direct transition if no special handling needed
+        executeStatusTransition(currentStatus, newStatus, {});
     };
 
     const executeStatusTransition = useCallback(
@@ -96,7 +99,7 @@ export const useStatusTransitions = (
             );
 
             if ("error" in updatedTask) {
-                // TODO: xử lý error nếu cần
+                // TODO: handle error if needed
                 return;
             }
 
