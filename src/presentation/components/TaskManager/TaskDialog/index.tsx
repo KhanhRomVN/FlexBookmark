@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { Textarea } from "../../ui/textarea";
-import { Task, Status, Subtask, Attachment } from "../../../types/task";
+import { Task, Status } from "../../../types/task";
 import {
   X,
   Trash2,
@@ -9,8 +9,6 @@ import {
   Move,
   Archive,
   AlertTriangle,
-  ExternalLink,
-  Link,
 } from "lucide-react";
 import { calculateTaskMetadataSize } from "../../../../utils/GGTask";
 import {
@@ -24,12 +22,17 @@ import {
   ActivityLogSection,
   DateTimeStatusDialog,
 } from "./components";
-import {
-  getTransitionScenarios,
-  executeStatusTransition as executeTransition,
-} from "./utils/taskTransitions";
-import { GoogleTasksStatusHandler } from "./utils/GGTaskStatusHandler";
 import CollectionSection from "./components/CollectionSection";
+import { useTaskState } from "./hooks/useTaskState";
+import { useSubtasks } from "./hooks/useSubtasks";
+import { useAttachments } from "./hooks/useAttachments";
+import { useTags } from "./hooks/useTags";
+import { useActivityLog } from "./hooks/useActivityLog";
+import { useStatusTransitions } from "./hooks/useStatusTransitions";
+import { useGoogleTasksIntegration } from "./hooks/useGoogleTasksIntegration";
+import { useClickOutside } from "./hooks/useClickOutside";
+import LinkedTasksSection from "./components/LinkedTasksSection";
+import RestoreConfirmationDialog from "./components/RestoreConfirmationDialog";
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -41,8 +44,8 @@ interface TaskDialogProps {
   onDuplicate: (task: Task) => void;
   onMove: (taskId: string, newStatus: Status) => void;
   isCreateMode?: boolean;
-  availableTasks?: Task[]; // Available tasks prop
-  onTaskClick?: (taskId: string) => void; // Task click callback
+  availableTasks?: Task[];
+  onTaskClick?: (taskId: string) => void;
   // Google Tasks integration props
   getFreshToken?: () => Promise<string>;
   createGoogleTask?: (
@@ -63,113 +66,6 @@ interface TaskDialogProps {
   setSelectedTask?: (task: Task | null) => void;
   setIsDialogOpen?: (isOpen: boolean) => void;
 }
-
-// Restore Confirmation Dialog Component
-const RestoreConfirmationDialog: React.FC<{
-  isOpen: boolean;
-  taskTitle: string;
-  targetStatus: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}> = ({ isOpen, taskTitle, targetStatus, onConfirm, onCancel }) => {
-  if (!isOpen) return null;
-
-  const statusLabels: Record<string, string> = {
-    backlog: "Backlog",
-    todo: "To Do",
-    "in-progress": "In Progress",
-    overdue: "Overdue",
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 max-w-md mx-4 shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
-            <svg
-              className="w-5 h-5 text-amber-600 dark:text-amber-400"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Cannot Restore Completed Task
-          </h3>
-        </div>
-
-        <div className="space-y-3 mb-6">
-          <p className="text-gray-600 dark:text-gray-300">
-            <strong>"{taskTitle}"</strong> is already completed. Google Tasks
-            doesn't support directly changing completed tasks back to other
-            statuses.
-          </p>
-          <p className="text-gray-600 dark:text-gray-300">
-            Would you like to create a new task with the same content in{" "}
-            <strong>"{statusLabels[targetStatus] || targetStatus}"</strong>{" "}
-            status instead?
-          </p>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 <strong>What will happen:</strong>
-            </p>
-            <ul className="text-sm text-blue-700 dark:text-blue-300 mt-1 space-y-1">
-              <li>• A new task "{taskTitle} (Restored)" will be created</li>
-              <li>• All content, subtasks, and attachments will be copied</li>
-              <li>• The original completed task will remain in Done</li>
-              <li>
-                • The new task will be placed in{" "}
-                {statusLabels[targetStatus] || targetStatus}
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-gray-50 dark:bg-gray-900/20 p-3 rounded-lg">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              <strong>Note:</strong> This limitation is due to Google Tasks API
-              restrictions. You can manually delete the original completed task
-              later if desired.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Create New Task
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TaskDialog: React.FC<TaskDialogProps> = ({
   isOpen,
@@ -194,28 +90,65 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   setSelectedTask,
   setIsDialogOpen,
 }) => {
-  const [editedTask, setEditedTask] = useState<Task | null>(task);
-  const [newSubtask, setNewSubtask] = useState("");
-  const [newAttachment, setNewAttachment] = useState({
-    title: "",
-    url: "",
-    type: "file" as "image" | "video" | "audio" | "file" | "other",
-  });
-  const [newTag, setNewTag] = useState("");
-  const [, setShowAttachmentOptions] = useState(false);
+  // Use hooks for state management
+  const { editedTask, setEditedTask, handleChange } = useTaskState(
+    task,
+    isCreateMode
+  );
+  const { addActivityLog } = useActivityLog(
+    editedTask,
+    setEditedTask,
+    isCreateMode
+  );
+  const {
+    newSubtask,
+    setNewSubtask,
+    handleSubtaskChange,
+    handleAddSubtask,
+    handleDeleteSubtask,
+  } = useSubtasks(editedTask, setEditedTask, addActivityLog);
+  const {
+    newAttachment,
+    setNewAttachment,
+    handleAddAttachment,
+    handleDeleteAttachment,
+  } = useAttachments(editedTask, setEditedTask, addActivityLog);
+  const { newTag, setNewTag, handleAddTag, handleDeleteTag } = useTags(
+    editedTask,
+    setEditedTask,
+    addActivityLog
+  );
+  const {
+    pendingTransition,
+    showTransitionDialog,
+    setShowTransitionDialog,
+    setPendingTransition,
+    handleStatusChange,
+    executeStatusTransition,
+  } = useStatusTransitions(editedTask, setEditedTask, onSave, isCreateMode);
+  const {
+    showRestoreDialog,
+    pendingRestoreStatus,
+    setShowRestoreDialog,
+    setPendingRestoreStatus,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+  } = useGoogleTasksIntegration(
+    editedTask,
+    onClose,
+    getFreshToken,
+    createGoogleTask,
+    deleteGoogleTask,
+    activeGroup,
+    lists,
+    setLists,
+    setError,
+    startTransition,
+    setSelectedTask,
+    setIsDialogOpen
+  );
+
   const [showActionMenu, setShowActionMenu] = useState(false);
-  const [showTransitionDialog, setShowTransitionDialog] = useState(false);
-  const [pendingTransition, setPendingTransition] = useState<{
-    from: Status;
-    to: Status;
-    scenarios: any[];
-  } | null>(null);
-
-  // Google Tasks status handling states
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [pendingRestoreStatus, setPendingRestoreStatus] =
-    useState<Status | null>(null);
-
   const [showDateTimeDialog, setShowDateTimeDialog] = useState(false);
   const [pendingDateTimeStatus, setPendingDateTimeStatus] =
     useState<Status | null>(null);
@@ -224,349 +157,25 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setEditedTask(task);
-  }, [task]);
+  useClickOutside(attachmentRef, () => setShowAttachmentOptions(false));
+  useClickOutside(actionMenuRef, () => setShowActionMenu(false));
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        attachmentRef.current &&
-        !attachmentRef.current.contains(event.target as Node)
-      ) {
-        setShowAttachmentOptions(false);
-      }
-      if (
-        actionMenuRef.current &&
-        !actionMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowActionMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const handleChange = (field: keyof Task, value: any) => {
-    setEditedTask((prev) => {
-      const updated = { ...prev!, [field]: value };
-      // Collection sẽ được xử lý thông qua metadata trong notes
-      return updated;
-    });
-  };
-
-  const handleSubtaskChange = (
-    id: string,
-    field: keyof Subtask,
-    value: any
-  ) => {
-    setEditedTask((prev) => ({
-      ...prev!,
-      subtasks:
-        prev!.subtasks?.map((st) =>
-          st.id === id ? { ...st, [field]: value } : st
-        ) || [],
-    }));
-  };
-
-  const handleAddSubtask = () => {
-    if (!newSubtask.trim()) return;
-    const newSub: Subtask = {
-      id: Date.now().toString(),
-      title: newSubtask,
-      completed: false,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      subtasks: [...(prev!.subtasks || []), newSub],
-    }));
-    setNewSubtask("");
-    addActivityLog("subtask_added", `Added subtask: "${newSubtask}"`);
-  };
-
-  const handleDeleteSubtask = (id: string) => {
-    if (!editedTask) return;
-    const subtask = editedTask.subtasks?.find((st) => st.id === id);
-    setEditedTask((prev) => ({
-      ...prev!,
-      subtasks: prev!.subtasks?.filter((st) => st.id !== id) || [],
-    }));
-    if (subtask) {
-      addActivityLog("subtask_removed", `Removed subtask: "${subtask.title}"`);
+  // Handle task click for linked tasks
+  const handleLinkedTaskClick = (taskId: string) => {
+    if (onTaskClick) {
+      onTaskClick(taskId);
     }
   };
 
-  const handleAddAttachment = () => {
-    if (!newAttachment.url.trim()) return;
-    const newAtt: Attachment = {
-      id: Date.now().toString(),
-      title: newAttachment.title || "Attachment",
-      url: newAttachment.url,
-      type: newAttachment.type,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      attachments: [...(prev!.attachments || []), newAtt],
-    }));
-    setNewAttachment({ title: "", url: "", type: "file" });
-    addActivityLog(
-      "attachment_added",
-      `Added attachment: "${newAtt.title}" (${newAtt.type})`
-    );
-  };
+  if (!isOpen || !editedTask) return null;
 
-  const handleDeleteAttachment = (id: string) => {
-    if (!editedTask) return;
-    const attachment = editedTask.attachments?.find((att) => att.id === id);
-    setEditedTask((prev) => ({
-      ...prev!,
-      attachments: prev!.attachments?.filter((att) => att.id !== id) || [],
-    }));
-    if (attachment) {
-      addActivityLog(
-        "attachment_removed",
-        `Removed attachment: "${attachment.title}"`
-      );
-    }
-  };
+  // Filter available tasks (exclude current task)
+  const filteredAvailableTasks = availableTasks.filter(
+    (t) => t.id !== editedTask.id
+  );
 
-  const handleAddTag = () => {
-    if (!newTag.trim()) return;
-    setEditedTask((prev) => ({
-      ...prev!,
-      tags: [...(prev!.tags || []), newTag],
-    }));
-    setNewTag("");
-    addActivityLog("tag_added", `Added tag: "${newTag}"`);
-  };
+  const metadataInfo = calculateTaskMetadataSize(editedTask);
 
-  const handleDeleteTag = (tag: string) => {
-    setEditedTask((prev) => ({
-      ...prev!,
-      tags: prev!.tags?.filter((t) => t !== tag) || [],
-    }));
-    addActivityLog("tag_removed", `Removed tag: "${tag}"`);
-  };
-
-  const addActivityLog = (action: string, details: string) => {
-    if (isCreateMode) return;
-    const now = new Date();
-    const activityEntry = {
-      id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
-      details,
-      action,
-      userId: "user",
-      timestamp: now,
-    };
-    setEditedTask((prev) => ({
-      ...prev!,
-      activityLog: [...(prev!.activityLog || []), activityEntry],
-    }));
-  };
-
-  // Updated handleStatusChange with Google Tasks integration
-  const handleStatusChange = async (newStatus: Status) => {
-    if (!editedTask) return;
-
-    if (
-      (editedTask.status === "backlog" && newStatus === "in-progress") ||
-      (editedTask.status === "todo" && newStatus === "in-progress") ||
-      (editedTask.status === "backlog" && newStatus === "todo")
-    ) {
-      setPendingDateTimeStatus(newStatus);
-      setShowDateTimeDialog(true);
-      return;
-    }
-    if (
-      (editedTask.status === "backlog" && newStatus === "in-progress") ||
-      (editedTask.status === "todo" && newStatus === "in-progress") ||
-      (editedTask.status === "backlog" && newStatus === "todo")
-    ) {
-      setPendingDateTimeStatus(newStatus);
-      setShowDateTimeDialog(true);
-      return;
-    }
-
-    if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
-      setPendingTransition({
-        from: editedTask.status,
-        to: newStatus,
-        scenarios: [
-          {
-            title: "Incomplete Required Subtasks",
-            options: [
-              {
-                label: "Complete the task anyway",
-                value: "force_complete",
-                description:
-                  "Mark the task as done even though some required subtasks are incomplete",
-              },
-              {
-                label: "Cancel",
-                value: "cancel",
-              },
-            ],
-          },
-        ],
-      });
-      setShowTransitionDialog(true);
-      return;
-    }
-
-    // Get transition scenarios
-    const scenarios = getTransitionScenarios(
-      editedTask.status,
-      newStatus,
-      editedTask
-    );
-
-    // For done -> other status transitions, we need special handling
-    if (editedTask.status === "done" && newStatus !== "done") {
-      // If there are transition scenarios defined, show them but add Google Tasks context
-      if (scenarios.length > 0) {
-        // Add Google Tasks warning to the scenarios
-        const enhancedScenarios = [
-          {
-            title: "⚠️ Google Tasks Limitation",
-            options: [
-              {
-                label: "This will create a new task (Google Tasks limitation)",
-                value: "google_tasks_warning",
-                description:
-                  "Google Tasks doesn't allow direct restoration of completed tasks. A new task will be created with the same content.",
-              },
-            ],
-          },
-          ...scenarios,
-        ];
-
-        setPendingTransition({
-          from: editedTask.status,
-          to: newStatus,
-          scenarios: enhancedScenarios,
-        });
-        setShowTransitionDialog(true);
-        return;
-      } else {
-        // No specific scenarios, show the simple restore dialog
-        setPendingRestoreStatus(newStatus);
-        setShowRestoreDialog(true);
-        return;
-      }
-    }
-
-    // For non-done transitions, show scenarios if they exist
-    if (scenarios.length > 0) {
-      setPendingTransition({
-        from: editedTask.status,
-        to: newStatus,
-        scenarios,
-      });
-      setShowTransitionDialog(true);
-      return;
-    }
-
-    // Direct status change for simple transitions
-    executeStatusTransition(editedTask.status, newStatus, {});
-  };
-
-  const executeStatusTransition = (
-    oldStatus: Status,
-    newStatus: Status,
-    selectedOptions: Record<string, string>
-  ) => {
-    if (!editedTask) return;
-
-    if (selectedOptions["Incomplete Required Subtasks"] === "force_complete") {
-      const updatedTask = { ...editedTask, status: newStatus };
-      setEditedTask(updatedTask);
-      onSave(updatedTask);
-      return;
-    }
-
-    // If user chose to cancel, do nothing
-    if (selectedOptions["Incomplete Required Subtasks"] === "cancel") {
-      return;
-    }
-
-    const updatedTask = executeTransition(
-      editedTask,
-      oldStatus,
-      newStatus,
-      selectedOptions,
-      isCreateMode
-    );
-
-    setEditedTask(updatedTask);
-    onSave(updatedTask);
-  };
-
-  const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
-    if (!task?.subtasks) return false;
-    return task.subtasks.some(
-      (subtask) => subtask.requiredCompleted && !subtask.completed
-    );
-  };
-
-  const LinkedTasksSection: React.FC<{
-    currentTask: Task;
-    availableTasks: Task[];
-    onTaskClick: (taskId: string) => void;
-  }> = ({ currentTask, availableTasks, onTaskClick }) => {
-    const linkedTasks = useMemo(() => {
-      return availableTasks.filter((task) =>
-        task.subtasks?.some(
-          (subtask) => subtask.linkedTaskId === currentTask.id
-        )
-      );
-    }, [availableTasks, currentTask.id]);
-
-    if (linkedTasks.length === 0) return null;
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-lg text-text-default">
-            Linked From
-          </h3>
-          <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
-        </div>
-
-        <div className="space-y-2">
-          {linkedTasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-              onClick={() => onTaskClick(task.id)}
-            >
-              <Link size={14} className="text-blue-600 dark:text-blue-400" />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  {task.title}
-                </div>
-                <div className="text-xs text-blue-600 dark:text-blue-400">
-                  {
-                    task.subtasks?.find(
-                      (st) => st.linkedTaskId === currentTask.id
-                    )?.title
-                  }
-                </div>
-              </div>
-              <ExternalLink
-                size={14}
-                className="text-blue-600 dark:text-blue-400"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // In TaskDialog/index.tsx - Updated handleTransitionConfirm function
   const handleTransitionConfirm = async (
     selectedOptions: Record<string, string>
   ) => {
@@ -603,138 +212,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setShowTransitionDialog(false);
     setPendingTransition(null);
   };
-
-  // In TaskDialog/index.tsx - handleRestoreConfirm function
-  const handleRestoreConfirm = async () => {
-    if (!editedTask || !pendingRestoreStatus) return;
-
-    try {
-      // Check if all required Google Tasks functions are available
-      if (
-        !getFreshToken ||
-        !createGoogleTask ||
-        !deleteGoogleTask ||
-        !activeGroup
-      ) {
-        throw new Error("Google Tasks integration not properly configured");
-      }
-
-      console.log(
-        "Starting restore process for task:",
-        editedTask.title,
-        "to status:",
-        pendingRestoreStatus
-      );
-
-      // Use the GoogleTasksStatusHandler with delete function provided
-      const result = await GoogleTasksStatusHandler.createTaskFromCompleted(
-        editedTask,
-        pendingRestoreStatus,
-        async (taskData) => {
-          // Use the provided create function
-          console.log("Creating restored task via Google Tasks API...");
-          const token = await getFreshToken();
-          return await createGoogleTask(token, taskData as Task, activeGroup);
-        },
-        // Provide delete function to enable deletion of original task
-        async (taskId: string) => {
-          console.log("Deleting original completed task:", taskId);
-          const token = await getFreshToken();
-          return await deleteGoogleTask(token, taskId, activeGroup);
-        },
-        true // Set to true to attempt deletion of original task
-      );
-
-      if (result.success && result.task) {
-        console.log("Task restored successfully:", result.task.id);
-
-        // Update UI with new task
-        if (lists && setLists) {
-          const targetListIdx = lists.findIndex(
-            (l) => l.id === pendingRestoreStatus
-          );
-          const doneListIdx = lists.findIndex((l) => l.id === "done");
-
-          if (targetListIdx !== -1 && startTransition) {
-            startTransition(() => {
-              setLists((prev) => {
-                const copy = [...prev];
-
-                // Add new task to target list
-                copy[targetListIdx].tasks = [
-                  ...copy[targetListIdx].tasks,
-                  result.task!,
-                ];
-
-                // Remove original task from done list if deletion was successful
-                if (!result.originalTaskKept && doneListIdx !== -1) {
-                  copy[doneListIdx].tasks = copy[doneListIdx].tasks.filter(
-                    (t: { id: string }) => t.id !== editedTask.id
-                  );
-                }
-
-                return copy;
-              });
-            });
-          }
-        }
-
-        // Show appropriate success message
-        if (result.originalTaskKept && setError) {
-          // Show warning if original task couldn't be deleted
-          console.warn(
-            "Original completed task couldn't be deleted but restoration succeeded"
-          );
-          if (setError) {
-            setError(
-              "Task restored successfully, but original completed task couldn't be deleted automatically. You may need to remove it manually."
-            );
-          }
-        } else {
-          console.log("Task restored and original deleted successfully");
-        }
-
-        // Close dialogs and reset state
-        setShowRestoreDialog(false);
-        setPendingRestoreStatus(null);
-        if (setIsDialogOpen) setIsDialogOpen(false);
-        if (setSelectedTask) setSelectedTask(null);
-        onClose();
-
-        console.log("Restore process completed successfully");
-      } else {
-        throw new Error(result.error || "Failed to restore task");
-      }
-    } catch (error: any) {
-      console.error("Failed to restore task:", error);
-      if (setError) {
-        setError(`Failed to restore task: ${error.message}`);
-      }
-      setShowRestoreDialog(false);
-      setPendingRestoreStatus(null);
-    }
-  };
-
-  const handleRestoreCancel = () => {
-    setShowRestoreDialog(false);
-    setPendingRestoreStatus(null);
-  };
-
-  // Handle task click for linked tasks
-  const handleLinkedTaskClick = (taskId: string) => {
-    if (onTaskClick) {
-      onTaskClick(taskId);
-    }
-  };
-
-  if (!isOpen || !editedTask) return null;
-
-  // Filter available tasks (exclude current task)
-  const filteredAvailableTasks = availableTasks.filter(
-    (t) => t.id !== editedTask.id
-  );
-
-  const metadataInfo = calculateTaskMetadataSize(editedTask);
 
   const handleDateTimeConfirm = (
     startDate: Date | null,

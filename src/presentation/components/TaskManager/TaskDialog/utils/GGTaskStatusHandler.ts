@@ -199,22 +199,3 @@ export const enhancedHandleStatusChange = async (
 
     return null;
 };
-
-// Updated TaskDialog component integration
-export const createRestoreConfirmationDialog = (
-    task: Task,
-    targetStatus: Status,
-    onConfirm: () => void,
-    onCancel: () => void
-) => ({
-    title: "Restore Completed Task",
-    message: `Google Tasks doesn't allow restoring completed tasks directly. 
-           Would you like to create a new task with the same content in "${targetStatus}" status instead?
-           
-           Note: The original completed task will remain in your Done list.`,
-    confirmText: "Create New Task",
-    cancelText: "Cancel",
-    onConfirm,
-    onCancel,
-    type: "warning" as const
-});
