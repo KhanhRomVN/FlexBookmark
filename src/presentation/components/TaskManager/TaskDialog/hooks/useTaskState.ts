@@ -10,11 +10,19 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         setEditedTask(task);
     }, [task]);
 
-    // Auto-suggest status when dates change
+    // Auto-suggest and auto-apply status when dates change
     useEffect(() => {
         if (editedTask && !isCreateMode) {
             const suggested = getSuggestedStatusFromDates(editedTask);
             setSuggestedStatus(suggested);
+
+            // Auto-apply the suggested status immediately
+            if (suggested && suggested !== editedTask.status) {
+                setEditedTask(prev => {
+                    if (!prev) return prev;
+                    return { ...prev, status: suggested };
+                });
+            }
         }
     }, [editedTask?.startDate, editedTask?.startTime, editedTask?.dueDate, editedTask?.dueTime, editedTask?.status, isCreateMode]);
 
@@ -46,7 +54,7 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         editedTask,
         setEditedTask,
         handleChange,
-        suggestedStatus,
+        suggestedStatus: null, // Always return null to hide the suggestion UI
         getEffectiveStatus
     };
 };
