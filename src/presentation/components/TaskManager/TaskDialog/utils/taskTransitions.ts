@@ -997,3 +997,21 @@ export const getSuggestedAlternatives = (from: Status, to: Status, task: Task): 
 
     return suggestions;
 };
+
+export const getSuggestedStatusFromDates = (task: Task): Status | null => {
+    const now = new Date();
+    const startDate = task.startDate ? new Date(task.startDate) : null;
+    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+
+    if (!startDate) return null;
+
+    if (task.status === 'backlog') {
+        return startDate <= now ? 'in-progress' : 'todo';
+    }
+
+    if (task.status !== 'done' && dueDate && dueDate < now) {
+        return 'overdue';
+    }
+
+    return null;
+};

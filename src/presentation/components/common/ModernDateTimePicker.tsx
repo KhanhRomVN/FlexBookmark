@@ -103,6 +103,12 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     });
   };
 
+  const applyTimeSelection = () => {
+    const timeDate = new Date(`1970-01-01T${selectedTimeString}`);
+    onTimeChange(timeDate);
+    setIsOpen(false);
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -646,7 +652,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
                         Clear
                       </button>
                       <button
-                        onClick={() => setIsOpen(false)}
+                        onClick={applyTimeSelection}
                         className={`bg-gradient-to-r ${theme.button} text-white px-8 py-3 rounded-2xl font-bold transition-all duration-200 hover:shadow-lg shadow-lg`}
                       >
                         Done
