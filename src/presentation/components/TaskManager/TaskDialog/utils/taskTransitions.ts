@@ -1,5 +1,6 @@
 import { Task, Status } from "../../../../types/task";
 
+
 interface TransitionScenario {
     title: string;
     options: Array<{
@@ -504,9 +505,14 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
                     title: "Schedule Task",
                     options: [
                         {
-                            label: "Set future start time",
-                            value: "set_start",
-                            description: "Schedule when to begin this task"
+                            label: "Adjust date & time",
+                            value: "adjust_time",
+                            description: "Open calendar to set specific dates"
+                        },
+                        {
+                            label: "Auto-schedule (tomorrow 9 AM)",
+                            value: "auto_schedule",
+                            description: "Set start time to tomorrow morning"
                         },
                         { label: "Cancel", value: "cancel" },
                     ],
@@ -516,9 +522,9 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
                     title: "Invalid Start Time",
                     options: [
                         {
-                            label: "Set future start time",
-                            value: "update_start",
-                            description: "Start time must be in the future"
+                            label: "Adjust to future date",
+                            value: "adjust_time",
+                            description: "Set start time to future date"
                         },
                         {
                             label: "Switch to in-progress instead",
@@ -532,7 +538,15 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
                 scenarios.push({
                     title: "Move to Scheduled",
                     options: [
-                        { label: "Confirm scheduling", value: "confirm" },
+                        {
+                            label: `Confirm (${formatDisplayDate(startDate)})`,
+                            value: "confirm"
+                        },
+                        {
+                            label: "Adjust schedule",
+                            value: "adjust_time",
+                            description: "Change date and time"
+                        },
                         { label: "Cancel", value: "cancel" },
                     ],
                 });
@@ -541,17 +555,22 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
 
         case "backlog-in-progress":
             scenarios.push({
-                title: "Start Task Now",
+                title: "Start Task",
                 options: [
                     {
-                        label: "Record actual start time",
-                        value: "record_start",
-                        description: "Begin working immediately"
+                        label: "Set specific schedule",
+                        value: "adjust_time",
+                        description: "Choose exact start and due dates"
                     },
                     {
-                        label: "Set planned start time first",
-                        value: "set_planned",
-                        description: "Add scheduling information then start"
+                        label: "Start now (auto-record)",
+                        value: "start_now",
+                        description: "Set all times to current time"
+                    },
+                    {
+                        label: "Start now + set due date",
+                        value: "start_now_with_due",
+                        description: "Start now and set a due date later"
                     },
                     { label: "Cancel", value: "cancel" },
                 ],

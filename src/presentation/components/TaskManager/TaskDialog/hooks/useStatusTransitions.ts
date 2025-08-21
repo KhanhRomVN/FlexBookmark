@@ -1,7 +1,10 @@
 // src/presentation/components/TaskManager/TaskDialog/hooks/useStatusTransitions.ts
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Status, Task } from "../../../../types/task";
-import { getTransitionScenarios, executeStatusTransition as executeTransition } from "../utils/taskTransitions";
+import {
+    getTransitionScenarios,
+    executeStatusTransition as runStatusTransition,
+} from "../utils/taskTransitions";
 
 export const useStatusTransitions = (
     editedTask: Task | null,
@@ -14,6 +17,7 @@ export const useStatusTransitions = (
         to: Status;
         scenarios: any[];
     } | null>(null);
+
     const [showTransitionDialog, setShowTransitionDialog] = useState(false);
 
     const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
@@ -32,6 +36,7 @@ export const useStatusTransitions = (
             editedTask
         );
 
+        // Nếu chuyển sang "done" nhưng còn subtasks bắt buộc chưa xong
         if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
             setPendingTransition({
                 from: editedTask.status,
@@ -58,6 +63,7 @@ export const useStatusTransitions = (
             return;
         }
 
+        // Nếu có scenario yêu cầu lựa chọn
         if (scenarios.length > 0) {
             setPendingTransition({
                 from: editedTask.status,
@@ -68,38 +74,40 @@ export const useStatusTransitions = (
             return;
         }
 
+        // Nếu không có gì đặc biệt -> chuyển trực tiếp
         executeStatusTransition(editedTask.status, newStatus, {});
     };
 
-    const executeStatusTransition = (
-        oldStatus: Status,
-        newStatus: Status,
-        selectedOptions: Record<string, string>
-    ) => {
-        if (!editedTask) return;
+    const executeStatusTransition = useCallback(
+        (
+            from: Status,
+            to: Status,
+            selectedOptions: Record<string, string>,
+            shouldSave: boolean = false
+        ) => {
+            if (!editedTask) return;
 
-        if (selectedOptions["Incomplete Required Subtasks"] === "force_complete") {
-            const updatedTask = { ...editedTask, status: newStatus };
+            const updatedTask = runStatusTransition(
+                editedTask,
+                from,
+                to,
+                selectedOptions,
+                isCreateMode
+            );
+
+            if ("error" in updatedTask) {
+                // TODO: xử lý error nếu cần
+                return;
+            }
+
             setEditedTask(updatedTask);
-            onSave(updatedTask);
-            return;
-        }
 
-        if (selectedOptions["Incomplete Required Subtasks"] === "cancel") {
-            return;
-        }
-
-        const updatedTask = executeTransition(
-            editedTask,
-            oldStatus,
-            newStatus,
-            selectedOptions,
-            isCreateMode
-        );
-
-        setEditedTask(updatedTask);
-        onSave(updatedTask);
-    };
+            if (shouldSave) {
+                onSave(updatedTask);
+            }
+        },
+        [editedTask, isCreateMode, onSave, setEditedTask]
+    );
 
     return {
         pendingTransition,

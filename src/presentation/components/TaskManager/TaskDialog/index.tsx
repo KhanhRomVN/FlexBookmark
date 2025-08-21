@@ -153,6 +153,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const [pendingDateTimeStatus, setPendingDateTimeStatus] =
     useState<Status | null>(null);
 
+  const [pendingTransitionWithDialog, setPendingTransitionWithDialog] =
+    useState<{
+      from: Status;
+      to: Status;
+      selectedOptions: Record<string, string>;
+    } | null>(null);
+
   const attachmentRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -181,6 +188,22 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   ) => {
     if (!pendingTransition) return;
 
+    const requiresDateTimeDialog =
+      Object.values(selectedOptions).includes("adjust_time");
+
+    if (requiresDateTimeDialog) {
+      setPendingTransitionWithDialog({
+        from: pendingTransition.from,
+        to: pendingTransition.to,
+        selectedOptions,
+      });
+      setShowDateTimeDialog(true);
+      setPendingDateTimeStatus(pendingTransition.to);
+      setShowTransitionDialog(false);
+      setPendingTransition(null);
+      return;
+    }
+
     // Check if this is a Google Tasks restore scenario
     const isGoogleTasksRestore =
       pendingTransition.from === "done" &&
@@ -202,7 +225,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     executeStatusTransition(
       pendingTransition.from,
       pendingTransition.to,
-      selectedOptions
+      selectedOptions,
+      false
     );
     setShowTransitionDialog(false);
     setPendingTransition(null);
@@ -218,7 +242,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     dueDate: Date | null,
     status: Status
   ) => {
-    if (!editedTask) return;
+    if (!editedTask || !pendingTransitionWithDialog) return;
 
     const updatedTask = {
       ...editedTask,
@@ -229,8 +253,17 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       dueTime: dueDate,
     };
 
+    // Update UI state but don't save to API yet
+    executeStatusTransition(
+      pendingTransitionWithDialog.from,
+      pendingTransitionWithDialog.to,
+      pendingTransitionWithDialog.selectedOptions,
+      false // Don't save to API yet
+    );
+
     setEditedTask(updatedTask);
     setShowDateTimeDialog(false);
+    setPendingTransitionWithDialog(null);
     setPendingDateTimeStatus(null);
   };
 
