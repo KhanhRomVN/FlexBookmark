@@ -55,6 +55,17 @@ const DateTimeStatusDialog: React.FC<DateTimeStatusDialogProps> = ({
   const [previewStatus, setPreviewStatus] = useState<Status>(targetStatus);
   const [activeTab, setActiveTab] = useState<"quick" | "custom">("quick");
 
+  // Check if start date and time are set to enable due date/time
+  const isStartDateTimeSet = startDate && startTime;
+
+  // Clear due date/time when start date/time is cleared
+  useEffect(() => {
+    if (!isStartDateTimeSet) {
+      setDueDate(null);
+      setDueTime(null);
+    }
+  }, [isStartDateTimeSet]);
+
   // Quick schedule options
   const quickOptions = [
     {
@@ -268,6 +279,12 @@ const DateTimeStatusDialog: React.FC<DateTimeStatusDialogProps> = ({
                 onTimeChange={setDueTime}
                 label="Due Date & Time (Optional)"
                 color="red"
+                disabled={!isStartDateTimeSet}
+                placeholder={
+                  isStartDateTimeSet
+                    ? "Select due date & time"
+                    : "Set start date & time first"
+                }
               />
             </div>
           )}

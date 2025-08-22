@@ -15,6 +15,9 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   handleChange,
   isCreateMode,
 }) => {
+  // Check if start date and time are set to enable due date/time
+  const isStartDateTimeSet = editedTask.startDate && editedTask.startTime;
+
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -35,7 +38,12 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
           onTimeChange={(time) => handleChange("dueTime", time)}
           label="Due Date & Time"
           color="red"
-          placeholder="Select due date & time"
+          placeholder={
+            isStartDateTimeSet
+              ? "Select due date & time"
+              : "Set start date & time first"
+          }
+          disabled={!isStartDateTimeSet}
         />
       </div>
 

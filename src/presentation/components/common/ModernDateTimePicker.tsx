@@ -1,5 +1,5 @@
 // ModernDateTimePicker.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,6 +7,7 @@ import {
   Clock,
   X,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 
 interface ModernDateTimePickerProps {
@@ -17,6 +18,7 @@ interface ModernDateTimePickerProps {
   label: string;
   color?: "green" | "red" | "blue" | "purple";
   placeholder?: string;
+  disabled?: boolean;
 }
 
 const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
@@ -27,6 +29,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   label,
   color = "green",
   placeholder = "Select date & time",
+  disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(selectedDate || new Date());
@@ -327,8 +330,16 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
 
       <div className="space-y-3">
         <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
-          <div className={`p-1 rounded-lg ${theme.bg}`}>
-            <Calendar size={14} className={theme.text} />
+          <div
+            className={`p-1 rounded-lg ${
+              disabled ? "bg-gray-100 dark:bg-gray-800" : theme.bg
+            }`}
+          >
+            {disabled ? (
+              <Lock size={14} className="text-gray-400 dark:text-gray-500" />
+            ) : (
+              <Calendar size={14} className={theme.text} />
+            )}
           </div>
           {label}
         </label>
@@ -336,19 +347,38 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
         <div className="relative">
           {/* Trigger Button */}
           <button
-            onClick={() => setIsOpen(true)}
-            className={`group w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-left flex items-center justify-between transition-all duration-300 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-gray-900/20 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-4 ${theme.ring}`}
+            onClick={() => !disabled && setIsOpen(true)}
+            disabled={disabled}
+            className={`group w-full border rounded-2xl px-4 py-4 text-left flex items-center justify-between transition-all duration-300 focus:outline-none ${
+              disabled
+                ? "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-60"
+                : `bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-gray-900/20 hover:border-gray-300 dark:hover:border-gray-600 focus:ring-4 ${theme.ring}`
+            }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`w-3 h-3 ${theme.dot} rounded-full shadow-sm`}
+                className={`w-3 h-3 rounded-full shadow-sm ${
+                  disabled ? "bg-gray-400 dark:bg-gray-500" : theme.dot
+                }`}
               ></div>
               <div className="space-y-1">
-                <div className="text-gray-900 dark:text-gray-100 font-medium">
+                <div
+                  className={`font-medium ${
+                    disabled
+                      ? "text-gray-500 dark:text-gray-400"
+                      : "text-gray-900 dark:text-gray-100"
+                  }`}
+                >
                   {formatDisplayDate(selectedDate)}
                 </div>
                 {selectedTime && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <div
+                    className={`text-sm flex items-center gap-1 ${
+                      disabled
+                        ? "text-gray-400 dark:text-gray-500"
+                        : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
                     <Clock size={12} />
                     {formatDisplayTime(selectedTime)}
                   </div>
@@ -357,12 +387,16 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
             </div>
             <ChevronDown
               size={18}
-              className="text-gray-400 dark:text-gray-500 transition-all duration-300 group-hover:text-gray-600 dark:group-hover:text-gray-300"
+              className={`transition-all duration-300 ${
+                disabled
+                  ? "text-gray-300 dark:text-gray-600"
+                  : "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300"
+              }`}
             />
           </button>
 
           {/* Dialog Overlay */}
-          {isOpen && (
+          {isOpen && !disabled && (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop">
               <div
                 className="absolute inset-0"
