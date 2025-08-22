@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Search, X, Plus, Trash2, AlertTriangle } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
 import { Task } from "../../../../types/task";
 
 interface CollectionSectionProps {
@@ -7,6 +7,45 @@ interface CollectionSectionProps {
   handleChange: (field: keyof Task, value: any) => void;
   availableTasks: Task[];
 }
+
+// Common emojis for collections
+const EMOJI_SUGGESTIONS = [
+  "📁",
+  "📂",
+  "🗂️",
+  "📋",
+  "📊",
+  "📝",
+  "💼",
+  "🏠",
+  "🏢",
+  "💻",
+  "🎯",
+  "📅",
+  "⭐",
+  "🔥",
+  "💡",
+  "🚀",
+  "💪",
+  "🎉",
+  "✅",
+  "❤️",
+  "🔴",
+  "🟠",
+  "🟡",
+  "🟢",
+  "🔵",
+  "🟣",
+  "⚫",
+  "⚪",
+  "🟤",
+  "🛒",
+  "🍕",
+  "🎮",
+  "📚",
+  "🎵",
+  "🏃",
+];
 
 const CollectionSection: React.FC<CollectionSectionProps> = ({
   editedTask,
@@ -17,6 +56,12 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<string>("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState("");
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Get all existing collections from available tasks
   const allCollections = useMemo(() => {
@@ -48,18 +93,58 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
     );
   };
 
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowSearch(false);
+        setSearchTerm("");
+        setSelectedEmoji("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleEmojiSelect = (emoji: string) => {
+    setSelectedEmoji(emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
+  };
+
+  const clearEmoji = () => {
+    setSelectedEmoji("");
+  };
+
   const handleCollectionSelect = (collection: string) => {
     handleChange("collection", collection);
     setShowSearch(false);
     setSearchTerm("");
+    setSelectedEmoji("");
   };
 
   const handleCreateCollection = () => {
-    const newCol = searchTerm.trim();
-    if (newCol) {
-      handleChange("collection", newCol);
+    const trimmedName = searchTerm.trim();
+    if (trimmedName) {
+      const fullCollectionName = selectedEmoji
+        ? `${selectedEmoji} ${trimmedName}`
+        : trimmedName;
+
+      handleChange("collection", fullCollectionName);
       setShowSearch(false);
       setSearchTerm("");
+      setSelectedEmoji("");
     }
   };
 
@@ -81,19 +166,14 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
     setCollectionToDelete("");
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const searchContainer = document.querySelector(
-        ".collection-search-container"
-      );
-      if (searchContainer && !searchContainer.contains(event.target as Node)) {
-        setShowSearch(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleCreateCollection();
+    } else if (e.key === "Backspace" && !searchTerm && selectedEmoji) {
+      setSelectedEmoji("");
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -102,21 +182,23 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
       </div>
 
-      <div className="relative collection-search-container">
+      <div className="relative" ref={searchContainerRef}>
         {editedTask.collection ? (
-          <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg">
+            <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
               {editedTask.collection}
             </span>
             <button
               onClick={() => setShowSearch(true)}
-              className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              title="Change collection"
             >
               <Search size={16} />
             </button>
             <button
               onClick={handleRemoveCollection}
-              className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+              className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+              title="Remove collection"
             >
               <X size={16} />
             </button>
@@ -124,7 +206,7 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
         ) : (
           <button
             onClick={() => setShowSearch(true)}
-            className="w-full p-3 text-left bg-input-background hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg border border-border-default text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"
+            className="w-full p-3 text-left bg-input-background hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg border border-border-default text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 transition-colors"
           >
             <Plus size={16} />
             Add to collection
@@ -133,29 +215,91 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
 
         {showSearch && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-10">
+            {/* Search Input with Emoji Support */}
             <div className="p-2 border-b border-border-default">
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
+              <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all duration-200">
+                {/* Emoji Button */}
+                <div className="relative" ref={emojiPickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${
+                      selectedEmoji
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    }`}
+                    title="Add emoji"
+                  >
+                    {selectedEmoji || <Smile size={14} />}
+                  </button>
+
+                  {/* Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-20 w-64">
+                      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        Choose an emoji:
+                      </div>
+                      <div className="grid grid-cols-8 gap-1 max-h-32 overflow-y-auto">
+                        {EMOJI_SUGGESTIONS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleEmojiSelect(emoji)}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Clear Emoji Button */}
+                {selectedEmoji && (
+                  <button
+                    type="button"
+                    onClick={clearEmoji}
+                    className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                    title="Clear emoji"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+
+                {/* Search Icon */}
+                <Search className="text-gray-400" size={16} />
+
+                {/* Text Input */}
                 <input
+                  ref={inputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Search or create collection..."
-                  className="w-full pl-9 pr-3 py-2 bg-transparent border-none focus:ring-0 text-sm"
-                  autoFocus
+                  className="flex-1 bg-transparent text-gray-900 dark:text-gray-100 text-sm focus:outline-none placeholder-gray-500 dark:placeholder-gray-400"
                 />
               </div>
+
+              {/* Preview */}
+              {(selectedEmoji || searchTerm) && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 px-2">
+                  <span>Preview:</span>
+                  <div className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-lg text-sm">
+                    {selectedEmoji && <span>{selectedEmoji}</span>}
+                    <span>{searchTerm || "collection name"}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Collections List */}
             <div className="max-h-48 overflow-y-auto">
               {filteredCollections.length > 0 ? (
                 filteredCollections.map((collection) => (
                   <div
                     key={collection}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <button
                       onClick={() => handleCollectionSelect(collection)}
@@ -168,7 +312,7 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
                         e.stopPropagation();
                         handleDeleteCollection(collection);
                       }}
-                      className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 opacity-60 hover:opacity-100"
+                      className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 opacity-60 hover:opacity-100 transition-all"
                       title="Delete collection"
                     >
                       <Trash2 size={14} />
@@ -178,10 +322,14 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               ) : searchTerm ? (
                 <button
                   onClick={handleCreateCollection}
-                  className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2"
+                  className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2 transition-colors"
                 >
                   <Plus size={16} />
-                  Create "{searchTerm}"
+                  Create "
+                  {selectedEmoji
+                    ? `${selectedEmoji} ${searchTerm}`
+                    : searchTerm}
+                  "
                 </button>
               ) : (
                 <div className="p-3 text-center text-sm text-gray-500 dark:text-gray-400">

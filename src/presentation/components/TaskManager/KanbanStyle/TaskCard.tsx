@@ -194,24 +194,6 @@ const formatDateRange = (startDate?: Date | null, dueDate?: Date | null) => {
 };
 
 // Helper function to get tag color information
-const getTagStyle = (tagName: string) => {
-  const predefinedTag = PREDEFINED_TAGS.find(
-    (tag) => tag.name.toLowerCase() === tagName.toLowerCase()
-  );
-
-  if (predefinedTag) {
-    return {
-      backgroundColor: predefinedTag.color,
-      color: predefinedTag.textColor,
-    };
-  }
-
-  // Default style for custom tags
-  return {
-    backgroundColor: "#e5e7eb",
-    color: "#374151",
-  };
-};
 
 const TaskCard: React.FC<TaskCardProps> = ({
   task,
@@ -325,30 +307,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
           {task.title}
         </h4>
       </div>
-
-      {/* 3. Tags with predefined colors */}
-      {task.tags && task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {task.tags.slice(0, 3).map((tag, index) => {
-            const tagStyle = getTagStyle(tag);
-            return (
-              <span
-                key={index}
-                className="text-xs px-2 py-1 rounded-full font-medium"
-                style={tagStyle}
-                title={tag}
-              >
-                {tag.length > 8 ? `${tag.substring(0, 8)}...` : tag}
-              </span>
-            );
-          })}
-          {task.tags.length > 3 && (
-            <span className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">
-              +{task.tags.length - 3}
-            </span>
-          )}
-        </div>
-      )}
 
       {/* 4. Additional Information - All in one horizontal line */}
       <div className="flex items-center justify-between gap-2 text-sm flex-shrink-0 mt-auto">
