@@ -340,6 +340,19 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
     }
   }, [validationDialog, handleChange]);
 
+  const getStatusFromDates = (task: Task): Status => {
+    const now = new Date();
+    const dueDateTime = combineDateTime(task.dueDate, task.dueTime);
+
+    if (!dueDateTime) return task.status;
+
+    if (dueDateTime > now) {
+      return "in-progress";
+    } else {
+      return task.completed ? "done" : "overdue";
+    }
+  };
+
   const handleValidationCancel = useCallback(() => {
     setValidationDialog({ isOpen: false, type: "overdue" });
     // Don't call success callback when canceling

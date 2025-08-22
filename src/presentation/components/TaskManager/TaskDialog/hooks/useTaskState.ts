@@ -1,3 +1,5 @@
+// src/presentation/components/TaskManager/TaskDialog/hooks/useTaskState.ts
+
 import { useState, useEffect } from "react";
 import { Task, Status } from "../../../../types/task";
 import { getSuggestedStatusFromDates } from "../utils/taskTransitions";
@@ -5,20 +7,22 @@ import { getSuggestedStatusFromDates } from "../utils/taskTransitions";
 export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     const [editedTask, setEditedTask] = useState<Task | null>(task);
     const [suggestedStatus, setSuggestedStatus] = useState<Status | null>(null);
+    const [isStatusManuallyChanged, setIsStatusManuallyChanged] = useState(false);
 
+    // Reset state khi task thay đổi
     useEffect(() => {
         setEditedTask(task);
+        setIsStatusManuallyChanged(false);
     }, [task]);
 
-    // Auto-suggest and auto-apply status when dates change
+    // Auto-suggest và auto-apply status khi dates thay đổi
     useEffect(() => {
-        if (editedTask && !isCreateMode) {
+        if (editedTask && !isCreateMode && !isStatusManuallyChanged) {
             console.log("Auto-suggest status check triggered");
             const suggested = getSuggestedStatusFromDates(editedTask);
             console.log("Suggested status:", suggested);
             setSuggestedStatus(suggested);
 
-            // Auto-apply the suggested status immediately
             if (suggested && suggested !== editedTask.status) {
                 console.log("Auto-applying suggested status:", suggested);
                 setEditedTask(prev => {
@@ -26,9 +30,7 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
 
                     let updatedTask = { ...prev, status: suggested };
 
-                    // If transitioning to in-progress, ensure actual start times are set
                     if (suggested === "in-progress" && (!prev.actualStartTime || !prev.actualStartDate)) {
-                        // Use the planned start times if available, otherwise use current time
                         const now = new Date();
                         updatedTask.actualStartTime = prev.startTime || now;
                         updatedTask.actualStartDate = prev.startDate || now;
@@ -38,20 +40,34 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
                 });
             }
         }
-    }, [editedTask?.startDate, editedTask?.startTime, editedTask?.dueDate, editedTask?.dueTime, editedTask?.status, isCreateMode]);
+    }, [
+        editedTask?.startDate,
+        editedTask?.startTime,
+        editedTask?.dueDate,
+        editedTask?.dueTime,
+        isCreateMode,
+        isStatusManuallyChanged
+    ]);
 
     const handleChange = (field: keyof Task, value: any) => {
         setEditedTask((prev) => {
             if (!prev) return prev;
+
+            if (field === "status") {
+                setIsStatusManuallyChanged(true);
+            }
+
             let updated = { ...prev, [field]: value };
 
-            // Auto-update status for create mode based on dates
-            if (isCreateMode && (field === 'startDate' || field === 'startTime' || field === 'dueDate' || field === 'dueTime')) {
+            // Trong create mode, auto-update status dựa theo ngày/giờ
+            if (
+                isCreateMode &&
+                (field === "startDate" || field === "startTime" || field === "dueDate" || field === "dueTime")
+            ) {
                 const suggested = getSuggestedStatusFromDates(updated);
                 if (suggested && suggested !== updated.status) {
                     updated.status = suggested;
 
-                    // If transitioning to in-progress during create mode, set actual start times
                     if (suggested === "in-progress" && (!updated.actualStartTime || !updated.actualStartDate)) {
                         const now = new Date();
                         updated.actualStartTime = updated.startTime || now;
@@ -64,25 +80,25 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         });
     };
 
-    // Get the effective current status (actual status or suggested status)
     const getEffectiveStatus = (): Status => {
-        if (!editedTask) return 'backlog';
+        if (!editedTask) return "backlog";
         if (isCreateMode) return editedTask.status;
 
         console.log("Calculating effective status:", {
             currentStatus: editedTask.status,
             suggestedStatus,
-            isDone: editedTask.status === 'done',
-            isOverdue: editedTask.status === 'overdue'
+            isDone: editedTask.status === "done",
+            isOverdue: editedTask.status === "overdue"
         });
 
-        // If user has explicitly set status through validation, use that
-        if (editedTask.status === 'done' || editedTask.status === 'overdue') {
+        if (editedTask.status === "done" || editedTask.status === "overdue") {
             console.log("Using explicit status:", editedTask.status);
             return editedTask.status;
         }
 
-        const effectiveStatus = suggestedStatus && suggestedStatus !== editedTask.status ? suggestedStatus : editedTask.status;
+        const effectiveStatus =
+            suggestedStatus && suggestedStatus !== editedTask.status ? suggestedStatus : editedTask.status;
+
         console.log("Using effective status:", effectiveStatus);
         return effectiveStatus;
     };
@@ -91,7 +107,7 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         editedTask,
         setEditedTask,
         handleChange,
-        suggestedStatus: null, // Always return null to hide the suggestion UI
+        suggestedStatus: null, // luôn trả null để ẩn UI suggestion
         getEffectiveStatus
     };
-};  
+};

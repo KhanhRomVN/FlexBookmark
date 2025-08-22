@@ -1003,6 +1003,14 @@ export const getSuggestedStatusFromDates = (task: Task): Status | null => {
     const startDate = task.startDate ? new Date(task.startDate) : null;
     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
 
+    // Allow transitions from done/overdue if dates are updated
+    if (dueDate && dueDate > now && (task.status === "done" || task.status === "overdue")) {
+        if (startDate && startDate <= now) {
+            return "in-progress";
+        }
+        return "todo";
+    }
+
     // Don't suggest changes for completed tasks unless they're being restored
     if (task.status === 'done') return null;
 
@@ -1014,12 +1022,12 @@ export const getSuggestedStatusFromDates = (task: Task): Status | null => {
     // If task has start date/time
     if (startDate) {
         // Task should be in-progress if start time has passed and not done/overdue
-        if (startDate <= now && task.status === 'todo') {
+        if (startDate <= now && (task.status === 'todo' || task.status === 'backlog')) {
             return 'in-progress';
         }
 
-        // Task should be todo if start time is in future and currently in backlog
-        if (startDate > now && task.status === 'backlog') {
+        // Task should be todo if start time is in future and currently in backlog or in-progress
+        if (startDate > now && (task.status === 'backlog' || task.status === 'in-progress')) {
             return 'todo';
         }
     }
