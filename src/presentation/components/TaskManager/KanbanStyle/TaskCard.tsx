@@ -138,8 +138,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
     >
       {/* 1. Due Date & Time + Edit Button */}
       <div className="flex justify-between items-start mb-3 flex-shrink-0">
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <Calendar className="w-4 h-4 flex-shrink-0" />
+        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <Calendar className="w-2 h-2 flex-shrink-0" />
           <span className="font-medium truncate">
             {formatDateTime(task.dueDate, task.dueTime) || "No due date"}
           </span>
@@ -197,7 +197,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <div className="flex-1 mb-3 min-h-0">
         <h4
           onClick={onClick}
-          className="font-semibold text-gray-900 dark:text-white leading-5 break-words hyphens-auto cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+          className="font-semibold text-base text-text-primary hover:text-text-secondary break-words hyphens-auto cursor-pointer transition-colors duration-200"
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 3,
