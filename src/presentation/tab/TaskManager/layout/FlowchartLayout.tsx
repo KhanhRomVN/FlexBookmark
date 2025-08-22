@@ -15,7 +15,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Task, Status } from "../../../types/task";
-import CustomNode from "../../../components/TaskManager/FlowchartStyle/CustomNode";
+import TaskNode from "../../../components/TaskManager/FlowchartStyle/TaskNode";
+import CollectionNode from "../../../components/TaskManager/FlowchartStyle/CollectionNode";
 import { FolderTree, Workflow } from "lucide-react";
 
 interface FlowchartLayoutProps {
@@ -34,7 +35,8 @@ interface FlowchartLayoutProps {
 
 // Node types for React Flow
 const nodeTypes: NodeTypes = {
-  custom: CustomNode,
+  task: TaskNode,
+  collection: CollectionNode,
 };
 
 const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
@@ -49,64 +51,144 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
   const { nodes, edges } = useMemo(() => {
     const allTasks = filteredLists.flatMap((list) => list.tasks);
 
-    // Create nodes from tasks
-    const taskNodes: Node[] = allTasks.map((task, index) => ({
-      id: task.id,
-      type: "custom",
-      position: {
-        x:
-          viewMode === "hierarchical"
-            ? (folders.findIndex((f) => f.id === task.status) + 1) * 250
-            : Math.random() * 800,
-        y:
-          viewMode === "hierarchical"
-            ? (index % 10) * 100 + 50
-            : Math.random() * 600,
-      },
-      data: {
-        ...task,
-        onClick: () => onTaskClick(task),
-      },
-    }));
+    // Group tasks by collection
+    const tasksByCollection: Record<string, Task[]> = {};
+    const tasksWithoutCollection: Task[] = [];
 
-    // Create edges based on task relationships (simplified - in a real app, you'd use actual relationships)
+    allTasks.forEach((task) => {
+      if (task.collection && task.collection.trim()) {
+        if (!tasksByCollection[task.collection]) {
+          tasksByCollection[task.collection] = [];
+        }
+        tasksByCollection[task.collection].push(task);
+      } else {
+        tasksWithoutCollection.push(task);
+      }
+    });
+
+    const taskNodes: Node[] = [];
     const taskEdges: Edge[] = [];
 
-    // Create connections between tasks in sequence (for demo purposes)
-    for (let i = 0; i < allTasks.length - 1; i++) {
-      // Only connect some tasks to avoid clutter
-      if (Math.random() > 0.7) continue;
+    let nodeYPosition = 50;
+    let nodeXPosition = 100;
 
-      taskEdges.push({
-        id: `e${allTasks[i].id}-${allTasks[i + 1].id}`,
-        source: allTasks[i].id,
-        target: allTasks[i + 1].id,
-        type: "smoothstep",
+    // Create collection nodes for collections with 2 or more tasks
+    Object.entries(tasksByCollection).forEach(([collection, tasks]) => {
+      if (tasks.length >= 2) {
+        // Create collection node
+        const collectionNodeId = `collection-${collection}`;
+        taskNodes.push({
+          id: collectionNodeId,
+          type: "collection",
+          position: {
+            x:
+              viewMode === "hierarchical" ? nodeXPosition : Math.random() * 800,
+            y:
+              viewMode === "hierarchical" ? nodeYPosition : Math.random() * 600,
+          },
+          data: {
+            collection,
+            tasks,
+            onClick: onTaskClick,
+          },
+        });
+
+        if (viewMode === "hierarchical") {
+          nodeYPosition += 200; // Space between collection nodes
+          if (nodeYPosition > 800) {
+            nodeYPosition = 50;
+            nodeXPosition += 450;
+          }
+        }
+      } else {
+        // If collection has only 1 task, treat it as individual task
+        tasksWithoutCollection.push(...tasks);
+      }
+    });
+
+    // Create individual task nodes for tasks without collection or in collections with < 2 tasks
+    tasksWithoutCollection.forEach((task, index) => {
+      taskNodes.push({
+        id: task.id,
+        type: "task",
+        position: {
+          x:
+            viewMode === "hierarchical"
+              ? nodeXPosition + (index % 3) * 280 // Arrange in grid
+              : Math.random() * 800,
+          y:
+            viewMode === "hierarchical"
+              ? nodeYPosition + Math.floor(index / 3) * 150
+              : Math.random() * 600,
+        },
+        data: {
+          ...task,
+          onClick: () => onTaskClick(task),
+        },
       });
-    }
+    });
 
-    // Add connections from backlog to other tasks
-    const backlogTasks = allTasks.filter((t) => t.status === "backlog");
-    const otherTasks = allTasks.filter((t) => t.status !== "backlog");
+    // Create edges based on actual linkedTaskId relationships
+    allTasks.forEach((task) => {
+      if (task.subtasks) {
+        task.subtasks.forEach((subtask) => {
+          if (subtask.linkedTaskId) {
+            const linkedTask = allTasks.find(
+              (t) => t.id === subtask.linkedTaskId
+            );
+            if (linkedTask) {
+              // Find if tasks are in collection nodes or individual nodes
+              const sourceNodeId = getNodeIdForTask(task, tasksByCollection);
+              const targetNodeId = getNodeIdForTask(
+                linkedTask,
+                tasksByCollection
+              );
 
-    if (backlogTasks.length > 0 && otherTasks.length > 0) {
-      // Connect some backlog tasks to other tasks
-      backlogTasks.slice(0, 3).forEach((backlogTask) => {
-        otherTasks.slice(0, 2).forEach((otherTask) => {
-          if (Math.random() > 0.5) {
-            taskEdges.push({
-              id: `e${backlogTask.id}-${otherTask.id}`,
-              source: backlogTask.id,
-              target: otherTask.id,
-              type: "smoothstep",
-            });
+              if (
+                sourceNodeId &&
+                targetNodeId &&
+                sourceNodeId !== targetNodeId
+              ) {
+                taskEdges.push({
+                  id: `e${task.id}-${linkedTask.id}`,
+                  source: sourceNodeId,
+                  target: targetNodeId,
+                  type: "smoothstep",
+                  label: subtask.title,
+                  style: { stroke: "#3b82f6", strokeWidth: 2 },
+                  labelStyle: {
+                    fontSize: 10,
+                    backgroundColor: "rgba(255, 255, 255, 0.8)",
+                    padding: "2px 4px",
+                    borderRadius: "4px",
+                  },
+                });
+              }
+            }
           }
         });
-      });
-    }
+      }
+    });
 
     return { nodes: taskNodes, edges: taskEdges };
   }, [filteredLists, onTaskClick, viewMode]);
+
+  // Helper function to get node ID for a task (either individual task node or collection node)
+  const getNodeIdForTask = (
+    task: Task,
+    tasksByCollection: Record<string, Task[]>
+  ): string | null => {
+    // Check if task is in a collection with 2+ tasks
+    if (
+      task.collection &&
+      tasksByCollection[task.collection] &&
+      tasksByCollection[task.collection].length >= 2
+    ) {
+      return `collection-${task.collection}`;
+    }
+    // Otherwise it's an individual task node
+    return task.id;
+  };
 
   const [reactFlowNodes, setReactFlowNodes, onNodesChange] =
     useNodesState(nodes);
@@ -161,6 +243,9 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
           <Controls />
           <MiniMap
             nodeColor={(node) => {
+              if (node.type === "collection") {
+                return "#6366f1"; // Indigo for collection nodes
+              }
               switch (node.data.status) {
                 case "backlog":
                   return "#6b7280";
@@ -183,6 +268,10 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md text-sm">
               <div className="font-medium mb-2">Status Legend</div>
               <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
+                  <span>Collection</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-gray-500"></div>
                   <span>Backlog</span>
@@ -211,15 +300,5 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
     </div>
   );
 };
-
-// Folder definitions for layout
-const folders = [
-  { id: "backlog", title: "Backlog", emoji: "📥", priority: 1 },
-  { id: "todo", title: "To Do", emoji: "📋", priority: 2 },
-  { id: "in-progress", title: "In Progress", emoji: "🚧", priority: 3 },
-  { id: "overdue", title: "Overdue", emoji: "⏰", priority: 4 },
-  { id: "done", title: "Done", emoji: "✅", priority: 0 },
-  { id: "archive", title: "Archive", emoji: "🗄️", priority: -1 },
-];
 
 export default FlowchartLayout;

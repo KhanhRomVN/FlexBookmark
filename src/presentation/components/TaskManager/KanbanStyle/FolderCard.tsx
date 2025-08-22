@@ -1,15 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useDroppable } from "@dnd-kit/core";
 import TaskCard from "./TaskCard";
-import type { Task, Status } from "../../../types/task";
-import {
-  MoreVertical,
-  ArrowUpDown,
-  Archive,
-  Trash2,
-  Target,
-  X,
-} from "lucide-react";
+import type { Task } from "../../../types/task";
+import { MoreVertical, ArrowUpDown, Archive, Trash2 } from "lucide-react";
 
 interface FolderCardProps {
   id: string;
@@ -26,9 +18,6 @@ interface FolderCardProps {
   onArchiveTasks?: (folderId: string) => void;
   onDeleteTasks?: (folderId: string) => void;
   onSortTasks?: (folderId: string, sortType: string) => void;
-  // New props for drag-and-drop
-  acceptsDrops?: boolean;
-  targetStatus?: Status;
 }
 
 const FolderCard: React.FC<FolderCardProps> = ({
@@ -40,18 +29,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   onArchiveTasks,
   onDeleteTasks,
   onSortTasks,
-  acceptsDrops = false,
-  targetStatus,
 }) => {
-  const { setNodeRef, isOver, active } = useDroppable({
-    id,
-    data: {
-      type: "folder",
-      status: targetStatus,
-      accepts: ["task"],
-    },
-  });
-
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -106,66 +84,18 @@ const FolderCard: React.FC<FolderCardProps> = ({
     setShowSortMenu(false);
   };
 
-  // Determine if this is a valid drop target
-  const isDraggedTaskDifferentStatus =
-    active?.data?.current?.status !== targetStatus;
-  const canAcceptDrop = acceptsDrops && active && isDraggedTaskDifferentStatus;
-  const isValidDropTarget = canAcceptDrop && isOver;
-  const isHoveringButInvalid = isOver && !canAcceptDrop;
-
-  // Status color mapping for visual feedback
-  const getStatusColor = (status?: Status) => {
-    switch (status) {
-      case "backlog":
-        return "border-slate-500 bg-slate-50 dark:bg-slate-900/20";
-      case "todo":
-        return "border-blue-500 bg-blue-50 dark:bg-blue-900/20";
-      case "in-progress":
-        return "border-amber-500 bg-amber-50 dark:bg-amber-900/20";
-      case "done":
-        return "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20";
-      case "overdue":
-        return "border-red-500 bg-red-50 dark:bg-red-900/20";
-      default:
-        return "border-gray-200 dark:border-gray-700";
-    }
-  };
-
-  const baseClasses =
-    "bg-card-background rounded-xl w-full flex flex-col min-h-[600px] shadow-sm border transition-all duration-200";
-  const dropClasses = isValidDropTarget
-    ? `${getStatusColor(
-        targetStatus
-      )} border-2 shadow-lg transform scale-[1.02]`
-    : isHoveringButInvalid
-    ? "border-red-300 bg-red-50 dark:bg-red-900/10 border-2"
-    : canAcceptDrop
-    ? `${getStatusColor(targetStatus)} border-dashed border-2 opacity-80`
-    : "border-gray-200 dark:border-gray-700";
-
   return (
-    <div ref={setNodeRef} className={`${baseClasses} ${dropClasses}`}>
+    <div className="bg-card-background rounded-xl w-full flex flex-col min-h-[600px] shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200">
       <div className="p-4 border-b border-border-default">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-text-primary flex items-center gap-2">
             {emoji && <span>{emoji}</span>}
             <span className="flex-1">{title}</span>
-            {/* Drop indicator */}
-            {isValidDropTarget && (
-              <Target className="w-5 h-5 text-green-500 animate-pulse" />
-            )}
-            {isHoveringButInvalid && <X className="w-5 h-5 text-red-500" />}
           </h3>
 
           <div className="flex items-center gap-2">
             {/* Task Count Badge */}
-            <div
-              className={`text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm transition-all duration-200 ${
-                isValidDropTarget
-                  ? "bg-gradient-to-r from-green-500 to-emerald-500 animate-pulse"
-                  : "bg-gradient-to-r from-blue-500 to-indigo-500"
-              }`}
-            >
+            <div className="text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm bg-gradient-to-r from-blue-500 to-indigo-500">
               {tasks.length}
             </div>
 
@@ -230,21 +160,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Drop zone indicator */}
-        {canAcceptDrop && (
-          <div className="mt-3 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-              {isValidDropTarget ? (
-                <span className="text-green-600 dark:text-green-400 font-medium">
-                  Drop to move to {title}
-                </span>
-              ) : (
-                <span>Drop task here to change status</span>
-              )}
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="overflow-y-auto p-3 space-y-3 flex-1">
@@ -259,9 +174,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         {tasks.length === 0 && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <div className="text-4xl mb-2">{emoji}</div>
-            <p className="text-sm">
-              {canAcceptDrop ? "Drop tasks here" : "No tasks yet"}
-            </p>
+            <p className="text-sm">No tasks yet</p>
           </div>
         )}
       </div>

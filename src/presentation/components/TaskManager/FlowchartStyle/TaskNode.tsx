@@ -1,14 +1,14 @@
-// src/presentation/components/TaskManager/Flowchart/CustomNode.tsx
+// src/presentation/components/TaskManager/Flowchart/TaskNode.tsx
 import React from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import type { Task } from "../../../types/task";
 import { Calendar, Clock, Paperclip, CheckSquare, Tag } from "lucide-react";
 
-interface CustomNodeData extends Task {
+interface TaskNodeData extends Task {
   onClick: () => void;
 }
 
-const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
+const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "backlog":
@@ -57,7 +57,7 @@ const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
   };
 
   return (
-    <div className="px-4 py-3 shadow-md rounded-md bg-white border-2 border-gray-200 min-w-[250px] max-w-[300px]">
+    <div className="px-4 py-3 rounded-lg bg-card-background border border-border-default hover:border-border-hover min-w-[250px] max-w-[300px]">
       {/* Input handle */}
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
 
@@ -77,7 +77,7 @@ const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
 
       {/* Title */}
       <div
-        className="font-semibold mb-2 text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+        className="font-semibold mb-2 text-text-primary cursor-pointer"
         onClick={data.onClick}
       >
         {data.title}
@@ -85,9 +85,9 @@ const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
 
       {/* Due date and time */}
       {(data.dueDate || data.dueTime) && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+        <div className="flex items-center gap-2 text-xs text-text-secondary mb-2">
           <Calendar className="w-3 h-3" />
-          <span>
+          <span className="text-text-secondary">
             {formatDate(data.dueDate)}{" "}
             {data.dueTime &&
               data.dueTime.toLocaleTimeString([], {
@@ -95,26 +95,6 @@ const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
                 minute: "2-digit",
               })}
           </span>
-        </div>
-      )}
-
-      {/* Tags */}
-      {data.tags && data.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
-          {data.tags.slice(0, 3).map((tag, index) => (
-            <span
-              key={index}
-              className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full flex items-center gap-1"
-            >
-              <Tag className="w-3 h-3" />
-              {tag}
-            </span>
-          ))}
-          {data.tags.length > 3 && (
-            <span className="text-xs text-gray-500">
-              +{data.tags.length - 3}
-            </span>
-          )}
         </div>
       )}
 
@@ -149,4 +129,4 @@ const CustomNode: React.FC<NodeProps<CustomNodeData>> = ({ data }) => {
   );
 };
 
-export default CustomNode;
+export default TaskNode;
