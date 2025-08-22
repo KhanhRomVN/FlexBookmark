@@ -6,8 +6,8 @@ import {
   Link,
   ExternalLink,
   Search,
-  Star,
   Lock,
+  Smile,
 } from "lucide-react";
 import { Subtask, Task } from "../../../../types/task";
 
@@ -27,7 +27,36 @@ interface NewSubtaskForm {
   description: string;
   linkedTaskId: string | null;
   requiredCompleted: boolean;
+  emoji: string;
 }
+
+// Common emojis for subtasks
+const SUBTASK_EMOJIS = [
+  "✅",
+  "📝",
+  "🎯",
+  "💡",
+  "🔧",
+  "📋",
+  "⚡",
+  "🚀",
+  "💼",
+  "📱",
+  "💻",
+  "📊",
+  "📞",
+  "✉️",
+  "🎨",
+  "🔍",
+  "📚",
+  "🎵",
+  "🏃",
+  "🍕",
+  "☕",
+  "🌟",
+  "🔥",
+  "💪",
+];
 
 const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   editedTask,
@@ -39,26 +68,30 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   availableTasks = [],
   onTaskClick,
 }) => {
-  // Enhanced form state for new subtask
   const [newSubtaskForm, setNewSubtaskForm] = useState<NewSubtaskForm>({
     title: "",
     description: "",
     linkedTaskId: null,
     requiredCompleted: false,
+    emoji: "",
   });
 
-  // Dropdown states
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isEditingSubtask, setIsEditingSubtask] = useState<string | null>(null);
   const [editingTaskDropdown, setEditingTaskDropdown] = useState<string | null>(
     null
   );
   const [editingSearchQuery, setEditingSearchQuery] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [editingEmojiPicker, setEditingEmojiPicker] = useState<string | null>(
+    null
+  );
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const editingDropdownRef = useRef<HTMLDivElement>(null);
   const linkedTaskSearchRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const editingEmojiPickerRef = useRef<HTMLDivElement>(null);
 
   const completionPercentage =
     editedTask.subtasks && editedTask.subtasks.length > 0
@@ -69,21 +102,19 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
         )
       : 0;
 
-  // Filter available tasks based on search query
+  // Filter available tasks
   const filteredTasks = availableTasks.filter(
     (task) =>
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Filter tasks for editing subtask
   const filteredEditingTasks = availableTasks.filter(
     (task) =>
       task.title.toLowerCase().includes(editingSearchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(editingSearchQuery.toLowerCase())
   );
 
-  // Handle new subtask form changes
   const handleFormChange = (
     field: keyof NewSubtaskForm,
     value: string | null | boolean
@@ -91,59 +122,67 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     setNewSubtaskForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Handle linked task search
+  const handleEmojiSelect = (emoji: string) => {
+    setNewSubtaskForm((prev) => ({ ...prev, emoji }));
+    setShowEmojiPicker(false);
+  };
+
+  const handleEditingEmojiSelect = (subtaskId: string, emoji: string) => {
+    const currentTitle =
+      editedTask.subtasks?.find((st) => st.id === subtaskId)?.title || "";
+    const titleWithoutEmoji = currentTitle.replace(/^[^\w\s]+\s*/, "");
+    const newTitle = emoji
+      ? `${emoji} ${titleWithoutEmoji}`
+      : titleWithoutEmoji;
+    handleSubtaskChange(subtaskId, "title", newTitle);
+    setEditingEmojiPicker(null);
+  };
+
+  const extractEmoji = (
+    title: string
+  ): { emoji: string; titleWithoutEmoji: string } => {
+    const emojiMatch = title.match(/^([^\w\s]+)\s*/);
+    if (emojiMatch) {
+      return {
+        emoji: emojiMatch[1],
+        titleWithoutEmoji: title.replace(/^[^\w\s]+\s*/, ""),
+      };
+    }
+    return { emoji: "", titleWithoutEmoji: title };
+  };
+
   const handleLinkedTaskSearch = (value: string) => {
     setSearchQuery(value);
     setShowTaskDropdown(value.length > 0);
   };
 
-  // Handle task selection for new subtask
   const handleTaskSelect = (task: Task) => {
     setNewSubtaskForm((prev) => ({ ...prev, linkedTaskId: task.id }));
     setSearchQuery(task.title);
     setShowTaskDropdown(false);
   };
 
-  // Clear linked task selection
   const handleClearLinkedTask = () => {
     setNewSubtaskForm((prev) => ({ ...prev, linkedTaskId: null }));
     setSearchQuery("");
   };
 
-  // Add required completion handler
-  const handleRequiredToggle = (id: string, required: boolean) => {
-    handleSubtaskChange(id, "requiredCompleted", required);
-  };
-
-  // Enhanced subtask addition
   const handleEnhancedAddSubtask = () => {
     if (!newSubtaskForm.title.trim()) return;
 
-    const newSub: Subtask = {
-      id: Date.now().toString(),
-      title: newSubtaskForm.title,
-      description: newSubtaskForm.description || undefined,
-      completed: false,
-      linkedTaskId: newSubtaskForm.linkedTaskId || undefined,
-      requiredCompleted: newSubtaskForm.requiredCompleted,
-    };
+    const fullTitle = newSubtaskForm.emoji
+      ? `${newSubtaskForm.emoji} ${newSubtaskForm.title.trim()}`
+      : newSubtaskForm.title.trim();
 
-    // Add to subtasks array
-    const updatedSubtasks = [...(editedTask.subtasks || []), newSub];
-
-    // If there's a parent handler, use it, otherwise update directly
     if (handleAddSubtask) {
-      // Since we're bypassing the original handler, we need to manually update
-      // This assumes the parent component will handle the state update
       handleAddSubtask();
 
-      // Update the last added subtask with our enhanced data
       setTimeout(() => {
         if (editedTask.subtasks) {
           const lastSubtask =
             editedTask.subtasks[editedTask.subtasks.length - 1];
           if (lastSubtask) {
-            handleSubtaskChange(lastSubtask.id, "title", newSubtaskForm.title);
+            handleSubtaskChange(lastSubtask.id, "title", fullTitle);
             if (newSubtaskForm.description) {
               handleSubtaskChange(
                 lastSubtask.id,
@@ -168,54 +207,37 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       }, 0);
     }
 
-    // Reset form
     setNewSubtaskForm({
       title: "",
       description: "",
       linkedTaskId: null,
       requiredCompleted: false,
+      emoji: "",
     });
     setSearchQuery("");
   };
 
-  // Handle subtask editing with linked task dropdown
   const handleEditingTaskSearch = (subtaskId: string, value: string) => {
     setEditingSearchQuery(value);
     setEditingTaskDropdown(subtaskId);
   };
 
-  const handleSubtaskCompletion = (id: string, completed: boolean) => {
-    if (completed) {
-      // Check if this is a required subtask
-      const subtask = editedTask.subtasks?.find((st) => st.id === id);
-      if (subtask?.requiredCompleted) {
-        handleSubtaskChange(id, "completed", true);
-      }
-    } else {
-      handleSubtaskChange(id, "completed", completed);
-    }
-  };
-
-  // Handle task selection for editing subtask
   const handleEditingTaskSelect = (subtaskId: string, task: Task) => {
     handleSubtaskChange(subtaskId, "linkedTaskId", task.id);
     setEditingTaskDropdown(null);
     setEditingSearchQuery("");
   };
 
-  // Clear linked task for editing subtask
   const handleClearEditingLinkedTask = (subtaskId: string) => {
     handleSubtaskChange(subtaskId, "linkedTaskId", undefined);
     setEditingSearchQuery("");
   };
 
-  // Get linked task info
   const getLinkedTask = (linkedTaskId?: string) => {
     if (!linkedTaskId) return null;
     return availableTasks.find((task) => task.id === linkedTaskId);
   };
 
-  // Get selected linked task for new subtask form
   const getSelectedLinkedTask = () => {
     if (!newSubtaskForm.linkedTaskId) return null;
     return availableTasks.find(
@@ -223,7 +245,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     );
   };
 
-  // Handle click outside dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -239,6 +260,18 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
         !editingDropdownRef.current.contains(event.target as Node)
       ) {
         setEditingTaskDropdown(null);
+      }
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+      if (
+        editingEmojiPickerRef.current &&
+        !editingEmojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setEditingEmojiPicker(null);
       }
     };
 
@@ -273,6 +306,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       <div className="space-y-3">
         {editedTask.subtasks?.map((subtask) => {
           const linkedTask = getLinkedTask(subtask.linkedTaskId);
+          const { emoji, titleWithoutEmoji } = extractEmoji(subtask.title);
 
           return (
             <div
@@ -306,13 +340,65 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
               </div>
 
               <div className="flex-1 space-y-3">
-                {/* Title with required indicator */}
+                {/* Title with emoji */}
                 <div className="flex items-center gap-2">
+                  {/* Emoji picker button */}
+                  <div className="relative" ref={editingEmojiPickerRef}>
+                    <button
+                      onClick={() =>
+                        setEditingEmojiPicker(
+                          editingEmojiPicker === subtask.id ? null : subtask.id
+                        )
+                      }
+                      className={`w-6 h-6 rounded flex items-center justify-center text-sm transition-colors ${
+                        emoji
+                          ? "hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                      }`}
+                      title="Add or change emoji"
+                    >
+                      {emoji || <Smile size={12} className="text-gray-400" />}
+                    </button>
+
+                    {editingEmojiPicker === subtask.id && (
+                      <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                          Choose emoji:
+                        </div>
+                        <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
+                          <button
+                            onClick={() =>
+                              handleEditingEmojiSelect(subtask.id, "")
+                            }
+                            className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs border border-dashed"
+                            title="Remove emoji"
+                          >
+                            <X size={8} />
+                          </button>
+                          {SUBTASK_EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() =>
+                                handleEditingEmojiSelect(subtask.id, emoji)
+                              }
+                              className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <input
-                    value={subtask.title}
-                    onChange={(e) =>
-                      handleSubtaskChange(subtask.id, "title", e.target.value)
-                    }
+                    value={titleWithoutEmoji}
+                    onChange={(e) => {
+                      const newTitle = emoji
+                        ? `${emoji} ${e.target.value}`
+                        : e.target.value;
+                      handleSubtaskChange(subtask.id, "title", newTitle);
+                    }}
                     className={`flex-1 bg-transparent border-none focus:ring-0 font-medium transition-all ${
                       subtask.completed
                         ? "text-text-secondary line-through"
@@ -320,10 +406,12 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                     }`}
                     placeholder="Subtask title"
                   />
+
                   <button
                     onClick={() =>
-                      handleRequiredToggle(
+                      handleSubtaskChange(
                         subtask.id,
+                        "requiredCompleted",
                         !subtask.requiredCompleted
                       )
                     }
@@ -424,7 +512,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                         />
                       </div>
 
-                      {/* Editing dropdown */}
                       {editingTaskDropdown === subtask.id && (
                         <div
                           ref={editingDropdownRef}
@@ -484,8 +571,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
           );
         })}
 
-        {/* Enhanced New Subtask Form */}
-        <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+        {/* New Subtask Form - Simplified */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
           <div className="flex items-center gap-2 mb-3">
             <Plus size={16} className="text-gray-600 dark:text-gray-400" />
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -493,36 +580,70 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             </span>
           </div>
 
-          {/* Title Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Title *
-            </label>
+          {/* Title with Emoji */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative" ref={emojiPickerRef}>
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors ${
+                  newSubtaskForm.emoji
+                    ? "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    : "border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400"
+                }`}
+                title="Add emoji"
+              >
+                {newSubtaskForm.emoji || (
+                  <Smile size={14} className="text-gray-400" />
+                )}
+              </button>
+
+              {showEmojiPicker && (
+                <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                    Choose emoji:
+                  </div>
+                  <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
+                    <button
+                      onClick={() => handleEmojiSelect("")}
+                      className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs border border-dashed"
+                      title="No emoji"
+                    >
+                      <X size={8} />
+                    </button>
+                    {SUBTASK_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleEmojiSelect(emoji)}
+                        className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <input
               type="text"
               placeholder="What needs to be done?"
               value={newSubtaskForm.title}
               onChange={(e) => handleFormChange("title", e.target.value)}
-              className="w-full bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
-          {/* Description Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Description
-            </label>
-            <textarea
-              placeholder="Add detailed description..."
-              value={newSubtaskForm.description}
-              onChange={(e) => handleFormChange("description", e.target.value)}
-              rows={2}
-              className="w-full bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-          </div>
+          {/* Description */}
+          <textarea
+            placeholder="Add description..."
+            value={newSubtaskForm.description}
+            onChange={(e) => handleFormChange("description", e.target.value)}
+            rows={2}
+            className="w-full bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-3"
+          />
 
-          {/* Required Completion Toggle */}
-          <div className="flex items-center gap-3">
+          {/* Options */}
+          <div className="flex items-center gap-4 mb-3">
             <button
               onClick={() =>
                 handleFormChange(
@@ -530,135 +651,80 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                   !newSubtaskForm.requiredCompleted
                 )
               }
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-1 rounded transition-colors ${
                 newSubtaskForm.requiredCompleted
                   ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
               }`}
             >
-              <Lock size={14} />
-              <span className="text-sm">Required for completion</span>
+              <Lock size={12} />
+              <span className="text-sm">Required</span>
             </button>
-            {newSubtaskForm.requiredCompleted && (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                This subtask must be completed before the main task can be
-                marked as done.
-              </span>
-            )}
           </div>
 
-          {/* Linked Task Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Linked Task
-            </label>
+          {/* Linked Task */}
+          {getSelectedLinkedTask() ? (
+            <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-3">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                  {getSelectedLinkedTask()!.title}
+                </div>
+              </div>
+              <button
+                onClick={handleClearLinkedTask}
+                className="p-1 text-gray-500 hover:text-red-500"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <div className="relative mb-3">
+              <div className="flex items-center gap-2 p-2 border border-border-default rounded-lg">
+                <Search size={14} className="text-gray-400" />
+                <input
+                  ref={linkedTaskSearchRef}
+                  type="text"
+                  placeholder="Link to task..."
+                  value={searchQuery}
+                  onChange={(e) => handleLinkedTaskSearch(e.target.value)}
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-text-default text-sm"
+                />
+              </div>
 
-            {getSelectedLinkedTask() ? (
-              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                    {getSelectedLinkedTask()!.title}
-                  </div>
-                  {getSelectedLinkedTask()!.description && (
-                    <div className="text-xs text-blue-500 dark:text-blue-300 truncate">
-                      {getSelectedLinkedTask()!.description.substring(0, 50)}...
+              {showTaskDropdown && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-32 overflow-y-auto"
+                >
+                  {filteredTasks.length > 0 ? (
+                    filteredTasks.slice(0, 3).map((task) => (
+                      <div
+                        key={task.id}
+                        onClick={() => handleTaskSelect(task)}
+                        className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      >
+                        <div className="text-sm font-medium">{task.title}</div>
+                      </div>
+                    ))
+                  ) : searchQuery ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      No tasks found
                     </div>
-                  )}
+                  ) : null}
                 </div>
-                <div className="flex gap-1">
-                  {onTaskClick && (
-                    <button
-                      onClick={() => onTaskClick(getSelectedLinkedTask()!.id)}
-                      className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      <ExternalLink size={12} />
-                    </button>
-                  )}
-                  <button
-                    onClick={handleClearLinkedTask}
-                    className="p-1 text-gray-500 hover:text-red-500"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="flex items-center gap-2 p-3 border border-border-default rounded-lg bg-white dark:bg-gray-700">
-                  <Search size={16} className="text-gray-400" />
-                  <input
-                    ref={linkedTaskSearchRef}
-                    type="text"
-                    placeholder="Search and select a task to link..."
-                    value={searchQuery}
-                    onChange={(e) => handleLinkedTaskSearch(e.target.value)}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-text-default"
-                  />
-                </div>
-
-                {/* Task selection dropdown */}
-                {showTaskDropdown && (
-                  <div
-                    ref={dropdownRef}
-                    className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
-                  >
-                    {filteredTasks.length > 0 ? (
-                      filteredTasks.slice(0, 5).map((task) => (
-                        <div
-                          key={task.id}
-                          onClick={() => handleTaskSelect(task)}
-                          className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-3"
-                        >
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              task.priority === "urgent"
-                                ? "bg-red-500"
-                                : task.priority === "high"
-                                ? "bg-orange-500"
-                                : task.priority === "medium"
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
-                            }`}
-                          ></div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium">
-                              {task.title}
-                            </div>
-                            {task.description && (
-                              <div className="text-xs text-gray-500 truncate">
-                                {task.description.substring(0, 50)}...
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-400">
-                              {task.status} • {task.priority}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : searchQuery ? (
-                      <div className="px-4 py-3 text-sm text-gray-500">
-                        No tasks found for "{searchQuery}"
-                      </div>
-                    ) : (
-                      <div className="px-4 py-3 text-sm text-gray-500">
-                        Type to search tasks...
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2">
             <button
               onClick={handleEnhancedAddSubtask}
               disabled={!newSubtaskForm.title.trim()}
               className="flex items-center gap-2 bg-button-bg hover:bg-button-bgHover disabled:bg-gray-400 disabled:cursor-not-allowed text-button-bgText px-4 py-2 rounded-lg font-medium transition-colors"
             >
               <Plus size={16} />
-              Add Subtask
+              Add
             </button>
             <button
               onClick={() => {
@@ -667,22 +733,15 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                   description: "",
                   linkedTaskId: null,
                   requiredCompleted: false,
+                  emoji: "",
                 });
                 setSearchQuery("");
-                setShowTaskDropdown(false);
               }}
               className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
             >
               Clear
             </button>
           </div>
-        </div>
-
-        {/* Helper text */}
-        <div className="text-xs text-gray-500 bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg">
-          💡 <strong>Pro tip:</strong> Link subtasks to other tasks to create
-          dependencies and track related work across your project. Use the lock
-          icon to mark critical subtasks as required for completion.
         </div>
       </div>
     </div>
