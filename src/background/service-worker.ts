@@ -110,12 +110,10 @@ chrome.runtime.onMessage.addListener((request: any, _sender: chrome.runtime.Mess
 
 // Initialize on extension install/startup
 chrome.runtime.onInstalled.addListener(() => {
-    console.log("FlexBookmark extension installed/updated");
     syncBookmarks();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-    console.log("FlexBookmark extension started");
     syncBookmarks();
 });
 
@@ -201,96 +199,6 @@ async function getUserInfo(token: string): Promise<any> {
     }
 }
 
-/**
- * Verify if token is still valid
- */
-async function verifyToken(token: string): Promise<boolean> {
-    try {
-        const response = await fetch('https://www.googleapis.com/oauth2/v2/tokeninfo', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        return response.ok;
-    } catch (error) {
-        console.error('Token verification error:', error);
-        return false;
-    }
-}
-
-/**
- * Handle token refresh automatically
- */
-async function refreshTokenIfNeeded(token: string): Promise<string> {
-    const isValid = await verifyToken(token);
-
-    if (!isValid) {
-        // Remove invalid token
-        await removeAuthToken(token);
-        // Get new token
-        return await getAuthToken(false); // Try non-interactive first
-    }
-
-    return token;
-}
-
-// --- Network request helpers for Google APIs ---
-
-/**
- * Make authenticated request to Google API
- */
-async function makeGoogleApiRequest(endpoint: string, token: string, options: RequestInit = {}): Promise<any> {
-    try {
-        const response = await fetch(endpoint, {
-            ...options,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-
-        if (response.status === 401) {
-            // Token expired, try to refresh
-            const newToken = await refreshTokenIfNeeded(token);
-
-            // Retry with new token
-            const retryResponse = await fetch(endpoint, {
-                ...options,
-                headers: {
-                    'Authorization': `Bearer ${newToken}`,
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
-
-            if (!retryResponse.ok) {
-                throw new Error(`HTTP ${retryResponse.status}: ${retryResponse.statusText}`);
-            }
-
-            return await retryResponse.json();
-        }
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Google API request error:', error);
-        throw error;
-    }
-}
-
-// --- Extension lifecycle management ---
-
-// Clean up resources when extension is suspended
-chrome.runtime.onSuspend.addListener(() => {
-    console.log("FlexBookmark extension suspending");
-    // Perform any cleanup if needed
-});
-
 // Handle extension errors
 self.addEventListener('error', (event) => {
     console.error('FlexBookmark service worker error:', event.error);
@@ -299,6 +207,3 @@ self.addEventListener('error', (event) => {
 self.addEventListener('unhandledrejection', (event) => {
     console.error('FlexBookmark service worker unhandled rejection:', event.reason);
 });
-
-// Export functions for testing or other modules if needed
-// Note: In service worker context, we don't use CommonJS exports

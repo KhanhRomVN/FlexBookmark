@@ -99,11 +99,10 @@ class ChromeAuthManager {
 
     // Silent login (non-interactive)
     private async silentLogin(): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             chrome.identity.getAuthToken(
                 { interactive: false },
                 async (result: any) => {
-                    console.log('Silent getAuthToken result:', chrome.runtime.lastError, result);
 
                     if (chrome.runtime.lastError) {
                         this.updateState({
@@ -159,7 +158,6 @@ class ChromeAuthManager {
             chrome.identity.getAuthToken(
                 { interactive: true },
                 async (result: any) => {
-                    console.log('Interactive getAuthToken result:', chrome.runtime.lastError, result);
 
                     if (chrome.runtime.lastError) {
                         const error = chrome.runtime.lastError.message || 'Failed to get auth token';

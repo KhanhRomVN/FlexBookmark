@@ -103,18 +103,14 @@ export class GoogleTasksStatusHandler {
                 ]
             };
 
-            console.log('Creating restored task with data:', newTaskData);
             const newTask = await createFunction(newTaskData);
-            console.log('Restored task created successfully:', newTask.id);
 
             let originalTaskKept = true;
 
             // Only attempt to delete original if explicitly requested and delete function is provided
             if (shouldDeleteOriginal && deleteFunction && completedTask.id) {
                 try {
-                    console.log('Attempting to delete original completed task:', completedTask.id);
                     await deleteFunction(completedTask.id);
-                    console.log('Original completed task deleted successfully');
                     originalTaskKept = false;
                 } catch (deleteError: any) {
                     // Don't fail the entire operation if deletion fails

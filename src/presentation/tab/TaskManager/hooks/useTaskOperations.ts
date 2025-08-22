@@ -45,15 +45,8 @@ export function useTaskOperations(
 
     // Enhanced loadTasks function with better error handling
     const loadTasks = useCallback(async (force = false) => {
-        console.log('loadTasks called:', {
-            hasUser: !!authState.user,
-            activeGroup,
-            force,
-            isLoading: isLoadingRef.current
-        });
 
         if (!authState.user || !activeGroup || isLoadingRef.current) {
-            console.log('Skipping loadTasks - missing requirements or already loading');
             return;
         }
 
@@ -71,7 +64,6 @@ export function useTaskOperations(
         if (!force) {
             const cached = cache.current.get(cacheKey);
             if (cached && Date.now() - lastLoadTime.current < 30000) { // 30 second cache
-                console.log('Using cached tasks:', cached.length);
                 const updated: TaskList[] = folders.map(f => ({
                     ...f,
                     tasks: cached.filter(t => t.status === f.id),
@@ -89,7 +81,6 @@ export function useTaskOperations(
         const endTimer = performanceMonitor.current.startTimer('loadTasks');
 
         try {
-            console.log('Fetching tasks from Google API...');
 
             // Get fresh token with proper scopes
             let token = authState.user.accessToken;
@@ -97,16 +88,13 @@ export function useTaskOperations(
             // Always verify token scopes first
             const tokenInfo = await verifyTokenScopes(token);
             if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
-                console.log('Token lacks tasks scope, getting fresh token...');
                 token = await getFreshToken();
             }
 
             // Fetch tasks with proper error handling
             const tasks: Task[] = await fetchGoogleTasks(token, activeGroup);
-            console.log('Fetched tasks:', tasks.length);
 
             if (abortController.current?.signal.aborted) {
-                console.log('Request was aborted');
                 return;
             }
 
@@ -119,7 +107,6 @@ export function useTaskOperations(
                     : createInitialActivityLog()
             }));
 
-            console.log('Processed tasks:', tasksWithActivityLog.length);
 
             // Cache the results
             cache.current.set(cacheKey, tasksWithActivityLog);
@@ -130,15 +117,12 @@ export function useTaskOperations(
                 tasks: tasksWithActivityLog.filter(t => t.status === f.id),
             }));
 
-            console.log('Updated lists:', updated.map(l => ({ id: l.id, count: l.tasks.length })));
-
             startTransition(() => {
                 setLists(updated);
             });
 
         } catch (err: any) {
             if (abortController.current?.signal.aborted) {
-                console.log('Request was aborted, ignoring error');
                 return;
             }
 
@@ -168,7 +152,6 @@ export function useTaskOperations(
     // Auto-load tasks when auth state or active group changes
     useEffect(() => {
         if (authState.isAuthenticated && authState.user && activeGroup) {
-            console.log('Auth state or active group changed, loading tasks...');
             loadTasks(true); // Force reload on auth/group change
         }
     }, [authState.isAuthenticated, authState.user?.email, activeGroup, loadTasks]);
@@ -177,7 +160,6 @@ export function useTaskOperations(
     const saveTask = useAdvancedDebounce(
         useCallback(async (task: Task) => {
             if (!authState.user || !activeGroup) {
-                console.log('Cannot save task - missing auth or group');
                 return;
             }
 
@@ -187,12 +169,10 @@ export function useTaskOperations(
                 let token = authState.user.accessToken;
                 const tokenInfo = await verifyTokenScopes(token);
                 if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
-                    console.log('Getting fresh token for save...');
                     token = await getFreshToken();
                 }
 
                 await updateGoogleTask(token, task.id, task, activeGroup);
-                console.log('Task saved successfully:', task.id);
 
                 // Persist collection mapping for the task
                 try {

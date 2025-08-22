@@ -88,7 +88,6 @@ async function makeAuthenticatedRequest(
 
         // If forbidden and we haven't retried yet, try to get fresh token
         if (response.status === 403 && retryCount < maxRetries) {
-            console.log('Getting fresh token due to 403 error...');
             const freshToken = await getFreshToken();
 
             const newOptions = {
@@ -105,7 +104,6 @@ async function makeAuthenticatedRequest(
         return response;
     } catch (error) {
         if (retryCount < maxRetries) {
-            console.log('Retrying request due to error:', error);
             const freshToken = await getFreshToken();
 
             const newOptions = {
@@ -196,7 +194,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
-        console.log(`Metadata JSON length: ${characterCount}/${MAX_NOTES_LENGTH}`);
 
         // Nếu quá limit -> tối ưu giảm size
         if (isOverLimit) {
@@ -209,7 +206,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
                 if (!isOverLimit) {
-                    console.log("Reduced size by limiting activity log entries");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -221,7 +217,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
                 if (!isOverLimit) {
-                    console.log("Reduced size by clearing attachments");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -233,7 +228,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
                 if (!isOverLimit) {
-                    console.log("Reduced size by limiting subtasks");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -245,7 +239,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 characterCount = jsonString.length;
                 isOverLimit = characterCount > MAX_NOTES_LENGTH;
                 if (!isOverLimit) {
-                    console.log("Reduced size by truncating description");
                     return { notes: jsonString, characterCount, isOverLimit: false };
                 }
             }
@@ -443,11 +436,6 @@ export const createGoogleTask = async (
     taskListId: string
 ): Promise<Task> => {
     try {
-        console.log('Creating task with input:', {
-            title: task.title,
-            status: task.status,
-            priority: task.priority,
-        });
 
         // KHÔNG TỰ ĐỘNG SET DEFAULT TIMES - chỉ dùng những gì user nhập
         const taskWithDefaults = { ...task };
@@ -489,11 +477,6 @@ export const createGoogleTask = async (
             throw new Error(`Invalid task data: ${validation.errors.join(', ')}`);
         }
 
-        console.log('Sending to Google Tasks API:', {
-            ...googleTaskData,
-            notesLength: googleTaskData.notes?.length || 0,
-        });
-
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks`,
             {
@@ -525,7 +508,6 @@ export const createGoogleTask = async (
         }
 
         const data = await response.json();
-        console.log('Task created successfully:', data.id);
 
         // Return the task với chỉ những gì user đã nhập - KHÔNG thêm default times
         // Fix: Ensure all required Task properties are included
@@ -599,12 +581,6 @@ export const updateGoogleTask = async (
             throw new Error(`Invalid task data: ${validation.errors.join(', ')}`);
         }
 
-        console.log('Updating task with data:', {
-            id: taskId,
-            title: googleTaskData.title,
-            notesLength: googleTaskData.notes?.length || 0,
-        });
-
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
             {
@@ -624,7 +600,6 @@ export const updateGoogleTask = async (
         }
 
         const data = await response.json();
-        console.log('Task updated successfully:', data.id);
 
         return {
             ...task,
@@ -657,7 +632,6 @@ export const deleteGoogleTask = async (
         throw new Error(`Failed to delete task: ${response.status} ${response.statusText}`);
     }
 
-    console.log('Task deleted successfully:', taskId);
 };
 
 export async function fetchGoogleTaskGroups(accessToken: string) {
@@ -684,7 +658,6 @@ export async function verifyTokenScopes(token: string): Promise<any> {
         const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
         if (response.ok) {
             const tokenInfo = await response.json();
-            console.log('Token info:', tokenInfo);
             return tokenInfo;
         }
     } catch (error) {

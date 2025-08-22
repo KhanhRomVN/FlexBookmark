@@ -215,7 +215,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     setActiveId(active.id);
     setActiveType(t);
     setDragPayload((active.data as any).current?.payload || null);
-    console.log("[BookmarkLayout] bookmark drag start", active.id);
   };
 
   const handleDragOver = (ev: DragOverEvent) => {
@@ -324,11 +323,6 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
     const payload = (active.data as any).current.payload as BookmarkNode;
     const fromParent = payload.parentId || "";
     if (!over) {
-      // Sửa tại đây: Sử dụng folderId thay vì TEMP_FOLDER_ID
-      console.log(
-        "[BookmarkLayout] bookmark dropped empty -> move to ROOT FOLDER",
-        payload.id
-      );
       await moveBookmark(payload.id, fromParent, folderId!);
       setActiveId(null);
       setActiveType(null);

@@ -98,7 +98,6 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
           else res(true);
         })
       );
-      console.log("[BookmarkCard] deleted", item.id);
     } catch (err) {
       console.error("[BookmarkCard] delete fail", err);
     }

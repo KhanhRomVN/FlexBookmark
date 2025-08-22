@@ -120,7 +120,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   } = useAttachments(editedTask, setEditedTask, addActivityLog);
   const { newTag, setNewTag, handleAddTag, handleDeleteTag } = useTags(
     editedTask,
-    setEditedTask,
+    handleChange,
     addActivityLog
   );
   const {
@@ -474,6 +474,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 />
                 <TagsSection
                   editedTask={editedTask}
+                  handleChange={handleChange}
                   newTag={newTag}
                   setNewTag={setNewTag}
                   handleAddTag={handleAddTag}

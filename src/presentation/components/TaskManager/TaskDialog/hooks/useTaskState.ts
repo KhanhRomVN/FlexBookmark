@@ -18,13 +18,10 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     // Auto-suggest và auto-apply status khi dates thay đổi
     useEffect(() => {
         if (editedTask && !isCreateMode && !isStatusManuallyChanged) {
-            console.log("Auto-suggest status check triggered");
             const suggested = getSuggestedStatusFromDates(editedTask);
-            console.log("Suggested status:", suggested);
             setSuggestedStatus(suggested);
 
             if (suggested && suggested !== editedTask.status) {
-                console.log("Auto-applying suggested status:", suggested);
                 setEditedTask(prev => {
                     if (!prev) return prev;
 
@@ -109,29 +106,19 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         // khi dates thay đổi trong tương lai
         setIsStatusManuallyChanged(false);
 
-        console.log("System status change applied, auto-suggestion re-enabled");
     };
 
     const getEffectiveStatus = (): Status => {
         if (!editedTask) return "backlog";
         if (isCreateMode) return editedTask.status;
 
-        console.log("Calculating effective status:", {
-            currentStatus: editedTask.status,
-            suggestedStatus,
-            isDone: editedTask.status === "done",
-            isOverdue: editedTask.status === "overdue"
-        });
-
         if (editedTask.status === "done" || editedTask.status === "overdue") {
-            console.log("Using explicit status:", editedTask.status);
             return editedTask.status;
         }
 
         const effectiveStatus =
             suggestedStatus && suggestedStatus !== editedTask.status ? suggestedStatus : editedTask.status;
 
-        console.log("Using effective status:", effectiveStatus);
         return effectiveStatus;
     };
 

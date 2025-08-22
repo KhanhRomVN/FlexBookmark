@@ -193,12 +193,6 @@ const TaskManager: React.FC = () => {
     fromStatus: Status,
     toStatus: Status
   ) => {
-    console.log("Status transition triggered:", {
-      taskId,
-      fromStatus,
-      toStatus,
-    });
-
     const allTasks = lists.flatMap((list) => list.tasks);
     const task = allTasks.find((t) => t.id === taskId);
 
@@ -209,7 +203,6 @@ const TaskManager: React.FC = () => {
 
     // If same status, no transition needed
     if (fromStatus === toStatus) {
-      console.log("Same status, no transition needed");
       return;
     }
 
@@ -270,7 +263,6 @@ const TaskManager: React.FC = () => {
 
     // Save the updated task
     handleSaveTaskDetail(transitionResult);
-    console.log("Status transition completed:", { fromStatus, toStatus });
   };
 
   // Handle drag transition confirmation
@@ -385,13 +377,11 @@ const TaskManager: React.FC = () => {
   // Google Tasks integration functions with fallbacks
   const getFreshToken = async (): Promise<string> => {
     if (authState.user?.accessToken) {
-      console.log("Using existing token from auth state");
       return authState.user.accessToken;
     }
 
     if (typeof chrome !== "undefined" && chrome.identity) {
       return new Promise((resolve, reject) => {
-        console.log("Attempting to get fresh token via Chrome identity API...");
         chrome.identity.getAuthToken(
           {
             interactive: false,
@@ -405,11 +395,9 @@ const TaskManager: React.FC = () => {
           },
           (result) => {
             if (result?.token) {
-              console.log("Got cached token");
               resolve(result.token);
               return;
             }
-            console.log("No cached token, trying interactive auth...");
             chrome.identity.getAuthToken(
               {
                 interactive: true,
@@ -459,7 +447,6 @@ const TaskManager: React.FC = () => {
       if (!activeGroup) throw new Error("No active task list selected");
 
       const result = await createGoogleTask(token, taskData, activeGroup);
-      console.log("Successfully created Google task:", result?.id);
       return result;
     } catch (error: any) {
       if (error.message?.includes("No token received")) {
@@ -481,7 +468,6 @@ const TaskManager: React.FC = () => {
       if (!activeGroup) throw new Error("No active task list selected");
 
       await deleteGoogleTask(token, taskId, activeGroup);
-      console.log("Successfully deleted Google task:", taskId);
     } catch (error: any) {
       if (error.message?.includes("No token received")) {
         throw new Error(

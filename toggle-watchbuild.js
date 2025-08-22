@@ -11,4 +11,3 @@ const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
 const cfg = JSON.parse(raw);
 cfg.enabled = !cfg.enabled;
 fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + "\n");
-console.log(`watchbuild is now ${cfg.enabled ? "ENABLED" : "DISABLED"}.`);

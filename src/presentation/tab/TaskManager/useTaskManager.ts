@@ -312,8 +312,7 @@ export function useTaskManager() {
 
     // Create group handler
     const handleCreateGroup = useCallback(async () => {
-        console.log("Create new group");
-        // Implementation would go here
+
     }, []);
 
     return {

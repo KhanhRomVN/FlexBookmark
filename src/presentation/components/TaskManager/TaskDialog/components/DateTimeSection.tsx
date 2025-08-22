@@ -296,13 +296,10 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   );
 
   const handleValidationComplete = useCallback(() => {
-    console.log("Validation complete - setting status to done");
-
     const now = new Date();
 
     // Apply pending date/time changes and set status via system method
     if (handleSystemStatusChange) {
-      console.log("Using handleSystemStatusChange");
       handleSystemStatusChange("done", {
         dueDate: validationDialog.pendingDueDate,
         dueTime: validationDialog.pendingDueTime,
@@ -311,7 +308,6 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
       });
     } else {
       // Fallback to old method
-      console.log("Fallback to handleChange method");
       if (validationDialog.pendingDueDate !== undefined) {
         handleChange("dueDate", validationDialog.pendingDueDate);
       }
@@ -327,24 +323,19 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
 
     // Call validation success callback to close ModernDateTimePicker
     if (validationSuccessCallback.current) {
-      console.log("Calling validation success callback");
       validationSuccessCallback.current();
     }
   }, [validationDialog, handleChange, handleSystemStatusChange]);
 
   const handleValidationOverdue = useCallback(() => {
-    console.log("Validation overdue - setting status to overdue");
-
     // Apply pending date/time changes and set status via system method
     if (handleSystemStatusChange) {
-      console.log("Using handleSystemStatusChange for overdue");
       handleSystemStatusChange("overdue", {
         dueDate: validationDialog.pendingDueDate,
         dueTime: validationDialog.pendingDueTime,
       });
     } else {
       // Fallback to old method
-      console.log("Fallback to handleChange method for overdue");
       if (validationDialog.pendingDueDate !== undefined) {
         handleChange("dueDate", validationDialog.pendingDueDate);
       }
@@ -358,7 +349,6 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
 
     // Call validation success callback to close ModernDateTimePicker
     if (validationSuccessCallback.current) {
-      console.log("Calling validation success callback for overdue");
       validationSuccessCallback.current();
     }
   }, [validationDialog, handleChange, handleSystemStatusChange]);
