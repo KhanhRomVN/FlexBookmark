@@ -20,7 +20,18 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
             if (suggested && suggested !== editedTask.status) {
                 setEditedTask(prev => {
                     if (!prev) return prev;
-                    return { ...prev, status: suggested };
+
+                    let updatedTask = { ...prev, status: suggested };
+
+                    // If transitioning to in-progress, ensure actual start times are set
+                    if (suggested === "in-progress" && (!prev.actualStartTime || !prev.actualStartDate)) {
+                        // Use the planned start times if available, otherwise use current time
+                        const now = new Date();
+                        updatedTask.actualStartTime = prev.startTime || now;
+                        updatedTask.actualStartDate = prev.startDate || now;
+                    }
+
+                    return updatedTask;
                 });
             }
         }
@@ -29,13 +40,20 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     const handleChange = (field: keyof Task, value: any) => {
         setEditedTask((prev) => {
             if (!prev) return prev;
-            const updated = { ...prev, [field]: value };
+            let updated = { ...prev, [field]: value };
 
             // Auto-update status for create mode based on dates
             if (isCreateMode && (field === 'startDate' || field === 'startTime' || field === 'dueDate' || field === 'dueTime')) {
                 const suggested = getSuggestedStatusFromDates(updated);
                 if (suggested && suggested !== updated.status) {
                     updated.status = suggested;
+
+                    // If transitioning to in-progress during create mode, set actual start times
+                    if (suggested === "in-progress" && (!updated.actualStartTime || !updated.actualStartDate)) {
+                        const now = new Date();
+                        updated.actualStartTime = updated.startTime || now;
+                        updated.actualStartDate = updated.startDate || now;
+                    }
                 }
             }
 
