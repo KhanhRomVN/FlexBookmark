@@ -1,4 +1,4 @@
-// src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle & status transition
+// src/presentation/tab/TaskManager/index.tsx - Enhanced with drag-drop status transition dialogs
 
 import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
@@ -15,7 +15,18 @@ import FlowchartLayout from "./layout/FlowchartLayout";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
-import { Status } from "@/presentation/types/task";
+import { Status, Task } from "@/presentation/types/task";
+
+// Import dialog components for status transitions
+import TransitionConfirmationDialog from "../../components/TaskManager/TaskDialog/components/TransitionConfirmationDialog";
+import DateTimeStatusDialog from "../../components/TaskManager/TaskDialog/components/DateTimeStatusDialog";
+
+// Import transition utilities
+import {
+  getTransitionScenarios,
+  executeStatusTransition,
+  requiresUserInput,
+} from "../../components/TaskManager/TaskDialog/utils/taskTransitions";
 
 const TaskManager: React.FC = () => {
   const {
@@ -77,6 +88,29 @@ const TaskManager: React.FC = () => {
   // Theme drawer state
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
   const [isCreateMode, setIsCreateMode] = React.useState(false);
+
+  // Status transition dialog states for drag-and-drop
+  const [dragTransitionDialog, setDragTransitionDialog] = React.useState<{
+    isOpen: boolean;
+    task: Task | null;
+    fromStatus: Status | null;
+    toStatus: Status | null;
+  }>({
+    isOpen: false,
+    task: null,
+    fromStatus: null,
+    toStatus: null,
+  });
+
+  const [dragDateTimeDialog, setDragDateTimeDialog] = React.useState<{
+    isOpen: boolean;
+    task: Task | null;
+    targetStatus: Status | null;
+  }>({
+    isOpen: false,
+    task: null,
+    targetStatus: null,
+  });
 
   // Function to handle refresh
   const handleRefresh = () => {
@@ -153,7 +187,7 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  // Handle status transition (drag/drop or action)
+  // Enhanced status transition handler that shows confirmation dialogs
   const handleStatusTransition = (
     taskId: string,
     fromStatus: Status,
@@ -173,21 +207,179 @@ const TaskManager: React.FC = () => {
       return;
     }
 
-    const taskWithNewStatus = { ...task, status: toStatus };
-    setSelectedTask(taskWithNewStatus);
-    setIsCreateMode(false);
-
-    const needsConfirmation =
-      (fromStatus === "done" && toStatus !== "done") ||
-      toStatus === "done" ||
-      (toStatus === "in-progress" && !task.startDate);
-
-    if (needsConfirmation) {
-      setIsDialogOpen(true);
-    } else {
-      const updatedTask = { ...task, status: toStatus };
-      handleSaveTaskDetail(updatedTask);
+    // If same status, no transition needed
+    if (fromStatus === toStatus) {
+      console.log("Same status, no transition needed");
+      return;
     }
+
+    // Check if this transition needs confirmation dialog
+    const transitionScenarios = getTransitionScenarios(
+      fromStatus,
+      toStatus,
+      task
+    );
+
+    if (
+      transitionScenarios.length > 0 &&
+      transitionScenarios[0].options[0].value !== "confirm"
+    ) {
+      // Show confirmation dialog for drag-and-drop transition
+      setDragTransitionDialog({
+        isOpen: true,
+        task,
+        fromStatus,
+        toStatus,
+      });
+      return;
+    }
+
+    // Check if transition requires date/time input (for in-progress transitions)
+    if (toStatus === "in-progress" && (!task.startDate || !task.startTime)) {
+      setDragDateTimeDialog({
+        isOpen: true,
+        task,
+        targetStatus: toStatus,
+      });
+      return;
+    }
+
+    // Direct transition without confirmation
+    executeDirectStatusTransition(task, fromStatus, toStatus, {});
+  };
+
+  // Execute status transition directly (after confirmation or for simple transitions)
+  const executeDirectStatusTransition = (
+    task: Task,
+    fromStatus: Status,
+    toStatus: Status,
+    selectedOptions: Record<string, string>
+  ) => {
+    const transitionResult = executeStatusTransition(
+      task,
+      fromStatus,
+      toStatus,
+      selectedOptions,
+      false // not create mode
+    );
+
+    if ("error" in transitionResult) {
+      setError(transitionResult.error);
+      return;
+    }
+
+    // Save the updated task
+    handleSaveTaskDetail(transitionResult);
+    console.log("Status transition completed:", { fromStatus, toStatus });
+  };
+
+  // Handle drag transition confirmation
+  const handleDragTransitionConfirm = (
+    selectedOptions: Record<string, string>
+  ) => {
+    if (
+      !dragTransitionDialog.task ||
+      !dragTransitionDialog.fromStatus ||
+      !dragTransitionDialog.toStatus
+    ) {
+      return;
+    }
+
+    // Check for cancel option
+    if (Object.values(selectedOptions).includes("cancel")) {
+      setDragTransitionDialog({
+        isOpen: false,
+        task: null,
+        fromStatus: null,
+        toStatus: null,
+      });
+      return;
+    }
+
+    // Check for invalid option
+    if (Object.values(selectedOptions).includes("invalid")) {
+      setError("Cannot perform this transition with current task data");
+      setDragTransitionDialog({
+        isOpen: false,
+        task: null,
+        fromStatus: null,
+        toStatus: null,
+      });
+      return;
+    }
+
+    // Check for date/time adjustment options
+    const needsDateTimeDialog = Object.values(selectedOptions).some(
+      (value) =>
+        value === "adjust_time" ||
+        value === "set_start" ||
+        value === "update_start"
+    );
+
+    if (needsDateTimeDialog) {
+      setDragDateTimeDialog({
+        isOpen: true,
+        task: dragTransitionDialog.task,
+        targetStatus: dragTransitionDialog.toStatus,
+      });
+      setDragTransitionDialog({
+        isOpen: false,
+        task: null,
+        fromStatus: null,
+        toStatus: null,
+      });
+      return;
+    }
+
+    executeDirectStatusTransition(
+      dragTransitionDialog.task,
+      dragTransitionDialog.fromStatus,
+      dragTransitionDialog.toStatus,
+      selectedOptions
+    );
+
+    setDragTransitionDialog({
+      isOpen: false,
+      task: null,
+      fromStatus: null,
+      toStatus: null,
+    });
+  };
+
+  // Handle drag transition cancel
+  const handleDragTransitionCancel = () => {
+    setDragTransitionDialog({
+      isOpen: false,
+      task: null,
+      fromStatus: null,
+      toStatus: null,
+    });
+  };
+
+  // Handle date/time dialog confirm for drag transitions
+  const handleDragDateTimeConfirm = (
+    startDate: Date | null,
+    dueDate: Date | null,
+    finalStatus: Status
+  ) => {
+    if (!dragDateTimeDialog.task) return;
+
+    const updatedTask = {
+      ...dragDateTimeDialog.task,
+      startDate,
+      dueDate,
+      status: finalStatus,
+      startTime: startDate,
+      dueTime: dueDate,
+    };
+
+    handleSaveTaskDetail(updatedTask);
+    setDragDateTimeDialog({ isOpen: false, task: null, targetStatus: null });
+  };
+
+  // Handle date/time dialog cancel for drag transitions
+  const handleDragDateTimeCancel = () => {
+    setDragDateTimeDialog({ isOpen: false, task: null, targetStatus: null });
   };
 
   // Google Tasks integration functions with fallbacks
@@ -483,6 +675,37 @@ const TaskManager: React.FC = () => {
         startTransition={startTransition}
         setSelectedTask={setSelectedTask}
         setIsDialogOpen={setIsDialogOpen}
+      />
+
+      {/* Drag-and-Drop Transition Confirmation Dialog */}
+      <TransitionConfirmationDialog
+        isOpen={dragTransitionDialog.isOpen}
+        transition={
+          dragTransitionDialog.task &&
+          dragTransitionDialog.fromStatus &&
+          dragTransitionDialog.toStatus
+            ? {
+                from: dragTransitionDialog.fromStatus,
+                to: dragTransitionDialog.toStatus,
+                scenarios: getTransitionScenarios(
+                  dragTransitionDialog.fromStatus,
+                  dragTransitionDialog.toStatus,
+                  dragTransitionDialog.task
+                ),
+              }
+            : null
+        }
+        onConfirm={handleDragTransitionConfirm}
+        onCancel={handleDragTransitionCancel}
+      />
+
+      {/* Drag-and-Drop Date/Time Dialog */}
+      <DateTimeStatusDialog
+        isOpen={dragDateTimeDialog.isOpen}
+        onClose={handleDragDateTimeCancel}
+        onConfirm={handleDragDateTimeConfirm}
+        currentTask={dragDateTimeDialog.task || ({} as Task)}
+        targetStatus={dragDateTimeDialog.targetStatus || "todo"}
       />
     </div>
   );
