@@ -51,6 +51,8 @@ interface TaskCardProps {
   onEditTask?: (task: Task) => void;
   onArchiveTask?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
+  // Add prop to disable dragging (for DragOverlay)
+  isDragOverlay?: boolean;
 }
 
 const getPriorityTextColor = (priority: Priority) => {
@@ -114,15 +116,30 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onEditTask,
   onArchiveTask,
   onDeleteTask,
+  isDragOverlay = false,
 }) => {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  // Only use draggable if not in overlay
+  const draggableProps = useDraggable({
     id: task.id,
-    data: { status: task.status },
+    data: {
+      type: "task",
+      status: task.status,
+      taskData: task,
+    },
+    disabled: isDragOverlay, // Disable dragging for overlay
   });
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  };
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    draggableProps;
+
+  // Don't apply transform to overlay (it's handled by DragOverlay)
+  const style = isDragOverlay
+    ? {}
+    : {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 1000 : 1,
+      };
 
   const completedSubtasks =
     task.subtasks?.filter((subtask) => subtask.completed).length || 0;
@@ -143,16 +160,26 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
+  // Different props for overlay vs normal card
+  const cardProps = isDragOverlay
+    ? {
+        onClick,
+        className:
+          "bg-card-background rounded-lg shadow-2xl border-2 border-blue-500 p-4 cursor-grab min-h-[120px] flex flex-col",
+      }
+    : {
+        ref: setNodeRef,
+        style,
+        ...attributes,
+        ...listeners,
+        onClick,
+        onPointerUp: onClick,
+        className:
+          "bg-card-background rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 min-h-[120px] flex flex-col",
+      };
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      onPointerUp={onClick}
-      className="bg-card-background rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 min-h-[120px] flex flex-col"
-    >
+    <div {...cardProps}>
       {/* 1. Due Date & Time + Edit Button */}
       <div className="flex justify-between items-start mb-3 flex-shrink-0">
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -162,59 +189,66 @@ const TaskCard: React.FC<TaskCardProps> = ({
           </span>
         </div>
 
-        <div className="relative">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("edit");
-                }}
-              >
-                <Edit3 className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+        {/* Hide dropdown in overlay */}
+        {!isDragOverlay && (
+          <div className="relative">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuAction("edit");
+                  }}
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("archive");
-                }}
-              >
-                <Archive className="mr-2 h-4 w-4" />
-                Archive
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuAction("delete");
-                }}
-                className="text-red-600 dark:text-red-400"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuAction("archive");
+                  }}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archive
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuAction("delete");
+                  }}
+                  className="text-red-600 dark:text-red-400"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       {/* 2. Title with proper word wrapping and max 3 lines */}
       <div className="flex-1 mb-3 min-h-0">
         <h4
-          onClick={onClick}
-          className="font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 leading-5 break-words hyphens-auto"
+          onClick={!isDragOverlay ? onClick : undefined}
+          className={`font-semibold text-gray-900 dark:text-white leading-5 break-words hyphens-auto ${
+            !isDragOverlay
+              ? "cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+              : ""
+          }`}
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 3,

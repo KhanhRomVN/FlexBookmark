@@ -1,6 +1,6 @@
-// src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle
+// src/presentation/tab/TaskManager/index.tsx - Updated with layout toggle & status transition
 
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
 import TaskDialog from "../../components/TaskManager/TaskDialog";
 import TaskHeader, {
@@ -11,9 +11,7 @@ import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
 import ListLayout from "./layout/ListLayout";
 import TableLayout from "./layout/TableLayout";
-
 import FlowchartLayout from "./layout/FlowchartLayout";
-
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
 import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
@@ -71,14 +69,7 @@ const TaskManager: React.FC = () => {
     handleClearFilters,
     lists,
     setLists,
-    setCollections,
   } = useTaskManager();
-
-  // Update collections handler
-  const handleCollectionUpdate = React.useCallback((updated: string[]) => {
-    setCollections(updated);
-    localStorage.setItem("collections", JSON.stringify(updated));
-  }, []);
 
   // Layout state
   const [layoutType, setLayoutType] = React.useState<LayoutType>("kanban");
@@ -162,20 +153,53 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  // Handle status transition (drag/drop or action)
+  const handleStatusTransition = (
+    taskId: string,
+    fromStatus: Status,
+    toStatus: Status
+  ) => {
+    console.log("Status transition triggered:", {
+      taskId,
+      fromStatus,
+      toStatus,
+    });
+
+    const allTasks = lists.flatMap((list) => list.tasks);
+    const task = allTasks.find((t) => t.id === taskId);
+
+    if (!task) {
+      console.error("Task not found for transition:", taskId);
+      return;
+    }
+
+    const taskWithNewStatus = { ...task, status: toStatus };
+    setSelectedTask(taskWithNewStatus);
+    setIsCreateMode(false);
+
+    const needsConfirmation =
+      (fromStatus === "done" && toStatus !== "done") ||
+      toStatus === "done" ||
+      (toStatus === "in-progress" && !task.startDate);
+
+    if (needsConfirmation) {
+      setIsDialogOpen(true);
+    } else {
+      const updatedTask = { ...task, status: toStatus };
+      handleSaveTaskDetail(updatedTask);
+    }
+  };
+
   // Google Tasks integration functions with fallbacks
   const getFreshToken = async (): Promise<string> => {
-    // First, try to use existing token from auth state
     if (authState.user?.accessToken) {
       console.log("Using existing token from auth state");
       return authState.user.accessToken;
     }
 
-    // If no existing token, try Chrome identity API
     if (typeof chrome !== "undefined" && chrome.identity) {
       return new Promise((resolve, reject) => {
         console.log("Attempting to get fresh token via Chrome identity API...");
-
-        // First try without interactive to see if we have cached token
         chrome.identity.getAuthToken(
           {
             interactive: false,
@@ -193,8 +217,6 @@ const TaskManager: React.FC = () => {
               resolve(result.token);
               return;
             }
-
-            // If no cached token, try interactive
             console.log("No cached token, trying interactive auth...");
             chrome.identity.getAuthToken(
               {
@@ -209,24 +231,18 @@ const TaskManager: React.FC = () => {
               },
               (interactiveResult) => {
                 if (chrome.runtime.lastError) {
-                  console.error(
-                    "Chrome identity error:",
-                    chrome.runtime.lastError
-                  );
                   reject(
                     new Error(
                       `Chrome identity error: ${chrome.runtime.lastError.message}`
                     )
                   );
                 } else if (!interactiveResult?.token) {
-                  console.error("No token received from Chrome identity API");
                   reject(
                     new Error(
                       "No token received from Chrome identity API. Please check extension permissions."
                     )
                   );
                 } else {
-                  console.log("Successfully got fresh token");
                   resolve(interactiveResult.token);
                 }
               }
@@ -236,7 +252,6 @@ const TaskManager: React.FC = () => {
       });
     }
 
-    // If Chrome identity API is not available, throw descriptive error
     throw new Error(
       "Chrome identity API not available. This feature requires a Chrome extension context with proper OAuth2 configuration."
     );
@@ -248,33 +263,18 @@ const TaskManager: React.FC = () => {
     activeGroup: string
   ) => {
     try {
-      console.log("Creating Google task with token and data:", {
-        hasToken: !!token,
-        activeGroup,
-        taskTitle: taskData?.title,
-      });
-
-      if (!token) {
-        throw new Error("No authentication token provided");
-      }
-
-      if (!activeGroup) {
-        throw new Error("No active task list selected");
-      }
+      if (!token) throw new Error("No authentication token provided");
+      if (!activeGroup) throw new Error("No active task list selected");
 
       const result = await createGoogleTask(token, taskData, activeGroup);
       console.log("Successfully created Google task:", result?.id);
       return result;
     } catch (error: any) {
-      console.error("Error creating Google task:", error);
-
-      // Re-throw with more context
       if (error.message?.includes("No token received")) {
         throw new Error(
           "Authentication failed while creating task. Please sign in again."
         );
       }
-
       throw error;
     }
   };
@@ -285,32 +285,17 @@ const TaskManager: React.FC = () => {
     activeGroup: string
   ) => {
     try {
-      console.log("Deleting Google task:", {
-        hasToken: !!token,
-        taskId,
-        activeGroup,
-      });
-
-      if (!token) {
-        throw new Error("No authentication token provided");
-      }
-
-      if (!activeGroup) {
-        throw new Error("No active task list selected");
-      }
+      if (!token) throw new Error("No authentication token provided");
+      if (!activeGroup) throw new Error("No active task list selected");
 
       await deleteGoogleTask(token, taskId, activeGroup);
       console.log("Successfully deleted Google task:", taskId);
     } catch (error: any) {
-      console.error("Error deleting Google task:", error);
-
-      // Re-throw with more context
       if (error.message?.includes("No token received")) {
         throw new Error(
           "Authentication failed while deleting task. Please sign in again."
         );
       }
-
       throw error;
     }
   };
@@ -425,6 +410,7 @@ const TaskManager: React.FC = () => {
             onArchiveTasks={handleArchiveTasks}
             onDeleteTasks={handleDeleteTasks}
             onSortTasks={handleSortTasks}
+            onStatusTransition={handleStatusTransition}
           />
         ) : layoutType === "list" ? (
           <ListLayout
@@ -453,6 +439,7 @@ const TaskManager: React.FC = () => {
             onArchiveTasks={handleArchiveTasks}
             onDeleteTasks={handleDeleteTasks}
             onSortTasks={handleSortTasks}
+            onStatusTransition={handleStatusTransition}
           />
         )}
       </div>
