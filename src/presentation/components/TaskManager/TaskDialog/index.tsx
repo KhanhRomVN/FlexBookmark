@@ -95,6 +95,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     editedTask,
     setEditedTask,
     handleChange,
+    handleSystemStatusChange, // NEW: Add this
     suggestedStatus,
     getEffectiveStatus,
   } = useTaskState(task, isCreateMode);
@@ -468,6 +469,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <DateTimeSection
                   editedTask={editedTask}
                   handleChange={handleChange}
+                  handleSystemStatusChange={handleSystemStatusChange} // NEW: Add this line
                   isCreateMode={isCreateMode}
                 />
                 <TagsSection

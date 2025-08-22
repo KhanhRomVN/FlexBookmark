@@ -53,6 +53,8 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         setEditedTask((prev) => {
             if (!prev) return prev;
 
+            // Chỉ set manual flag khi user trực tiếp thay đổi status qua UI
+            // KHÔNG set khi thay đổi thông qua validation dialog
             if (field === "status") {
                 setIsStatusManuallyChanged(true);
             }
@@ -78,6 +80,36 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
 
             return updated;
         });
+    };
+
+    // NEW: Method để handle system-triggered status changes (từ validation dialog)
+    const handleSystemStatusChange = (newStatus: Status, additionalFields?: Partial<Task>) => {
+        setEditedTask(prev => {
+            if (!prev) return prev;
+
+            let updatedTask = { ...prev, status: newStatus, ...additionalFields };
+
+            // Set actual times nếu cần
+            if (newStatus === "done" && !prev.actualEndDate) {
+                const now = new Date();
+                updatedTask.actualEndDate = now;
+                updatedTask.actualEndTime = now;
+            }
+
+            if (newStatus === "in-progress" && (!prev.actualStartTime || !prev.actualStartDate)) {
+                const now = new Date();
+                updatedTask.actualStartTime = prev.startTime || now;
+                updatedTask.actualStartDate = prev.startDate || now;
+            }
+
+            return updatedTask;
+        });
+
+        // CRITICAL: Reset manual flag để cho phép auto-suggestion hoạt động trở lại
+        // khi dates thay đổi trong tương lai
+        setIsStatusManuallyChanged(false);
+
+        console.log("System status change applied, auto-suggestion re-enabled");
     };
 
     const getEffectiveStatus = (): Status => {
@@ -107,6 +139,7 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         editedTask,
         setEditedTask,
         handleChange,
+        handleSystemStatusChange, // NEW: Export method này
         suggestedStatus: null, // luôn trả null để ẩn UI suggestion
         getEffectiveStatus
     };

@@ -166,12 +166,17 @@ const ValidationDialog: React.FC<ValidationDialogProps> = ({
 interface DateTimeSectionProps {
   editedTask: Task;
   handleChange: (field: keyof Task, value: any) => void;
+  handleSystemStatusChange?: (
+    newStatus: Status,
+    additionalFields?: Partial<Task>
+  ) => void; // NEW: Add this prop
   isCreateMode: boolean;
 }
 
 const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   editedTask,
   handleChange,
+  handleSystemStatusChange, // NEW: Accept this prop
   isCreateMode,
 }) => {
   const [validationDialog, setValidationDialog] = useState<{
@@ -293,23 +298,30 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   const handleValidationComplete = useCallback(() => {
     console.log("Validation complete - setting status to done");
 
-    // Apply pending changes
-    if (validationDialog.pendingDueDate !== undefined) {
-      console.log("Setting dueDate:", validationDialog.pendingDueDate);
-      handleChange("dueDate", validationDialog.pendingDueDate);
-    }
-    if (validationDialog.pendingDueTime !== undefined) {
-      console.log("Setting dueTime:", validationDialog.pendingDueTime);
-      handleChange("dueTime", validationDialog.pendingDueTime);
-    }
-
-    // Set status to done and actual end time
-    console.log("Setting status to done");
-    handleChange("status", "done" as Status); // Changed from "completed" to "done"
     const now = new Date();
-    console.log("Setting actual end time:", now);
-    handleChange("actualEndDate", now);
-    handleChange("actualEndTime", now);
+
+    // Apply pending date/time changes and set status via system method
+    if (handleSystemStatusChange) {
+      console.log("Using handleSystemStatusChange");
+      handleSystemStatusChange("done", {
+        dueDate: validationDialog.pendingDueDate,
+        dueTime: validationDialog.pendingDueTime,
+        actualEndDate: now,
+        actualEndTime: now,
+      });
+    } else {
+      // Fallback to old method
+      console.log("Fallback to handleChange method");
+      if (validationDialog.pendingDueDate !== undefined) {
+        handleChange("dueDate", validationDialog.pendingDueDate);
+      }
+      if (validationDialog.pendingDueTime !== undefined) {
+        handleChange("dueTime", validationDialog.pendingDueTime);
+      }
+      handleChange("status", "done" as Status);
+      handleChange("actualEndDate", now);
+      handleChange("actualEndTime", now);
+    }
 
     setValidationDialog({ isOpen: false, type: "overdue" });
 
@@ -318,40 +330,38 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
       console.log("Calling validation success callback");
       validationSuccessCallback.current();
     }
-  }, [validationDialog, handleChange]);
+  }, [validationDialog, handleChange, handleSystemStatusChange]);
 
   const handleValidationOverdue = useCallback(() => {
-    // Apply pending changes
-    if (validationDialog.pendingDueDate !== undefined) {
-      handleChange("dueDate", validationDialog.pendingDueDate);
-    }
-    if (validationDialog.pendingDueTime !== undefined) {
-      handleChange("dueTime", validationDialog.pendingDueTime);
-    }
+    console.log("Validation overdue - setting status to overdue");
 
-    // Set status to overdue
-    handleChange("status", "overdue" as Status);
+    // Apply pending date/time changes and set status via system method
+    if (handleSystemStatusChange) {
+      console.log("Using handleSystemStatusChange for overdue");
+      handleSystemStatusChange("overdue", {
+        dueDate: validationDialog.pendingDueDate,
+        dueTime: validationDialog.pendingDueTime,
+      });
+    } else {
+      // Fallback to old method
+      console.log("Fallback to handleChange method for overdue");
+      if (validationDialog.pendingDueDate !== undefined) {
+        handleChange("dueDate", validationDialog.pendingDueDate);
+      }
+      if (validationDialog.pendingDueTime !== undefined) {
+        handleChange("dueTime", validationDialog.pendingDueTime);
+      }
+      handleChange("status", "overdue" as Status);
+    }
 
     setValidationDialog({ isOpen: false, type: "overdue" });
 
     // Call validation success callback to close ModernDateTimePicker
     if (validationSuccessCallback.current) {
+      console.log("Calling validation success callback for overdue");
       validationSuccessCallback.current();
     }
-  }, [validationDialog, handleChange]);
-
-  const getStatusFromDates = (task: Task): Status => {
-    const now = new Date();
-    const dueDateTime = combineDateTime(task.dueDate, task.dueTime);
-
-    if (!dueDateTime) return task.status;
-
-    if (dueDateTime > now) {
-      return "in-progress";
-    } else {
-      return task.completed ? "done" : "overdue";
-    }
-  };
+  }, [validationDialog, handleChange, handleSystemStatusChange]);
 
   const handleValidationCancel = useCallback(() => {
     setValidationDialog({ isOpen: false, type: "overdue" });
