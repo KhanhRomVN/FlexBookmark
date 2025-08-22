@@ -181,6 +181,9 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
     pendingDueTime?: Date | null;
   }>({ isOpen: false, type: "overdue" });
 
+  // Ref to store success callback from ModernDateTimePicker
+  const validationSuccessCallback = React.useRef<(() => void) | null>(null);
+
   const isStartDateTimeSet = editedTask.startDate && editedTask.startTime;
 
   // Auto-correct due date/time to prevent invalid range
@@ -228,20 +231,10 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
         return;
       }
 
-      // Check for overdue (only in edit mode)
-      if (!isCreateMode && isDateTimeInPast(newDueDate, editedTask.dueTime)) {
-        setValidationDialog({
-          isOpen: true,
-          type: "overdue",
-          pendingDueDate: newDueDate,
-          pendingDueTime: editedTask.dueTime,
-        });
-        return;
-      }
-
+      // Just apply the date change without validation (validation will happen on "Done" click)
       handleChange("dueDate", newDueDate);
     },
-    [editedTask, handleChange, isCreateMode, preventInvalidRange]
+    [editedTask, handleChange, preventInvalidRange]
   );
 
   const handleDueTimeChange = useCallback(
@@ -255,38 +248,76 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
         return;
       }
 
-      // Check for overdue (only in edit mode)
-      if (!isCreateMode && isDateTimeInPast(editedTask.dueDate, newDueTime)) {
+      // Just apply the time change without validation (validation will happen on "Done" click)
+      handleChange("dueTime", newDueTime);
+    },
+    [editedTask, handleChange, preventInvalidRange]
+  );
+
+  // Custom validation function for ModernDateTimePicker
+  const handleDateTimeValidation = useCallback(
+    (
+      finalStartDate: Date | null,
+      finalDueDate: Date | null,
+      onSuccess: () => void
+    ) => {
+      // Store the success callback
+      validationSuccessCallback.current = onSuccess;
+
+      // Only validate in edit mode and if due date/time is set
+      if (isCreateMode || !finalDueDate) {
+        onSuccess();
+        return true;
+      }
+
+      // Extract time from the final due date
+      const finalDueTime = finalDueDate;
+
+      // Check for overdue
+      if (isDateTimeInPast(finalDueDate, finalDueTime)) {
         setValidationDialog({
           isOpen: true,
           type: "overdue",
-          pendingDueDate: editedTask.dueDate,
-          pendingDueTime: newDueTime,
+          pendingDueDate: finalDueDate,
+          pendingDueTime: finalDueTime,
         });
-        return;
+        return false; // Prevent the date/time from being applied immediately
       }
 
-      handleChange("dueTime", newDueTime);
+      onSuccess();
+      return true; // Allow the date/time to be applied
     },
-    [editedTask, handleChange, isCreateMode, preventInvalidRange]
+    [isCreateMode]
   );
 
   const handleValidationComplete = useCallback(() => {
+    console.log("Validation complete - setting status to done");
+
     // Apply pending changes
     if (validationDialog.pendingDueDate !== undefined) {
+      console.log("Setting dueDate:", validationDialog.pendingDueDate);
       handleChange("dueDate", validationDialog.pendingDueDate);
     }
     if (validationDialog.pendingDueTime !== undefined) {
+      console.log("Setting dueTime:", validationDialog.pendingDueTime);
       handleChange("dueTime", validationDialog.pendingDueTime);
     }
 
-    // Set status to completed and actual end time
-    handleChange("status", "completed" as Status);
+    // Set status to done and actual end time
+    console.log("Setting status to done");
+    handleChange("status", "done" as Status); // Changed from "completed" to "done"
     const now = new Date();
+    console.log("Setting actual end time:", now);
     handleChange("actualEndDate", now);
     handleChange("actualEndTime", now);
 
     setValidationDialog({ isOpen: false, type: "overdue" });
+
+    // Call validation success callback to close ModernDateTimePicker
+    if (validationSuccessCallback.current) {
+      console.log("Calling validation success callback");
+      validationSuccessCallback.current();
+    }
   }, [validationDialog, handleChange]);
 
   const handleValidationOverdue = useCallback(() => {
@@ -302,10 +333,17 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
     handleChange("status", "overdue" as Status);
 
     setValidationDialog({ isOpen: false, type: "overdue" });
+
+    // Call validation success callback to close ModernDateTimePicker
+    if (validationSuccessCallback.current) {
+      validationSuccessCallback.current();
+    }
   }, [validationDialog, handleChange]);
 
   const handleValidationCancel = useCallback(() => {
     setValidationDialog({ isOpen: false, type: "overdue" });
+    // Don't call success callback when canceling
+    validationSuccessCallback.current = null;
   }, []);
 
   return (
@@ -326,6 +364,7 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
           selectedTime={editedTask.dueTime ?? null}
           onDateChange={handleDueDateChange}
           onTimeChange={handleDueTimeChange}
+          onValidation={handleDateTimeValidation}
           label="Due Date & Time"
           color="red"
           placeholder={
@@ -343,7 +382,7 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
           💡 <strong>Lưu ý:</strong> Due date/time không thể nhỏ hơn start
           date/time.
           {!isCreateMode &&
-            " Nếu bạn đặt due time trong quá khứ, hệ thống sẽ hỏi trạng thái task."}
+            " Nếu bạn đặt due time trong quá khứ, hệ thống sẽ hỏi trạng thái task khi bạn click 'Done'."}
         </div>
       )}
 

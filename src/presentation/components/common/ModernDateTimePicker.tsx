@@ -15,6 +15,11 @@ interface ModernDateTimePickerProps {
   selectedTime: Date | null;
   onDateChange: (date: Date | null) => void;
   onTimeChange: (time: Date | null) => void;
+  onValidation?: (
+    finalStartDate: Date | null,
+    finalDueDate: Date | null,
+    onSuccess: () => void
+  ) => boolean;
   label: string;
   color?: "green" | "red" | "blue" | "purple";
   placeholder?: string;
@@ -26,6 +31,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   selectedTime,
   onDateChange,
   onTimeChange,
+  onValidation,
   label,
   color = "green",
   placeholder = "Select date & time",
@@ -108,8 +114,30 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
 
   const applyTimeSelection = () => {
     const timeDate = new Date(`1970-01-01T${selectedTimeString}`);
-    onTimeChange(timeDate);
-    setIsOpen(false);
+
+    // Combine selected date and time into final date
+    const finalDate = selectedDate ? new Date(selectedDate) : null;
+    if (finalDate && timeDate) {
+      finalDate.setHours(timeDate.getHours(), timeDate.getMinutes(), 0, 0);
+    }
+
+    // Success callback to close dialog and apply changes
+    const onSuccess = () => {
+      onTimeChange(timeDate);
+      setIsOpen(false);
+    };
+
+    // If validation callback exists, call it
+    if (onValidation && finalDate) {
+      const isValid = onValidation(null, finalDate, onSuccess); // Pass success callback
+      if (!isValid) {
+        // Don't close dialog and don't apply changes if validation fails
+        return;
+      }
+    } else {
+      // No validation needed, apply changes directly
+      onSuccess();
+    }
   };
 
   const getDaysInMonth = (date: Date) => {

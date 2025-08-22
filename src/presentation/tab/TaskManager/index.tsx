@@ -71,7 +71,6 @@ const TaskManager: React.FC = () => {
     handleClearFilters,
     lists,
     setLists,
-    collections,
     setCollections,
   } = useTaskManager();
 

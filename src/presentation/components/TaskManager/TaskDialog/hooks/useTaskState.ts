@@ -13,11 +13,14 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     // Auto-suggest and auto-apply status when dates change
     useEffect(() => {
         if (editedTask && !isCreateMode) {
+            console.log("Auto-suggest status check triggered");
             const suggested = getSuggestedStatusFromDates(editedTask);
+            console.log("Suggested status:", suggested);
             setSuggestedStatus(suggested);
 
             // Auto-apply the suggested status immediately
             if (suggested && suggested !== editedTask.status) {
+                console.log("Auto-applying suggested status:", suggested);
                 setEditedTask(prev => {
                     if (!prev) return prev;
 
@@ -65,7 +68,23 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     const getEffectiveStatus = (): Status => {
         if (!editedTask) return 'backlog';
         if (isCreateMode) return editedTask.status;
-        return suggestedStatus && suggestedStatus !== editedTask.status ? suggestedStatus : editedTask.status;
+
+        console.log("Calculating effective status:", {
+            currentStatus: editedTask.status,
+            suggestedStatus,
+            isDone: editedTask.status === 'done',
+            isOverdue: editedTask.status === 'overdue'
+        });
+
+        // If user has explicitly set status through validation, use that
+        if (editedTask.status === 'done' || editedTask.status === 'overdue') {
+            console.log("Using explicit status:", editedTask.status);
+            return editedTask.status;
+        }
+
+        const effectiveStatus = suggestedStatus && suggestedStatus !== editedTask.status ? suggestedStatus : editedTask.status;
+        console.log("Using effective status:", effectiveStatus);
+        return effectiveStatus;
     };
 
     return {
@@ -75,4 +94,4 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
         suggestedStatus: null, // Always return null to hide the suggestion UI
         getEffectiveStatus
     };
-};
+};  

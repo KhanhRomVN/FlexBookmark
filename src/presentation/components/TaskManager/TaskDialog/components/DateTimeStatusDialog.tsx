@@ -17,7 +17,6 @@ import {
   Info,
   ChevronRight,
 } from "lucide-react";
-import { formatDisplayDate, formatDisplayTime } from "../utils/taskTransitions";
 
 interface DateTimeStatusDialogProps {
   isOpen: boolean;
