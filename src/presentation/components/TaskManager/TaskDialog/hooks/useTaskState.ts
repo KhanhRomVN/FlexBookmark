@@ -1,4 +1,4 @@
-// src/presentation/components/TaskManager/TaskDialog/hooks/useTaskState.ts
+// src/presentation/components/TaskManager/TaskDialog/hooks/useTaskState.ts - Debug version
 
 import { useState, useEffect } from "react";
 import { Task, Status } from "../../../../types/task";
@@ -47,11 +47,14 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     ]);
 
     const handleChange = (field: keyof Task, value: any) => {
-        setEditedTask((prev) => {
-            if (!prev) return prev;
 
-            // Chỉ set manual flag khi user trực tiếp thay đổi status qua UI
-            // KHÔNG set khi thay đổi thông qua validation dialog
+        setEditedTask((prev) => {
+
+            if (!prev) {
+                console.warn("⚠️ useTaskState handleChange - no prev task");
+                return prev;
+            }
+
             if (field === "status") {
                 setIsStatusManuallyChanged(true);
             }
@@ -81,6 +84,7 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
 
     // NEW: Method để handle system-triggered status changes (từ validation dialog)
     const handleSystemStatusChange = (newStatus: Status, additionalFields?: Partial<Task>) => {
+
         setEditedTask(prev => {
             if (!prev) return prev;
 
@@ -102,7 +106,6 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
             return updatedTask;
         });
 
-        // CRITICAL: Reset manual flag để cho phép auto-suggestion hoạt động trở lại
         // khi dates thay đổi trong tương lai
         setIsStatusManuallyChanged(false);
 

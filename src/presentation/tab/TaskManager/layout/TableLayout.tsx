@@ -23,9 +23,11 @@ const TableLayout: React.FC<TableLayoutProps> = ({
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [globalSearch] = useState(""); // Removed search from TableLayout as requested
   const [groupStates, setGroupStates] = useState<Record<string, boolean>>({
+    backlog: true,
     todo: true,
     "in-progress": true,
     done: true,
+    overdue: true,
   });
 
   const handleSelectTask = (taskId: string) => {
@@ -67,8 +69,8 @@ const TableLayout: React.FC<TableLayoutProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 bg-slate-50 dark:bg-slate-950 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex-1 p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-full mx-auto">
         <div className="space-y-6">
           <Table
             tasks={tasks}

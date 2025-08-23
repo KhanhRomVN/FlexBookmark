@@ -4,26 +4,17 @@ import {
   parseISO,
   getHours,
   getMinutes,
-  isSameDay,
-  addDays,
-  startOfDay,
-  endOfDay,
   isToday,
-  isSameHour,
-  isSameMinute,
-  addHours,
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  isSameWeek,
 } from "date-fns";
-import { CalendarEvent, Task } from "../../tab/TaskAndEvent";
+import { CalendarEvent } from "../../tab/Calendar";
 
 interface TimeLinePanelProps {
   date: Date;
   events: CalendarEvent[];
-  tasks: Task[];
-  onSelectItem: (item: CalendarEvent | Task) => void;
+  onSelectItem: (item: CalendarEvent) => void;
   loading: boolean;
   error: string | null;
 }
@@ -31,7 +22,6 @@ interface TimeLinePanelProps {
 const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   date,
   events,
-  tasks,
   onSelectItem,
   loading,
   error,
@@ -70,12 +60,9 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     }
   };
 
-  // Group items by date and hour
-  const itemsByDateAndHour = useMemo(() => {
-    const dateMap: Record<
-      string,
-      Record<number, (CalendarEvent | Task)[]>
-    > = {};
+  // Group events by date and hour
+  const eventsByDateAndHour = useMemo(() => {
+    const dateMap: Record<string, Record<number, CalendarEvent[]>> = {};
 
     // Initialize structure
     weekDays.forEach((day) => {
@@ -98,26 +85,14 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       }
     });
 
-    // Process tasks
-    tasks.forEach((task) => {
-      const dueDate = safeParseDate(task.due);
-      if (dueDate) {
-        const dayKey = format(dueDate, "yyyy-MM-dd");
-        const hour = getHours(dueDate);
-        if (dateMap[dayKey] && dateMap[dayKey][hour]) {
-          dateMap[dayKey][hour].push(task);
-        }
-      }
-    });
-
     return dateMap;
-  }, [events, tasks, weekDays]);
+  }, [events, weekDays]);
 
-  const hasItems = useMemo(() => {
-    return Object.values(itemsByDateAndHour).some((day) =>
-      Object.values(day).some((items) => items.length > 0)
+  const hasEvents = useMemo(() => {
+    return Object.values(eventsByDateAndHour).some((day) =>
+      Object.values(day).some((events) => events.length > 0)
     );
-  }, [itemsByDateAndHour]);
+  }, [eventsByDateAndHour]);
 
   const toggleItem = (id: string) => {
     setExpandedItems((prev) => {
@@ -147,7 +122,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Đang tải sự kiện và công việc...
+            Đang tải sự kiện...
           </p>
         </div>
       </div>
@@ -189,7 +164,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
           {format(weekDays[6], "d MMM, yyyy")}
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {events.length + tasks.length} sự kiện và công việc
+          {events.length} sự kiện
         </p>
       </div>
 
@@ -220,7 +195,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
           {/* Days columns */}
           {weekDays.map((day) => {
             const dayKey = format(day, "yyyy-MM-dd");
-            const dayItems = itemsByDateAndHour[dayKey] || {};
+            const dayEvents = eventsByDateAndHour[dayKey] || {};
 
             return (
               <div
@@ -236,61 +211,49 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                 </div>
 
                 {Array.from({ length: 24 }).map((_, hour) => {
-                  const items = dayItems[hour] || [];
+                  const events = dayEvents[hour] || [];
 
                   return (
                     <div
                       key={`${dayKey}-${hour}`}
                       className="h-16 border-b border-gray-100 dark:border-gray-700 relative px-1"
                     >
-                      {items.map((item, itemIndex) => {
-                        const isExpanded = expandedItems.has(item.id);
-                        const itemDate = safeParseDate(
-                          "start" in item ? item.start : item.due
-                        );
-                        const minutes = itemDate ? getMinutes(itemDate) : 0;
+                      {events.map((event, eventIndex) => {
+                        const isExpanded = expandedItems.has(event.id);
+                        const eventDate = safeParseDate(event.start);
+                        const minutes = eventDate ? getMinutes(eventDate) : 0;
                         const top = (minutes / 60) * 64;
-                        const totalItems = items.length;
-                        const widthPercent = 100 / totalItems;
-                        const left = itemIndex * widthPercent;
+                        const totalEvents = events.length;
+                        const widthPercent = 100 / totalEvents;
+                        const left = eventIndex * widthPercent;
 
-                        // Determine item type and styling
-                        const isEvent = "start" in item;
-                        const bgColor = isEvent
-                          ? "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200"
-                          : item.completed
-                          ? "bg-green-100 border-green-200 dark:bg-green-900/30 dark:border-green-800 hover:bg-green-200"
-                          : "bg-yellow-100 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800 hover:bg-yellow-200";
-
-                        const dotColor = isEvent
-                          ? "bg-blue-500"
-                          : item.completed
-                          ? "bg-green-500"
-                          : "bg-yellow-500";
+                        const bgColor =
+                          "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200";
+                        const dotColor = "bg-blue-500";
 
                         return (
                           <div
-                            key={`${item.id}-${hour}`}
+                            key={`${event.id}-${hour}`}
                             className={`absolute rounded p-1.5 cursor-pointer transition-all text-xs shadow-sm ${bgColor}`}
                             style={{
                               top: `${top}px`,
                               height: "30px",
                               width: `${widthPercent}%`,
                               left: `${left}%`,
-                              zIndex: 5 + itemIndex,
+                              zIndex: 5 + eventIndex,
                             }}
-                            onClick={() => toggleItem(item.id)}
+                            onClick={() => toggleItem(event.id)}
                           >
                             <div className="flex items-center h-full gap-1">
                               <span
                                 className={`w-2 h-2 rounded-full ${dotColor}`}
                               ></span>
                               <span className="truncate flex-1 font-medium">
-                                {item.title}
+                                {event.title}
                               </span>
-                              {itemDate && (
+                              {eventDate && (
                                 <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                                  {format(itemDate, "h:mm")}
+                                  {format(eventDate, "h:mm")}
                                 </span>
                               )}
                             </div>
@@ -301,27 +264,27 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="font-medium mb-1 text-sm">
-                                  {item.title}
+                                  {event.title}
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                  {itemDate && format(itemDate, "h:mm a")}
+                                  {eventDate && format(eventDate, "h:mm a")}
                                 </div>
 
-                                {"description" in item && item.description && (
+                                {event.description && (
                                   <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
-                                    {item.description}
+                                    {event.description}
                                   </div>
                                 )}
 
-                                {"notes" in item && item.notes && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
-                                    {item.notes}
+                                {event.location && (
+                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+                                    📍 {event.location}
                                   </div>
                                 )}
 
                                 <button
                                   className="text-xs text-blue-500 hover:text-blue-700 font-medium"
-                                  onClick={() => onSelectItem(item)}
+                                  onClick={() => onSelectItem(event)}
                                 >
                                   Xem chi tiết
                                 </button>
@@ -339,7 +302,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         </div>
 
         {/* Empty state */}
-        {!hasItems && !loading && (
+        {!hasEvents && !loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-gray-500 dark:text-gray-400 p-4">
               <svg
@@ -356,9 +319,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                 />
               </svg>
               <p className="text-sm font-medium mb-1">Không có sự kiện nào</p>
-              <p className="text-xs">
-                Không có sự kiện hoặc công việc nào trong tuần này
-              </p>
+              <p className="text-xs">Không có sự kiện nào trong tuần này</p>
             </div>
           </div>
         )}

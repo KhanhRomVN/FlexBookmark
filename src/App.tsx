@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Tabs, TabsContent } from "@/presentation/components/ui/tabs";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
-import TaskAndEvent from "@/presentation/tab/TaskAndEvent";
+import TaskAndEvent from "@/presentation/tab/Calendar";
 import TaskManager from "@/presentation/tab/TaskManager";
 
 const queryClient = new QueryClient({

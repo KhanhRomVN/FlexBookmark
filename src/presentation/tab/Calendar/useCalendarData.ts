@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import CalendarPanel from "../../components/TaskAndEvent/CalendarPanel";
-import TimeLinePanel from "../../components/TaskAndEvent/TimeLinePanel";
-import { fetchGoogleEvents } from "../../../utils/GGCalender";
-import { fetchGoogleTasks, fetchGoogleTaskGroups } from "../../../utils/GGTask";
+import { fetchGoogleEvents, fetchGoogleCalendars } from "../../../utils/GGCalender";
 import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
 
 export interface CalendarEvent {
@@ -13,19 +10,18 @@ export interface CalendarEvent {
     description?: string;
     location?: string;
     attendees?: string[];
+    calendarId?: string;
 }
 
-export interface Task {
-    dueTime: Date | string;
-    folder: any;
+export interface GoogleCalendar {
     id: string;
-    title: string;
-    due?: Date | string;
-    completed: boolean;
-    notes?: string;
+    summary: string;
+    description?: string;
+    backgroundColor?: string;
+    selected?: boolean;
 }
 
-export const useTaskAndEventData = () => {
+export const useCalendarData = () => {
     const authManager = ChromeAuthManager.getInstance();
     const [authState, setAuthState] = useState<AuthState>({
         isAuthenticated: false,
@@ -35,11 +31,10 @@ export const useTaskAndEventData = () => {
     });
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [selectedItem, setSelectedItem] = useState<CalendarEvent | Task | null>(null);
+    const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
+    const [selectedItem, setSelectedItem] = useState<CalendarEvent | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [taskLists, setTaskLists] = useState<any[]>([]);
 
     useEffect(() => {
         const unsubscribe = authManager.subscribe((newState) => {
@@ -54,15 +49,13 @@ export const useTaskAndEventData = () => {
         setLoading(true);
         setError(null);
         try {
-            const lists = await fetchGoogleTaskGroups(authState.user.accessToken);
-            setTaskLists(lists);
-            const defaultList = lists.length > 0 ? lists[0].id : "@default";
-            const [evts, tks] = await Promise.all([
+            const [calendarList, eventList] = await Promise.all([
+                fetchGoogleCalendars(authState.user.accessToken),
                 fetchGoogleEvents(authState.user.accessToken),
-                fetchGoogleTasks(authState.user.accessToken, defaultList),
             ]);
-            setEvents(evts);
-            setTasks(tks);
+
+            setCalendars(calendarList);
+            setEvents(eventList);
         } catch (err) {
             console.error("API Error:", err);
             setError(err instanceof Error ? `Lỗi kết nối với Google APIs: ${err.message}` : "Lỗi kết nối với Google APIs");
@@ -90,8 +83,7 @@ export const useTaskAndEventData = () => {
         try {
             await authManager.logout();
             setEvents([]);
-            setTasks([]);
-            setTaskLists([]);
+            setCalendars([]);
             setSelectedItem(null);
             setError(null);
         } catch (err) {
@@ -103,7 +95,7 @@ export const useTaskAndEventData = () => {
         setSelectedDate(date);
     }, []);
 
-    const handleSelectItem = useCallback((item: CalendarEvent | Task) => {
+    const handleSelectItem = useCallback((item: CalendarEvent) => {
         setSelectedItem(item);
     }, []);
 
@@ -115,24 +107,32 @@ export const useTaskAndEventData = () => {
         fetchData();
     }, [fetchData]);
 
+    const handleToggleCalendar = useCallback((calendarId: string) => {
+        setCalendars(prev =>
+            prev.map(cal =>
+                cal.id === calendarId
+                    ? { ...cal, selected: cal.selected !== false ? false : true }
+                    : cal
+            )
+        );
+    }, []);
+
     const isSameDate = useCallback((d1: Date, d2: Date) => {
         return d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
     }, []);
 
-    const filteredEvents = events.filter((e) => {
-        try {
-            const dt = e.start instanceof Date ? e.start : new Date(e.start);
-            return isSameDate(dt, selectedDate);
-        } catch {
+    // Filter events based on selected calendars and date
+    const filteredEvents = events.filter((event) => {
+        // Check if event's calendar is selected
+        const eventCalendar = calendars.find(cal => cal.id === event.calendarId);
+        if (eventCalendar && eventCalendar.selected === false) {
             return false;
         }
-    });
 
-    const filteredTasks = tasks.filter((t) => {
-        if (!t.due) return false;
+        // Check if event is on selected date
         try {
-            const dt = t.due instanceof Date ? t.due : new Date(t.due);
-            return isSameDate(dt, selectedDate);
+            const eventDate = event.start instanceof Date ? event.start : new Date(event.start);
+            return isSameDate(eventDate, selectedDate);
         } catch {
             return false;
         }
@@ -142,18 +142,17 @@ export const useTaskAndEventData = () => {
         authState,
         selectedDate,
         events,
-        tasks,
+        calendars,
         selectedItem,
         loading,
         error,
-        taskLists,
         filteredEvents,
-        filteredTasks,
         handleLogin,
         handleLogout,
         handleDateChange,
         handleSelectItem,
         handleCloseModal,
         handleRefresh,
+        handleToggleCalendar,
     };
 };

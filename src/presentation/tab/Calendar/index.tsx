@@ -1,24 +1,24 @@
 import React from "react";
-import CalendarPanel from "../../components/TaskAndEvent/CalendarPanel";
-import TimeLinePanel from "../../components/TaskAndEvent/TimeLinePanel";
-import { useTaskAndEventData } from "./useTaskAndEventData";
+import CalendarPanel from "../../components/Calendar/CalendarPanel";
+import TimeLinePanel from "../../components/Calendar/TimeLinePanel";
+import { useCalendarData } from "./useCalendarData";
 
-const TaskAndEvent: React.FC = () => {
+const Calendar: React.FC = () => {
   const {
     authState,
     selectedDate,
     events,
-    tasks,
     loading,
     error,
     filteredEvents,
-    filteredTasks,
+    calendars,
     handleLogin,
     handleLogout,
     handleDateChange,
     handleSelectItem,
     handleRefresh,
-  } = useTaskAndEventData();
+    handleToggleCalendar,
+  } = useCalendarData();
 
   if (authState.loading) {
     return (
@@ -83,8 +83,8 @@ const TaskAndEvent: React.FC = () => {
             Kết nối với Google
           </h3>
           <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-            Đăng nhập để đồng bộ lịch và công việc từ tài khoản Google của bạn
-            một cách dễ dàng
+            Đăng nhập để đồng bộ lịch từ tài khoản Google của bạn một cách dễ
+            dàng
           </p>
           {authState.error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
@@ -165,7 +165,7 @@ const TaskAndEvent: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
-                  Lịch & Công việc
+                  Lịch Google
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Quản lý thời gian hiệu quả
@@ -224,7 +224,7 @@ const TaskAndEvent: React.FC = () => {
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden gap-1">
         <div
-          className="w-1/3 min-w-[350px] bg-white/60 dark:bg-slate-800/60
+          className="w-1/4 min-w-[300px] bg-white/60 dark:bg-slate-800/60
             backdrop-blur-xl rounded-r-2xl shadow-xl border-r border-slate-200/50
             dark:border-slate-700/50 overflow-hidden"
         >
@@ -232,7 +232,8 @@ const TaskAndEvent: React.FC = () => {
             selectedDate={selectedDate}
             onDateChange={handleDateChange}
             events={events}
-            tasks={tasks}
+            calendars={calendars}
+            onToggleCalendar={handleToggleCalendar}
           />
         </div>
         <div
@@ -242,7 +243,6 @@ const TaskAndEvent: React.FC = () => {
           <TimeLinePanel
             date={selectedDate}
             events={filteredEvents}
-            tasks={filteredTasks}
             onSelectItem={handleSelectItem}
             loading={loading}
             error={error}
@@ -253,4 +253,4 @@ const TaskAndEvent: React.FC = () => {
   );
 };
 
-export default TaskAndEvent;
+export default Calendar;

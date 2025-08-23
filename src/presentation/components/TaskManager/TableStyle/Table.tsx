@@ -4,13 +4,12 @@ import { Task, Priority } from "../../../types/task";
 import {
   ChevronDown,
   ChevronRight,
-  MessageSquare,
-  Calendar,
-  Tag,
-  Users,
-  Star,
+  Paperclip,
+  CheckSquare,
+  Tags,
   MoreHorizontal,
-  Plus,
+  Clock,
+  Star,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import {
@@ -19,14 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
-
-// Types
-interface User {
-  id: string;
-  name: string;
-  avatar?: string | null;
-  initials: string;
-}
 
 interface TaskGroup {
   status: string;
@@ -54,31 +45,36 @@ interface TableProps {
   onDeleteSelected: () => void;
 }
 
+// Priority Emoji Component
+const getPriorityEmoji = (priority: Priority): string => {
+  const priorityEmojis = {
+    low: "🔵",
+    medium: "🟡",
+    high: "🟠",
+    urgent: "🔴",
+  };
+  return priorityEmojis[priority] || "🔵";
+};
+
 // Priority Badge Component
 const PriorityBadge: React.FC<{ priority: Priority }> = ({ priority }) => {
   const priorityConfig = {
     low: {
-      color:
-        "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800",
-      dot: "bg-emerald-500",
+      color: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
       label: "Low",
     },
     medium: {
       color:
-        "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800",
-      dot: "bg-amber-500",
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400",
       label: "Medium",
     },
     high: {
       color:
-        "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800",
-      dot: "bg-orange-500",
+        "bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400",
       label: "High",
     },
     urgent: {
-      color:
-        "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800",
-      dot: "bg-red-500",
+      color: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400",
       label: "Urgent",
     },
   };
@@ -86,12 +82,11 @@ const PriorityBadge: React.FC<{ priority: Priority }> = ({ priority }) => {
   const config = priorityConfig[priority] || priorityConfig.medium;
 
   return (
-    <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
     >
-      <div className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-      <span>{config.label}</span>
-    </div>
+      {config.label}
+    </span>
   );
 };
 
@@ -100,27 +95,25 @@ const CollectionBadge: React.FC<{ collection: string }> = ({ collection }) => {
   const collectionConfig: Record<string, { color: string; label: string }> = {
     dashboard: {
       color:
-        "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800",
+        "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400",
       label: "Dashboard",
     },
     "mobile-app": {
-      color:
-        "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800",
+      color: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
       label: "Mobile App",
     },
     feature: {
       color:
-        "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-400 dark:border-indigo-800",
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
       label: "Feature",
     },
     bug: {
-      color:
-        "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800",
+      color: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400",
       label: "Bug",
     },
     enhancement: {
       color:
-        "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-400 dark:border-teal-800",
+        "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400",
       label: "Enhancement",
     },
   };
@@ -129,102 +122,10 @@ const CollectionBadge: React.FC<{ collection: string }> = ({ collection }) => {
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
     >
       {config.label}
     </span>
-  );
-};
-
-// Status Badge Component
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const statusConfig: Record<string, { color: string; label: string }> = {
-    todo: {
-      color:
-        "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/50 dark:text-slate-400 dark:border-slate-800",
-      label: "To Do",
-    },
-    "in-progress": {
-      color:
-        "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800",
-      label: "In Progress",
-    },
-    done: {
-      color:
-        "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-800",
-      label: "Done",
-    },
-    backlog: {
-      color:
-        "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/50 dark:text-gray-400 dark:border-gray-800",
-      label: "Backlog",
-    },
-  };
-
-  const config = statusConfig[status] || statusConfig.todo;
-
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
-    >
-      {config.label}
-    </span>
-  );
-};
-
-// User Avatar Component
-const UserAvatar: React.FC<{ user: User; size?: "sm" | "md" | "lg" }> = ({
-  user,
-  size = "sm",
-}) => {
-  const sizeConfig = {
-    sm: "w-6 h-6 text-xs",
-    md: "w-8 h-8 text-sm",
-    lg: "w-10 h-10 text-base",
-  };
-
-  const sizeClass = sizeConfig[size];
-
-  const getAvatarColor = (name: string) => {
-    const colors = [
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-      "bg-teal-500",
-      "bg-orange-500",
-      "bg-red-500",
-    ];
-
-    const hash = name.split("").reduce((a, b) => {
-      a = (a << 5) - a + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  if (user.avatar) {
-    return (
-      <img
-        src={user.avatar}
-        alt={user.name}
-        className={`${sizeClass} rounded-full border-2 border-white dark:border-gray-800 object-cover shadow-sm`}
-        title={user.name}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`${sizeClass} ${getAvatarColor(
-        user.name
-      )} rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center font-medium text-white shadow-sm`}
-      title={user.name}
-    >
-      {user.initials}
-    </div>
   );
 };
 
@@ -244,57 +145,34 @@ const GroupHeader: React.FC<{
   );
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-      <div className="flex items-center justify-between px-6 py-4">
+    <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      {/* Status Label - Full clickable area */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      >
         <div className="flex items-center gap-3">
-          <button
-            onClick={onToggle}
-            className="flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg px-2 py-1 transition-colors"
-          >
+          <div className="flex items-center gap-2">
             {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-slate-500" />
+              <ChevronDown className="w-4 h-4 text-gray-500" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-slate-500" />
+              <ChevronRight className="w-4 h-4 text-gray-500" />
             )}
             <span className="text-xl">{group.emoji}</span>
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
+            <span className="font-semibold text-gray-900 dark:text-gray-100">
               {group.label}
             </span>
-            <span className="text-sm text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+            <span className="text-sm text-gray-500 bg-white dark:bg-gray-600 px-2 py-0.5 rounded-full">
               {group.tasks.length}
             </span>
-          </button>
+          </div>
         </div>
+      </button>
 
-        <div className="flex items-center gap-3">
-          {group.tasks.length > 0 && (
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) el.indeterminate = someSelected && !allSelected;
-                }}
-                onChange={() => onSelectAll(group.tasks)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-              />
-              Select all
-            </label>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Table Headers - Only show when expanded and has tasks */}
-      {isExpanded && group.tasks.length > 0 && (
-        <div className="bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+      {/* Table Headers - Always show when expanded */}
+      {isExpanded && (
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1 flex items-center">
               <input
                 type="checkbox"
@@ -303,31 +181,22 @@ const GroupHeader: React.FC<{
                   if (el) el.indeterminate = someSelected && !allSelected;
                 }}
                 onChange={() => onSelectAll(group.tasks)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
             </div>
-            <div className="col-span-3 flex items-center gap-2">
-              <MessageSquare className="w-3.5 h-3.5" />
-              Task Name
+            <div className="col-span-3 flex items-center">Title</div>
+            <div className="col-span-2 flex items-center">Description</div>
+            <div className="col-span-2 flex items-center">
+              <Clock className="w-3.5 h-3.5 mr-1" />
+              Estimation
             </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <Tag className="w-3.5 h-3.5" />
-              Collection
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5" />
-              Dates
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <Star className="w-3.5 h-3.5" />
+            <div className="col-span-2 flex items-center">Collection</div>
+            <div className="col-span-1 flex items-center">
+              <Star className="w-3.5 h-3.5 mr-1" />
               Priority
             </div>
-            <div className="col-span-1 flex items-center gap-2">
-              <Users className="w-3.5 h-3.5" />
-              Tags
-            </div>
             <div className="col-span-1 flex items-center justify-center">
-              <MoreHorizontal className="w-3.5 h-3.5" />
+              Other
             </div>
           </div>
         </div>
@@ -356,121 +225,172 @@ const TableRow: React.FC<{
   onDeleteTask,
   onToggleComplete,
 }) => {
-  const mockUsers = [
-    { id: "1", name: "Alex", avatar: null, initials: "AL" },
-    { id: "2", name: "David", avatar: null, initials: "DT" },
-  ];
-
   const formatDateRange = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
     if (task.startDate && task.dueDate) {
       const start = new Date(task.startDate);
       const end = new Date(task.dueDate);
-      return `${start.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })} - ${end.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })}`;
+
+      const startFormat =
+        start.getFullYear() !== currentYear
+          ? { day: "numeric", month: "numeric", year: "numeric" }
+          : { day: "numeric", month: "numeric" };
+
+      const endFormat =
+        end.getFullYear() !== currentYear
+          ? { day: "numeric", month: "numeric", year: "numeric" }
+          : { day: "numeric", month: "numeric" };
+
+      const startTime = task.startTime
+        ? new Date(task.startTime).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+      const startStr = startTime
+        ? `${startTime} ${start.toLocaleDateString("en-US", startFormat)}`
+        : start.toLocaleDateString("en-US", startFormat);
+
+      return `${startStr} - ${end.toLocaleDateString("en-US", endFormat)}`;
     } else if (task.dueDate) {
       const due = new Date(task.dueDate);
-      return due.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+      const dueFormat =
+        due.getFullYear() !== currentYear
+          ? { day: "numeric", month: "numeric", year: "numeric" }
+          : { day: "numeric", month: "numeric" };
+
+      const dueTime = task.dueTime
+        ? new Date(task.dueTime).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+
+      return dueTime
+        ? `${dueTime} ${due.toLocaleDateString("en-US", dueFormat)}`
+        : due.toLocaleDateString("en-US", dueFormat);
     }
-    return "-";
+    return "null";
   };
 
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "..";
+  };
+
+  const subtaskCount = task.subtasks?.length || 0;
+  const attachmentCount = task.attachments?.length || 0;
+  const tagCount = task.tags?.length || 0;
+
   return (
-    <div className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 transition-colors">
+    <div className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 transition-colors">
       <div className="col-span-1 flex items-center">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={onSelect}
-          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
       </div>
 
       <div className="col-span-3 flex items-center">
         <button
           onClick={() => onTaskClick(task)}
-          className="text-left font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
+          className="text-left flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
         >
-          {task.title}
+          <span className="text-sm">{getPriorityEmoji(task.priority)}</span>
+          <span className="truncate">{task.title}</span>
         </button>
+      </div>
+
+      <div className="col-span-2 flex items-center">
+        <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+          {task.description ? truncateText(task.description, 50) : "-"}
+        </span>
+      </div>
+
+      <div className="col-span-2 flex items-center">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {formatDateRange()}
+        </span>
       </div>
 
       <div className="col-span-2 flex items-center">
         <CollectionBadge collection={task.collection || "dashboard"} />
       </div>
 
-      <div className="col-span-2 flex items-center">
-        <span className="text-sm text-slate-600 dark:text-slate-400">
-          {formatDateRange()}
-        </span>
-      </div>
-
-      <div className="col-span-2 flex items-center">
+      <div className="col-span-1 flex items-center">
         <PriorityBadge priority={task.priority} />
       </div>
 
-      <div className="col-span-1 flex items-center">
-        <div className="flex flex-wrap gap-1">
-          {task.tags?.slice(0, 2).map((tag) => (
-            <span
-              key={tag}
-              className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded"
-            >
-              {tag}
-            </span>
-          ))}
-          {(task.tags?.length || 0) > 2 && (
-            <span className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
-              +{(task.tags?.length || 0) - 2}
-            </span>
-          )}
-        </div>
-      </div>
-
       <div className="col-span-1 flex items-center justify-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => onTaskClick(task)}>
-              View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onEditTask?.(task)}>
-              Edit Task
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onToggleComplete?.(task.id)}>
-              {task.completed ? "Mark Incomplete" : "Mark Complete"}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onArchiveTask?.(task.id)}>
-              Archive
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDeleteTask?.(task.id)}
-              className="text-red-600 dark:text-red-400"
-            >
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          {subtaskCount > 0 && (
+            <div className="flex items-center gap-1">
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span>{subtaskCount}</span>
+            </div>
+          )}
+          {attachmentCount > 0 && (
+            <div className="flex items-center gap-1">
+              <Paperclip className="w-3.5 h-3.5" />
+              <span>{attachmentCount}</span>
+            </div>
+          )}
+          {tagCount > 0 && (
+            <div className="flex items-center gap-1">
+              <Tags className="w-3.5 h-3.5" />
+              <span>{tagCount}</span>
+            </div>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onTaskClick(task)}>
+                View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEditTask?.(task)}>
+                Edit Task
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggleComplete?.(task.id)}>
+                {task.completed ? "Mark Incomplete" : "Mark Complete"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onArchiveTask?.(task.id)}>
+                Archive
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDeleteTask?.(task.id)}
+                className="text-red-600 dark:text-red-400"
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
 };
+
+// Empty State Component
+const EmptyState: React.FC<{ group: TaskGroup }> = ({ group }) => (
+  <div className="px-6 py-12 text-center">
+    <div className="text-4xl mb-3 opacity-50">{group.emoji}</div>
+    <div className="text-sm text-gray-500 dark:text-gray-400">
+      No tasks in {group.label}
+    </div>
+  </div>
+);
 
 // Main Table Component
 const Table: React.FC<TableProps> = ({
@@ -478,7 +398,6 @@ const Table: React.FC<TableProps> = ({
   selectedTasks,
   globalSearch,
   groupStates,
-  onGlobalSearchChange,
   onSelectTask,
   onSelectAll,
   onToggleGroup,
@@ -487,15 +406,13 @@ const Table: React.FC<TableProps> = ({
   onArchiveTask,
   onDeleteTask,
   onToggleComplete,
-  onArchiveSelected,
-  onDeleteSelected,
 }) => {
   // Group tasks by status
   const taskGroups: TaskGroup[] = [
     {
       status: "backlog",
       label: "Backlog",
-      emoji: "",
+      emoji: "📋",
       tasks: tasks.filter((task) => task.status === "backlog"),
       isExpanded: groupStates["backlog"] ?? true,
     },
@@ -516,14 +433,14 @@ const Table: React.FC<TableProps> = ({
     {
       status: "done",
       label: "Done",
-      emoji: "👁️",
+      emoji: "✅",
       tasks: tasks.filter((task) => task.status === "done"),
       isExpanded: groupStates["done"] ?? true,
     },
     {
       status: "overdue",
       label: "Overdue",
-      emoji: "👁️",
+      emoji: "⏰",
       tasks: tasks.filter((task) => task.status === "overdue"),
       isExpanded: groupStates["overdue"] ?? true,
     },
@@ -543,12 +460,12 @@ const Table: React.FC<TableProps> = ({
   }));
 
   return (
-    <div className="flex-1 bg-white dark:bg-slate-900">
-      <div className="space-y-0">
+    <div className="w-full">
+      <div className="space-y-6">
         {filteredGroups.map((group) => (
           <div
             key={group.status}
-            className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden"
+            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden"
           >
             <GroupHeader
               group={group}
@@ -558,9 +475,9 @@ const Table: React.FC<TableProps> = ({
               onSelectAll={onSelectAll}
             />
 
-            {/* Task Rows */}
+            {/* Task Rows or Empty State */}
             {group.isExpanded && (
-              <div className="bg-white dark:bg-slate-900">
+              <div>
                 {group.tasks.length > 0 ? (
                   group.tasks.map((task) => (
                     <TableRow
@@ -576,10 +493,7 @@ const Table: React.FC<TableProps> = ({
                     />
                   ))
                 ) : (
-                  <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    <div className="text-4xl mb-2">{group.emoji}</div>
-                    <div className="text-sm">No tasks in {group.label}</div>
-                  </div>
+                  <EmptyState group={group} />
                 )}
               </div>
             )}

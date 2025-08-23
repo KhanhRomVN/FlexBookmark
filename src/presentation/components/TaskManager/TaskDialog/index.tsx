@@ -1,3 +1,4 @@
+// src/presentation/components/TaskManager/TaskDialog/index.tsx - Added debug logs
 import React, { useState, useRef, useMemo } from "react";
 import { Textarea } from "../../ui/textarea";
 import { Task, Status } from "../../../types/task";
@@ -23,7 +24,7 @@ import {
   DateTimeStatusDialog,
 } from "./components";
 import CollectionSection from "./components/CollectionSection";
-import LocationSection from "./components/LocationSection"; // NEW: Import LocationSection
+import LocationSection from "./components/LocationSection";
 import { useTaskState } from "./hooks/useTaskState";
 import { useSubtasks } from "./hooks/useSubtasks";
 import { useAttachments } from "./hooks/useAttachments";
@@ -106,13 +107,23 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     setEditedTask,
     isCreateMode
   );
+
+  // DEBUG: Monitor handleChange function
+  const debugHandleChange = (field: keyof Task, value: any) => {
+    // Call the original handleChange
+    const result = handleChange(field, value);
+
+    return result;
+  };
+
   const {
     newSubtask,
     setNewSubtask,
     handleSubtaskChange,
     handleAddSubtask,
     handleDeleteSubtask,
-  } = useSubtasks(editedTask, setEditedTask, addActivityLog);
+  } = useSubtasks(editedTask, debugHandleChange, addActivityLog); // Use debug version
+
   const {
     newAttachment,
     setNewAttachment,
@@ -172,12 +183,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       selectedOptions: Record<string, string>;
     } | null>(null);
 
-  const attachmentRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
-
-  useClickOutside(attachmentRef, () => setShowAttachmentOptions(false));
-  useClickOutside(actionMenuRef, () => setShowActionMenu(false));
 
   // Handle task click for linked tasks
   const handleLinkedTaskClick = (taskId: string) => {
@@ -186,7 +193,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     }
   };
 
-  if (!isOpen || !editedTask) return null;
+  const debugOnSave = (task: Task) => {
+    return onSave(task);
+  };
+
+  if (!isOpen || !editedTask) {
+    return null;
+  }
 
   // Filter available tasks (exclude current task)
   const filteredAvailableTasks = availableTasks.filter(
@@ -473,7 +486,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   handleSystemStatusChange={handleSystemStatusChange}
                   isCreateMode={isCreateMode}
                 />
-                {/* NEW: Location Section */}
                 <LocationSection
                   editedTask={editedTask}
                   handleChange={handleChange}
@@ -542,7 +554,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               Cancel
             </button>
             <button
-              onClick={() => onSave(editedTask)}
+              onClick={() => debugOnSave(editedTask)}
               className="px-6 py-2.5 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg font-medium"
             >
               {isCreateMode ? "Create Task" : "Save Task"}
