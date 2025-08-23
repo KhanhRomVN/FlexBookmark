@@ -158,17 +158,6 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                 <span className="hidden sm:inline">Kanban</span>
               </button>
               <button
-                onClick={() => setLayoutType("list")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
-                  layoutType === "list"
-                    ? "bg-blue-500 text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <List className="w-4 h-4" />
-                <span className="hidden sm:inline">List</span>
-              </button>
-              <button
                 onClick={() => setLayoutType("flowchart")}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm ${
                   layoutType === "flowchart"

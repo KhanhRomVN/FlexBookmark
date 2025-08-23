@@ -1,7 +1,17 @@
+// src/presentation/types/task.ts
 import { ReactNode } from "react";
 
 export type Priority = "low" | "medium" | "high" | "urgent";
 export type Status = "backlog" | "todo" | "in-progress" | "done" | "archive" | "overdue";
+
+export interface Location {
+    id: string;
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    placeId?: string;
+}
 
 export interface Subtask {
     id: string;
@@ -36,7 +46,8 @@ export interface Task {
     description?: string;
     status: Status;
     priority: Priority;
-    collection?: string; // Added collection field
+    collection?: string; // Collection field
+    location?: Location; // NEW: Location field
 
     startTime?: Date | null;
     startDate?: Date | null;

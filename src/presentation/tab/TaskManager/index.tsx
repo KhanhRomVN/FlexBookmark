@@ -9,7 +9,6 @@ import TaskHeader, {
 import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
-import ListLayout from "./layout/ListLayout";
 import TableLayout from "./layout/TableLayout";
 import FlowchartLayout from "./layout/FlowchartLayout";
 import { Globe } from "lucide-react";
@@ -589,16 +588,6 @@ const TaskManager: React.FC = () => {
             onDeleteTasks={handleDeleteTasks}
             onSortTasks={handleSortTasks}
             onStatusTransition={handleStatusTransition}
-          />
-        ) : layoutType === "list" ? (
-          <ListLayout
-            tasks={allTasks}
-            onTaskClick={handleTaskClickWrapper}
-            onDragEnd={handleDragEnd}
-            onEditTask={handleTaskClickWrapper}
-            onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
-            onDeleteTask={handleDeleteTask}
-            onToggleComplete={handleToggleComplete}
           />
         ) : (
           <FlowchartLayout

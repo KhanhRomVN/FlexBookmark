@@ -23,6 +23,7 @@ import {
   DateTimeStatusDialog,
 } from "./components";
 import CollectionSection from "./components/CollectionSection";
+import LocationSection from "./components/LocationSection"; // NEW: Import LocationSection
 import { useTaskState } from "./hooks/useTaskState";
 import { useSubtasks } from "./hooks/useSubtasks";
 import { useAttachments } from "./hooks/useAttachments";
@@ -95,7 +96,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     editedTask,
     setEditedTask,
     handleChange,
-    handleSystemStatusChange, // NEW: Add this
+    handleSystemStatusChange,
     suggestedStatus,
     getEffectiveStatus,
   } = useTaskState(task, isCreateMode);
@@ -469,8 +470,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <DateTimeSection
                   editedTask={editedTask}
                   handleChange={handleChange}
-                  handleSystemStatusChange={handleSystemStatusChange} // NEW: Add this line
+                  handleSystemStatusChange={handleSystemStatusChange}
                   isCreateMode={isCreateMode}
+                />
+                {/* NEW: Location Section */}
+                <LocationSection
+                  editedTask={editedTask}
+                  handleChange={handleChange}
                 />
                 <TagsSection
                   editedTask={editedTask}
