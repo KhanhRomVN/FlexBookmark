@@ -493,25 +493,39 @@ const Table: React.FC<TableProps> = ({
   // Group tasks by status
   const taskGroups: TaskGroup[] = [
     {
+      status: "backlog",
+      label: "Backlog",
+      emoji: "",
+      tasks: tasks.filter((task) => task.status === "backlog"),
+      isExpanded: groupStates["backlog"] ?? true,
+    },
+    {
       status: "todo",
-      label: "To-do",
+      label: "To Do",
       emoji: "📝",
       tasks: tasks.filter((task) => task.status === "todo"),
       isExpanded: groupStates["todo"] ?? true,
     },
     {
       status: "in-progress",
-      label: "On Progress",
+      label: "In Progress",
       emoji: "🚧",
       tasks: tasks.filter((task) => task.status === "in-progress"),
       isExpanded: groupStates["in-progress"] ?? true,
     },
     {
       status: "done",
-      label: "In Review",
+      label: "Done",
       emoji: "👁️",
       tasks: tasks.filter((task) => task.status === "done"),
       isExpanded: groupStates["done"] ?? true,
+    },
+    {
+      status: "overdue",
+      label: "Overdue",
+      emoji: "👁️",
+      tasks: tasks.filter((task) => task.status === "overdue"),
+      isExpanded: groupStates["overdue"] ?? true,
     },
   ];
 

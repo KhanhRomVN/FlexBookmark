@@ -338,12 +338,15 @@ const taskToLocation = (
 
   const coords = parseCoordinates(task.locationCoordinates || "");
 
+  // Only return location if we have coordinates (map mode)
+  if (!coords) return null;
+
   return {
     id: Date.now().toString(),
     name: task.locationName,
     address: task.locationAddress || "",
-    latitude: coords?.lat || 0,
-    longitude: coords?.lon || 0,
+    latitude: coords.lat,
+    longitude: coords.lon,
   };
 };
 
@@ -595,10 +598,30 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   const [showMapDialog, setShowMapDialog] = useState(false);
   const [inputMode, setInputMode] = useState<"simple" | "map">("simple");
 
+  // Store previous map data when switching to simple mode
+  const [previousMapData, setPreviousMapData] = useState<{
+    locationAddress: string;
+    locationCoordinates: string;
+  } | null>(null);
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get current location from task fields
+  // Get current location from task fields (only if has coordinates - map mode)
   const currentLocation = taskToLocation(editedTask);
+
+  // Check if current location has map data (coordinates)
+  const hasMapData =
+    editedTask.locationCoordinates &&
+    parseCoordinates(editedTask.locationCoordinates) !== null;
+
+  // Auto-detect mode based on current data
+  useEffect(() => {
+    if (editedTask.locationName && !hasMapData) {
+      setInputMode("simple");
+    } else if (editedTask.locationName && hasMapData) {
+      setInputMode("map");
+    }
+  }, [editedTask.locationName, hasMapData]);
 
   // Search function for map mode
   const handleSearch = useCallback(async (query: string) => {
@@ -679,9 +702,13 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   const handleSimpleLocationChange = (value: string) => {
     if (value.trim()) {
       handleChange("locationName", value.trim());
-      // Clear map data for simple mode
-      handleChange("locationAddress", "");
-      handleChange("locationCoordinates", "");
+      // Keep address and coordinates null/empty for simple mode
+      if (editedTask.locationAddress) {
+        handleChange("locationAddress", "");
+      }
+      if (editedTask.locationCoordinates) {
+        handleChange("locationCoordinates", "");
+      }
     } else {
       // Clear all location fields
       handleChange("locationName", "");
@@ -697,6 +724,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     handleChange("locationCoordinates", "");
     setSearchQuery("");
     setInputMode("simple"); // Reset to simple mode
+    setPreviousMapData(null);
   };
 
   // Handle location change from map dialog
@@ -714,22 +742,41 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   // Switch input mode
   const switchToMapMode = () => {
     setInputMode("map");
+
+    // If switching from simple to map and we have previous map data, restore it
+    if (previousMapData && editedTask.locationName && !hasMapData) {
+      handleChange("locationAddress", previousMapData.locationAddress);
+      handleChange("locationCoordinates", previousMapData.locationCoordinates);
+      setPreviousMapData(null);
+    }
+
     if (editedTask.locationName) {
       setSearchQuery(editedTask.locationName);
     }
   };
 
   const switchToSimpleMode = () => {
+    // Store current map data before switching to simple mode
+    if (hasMapData) {
+      setPreviousMapData({
+        locationAddress: editedTask.locationAddress || "",
+        locationCoordinates: editedTask.locationCoordinates || "",
+      });
+    }
+
     setInputMode("simple");
     setSearchQuery("");
     setSearchResults([]);
     setShowSearchDropdown(false);
-  };
 
-  // Check if current location has map data (coordinates)
-  const hasMapData =
-    editedTask.locationCoordinates &&
-    parseCoordinates(editedTask.locationCoordinates) !== null;
+    // Clear address and coordinates for simple mode but keep locationName
+    if (editedTask.locationAddress) {
+      handleChange("locationAddress", "");
+    }
+    if (editedTask.locationCoordinates) {
+      handleChange("locationCoordinates", "");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -740,6 +787,17 @@ const LocationSection: React.FC<LocationSectionProps> = ({
           Location
         </h4>
         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
+
+        {/* Clear button - only show if has location */}
+        {editedTask.locationName && (
+          <button
+            onClick={clearLocation}
+            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+            title="Clear location"
+          >
+            <X size={14} />
+          </button>
+        )}
 
         {/* Mode Toggle Buttons */}
         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -767,44 +825,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         </div>
       </div>
 
-      {/* Current Location Display */}
-      {editedTask.locationName && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 flex items-start justify-between">
-          <div className="flex-1">
-            <div className="font-medium text-blue-900 dark:text-blue-100">
-              {editedTask.locationName}
-            </div>
-            {hasMapData && (
-              <>
-                <div className="text-sm text-blue-700 dark:text-blue-300 font-mono">
-                  {editedTask.locationCoordinates}
-                </div>
-                {editedTask.locationAddress &&
-                  editedTask.locationAddress !== editedTask.locationName && (
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {editedTask.locationAddress}
-                    </div>
-                  )}
-              </>
-            )}
-            {!hasMapData && (
-              <div className="text-xs text-blue-600 dark:text-blue-400">
-                Simple location (no map data)
-              </div>
-            )}
-          </div>
-          <button
-            onClick={clearLocation}
-            className="text-blue-600 dark:text-blue-400 hover:text-red-500 p-1"
-            title="Remove location"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Static Mini Map - Only show if has map data */}
-      {currentLocation && hasMapData && (
+      {/* Static Mini Map - Only show if in MAP mode and has map data */}
+      {inputMode === "map" && currentLocation && hasMapData && (
         <div className="w-full">
           <StaticMiniMap
             location={currentLocation}
@@ -913,64 +935,53 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         </div>
       )}
 
-      {/* Location Name Edit Field - Only show in map mode if location exists */}
-      {inputMode === "map" && editedTask.location && hasMapData && (
-        <div className="grid grid-cols-1 gap-3 pt-2">
+      {/* Location Details - Only show in map mode if location exists */}
+      {inputMode === "map" && editedTask.locationName && hasMapData && (
+        <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Location Name (customizable)
+              Location Name (editable)
             </label>
             <input
               type="text"
-              value={editedTask.location.name}
-              onChange={(e) =>
-                handleChange("location", {
-                  ...editedTask.location,
-                  name: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+              value={editedTask.locationName || ""}
+              onChange={(e) => handleChange("locationName", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter custom location name..."
             />
           </div>
-        </div>
-      )}
 
-      {/* Read-only Address and Coordinates - Only show in map mode */}
-      {inputMode === "map" && editedTask.location && hasMapData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Address (from map service)
             </label>
             <input
               type="text"
-              value={editedTask.location.address || ""}
+              value={editedTask.locationAddress || ""}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm cursor-not-allowed"
               placeholder="Address will be filled from map"
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Coordinates (from map service)
             </label>
             <input
               type="text"
-              value={`${editedTask.location.latitude.toFixed(
-                6
-              )}, ${editedTask.location.longitude.toFixed(6)}`}
+              value={editedTask.locationCoordinates || ""}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono cursor-not-allowed"
+              placeholder="Coordinates will be filled from map"
             />
           </div>
         </div>
       )}
-
       {/* Map Dialog */}
-      {showMapDialog && editedTask.location && (
+      {showMapDialog && currentLocation && (
         <InteractiveMapDialog
-          location={editedTask.location}
+          location={currentLocation}
           onLocationChange={handleLocationChangeFromMap}
           onClose={() => setShowMapDialog(false)}
         />

@@ -37,12 +37,11 @@ export interface Task {
     description?: string;
     status: Status;
     priority: Priority;
-    collection?: string; // Collection field
+    collection?: string;
 
-    // Location fields - stored as strings in metadata
-    locationName?: string;      // Custom location name
-    locationAddress?: string;   // Address from map service
-    locationCoordinates?: string; // Coordinates as "lat,lng" string
+    locationName?: string;
+    locationAddress?: string;
+    locationCoordinates?: string;
 
     startTime?: Date | null;
     startDate?: Date | null;
