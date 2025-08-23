@@ -54,7 +54,7 @@ export const useTags = (
         // Add activity log FIRST
         addActivityLog("tag_removed", `Removed tag: "${tag}"`);
 
-        // Then update tags
+        // Then update tags 
         handleChange("tags", newTags);
     };
 

@@ -4,15 +4,6 @@ import { ReactNode } from "react";
 export type Priority = "low" | "medium" | "high" | "urgent";
 export type Status = "backlog" | "todo" | "in-progress" | "done" | "archive" | "overdue";
 
-export interface Location {
-    id: string;
-    name: string;
-    address: string;
-    latitude: number;
-    longitude: number;
-    placeId?: string;
-}
-
 export interface Subtask {
     id: string;
     title: string;
@@ -47,7 +38,11 @@ export interface Task {
     status: Status;
     priority: Priority;
     collection?: string; // Collection field
-    location?: Location; // NEW: Location field
+
+    // Location fields - stored as strings in metadata
+    locationName?: string;      // Custom location name
+    locationAddress?: string;   // Address from map service
+    locationCoordinates?: string; // Coordinates as "lat,lng" string
 
     startTime?: Date | null;
     startDate?: Date | null;

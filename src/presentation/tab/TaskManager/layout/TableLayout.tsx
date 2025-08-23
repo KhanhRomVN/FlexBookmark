@@ -75,7 +75,7 @@ const TableLayout: React.FC<TableLayoutProps> = ({
             selectedTasks={selectedTasks}
             globalSearch={globalSearch}
             groupStates={groupStates}
-            onGlobalSearchChange={() => {}} // No-op since we removed search
+            onGlobalSearchChange={() => {}}
             onSelectTask={handleSelectTask}
             onSelectAll={handleSelectAll}
             onToggleGroup={handleToggleGroup}

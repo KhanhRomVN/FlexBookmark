@@ -24,7 +24,6 @@ import DateTimeStatusDialog from "../../components/TaskManager/TaskDialog/compon
 import {
   getTransitionScenarios,
   executeStatusTransition,
-  requiresUserInput,
 } from "../../components/TaskManager/TaskDialog/utils/taskTransitions";
 
 const TaskManager: React.FC = () => {

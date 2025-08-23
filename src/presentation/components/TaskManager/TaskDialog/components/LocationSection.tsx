@@ -1,4 +1,3 @@
-// src/presentation/components/TaskManager/TaskDialog/components/LocationSection.tsx
 import React, {
   useState,
   useCallback,
@@ -13,15 +12,27 @@ import {
   X,
   Loader2,
   Maximize2,
+  Map,
 } from "lucide-react";
-import type { Location } from "../../../../types/task";
 
 interface LocationSectionProps {
   editedTask: {
-    location?: Location;
+    locationName?: string;
+    locationAddress?: string;
+    locationCoordinates?: string;
     [key: string]: any;
   };
   handleChange: (field: string, value: any) => void;
+}
+
+// Temporary Location type for internal operations
+interface Location {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  placeId?: string;
 }
 
 // Nominatim API configuration
@@ -126,8 +137,6 @@ const convertNominatimToLocation = (place: NominatimPlace): Location => {
     latitude: parseFloat(place.lat),
     longitude: parseFloat(place.lon),
     placeId: place.place_id?.toString(),
-    type: place.type || place.category,
-    timestamp: new Date(),
   };
 };
 
@@ -227,7 +236,6 @@ const reverseGeocode = async (
           address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
           latitude,
           longitude,
-          timestamp: new Date(),
         };
       }
 
@@ -241,7 +249,6 @@ const reverseGeocode = async (
       address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
       latitude,
       longitude,
-      timestamp: new Date(),
     };
   }
 };
@@ -267,14 +274,7 @@ const getCurrentLocationFromBrowser = (): Promise<Location> => {
             position.coords.longitude
           );
 
-          // Add accuracy and timestamp to location
-          const enhancedLocation: Location = {
-            ...location,
-            accuracy: position.coords.accuracy,
-            timestamp: new Date(position.timestamp),
-          };
-
-          resolve(enhancedLocation);
+          resolve(location);
         } catch (error) {
           // Fallback if reverse geocoding fails
           const fallbackLocation: Location = {
@@ -285,8 +285,6 @@ const getCurrentLocationFromBrowser = (): Promise<Location> => {
             )}, ${position.coords.longitude.toFixed(6)}`,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: new Date(position.timestamp),
           };
 
           resolve(fallbackLocation);
@@ -319,6 +317,52 @@ const getCurrentLocationFromBrowser = (): Promise<Location> => {
   });
 };
 
+// Helper functions to parse coordinates from string
+const parseCoordinates = (
+  coordStr: string
+): { lat: number; lon: number } | null => {
+  if (!coordStr) return null;
+  const parts = coordStr.split(",").map((p) => p.trim());
+  if (parts.length !== 2) return null;
+  const lat = parseFloat(parts[0]);
+  const lon = parseFloat(parts[1]);
+  if (isNaN(lat) || isNaN(lon)) return null;
+  return { lat, lon };
+};
+
+// Helper functions to convert task fields to/from Location object
+const taskToLocation = (
+  task: LocationSectionProps["editedTask"]
+): Location | null => {
+  if (!task.locationName) return null;
+
+  const coords = parseCoordinates(task.locationCoordinates || "");
+
+  return {
+    id: Date.now().toString(),
+    name: task.locationName,
+    address: task.locationAddress || "",
+    latitude: coords?.lat || 0,
+    longitude: coords?.lon || 0,
+  };
+};
+
+const locationToTaskFields = (
+  location: Location
+): {
+  locationName: string;
+  locationAddress: string;
+  locationCoordinates: string;
+} => {
+  return {
+    locationName: location.name,
+    locationAddress: location.address,
+    locationCoordinates: `${location.latitude.toFixed(
+      6
+    )},${location.longitude.toFixed(6)}`,
+  };
+};
+
 // Utility functions for map calculations
 const getTileCoordinates = (lat: number, lon: number, zoom: number) => {
   const latRad = (lat * Math.PI) / 180;
@@ -340,21 +384,12 @@ const latLonToPixel = (lat: number, lon: number, zoom: number) => {
   return { x, y };
 };
 
-const pixelToLatLon = (pixelX: number, pixelY: number, zoom: number) => {
-  const lon = (pixelX / (Math.pow(2, zoom) * 256)) * 360 - 180;
-  const latRad = Math.atan(
-    Math.sinh(Math.PI * (1 - (2 * pixelY) / (Math.pow(2, zoom) * 256)))
-  );
-  const lat = (latRad * 180) / Math.PI;
-  return { lat, lon };
-};
-
 // Static Mini Map Component (non-interactive)
 const StaticMiniMap: React.FC<{
   location: Location;
   onClick?: () => void;
   className?: string;
-}> = ({ location, onClick, className = "w-full h-48" }) => {
+}> = ({ location, onClick, className = "w-full h-32" }) => {
   const zoom = 13;
   const tilesGridSize = 3; // Smaller grid for mini map
 
@@ -482,14 +517,14 @@ const StaticMiniMap: React.FC<{
       {onClick && (
         <div className="absolute top-2 right-2 z-20">
           <div className="bg-black bg-opacity-60 text-white p-1.5 rounded-md">
-            <Maximize2 size={14} />
+            <Maximize2 size={12} />
           </div>
         </div>
       )}
 
       {/* Location name overlay */}
       <div className="absolute bottom-2 left-2 right-2 z-20">
-        <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+        <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded truncate">
           {location.name}
         </div>
       </div>
@@ -497,208 +532,19 @@ const StaticMiniMap: React.FC<{
   );
 };
 
-// Full Interactive Map Component for Dialog
+// Full Interactive Map Component for Dialog (simplified for now)
 const InteractiveMapDialog: React.FC<{
   location: Location;
   onLocationChange: (location: Location) => void;
   onClose: () => void;
 }> = ({ location, onLocationChange, onClose }) => {
-  const [viewCenter, setViewCenter] = useState({
-    lat: location.latitude,
-    lon: location.longitude,
-  });
-  const [zoom, setZoom] = useState(15);
-  const [targetZoom, setTargetZoom] = useState(15);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [isZooming, setIsZooming] = useState(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tilesGridSize = 5;
-  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Smooth zoom animation
-  useEffect(() => {
-    let animationId: number | null = null;
-
-    const animateZoom = () => {
-      setZoom((prevZoom) => {
-        const diff = targetZoom - prevZoom;
-        if (Math.abs(diff) < 0.01) {
-          setIsZooming(false);
-          return targetZoom;
-        }
-
-        const easeOut = 1 - Math.pow(1 - 0.15, 1);
-        const newZoom = prevZoom + diff * easeOut;
-        animationId = requestAnimationFrame(animateZoom);
-        return newZoom;
-      });
-    };
-
-    if (Math.abs(targetZoom - zoom) > 0.01) {
-      setIsZooming(true);
-      animationId = requestAnimationFrame(animateZoom);
-    }
-
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-    };
-  }, [targetZoom]);
-
-  const getTilesToRender = useCallback(() => {
-    const currentZoom = Math.floor(zoom);
-    const centerTile = getTileCoordinates(
-      viewCenter.lat,
-      viewCenter.lon,
-      currentZoom
-    );
-    const tiles = [];
-    const halfGrid = Math.floor(tilesGridSize / 2);
-
-    for (let dx = -halfGrid; dx <= halfGrid; dx++) {
-      for (let dy = -halfGrid; dy <= halfGrid; dy++) {
-        const tileX = centerTile.x + dx;
-        const tileY = centerTile.y + dy;
-
-        if (
-          tileX >= 0 &&
-          tileY >= 0 &&
-          tileX < Math.pow(2, currentZoom) &&
-          tileY < Math.pow(2, currentZoom)
-        ) {
-          tiles.push({
-            x: dx,
-            y: dy,
-            tileX,
-            tileY,
-            url: `https://tile.openstreetmap.org/${currentZoom}/${tileX}/${tileY}.png`,
-            key: `${tileX}-${tileY}-${currentZoom}`,
-          });
-        }
-      }
-    }
-    return tiles;
-  }, [viewCenter.lat, viewCenter.lon, zoom, tilesGridSize]);
-
-  const tiles = useMemo(() => getTilesToRender(), [getTilesToRender]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      e.preventDefault();
-    }
-  }, []);
-
-  // Smooth pan with throttling to reduce jitter
-  const panTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastPanTime = useRef(0);
-  const THROTTLE_DELAY = 16; // ~60fps
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDragging) {
-        const now = Date.now();
-
-        // Throttle pan updates to reduce jitter
-        if (now - lastPanTime.current < THROTTLE_DELAY) {
-          return;
-        }
-        lastPanTime.current = now;
-
-        const deltaX = e.clientX - dragStart.x;
-        const deltaY = e.clientY - dragStart.y;
-
-        // Use smaller multiplier for smoother movement
-        const pixelsPerDegree = (Math.pow(2, zoom) * 256) / 360;
-        const latChange =
-          (deltaY / pixelsPerDegree) *
-          Math.cos((viewCenter.lat * Math.PI) / 180) *
-          0.8; // Damping factor
-        const lonChange = -(deltaX / pixelsPerDegree) * 0.8; // Damping factor
-
-        setViewCenter({
-          lat: Math.max(-85, Math.min(85, viewCenter.lat + latChange)),
-          lon: viewCenter.lon + lonChange,
-        });
-
-        setDragStart({ x: e.clientX, y: e.clientY });
-      }
-    },
-    [isDragging, dragStart.x, dragStart.y, zoom, viewCenter.lat, viewCenter.lon]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleClick = async (e: React.MouseEvent) => {
-    if (isDragging) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      const newLocation = await reverseGeocode(viewCenter.lat, viewCenter.lon);
-      onLocationChange(newLocation);
-    } catch (error) {
-      const fallbackLocation: Location = {
-        id: Date.now().toString(),
-        name: "Selected Location",
-        address: `${viewCenter.lat.toFixed(6)}, ${viewCenter.lon.toFixed(6)}`,
-        latitude: viewCenter.lat,
-        longitude: viewCenter.lon,
-        timestamp: new Date(),
-      };
-      onLocationChange(fallbackLocation);
-    }
-  };
-
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-      }
-
-      const zoomDelta = e.deltaY > 0 ? -0.5 : 0.5;
-      const newTargetZoom = Math.max(1, Math.min(19, targetZoom + zoomDelta));
-      setTargetZoom(newTargetZoom);
-
-      zoomTimeoutRef.current = setTimeout(() => {
-        setIsZooming(false);
-      }, 150);
-    },
-    [targetZoom]
-  );
-
-  const getMarkerPosition = useCallback(
-    (markerLat: number, markerLon: number) => {
-      const viewPixel = latLonToPixel(viewCenter.lat, viewCenter.lon, zoom);
-      const markerPixel = latLonToPixel(markerLat, markerLon, zoom);
-
-      return {
-        x: markerPixel.x - viewPixel.x,
-        y: markerPixel.y - viewPixel.y,
-      };
-    },
-    [viewCenter.lat, viewCenter.lon, zoom]
-  );
-
-  const markerPos = getMarkerPosition(location.latitude, location.longitude);
-  const tileScale = zoom / Math.floor(zoom);
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Select Location
+            Interactive Map (Simplified)
           </h3>
           <button
             onClick={onClose}
@@ -708,126 +554,17 @@ const InteractiveMapDialog: React.FC<{
           </button>
         </div>
 
-        {/* Map Container */}
-        <div className="flex-1 relative overflow-hidden">
-          <div
-            ref={containerRef}
-            className="w-full h-full relative select-none"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => setIsDragging(false)}
-            onWheel={handleWheel}
-            onClick={handleClick}
-            style={{
-              cursor: isDragging ? "grabbing" : "grab",
-            }}
-          >
-            {/* Tiles Container */}
-            <div
-              className={`absolute transition-transform ${
-                isZooming ? "duration-100 ease-out" : "duration-0"
-              }`}
-              style={{
-                width: `${256 * tilesGridSize}px`,
-                height: `${256 * tilesGridSize}px`,
-                left: "50%",
-                top: "50%",
-                transform: `translate(-${(256 * tilesGridSize) / 2}px, -${
-                  (256 * tilesGridSize) / 2
-                }px) scale(${tileScale})`,
-                transformOrigin: "center center",
-              }}
-            >
-              {tiles.map((tile) => (
-                <img
-                  key={tile.key}
-                  src={tile.url}
-                  alt=""
-                  className="absolute object-cover will-change-transform"
-                  style={{
-                    width: "256px",
-                    height: "256px",
-                    left: `${(tile.x + Math.floor(tilesGridSize / 2)) * 256}px`,
-                    top: `${(tile.y + Math.floor(tilesGridSize / 2)) * 256}px`,
-                  }}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.background = "#f3f4f6";
-                    target.style.opacity = "0.3";
-                  }}
-                  draggable={false}
-                />
-              ))}
+        {/* Simplified Map Content */}
+        <div className="flex-1 p-4 text-center flex items-center justify-center">
+          <div className="text-gray-600 dark:text-gray-400">
+            <div className="text-lg font-medium mb-2">
+              Interactive Map Coming Soon
             </div>
-
-            {/* Location Marker */}
-            <div
-              className="absolute z-20 pointer-events-none"
-              style={{
-                left: "50%",
-                top: "50%",
-                transform: `translate(${markerPos.x - 12}px, ${
-                  markerPos.y - 24
-                }px)`,
-              }}
-            >
-              <div className="relative">
-                <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-4 border-l-transparent border-r-transparent border-t-blue-500"></div>
-              </div>
-            </div>
-
-            {/* Center Crosshair */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-              <div className="w-4 h-4">
-                <div className="absolute left-1/2 top-1/2 w-0.5 h-4 bg-red-500 transform -translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute left-1/2 top-1/2 w-4 h-0.5 bg-red-500 transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="absolute top-4 right-4 z-30 flex flex-col gap-1">
-              <button
-                className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center text-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-700 shadow-md transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTargetZoom((prev) => Math.min(19, prev + 1));
-                }}
-              >
-                +
-              </button>
-              <button
-                className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center text-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-700 shadow-md transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTargetZoom((prev) => Math.max(1, prev - 1));
-                }}
-              >
-                −
-              </button>
-            </div>
-
-            {/* Instructions */}
-            <div className="absolute bottom-4 left-4 right-4 z-30">
-              <div className="bg-black bg-opacity-70 text-white text-sm px-3 py-2 rounded-lg">
-                🖱️ Drag to pan • 🔄 Scroll to zoom • 🎯 Click to set location
-              </div>
-            </div>
-
-            {/* Location Info */}
-            <div className="absolute top-4 left-4 z-30">
-              <div className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 shadow-lg border border-gray-200 dark:border-gray-600">
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {location.name}
-                </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 font-mono">
-                  Z{zoom.toFixed(1)} • {viewCenter.lat.toFixed(4)},{" "}
-                  {viewCenter.lon.toFixed(4)}
-                </div>
-              </div>
+            <div className="text-sm">
+              Current Location: {location.name}
+              <br />
+              Coordinates: {location.latitude.toFixed(6)},{" "}
+              {location.longitude.toFixed(6)}
             </div>
           </div>
         </div>
@@ -836,15 +573,9 @@ const InteractiveMapDialog: React.FC<{
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onClose}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
           >
-            Confirm Location
+            Close
           </button>
         </div>
       </div>
@@ -862,10 +593,14 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showMapDialog, setShowMapDialog] = useState(false);
+  const [inputMode, setInputMode] = useState<"simple" | "map">("simple");
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Search function
+  // Get current location from task fields
+  const currentLocation = taskToLocation(editedTask);
+
+  // Search function for map mode
   const handleSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
       setSearchResults([]);
@@ -890,13 +625,15 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   const onSearchInputChange = (value: string) => {
     setSearchQuery(value);
 
-    if (searchTimeoutRef.current) {
+    if (inputMode === "map" && searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    searchTimeoutRef.current = setTimeout(() => {
-      handleSearch(value);
-    }, 500);
+    if (inputMode === "map") {
+      searchTimeoutRef.current = setTimeout(() => {
+        handleSearch(value);
+      }, 500);
+    }
   };
 
   // Get current location
@@ -904,7 +641,14 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     setIsGettingLocation(true);
     try {
       const location = await getCurrentLocationFromBrowser();
-      handleChange("location", location);
+      const fields = locationToTaskFields(location);
+
+      // Update all location fields at once
+      handleChange("locationName", fields.locationName);
+      handleChange("locationAddress", fields.locationAddress);
+      handleChange("locationCoordinates", fields.locationCoordinates);
+
+      setInputMode("map"); // Switch to map mode when using current location
     } catch (error) {
       console.error("Error getting location:", error);
       alert(
@@ -917,53 +661,137 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     }
   }, [handleChange]);
 
-  // Select location from search results
+  // Select location from search results (map mode)
   const selectLocation = (location: Location) => {
-    handleChange("location", location);
+    const fields = locationToTaskFields(location);
+
+    // Update all location fields at once
+    handleChange("locationName", fields.locationName);
+    handleChange("locationAddress", fields.locationAddress);
+    handleChange("locationCoordinates", fields.locationCoordinates);
+
     setSearchQuery("");
     setSearchResults([]);
     setShowSearchDropdown(false);
   };
 
+  // Handle simple text input (simple mode)
+  const handleSimpleLocationChange = (value: string) => {
+    if (value.trim()) {
+      handleChange("locationName", value.trim());
+      // Clear map data for simple mode
+      handleChange("locationAddress", "");
+      handleChange("locationCoordinates", "");
+    } else {
+      // Clear all location fields
+      handleChange("locationName", "");
+      handleChange("locationAddress", "");
+      handleChange("locationCoordinates", "");
+    }
+  };
+
   // Clear location
   const clearLocation = () => {
-    handleChange("location", undefined);
+    handleChange("locationName", "");
+    handleChange("locationAddress", "");
+    handleChange("locationCoordinates", "");
     setSearchQuery("");
+    setInputMode("simple"); // Reset to simple mode
   };
 
   // Handle location change from map dialog
   const handleLocationChangeFromMap = (newLocation: Location) => {
-    handleChange("location", newLocation);
+    const fields = locationToTaskFields(newLocation);
+
+    // Update all location fields at once
+    handleChange("locationName", fields.locationName);
+    handleChange("locationAddress", fields.locationAddress);
+    handleChange("locationCoordinates", fields.locationCoordinates);
+
     setShowMapDialog(false);
   };
+
+  // Switch input mode
+  const switchToMapMode = () => {
+    setInputMode("map");
+    if (editedTask.locationName) {
+      setSearchQuery(editedTask.locationName);
+    }
+  };
+
+  const switchToSimpleMode = () => {
+    setInputMode("simple");
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowSearchDropdown(false);
+  };
+
+  // Check if current location has map data (coordinates)
+  const hasMapData =
+    editedTask.locationCoordinates &&
+    parseCoordinates(editedTask.locationCoordinates) !== null;
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <MapPin size={18} className="text-gray-600 dark:text-gray-400" />
-        <label className="font-medium text-gray-700 dark:text-gray-300">
+        <h4 className="font-medium text-gray-800 dark:text-gray-200">
           Location
-        </label>
+        </h4>
+        <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
+
+        {/* Mode Toggle Buttons */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={switchToSimpleMode}
+            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              inputMode === "simple"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+          >
+            Simple
+          </button>
+          <button
+            onClick={switchToMapMode}
+            className={`px-3 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+              inputMode === "map"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+          >
+            <Map size={12} />
+            Map
+          </button>
+        </div>
       </div>
 
       {/* Current Location Display */}
-      {editedTask.location && (
+      {editedTask.locationName && (
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 flex items-start justify-between">
           <div className="flex-1">
             <div className="font-medium text-blue-900 dark:text-blue-100">
-              {editedTask.location.name}
+              {editedTask.locationName}
             </div>
-            <div className="text-sm text-blue-700 dark:text-blue-300 font-mono">
-              {editedTask.location.latitude.toFixed(6)},{" "}
-              {editedTask.location.longitude.toFixed(6)}
-            </div>
-            {editedTask.location.address &&
-              editedTask.location.address !== editedTask.location.name && (
-                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  {editedTask.location.address}
+            {hasMapData && (
+              <>
+                <div className="text-sm text-blue-700 dark:text-blue-300 font-mono">
+                  {editedTask.locationCoordinates}
                 </div>
-              )}
+                {editedTask.locationAddress &&
+                  editedTask.locationAddress !== editedTask.locationName && (
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      {editedTask.locationAddress}
+                    </div>
+                  )}
+              </>
+            )}
+            {!hasMapData && (
+              <div className="text-xs text-blue-600 dark:text-blue-400">
+                Simple location (no map data)
+              </div>
+            )}
           </div>
           <button
             onClick={clearLocation}
@@ -975,13 +803,13 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         </div>
       )}
 
-      {/* Static Mini Map - Click to open dialog */}
-      {editedTask.location && (
+      {/* Static Mini Map - Only show if has map data */}
+      {currentLocation && hasMapData && (
         <div className="w-full">
           <StaticMiniMap
-            location={editedTask.location}
+            location={currentLocation}
             onClick={() => setShowMapDialog(true)}
-            className="w-full h-48"
+            className="w-full h-32"
           />
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
             Click map to open full map editor
@@ -989,84 +817,108 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="relative">
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Search for a location..."
-            value={searchQuery}
-            onChange={(e) => onSearchInputChange(e.target.value)}
-            onFocus={() =>
-              searchResults.length > 0 && setShowSearchDropdown(true)
-            }
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {isSearching && (
-            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
-          )}
+      {/* Input Section */}
+      {inputMode === "simple" ? (
+        /* Simple Text Input Mode */
+        <div className="space-y-3">
+          <div className="relative">
+            <MapPin
+              size={16}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              placeholder="Enter location name..."
+              value={editedTask.locationName || ""}
+              onChange={(e) => handleSimpleLocationChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            💡 Simple mode: Enter just the location name. Switch to Map mode for
+            precise coordinates and address.
+          </div>
         </div>
+      ) : (
+        /* Map Search Mode */
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder="Search for a location..."
+                value={searchQuery}
+                onChange={(e) => onSearchInputChange(e.target.value)}
+                onFocus={() =>
+                  searchResults.length > 0 && setShowSearchDropdown(true)
+                }
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
+              )}
+            </div>
 
-        {/* Search Results Dropdown */}
-        {showSearchDropdown && searchResults.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-            {searchResults.map((location) => (
-              <div
-                key={location.id}
-                onClick={() => selectLocation(location)}
-                className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-              >
-                <MapPin
-                  size={16}
-                  className="text-gray-400 mt-0.5 flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {location.name}
+            {/* Current Location Button */}
+            <button
+              onClick={getCurrentLocation}
+              disabled={isGettingLocation}
+              className="flex items-center justify-center w-11 h-11 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50 rounded-lg transition-colors"
+              title="Get current location"
+            >
+              {isGettingLocation ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Navigation size={18} />
+              )}
+            </button>
+          </div>
+
+          {/* Search Results Dropdown */}
+          {showSearchDropdown && searchResults.length > 0 && (
+            <div className="relative z-50">
+              <div className="absolute top-0 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {searchResults.map((location) => (
+                  <div
+                    key={location.id}
+                    onClick={() => selectLocation(location)}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  >
+                    <MapPin
+                      size={16}
+                      className="text-gray-400 mt-0.5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {location.name}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {location.address}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                    {location.address}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={getCurrentLocation}
-          disabled={isGettingLocation}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50 rounded-lg transition-colors text-sm"
-        >
-          {isGettingLocation ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Navigation size={16} />
+            </div>
           )}
-          {isGettingLocation ? "Getting..." : "Current Location"}
-        </button>
 
-        {!editedTask.location && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-900/20 text-gray-500 dark:text-gray-400 rounded-lg text-sm">
-            <MapPin size={16} />
-            Search or get current location to add to map
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            🗺️ Map mode: Search for places with precise coordinates and address,
+            or use current location.
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Location Fields */}
-      {editedTask.location && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+      {/* Location Name Edit Field - Only show in map mode if location exists */}
+      {inputMode === "map" && editedTask.location && hasMapData && (
+        <div className="grid grid-cols-1 gap-3 pt-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Location Name
+              Location Name (customizable)
             </label>
             <input
               type="text"
@@ -1078,11 +930,30 @@ const LocationSection: React.FC<LocationSectionProps> = ({
                 })
               }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+              placeholder="Enter custom location name..."
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Read-only Address and Coordinates - Only show in map mode */}
+      {inputMode === "map" && editedTask.location && hasMapData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Address (from map service)
+            </label>
+            <input
+              type="text"
+              value={editedTask.location.address || ""}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm"
+              placeholder="Address will be filled from map"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Coordinates
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Coordinates (from map service)
             </label>
             <input
               type="text"
@@ -1090,7 +961,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
                 6
               )}, ${editedTask.location.longitude.toFixed(6)}`}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm font-mono"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono"
             />
           </div>
         </div>

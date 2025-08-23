@@ -1,4 +1,4 @@
-// src/utils/GGTask.ts - Updated version with fixed auto-set default times
+// src/utils/GGTask.ts - Fixed location storage (similar to tags)
 
 import type { Task } from "../presentation/types/task";
 
@@ -129,7 +129,12 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             description: task.description || "",
             status: task.status || "backlog",
             priority: task.priority || "",
-            collection: task.collection || "", // Thêm collection
+            collection: task.collection || "",
+
+            // FIXED: Location fields - store individual fields like tags
+            locationName: task.locationName || "",
+            locationAddress: task.locationAddress || "",
+            locationCoordinates: task.locationCoordinates || "",
         };
 
         // Format thời gian và ngày tháng nhất quán - chỉ khi có giá trị
@@ -194,7 +199,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
-
         // Nếu quá limit -> tối ưu giảm size
         if (isOverLimit) {
             console.warn(`Metadata too large (${characterCount}/${MAX_NOTES_LENGTH}), reducing size...`);
@@ -243,6 +247,17 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
+            // FIXED: Truncate location fields if needed
+            if (metadata.locationAddress && metadata.locationAddress.length > 200) {
+                metadata.locationAddress = metadata.locationAddress.substring(0, 200) + "...";
+                jsonString = JSON.stringify(metadata, null, 0);
+                characterCount = jsonString.length;
+                isOverLimit = characterCount > MAX_NOTES_LENGTH;
+                if (!isOverLimit) {
+                    return { notes: jsonString, characterCount, isOverLimit: false };
+                }
+            }
+
             // Giải pháp cuối cùng: giữ metadata tối thiểu
             if (isOverLimit) {
                 console.warn("Using minimal metadata due to size constraints");
@@ -251,6 +266,9 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     status: metadata.status,
                     priority: metadata.priority,
                     collection: metadata.collection,
+                    locationName: metadata.locationName || "",
+                    locationAddress: "",  // Clear long address
+                    locationCoordinates: metadata.locationCoordinates || "",
                     startTime: "",
                     dueTime: "",
                     startDate: "",
@@ -275,6 +293,9 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             status: task.status || "backlog",
             priority: task.priority || "",
             collection: task.collection || "",
+            locationName: task.locationName || "",
+            locationAddress: task.locationAddress || "",
+            locationCoordinates: task.locationCoordinates || "",
             startTime: "",
             dueTime: "",
             startDate: "",
@@ -300,7 +321,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         };
     }
 }
-
 
 // Helper to format due date for Google Tasks API (RFC 3339 date-time format)
 function formatDueDateTime(date: Date | null | undefined): string | undefined {
@@ -411,8 +431,14 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             title: item.title || "Untitled Task",
             description: taskData.description || "",
             status: taskData.status || (item.status === "completed" ? "done" : "todo"),
-            priority: taskData.priority || "",
-            collection: taskData.collection || "", // <-- Thêm collection
+            priority: taskData.priority || "medium", // Default priority
+            collection: taskData.collection || "",
+
+            // FIXED: Parse individual location fields from metadata
+            locationName: taskData.locationName || "",
+            locationAddress: taskData.locationAddress || "",
+            locationCoordinates: taskData.locationCoordinates || "",
+
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
             dueTime: taskData.dueTime ? safeDateParse(taskData.dueTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
@@ -422,8 +448,8 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             attachments: taskData.attachments || [],
             tags: taskData.tags || [],
             activityLog: taskData.activityLog || [],
-            updatedAt: "",
-            createdAt: ""
+            updatedAt: item.updated || "",
+            createdAt: item.updated || ""
         };
 
         return task;
@@ -436,7 +462,6 @@ export const createGoogleTask = async (
     taskListId: string
 ): Promise<Task> => {
     try {
-
         // KHÔNG TỰ ĐỘNG SET DEFAULT TIMES - chỉ dùng những gì user nhập
         const taskWithDefaults = { ...task };
 
@@ -510,13 +535,19 @@ export const createGoogleTask = async (
         const data = await response.json();
 
         // Return the task với chỉ những gì user đã nhập - KHÔNG thêm default times
-        // Fix: Ensure all required Task properties are included
         return {
             id: data.id,
             title: data.title || taskWithDefaults.title || "New Task",
             description: taskWithDefaults.description || "",
             status: taskWithDefaults.status || 'todo',
-            priority: taskWithDefaults.priority || 'medium', // Fix: Use valid Priority type
+            priority: taskWithDefaults.priority || 'medium',
+            collection: taskWithDefaults.collection || "",
+
+            // FIXED: Return individual location fields
+            locationName: taskWithDefaults.locationName || "",
+            locationAddress: taskWithDefaults.locationAddress || "",
+            locationCoordinates: taskWithDefaults.locationCoordinates || "",
+
             // CHỈ GIỮ LẠI THỜI GIAN NẾU USER ĐÃ NHẬP
             startTime: taskWithDefaults.startTime || null,
             dueTime: taskWithDefaults.dueTime || null,
@@ -527,8 +558,8 @@ export const createGoogleTask = async (
             attachments: taskWithDefaults.attachments || [],
             tags: taskWithDefaults.tags || [],
             activityLog: taskWithDefaults.activityLog || [],
-            createdAt: data.updated || new Date().toISOString(), // Fix: Add required property
-            updatedAt: data.updated || new Date().toISOString(), // Fix: Add required property
+            createdAt: data.updated || new Date().toISOString(),
+            updatedAt: data.updated || new Date().toISOString(),
         };
     } catch (error) {
         console.error('Error in createGoogleTask:', error);
@@ -617,7 +648,7 @@ export const deleteGoogleTask = async (
     taskListId: string
 ): Promise<void> => {
     const response = await makeAuthenticatedRequest(
-        `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+        `https://www.googleapis.com/tasks/v1/lists/${tasklistId}/tasks/${taskId}`,
         {
             method: 'DELETE',
             headers: {
@@ -631,7 +662,6 @@ export const deleteGoogleTask = async (
         console.error('Delete task error response:', errorText);
         throw new Error(`Failed to delete task: ${response.status} ${response.statusText}`);
     }
-
 };
 
 export async function fetchGoogleTaskGroups(accessToken: string) {
@@ -675,6 +705,7 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
         subtasks: number;
         attachments: number;
         tags: number;
+        location: number; // FIXED: Add location to breakdown
         other: number;
     }
 } {
@@ -685,7 +716,13 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
     const subtasksSize = JSON.stringify(task.subtasks || []).length;
     const attachmentsSize = JSON.stringify(task.attachments || []).length;
     const tagsSize = JSON.stringify(task.tags || []).length;
-    const other = Math.max(0, characterCount - description - subtasksSize - attachmentsSize - tagsSize);
+
+    // FIXED: Calculate location size
+    const locationSize = (task.locationName || "").length +
+        (task.locationAddress || "").length +
+        (task.locationCoordinates || "").length;
+
+    const other = Math.max(0, characterCount - description - subtasksSize - attachmentsSize - tagsSize - locationSize);
 
     return {
         characterCount,
@@ -695,6 +732,7 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
             subtasks: subtasksSize,
             attachments: attachmentsSize,
             tags: tagsSize,
+            location: locationSize,
             other
         }
     };
