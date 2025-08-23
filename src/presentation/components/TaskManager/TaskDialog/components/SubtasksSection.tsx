@@ -115,6 +115,27 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       task.description?.toLowerCase().includes(editingSearchQuery.toLowerCase())
   );
 
+  // Add function to check if linked task is completed
+  const isLinkedTaskCompleted = (linkedTaskId?: string): boolean => {
+    if (!linkedTaskId) return false;
+    const linkedTask = availableTasks.find((task) => task.id === linkedTaskId);
+    return linkedTask?.completed || false;
+  };
+
+  // Add validation for completing required subtasks with incomplete linked tasks
+  const handleSubtaskCompletion = (subtask: Subtask, completed: boolean) => {
+    if (completed && subtask.requiredCompleted && subtask.linkedTaskId) {
+      const linkedTaskCompleted = isLinkedTaskCompleted(subtask.linkedTaskId);
+      if (!linkedTaskCompleted) {
+        alert(
+          "Cannot complete this subtask until the linked task is completed."
+        );
+        return;
+      }
+    }
+    handleSubtaskChange(subtask.id, "completed", completed);
+  };
+
   const handleFormChange = (
     field: keyof NewSubtaskForm,
     value: string | null | boolean
@@ -263,7 +284,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-lg text-text-default">Subtasks</h3>
@@ -285,34 +306,44 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       </div>
 
       {/* Subtasks Display */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {editedTask.subtasks && editedTask.subtasks.length > 0 ? (
           editedTask.subtasks.map((subtask) => {
             const linkedTask = getLinkedTask(subtask.linkedTaskId);
             const { emoji, titleWithoutEmoji } = extractEmoji(subtask.title);
+            const linkedTaskCompleted = isLinkedTaskCompleted(
+              subtask.linkedTaskId
+            );
 
             return (
               <div
                 key={subtask.id}
-                className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 group"
+                className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow transition-all duration-200 group"
               >
                 {/* Checkbox with required indicator */}
-                <div className="flex flex-col items-center gap-2 mt-1">
+                <div className="flex flex-col items-center gap-1 mt-0.5">
                   <button
-                    onClick={() => {
-                      handleSubtaskChange(
-                        subtask.id,
-                        "completed",
-                        !subtask.completed
-                      );
-                    }}
+                    onClick={() =>
+                      handleSubtaskCompletion(subtask, !subtask.completed)
+                    }
+                    disabled={
+                      subtask.requiredCompleted &&
+                      subtask.linkedTaskId &&
+                      !linkedTaskCompleted
+                    }
                     className={`h-5 w-5 rounded-lg flex items-center justify-center transition-all duration-200 ${
                       subtask.completed
                         ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md"
                         : "border-2 border-gray-300 dark:border-gray-600 hover:border-green-400"
+                    } ${
+                      subtask.requiredCompleted &&
+                      subtask.linkedTaskId &&
+                      !linkedTaskCompleted
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
                     }`}
                   >
-                    {subtask.completed && <Check size={16} />}
+                    {subtask.completed && <Check size={14} />}
                   </button>
                   {subtask.requiredCompleted && (
                     <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
@@ -322,7 +353,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                   )}
                 </div>
 
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 space-y-2 min-w-0">
                   {/* Title with emoji */}
                   <div className="flex items-center gap-2">
                     {/* Emoji picker button */}
@@ -384,7 +415,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                           : e.target.value;
                         handleSubtaskChange(subtask.id, "title", newTitle);
                       }}
-                      className={`flex-1 bg-transparent border-none focus:ring-0 font-medium transition-all ${
+                      className={`flex-1 bg-transparent border-none focus:ring-0 font-medium text-sm transition-all truncate ${
                         subtask.completed
                           ? "text-text-secondary line-through"
                           : "text-text-default"
@@ -400,7 +431,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                           !subtask.requiredCompleted
                         );
                       }}
-                      className={`p-1 rounded-lg transition-colors ${
+                      className={`p-1 rounded transition-colors ${
                         subtask.requiredCompleted
                           ? "text-amber-500 bg-amber-50 dark:bg-amber-900/20"
                           : "text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
@@ -428,7 +459,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                       }}
                       className="w-full text-sm bg-transparent border-none focus:ring-0 text-gray-600 dark:text-gray-400 resize-none"
                       placeholder="Add description..."
-                      rows={2}
+                      rows={1}
                       onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
                         const target = e.currentTarget;
                         target.style.height = "auto";
@@ -437,123 +468,148 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                     />
                   </div>
 
-                  {/* Linked Task Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Link size={14} className="text-gray-500" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Linked Task:
-                      </span>
-                    </div>
-
-                    {linkedTask ? (
-                      <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                            {linkedTask.title}
-                          </div>
-                          {linkedTask.description && (
-                            <div className="text-xs text-blue-500 dark:text-blue-300 truncate">
-                              {linkedTask.description.substring(0, 50)}...
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          {onTaskClick && (
-                            <button
-                              onClick={() => onTaskClick(linkedTask.id)}
-                              className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              <ExternalLink size={12} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() =>
-                              handleClearEditingLinkedTask(subtask.id)
-                            }
-                            className="p-1 text-gray-500 hover:text-red-500"
-                          >
-                            <X size={12} />
-                          </button>
+                  {/* Linked Task Section - Improved styling */}
+                  {subtask.linkedTaskId && (
+                    <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link size={12} className="text-gray-500" />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          Linked Task:
+                        </span>
+                        <div
+                          className={`flex items-center gap-1 text-xs ${
+                            linkedTaskCompleted
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full ${
+                              linkedTaskCompleted
+                                ? "bg-green-500"
+                                : "bg-amber-500"
+                            }`}
+                          />
+                          {linkedTaskCompleted ? "Completed" : "Not Completed"}
                         </div>
                       </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="flex items-center gap-2 p-2 border border-border-default rounded-lg">
-                          <Search size={14} className="text-gray-400" />
-                          <input
-                            type="text"
-                            placeholder="Search and select a task to link..."
-                            value={
-                              editingTaskDropdown === subtask.id
-                                ? editingSearchQuery
-                                : ""
-                            }
-                            onChange={(e) =>
-                              handleEditingTaskSearch(
-                                subtask.id,
-                                e.target.value
-                              )
-                            }
-                            onFocus={() => setEditingTaskDropdown(subtask.id)}
-                            className="flex-1 text-sm bg-transparent border-none focus:ring-0 text-text-default"
-                          />
-                        </div>
 
-                        {editingTaskDropdown === subtask.id && (
-                          <div
-                            ref={editingDropdownRef}
-                            className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
-                          >
-                            {filteredEditingTasks.length > 0 ? (
-                              filteredEditingTasks.slice(0, 5).map((task) => (
-                                <div
-                                  key={task.id}
-                                  onClick={() =>
-                                    handleEditingTaskSelect(subtask.id, task)
-                                  }
-                                  className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
-                                >
-                                  <div
-                                    className={`w-2 h-2 rounded-full ${
-                                      task.priority === "urgent"
-                                        ? "bg-red-500"
-                                        : task.priority === "high"
-                                        ? "bg-orange-500"
-                                        : task.priority === "medium"
-                                        ? "bg-yellow-500"
-                                        : "bg-green-500"
-                                    }`}
-                                  ></div>
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      {task.title}
-                                    </div>
-                                    {task.description && (
-                                      <div className="text-xs text-gray-500 truncate">
-                                        {task.description.substring(0, 50)}...
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="px-3 py-2 text-sm text-gray-500">
-                                No tasks found
+                      {linkedTask ? (
+                        <div className="flex items-center gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate">
+                              {linkedTask.title}
+                            </div>
+                            {linkedTask.description && (
+                              <div className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                                {linkedTask.description}
                               </div>
                             )}
                           </div>
-                        )}
+                          <div className="flex gap-1">
+                            {onTaskClick && (
+                              <button
+                                onClick={() => onTaskClick(linkedTask.id)}
+                                className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                <ExternalLink size={12} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() =>
+                                handleClearEditingLinkedTask(subtask.id)
+                              }
+                              className="p-1 text-gray-500 hover:text-red-500"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Linked task not found
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Linked Task Input - Improved styling */}
+                  {!subtask.linkedTaskId && (
+                    <div className="relative mt-2">
+                      <div className="flex items-center gap-2 p-1.5 border border-border-default rounded-lg bg-white dark:bg-gray-700">
+                        <Search
+                          size={12}
+                          className="text-gray-400 flex-shrink-0"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Link to task..."
+                          value={
+                            editingTaskDropdown === subtask.id
+                              ? editingSearchQuery
+                              : ""
+                          }
+                          onChange={(e) =>
+                            handleEditingTaskSearch(subtask.id, e.target.value)
+                          }
+                          onFocus={() => setEditingTaskDropdown(subtask.id)}
+                          className="flex-1 text-sm bg-transparent border-none focus:ring-0 text-text-default min-w-0"
+                        />
                       </div>
-                    )}
-                  </div>
+
+                      {editingTaskDropdown === subtask.id && (
+                        <div
+                          ref={editingDropdownRef}
+                          className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
+                        >
+                          {filteredEditingTasks.length > 0 ? (
+                            filteredEditingTasks.slice(0, 5).map((task) => (
+                              <div
+                                key={task.id}
+                                onClick={() =>
+                                  handleEditingTaskSelect(subtask.id, task)
+                                }
+                                className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
+                              >
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    task.priority === "urgent"
+                                      ? "bg-red-500"
+                                      : task.priority === "high"
+                                      ? "bg-orange-500"
+                                      : task.priority === "medium"
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                  }`}
+                                ></div>
+                                <div>
+                                  <div className="text-sm font-medium">
+                                    {task.title}
+                                  </div>
+                                  {task.description && (
+                                    <div className="text-xs text-gray-500 truncate">
+                                      {task.description.substring(0, 50)}...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                              No tasks found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button
                   onClick={() => handleDeleteSubtask(subtask.id)}
-                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors mt-1"
+                  className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors mt-0.5"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </div>
             );
@@ -569,21 +625,21 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
           </div>
         )}
 
-        {/* New Subtask Form */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <div className="flex items-center gap-2 mb-3">
-            <Plus size={16} className="text-gray-600 dark:text-gray-400" />
+        {/* New Subtask Form - Improved styling */}
+        <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+          <div className="flex items-center gap-2 mb-2">
+            <Plus size={14} className="text-gray-600 dark:text-gray-400" />
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Add New Subtask
             </span>
           </div>
 
           {/* Title with Emoji */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <div className="relative" ref={emojiPickerRef}>
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors ${
+                className={`w-6 h-6 rounded flex items-center justify-center text-sm transition-colors ${
                   newSubtaskForm.emoji
                     ? "hover:bg-gray-100 dark:hover:bg-gray-700"
                     : "border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400"
@@ -591,7 +647,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                 title="Add emoji"
               >
                 {newSubtaskForm.emoji || (
-                  <Smile size={14} className="text-gray-400" />
+                  <Smile size={12} className="text-gray-400" />
                 )}
               </button>
 
@@ -627,7 +683,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
               placeholder="What needs to be done?"
               value={newSubtaskForm.title}
               onChange={(e) => handleFormChange("title", e.target.value)}
-              className="flex-1 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
 
@@ -636,12 +692,12 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             placeholder="Add description..."
             value={newSubtaskForm.description}
             onChange={(e) => handleFormChange("description", e.target.value)}
-            rows={2}
-            className="w-full bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-3"
+            rows={1}
+            className="w-full bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-2 text-sm"
           />
 
           {/* Options */}
-          <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-3 mb-2">
             <button
               onClick={() =>
                 handleFormChange(
@@ -649,22 +705,22 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                   !newSubtaskForm.requiredCompleted
                 )
               }
-              className={`flex items-center gap-2 px-3 py-1 rounded transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs ${
                 newSubtaskForm.requiredCompleted
                   ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
                   : "text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
               }`}
             >
               <Lock size={12} />
-              <span className="text-sm">Required</span>
+              <span>Required</span>
             </button>
           </div>
 
           {/* Linked Task */}
           {getSelectedLinkedTask() ? (
-            <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-3">
-              <div className="flex-1">
-                <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md mb-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
                   {getSelectedLinkedTask()!.title}
                 </div>
               </div>
@@ -676,16 +732,16 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
               </button>
             </div>
           ) : (
-            <div className="relative mb-3">
-              <div className="flex items-center gap-2 p-2 border border-border-default rounded-lg">
-                <Search size={14} className="text-gray-400" />
+            <div className="relative mb-2">
+              <div className="flex items-center gap-2 p-1.5 border border-border-default rounded-lg bg-white dark:bg-gray-700">
+                <Search size={12} className="text-gray-400 flex-shrink-0" />
                 <input
                   ref={linkedTaskSearchRef}
                   type="text"
                   placeholder="Link to task..."
                   value={searchQuery}
                   onChange={(e) => handleLinkedTaskSearch(e.target.value)}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-text-default text-sm"
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-text-default text-sm min-w-0"
                 />
               </div>
 
@@ -699,13 +755,13 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                       <div
                         key={task.id}
                         onClick={() => handleTaskSelect(task)}
-                        className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                        className="px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm"
                       >
-                        <div className="text-sm font-medium">{task.title}</div>
+                        <div className="font-medium truncate">{task.title}</div>
                       </div>
                     ))
                   ) : searchQuery ? (
-                    <div className="px-3 py-2 text-sm text-gray-500">
+                    <div className="px-2 py-1.5 text-sm text-gray-500">
                       No tasks found
                     </div>
                   ) : null}
@@ -719,9 +775,9 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             <button
               onClick={handleEnhancedAddSubtask}
               disabled={!newSubtaskForm.title.trim()}
-              className="flex items-center gap-2 bg-button-bg hover:bg-button-bgHover disabled:bg-gray-400 disabled:cursor-not-allowed text-button-bgText px-4 py-2 rounded-lg font-medium transition-colors"
+              className="flex items-center gap-1 bg-button-bg hover:bg-button-bgHover disabled:bg-gray-400 disabled:cursor-not-allowed text-button-bgText px-3 py-1.5 rounded-lg font-medium transition-colors text-sm"
             >
-              <Plus size={16} />
+              <Plus size={14} />
               Add
             </button>
             <button
@@ -735,7 +791,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                 });
                 setSearchQuery("");
               }}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors text-sm"
             >
               Clear
             </button>
