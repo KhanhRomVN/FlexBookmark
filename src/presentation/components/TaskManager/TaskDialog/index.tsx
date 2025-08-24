@@ -1,6 +1,5 @@
-// src/presentation/components/TaskManager/TaskDialog/index.tsx - Added debug logs
-import React, { useState, useRef } from "react";
-import { Textarea } from "../../ui/textarea";
+// src/presentation/components/TaskManager/TaskDialog/index.tsx - Added auto-expanding height and character counter
+import React, { useState, useRef, useEffect } from "react";
 import { Task, Status } from "../../../types/task";
 import {
   X,
@@ -184,6 +183,41 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
 
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+  const titleTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize function for textareas
+  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = "auto";
+    // Set the height to match the scroll height (content height)
+    textarea.style.height = textarea.scrollHeight + "px";
+  };
+
+  // Title character count
+  const titleCharCount = editedTask?.title?.length || 0;
+  const titleMaxChar = 1023;
+  const isTitleOverLimit = titleCharCount > titleMaxChar;
+
+  // Handle title change with character limit
+  const handleTitleChange = (value: string) => {
+    if (value.length <= titleMaxChar) {
+      handleChange("title", value);
+    }
+  };
+
+  // Auto-resize textareas on content change
+  useEffect(() => {
+    if (titleTextareaRef.current) {
+      autoResizeTextarea(titleTextareaRef.current);
+    }
+  }, [editedTask?.title]);
+
+  useEffect(() => {
+    if (descriptionTextareaRef.current) {
+      autoResizeTextarea(descriptionTextareaRef.current);
+    }
+  }, [editedTask?.description]);
 
   // Handle task click for linked tasks
   const handleLinkedTaskClick = (taskId: string) => {
@@ -431,19 +465,33 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
           >
             {/* Title */}
             <div className="space-y-2">
-              <Textarea
-                value={editedTask.title}
-                onChange={(e) => handleChange("title", e.target.value)}
-                placeholder="What needs to be done?"
-                rows={1}
-                className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 transition-all resize-none overflow-hidden"
-                style={{ minHeight: "3.5rem", maxHeight: "10rem" }}
-                onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
-                  const target = e.currentTarget;
-                  target.style.height = "auto";
-                  target.style.height = target.scrollHeight + "px";
-                }}
-              />
+              <div className="relative">
+                <textarea
+                  ref={titleTextareaRef}
+                  value={editedTask.title}
+                  onChange={(e) => {
+                    handleTitleChange(e.target.value);
+                    autoResizeTextarea(e.target);
+                  }}
+                  onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                    autoResizeTextarea(e.currentTarget);
+                  }}
+                  placeholder="What needs to be done?"
+                  rows={1}
+                  className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 transition-all resize-none"
+                  style={{
+                    minHeight: "3.5rem",
+                    lineHeight: "1.2",
+                    overflow: "hidden",
+                  }}
+                />
+                {/* Character counter for title */}
+                <div className="absolute -bottom-6 right-0 text-xs text-gray-500 dark:text-gray-400">
+                  <span className={isTitleOverLimit ? "text-red-500" : ""}>
+                    {titleCharCount}/{titleMaxChar}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Description */}
@@ -455,10 +503,21 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
               </div>
               <textarea
+                ref={descriptionTextareaRef}
                 value={editedTask.description || ""}
-                onChange={(e) => handleChange("description", e.target.value)}
+                onChange={(e) => {
+                  handleChange("description", e.target.value);
+                  autoResizeTextarea(e.target);
+                }}
+                onInput={(e: React.FormEvent<HTMLTextAreaElement>) => {
+                  autoResizeTextarea(e.currentTarget);
+                }}
                 rows={4}
-                className="w-full bg-input-background rounded-lg p-4 border border-border-default text-text-primary resize-none"
+                className="w-full text-base bg-input-background rounded-lg p-4 border border-border-default text-text-primary resize-none"
+                style={{
+                  minHeight: "6rem",
+                  overflow: "hidden",
+                }}
                 placeholder="Add detailed description, notes, or context..."
               />
             </div>

@@ -664,7 +664,6 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
 const validateTransition = (task: Task, from: Status, to: Status): ValidationResult => {
     const now = new Date();
     const startDate = task.startDate ? new Date(task.startDate) : null;
-    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
 
     switch (`${from}-${to}`) {
         case "in-progress-todo":
@@ -675,9 +674,6 @@ const validateTransition = (task: Task, from: Status, to: Status): ValidationRes
                 };
             }
             break;
-
-        // Most transitions are allowed with user confirmation
-        // This validation only blocks clearly impossible cases
     }
 
     return { isValid: true };
@@ -697,7 +693,7 @@ export const executeStatusTransition = (
     }
 
     // Check for invalid options
-    for (const [key, value] of Object.entries(selectedOptions)) {
+    for (const [, value] of Object.entries(selectedOptions)) {
         if (value === "invalid") {
             return { error: "Cannot perform this transition with current task data" };
         }

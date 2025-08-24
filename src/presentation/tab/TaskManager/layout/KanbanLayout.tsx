@@ -34,8 +34,8 @@ const KanbanLayout: React.FC<KanbanLayoutProps> = ({
   onSortTasks,
 }) => {
   return (
-    <div className="flex-1 p-6">
-      <div className="flex gap-6 flex-1 min-h-0 w-full items-start">
+    <div className="flex-1 p-6 overflow-hidden flex flex-col">
+      <div className="flex gap-6 flex-1 min-h-0 w-full">
         {filteredLists.map((list) => (
           <FolderCard
             key={list.id}

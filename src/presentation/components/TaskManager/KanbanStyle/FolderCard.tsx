@@ -85,8 +85,9 @@ const FolderCard: React.FC<FolderCardProps> = ({
   };
 
   return (
-    <div className="bg-card-background rounded-xl w-full flex flex-col min-h-[600px] shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200">
-      <div className="p-4 border-b border-border-default">
+    <div className="bg-card-background rounded-xl w-full flex flex-col shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 h-full">
+      {/* Header - Fixed height */}
+      <div className="p-4 border-b border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-text-primary flex items-center gap-2">
             {emoji && <span>{emoji}</span>}
@@ -162,7 +163,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
         </div>
       </div>
 
-      <div className="overflow-y-auto p-3 space-y-3 flex-1">
+      {/* Scrollable Content Area - Takes remaining height */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
