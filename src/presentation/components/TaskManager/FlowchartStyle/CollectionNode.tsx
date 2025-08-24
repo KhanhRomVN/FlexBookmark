@@ -1,16 +1,21 @@
 // src/presentation/components/TaskManager/FlowchartStyle/CollectionNode.tsx
 import React from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
-import type { Task } from "../../../types/task";
-import { FolderOpen, FileText, Calendar, Clock } from "lucide-react";
+import { Handle, Position } from "@xyflow/react";
+import { FolderOpen, FileText, Calendar } from "lucide-react";
+import type { CollectionNodeData } from "../../../types/nodeTypes";
 
-interface CollectionNodeData {
-  collection: string;
-  tasks: Task[];
-  onClick: (task: Task) => void;
+// Define props interface explicitly instead of using NodeProps
+interface CollectionNodeProps {
+  data: CollectionNodeData;
 }
 
-const CollectionNode: React.FC<NodeProps<CollectionNodeData>> = ({ data }) => {
+const CollectionNode: React.FC<CollectionNodeProps> = ({ data }) => {
+  // Type guard to ensure data has the expected structure
+  if (!data || !data.collection || !data.tasks || !data.onClick) {
+    console.error("CollectionNode: Invalid data structure", data);
+    return null;
+  }
+
   const { collection, tasks, onClick } = data;
 
   const getStatusColor = (status: string) => {
@@ -55,6 +60,9 @@ const CollectionNode: React.FC<NodeProps<CollectionNodeData>> = ({ data }) => {
     });
   };
 
+  // Ensure tasks is an array
+  const tasksList = Array.isArray(tasks) ? tasks : [];
+
   return (
     <div className="shadow-lg rounded-lg bg-white border-2 border-indigo-200 min-w-[320px] max-w-[400px]">
       {/* Input handle */}
@@ -67,13 +75,13 @@ const CollectionNode: React.FC<NodeProps<CollectionNodeData>> = ({ data }) => {
           <h3 className="font-semibold text-indigo-900">{collection}</h3>
         </div>
         <div className="text-xs text-indigo-700">
-          {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+          {tasksList.length} task{tasksList.length !== 1 ? "s" : ""}
         </div>
       </div>
 
       {/* Tasks List */}
       <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
-        {tasks.map((task) => (
+        {tasksList.map((task) => (
           <div
             key={task.id}
             className={`p-3 bg-gray-50 rounded-md border-l-4 ${getPriorityColor(

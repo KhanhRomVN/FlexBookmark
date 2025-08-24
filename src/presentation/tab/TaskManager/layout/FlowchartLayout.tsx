@@ -38,26 +38,15 @@ interface FlowchartLayoutProps {
   ) => void;
 }
 
-// Define proper data types for your nodes
-interface TaskNodeData extends Record<string, unknown> {
-  id: string;
-  title: string;
-  status: Status;
-  collection?: string;
-  onClick: () => void;
-  [key: string]: any; // Allow additional task properties
-}
+// Node data types are imported from nodeTypes.ts
 
-interface CollectionNodeData extends Record<string, unknown> {
-  collection: string;
-  tasks: Task[];
-  onClick: (task: any) => void;
-}
+// Remove the duplicate CollectionNodeData interface - use the one from CollectionNode component
+// The CollectionNode component already defines this interface, so we don't need it here
 
 // Create properly typed node types
 const nodeTypes: NodeTypes = {
-  task: TaskNode as React.ComponentType<any>,
-  collection: CollectionNode as React.ComponentType<any>,
+  task: TaskNode,
+  collection: CollectionNode,
 };
 
 const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
@@ -128,7 +117,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
             collection,
             tasks,
             onClick: onTaskClick,
-          } as CollectionNodeData,
+          },
         });
 
         if (viewMode === "hierarchical") {
@@ -162,7 +151,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
         data: {
           ...task,
           onClick: () => onTaskClick(task),
-        } as TaskNodeData,
+        },
       });
     });
 
