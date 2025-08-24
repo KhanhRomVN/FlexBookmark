@@ -1,14 +1,18 @@
-// src/presentation/components/TaskManager/Flowchart/TaskNode.tsx
+// src/presentation/components/TaskManager/FlowchartStyle/TaskNode.tsx
 import React from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
-import type { Task } from "../../../types/task";
-import { Calendar, Clock, Paperclip, CheckSquare, Tag } from "lucide-react";
+import { Handle, Position } from "@xyflow/react";
+import type { TaskNodeData } from "../../../types/nodeTypes";
+import { Calendar, Paperclip, CheckSquare } from "lucide-react";
 
-interface TaskNodeData extends Task {
-  onClick: () => void;
+// Use a simpler interface instead of NodeProps
+interface TaskNodeProps {
+  data: TaskNodeData;
+  id: string;
+  selected?: boolean;
+  [key: string]: any;
 }
 
-const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
+const TaskNode: React.FC<TaskNodeProps> = ({ data }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "backlog":
@@ -57,7 +61,7 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
   };
 
   return (
-    <div className="px-4 py-3 rounded-lg bg-card-background border border-border-default hover:border-border-hover min-w-[250px] max-w-[300px]">
+    <div className="px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 shadow-md min-w-[250px] max-w-[300px] transition-colors">
       {/* Input handle */}
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
 
@@ -77,7 +81,7 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
 
       {/* Title */}
       <div
-        className="font-semibold mb-2 text-text-primary cursor-pointer"
+        className="font-semibold mb-2 text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         onClick={data.onClick}
       >
         {data.title}
@@ -85,9 +89,9 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
 
       {/* Due date and time */}
       {(data.dueDate || data.dueTime) && (
-        <div className="flex items-center gap-2 text-xs text-text-secondary mb-2">
+        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
           <Calendar className="w-3 h-3" />
-          <span className="text-text-secondary">
+          <span>
             {formatDate(data.dueDate)}{" "}
             {data.dueTime &&
               data.dueTime.toLocaleTimeString([], {
@@ -99,7 +103,7 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
       )}
 
       {/* Subtasks and attachments */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-3">
           {totalSubtasks > 0 && (
             <div className="flex items-center gap-1">
@@ -118,7 +122,7 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
           )}
         </div>
 
-        <div className="text-xs font-medium capitalize">
+        <div className="text-xs font-medium capitalize text-gray-600 dark:text-gray-300">
           {data.status.replace("-", " ")}
         </div>
       </div>

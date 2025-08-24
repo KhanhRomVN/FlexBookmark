@@ -4,9 +4,12 @@ import { Handle, Position } from "@xyflow/react";
 import { FolderOpen, FileText, Calendar } from "lucide-react";
 import type { CollectionNodeData } from "../../../types/nodeTypes";
 
-// Define props interface explicitly instead of using NodeProps
+// Define props interface with consistent typing
 interface CollectionNodeProps {
   data: CollectionNodeData;
+  id: string;
+  selected?: boolean;
+  [key: string]: any;
 }
 
 const CollectionNode: React.FC<CollectionNodeProps> = ({ data }) => {

@@ -17,6 +17,10 @@ import "@xyflow/react/dist/style.css";
 import type { Task, Status } from "../../../types/task";
 import TaskNode from "../../../components/TaskManager/FlowchartStyle/TaskNode";
 import CollectionNode from "../../../components/TaskManager/FlowchartStyle/CollectionNode";
+import type {
+  TaskNodeData,
+  CollectionNodeData,
+} from "../../../types/nodeTypes";
 import { FolderTree, Workflow } from "lucide-react";
 
 interface FlowchartLayoutProps {
@@ -38,15 +42,10 @@ interface FlowchartLayoutProps {
   ) => void;
 }
 
-// Node data types are imported from nodeTypes.ts
-
-// Remove the duplicate CollectionNodeData interface - use the one from CollectionNode component
-// The CollectionNode component already defines this interface, so we don't need it here
-
-// Create properly typed node types
+// Create properly typed node types with explicit type casting
 const nodeTypes: NodeTypes = {
-  task: TaskNode,
-  collection: CollectionNode,
+  task: TaskNode as React.ComponentType<any>,
+  collection: CollectionNode as React.ComponentType<any>,
 };
 
 const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
@@ -93,7 +92,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
       }
     });
 
-    const taskNodes: Node[] = [];
+    const taskNodes: Node<TaskNodeData | CollectionNodeData>[] = [];
     const taskEdges: Edge[] = [];
 
     let nodeYPosition = 50;
@@ -104,6 +103,12 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
       if (tasks.length >= 2) {
         // Create collection node
         const collectionNodeId = `collection-${collection}`;
+        const collectionNodeData: CollectionNodeData = {
+          collection,
+          tasks,
+          onClick: onTaskClick,
+        };
+
         taskNodes.push({
           id: collectionNodeId,
           type: "collection",
@@ -113,11 +118,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
             y:
               viewMode === "hierarchical" ? nodeYPosition : Math.random() * 600,
           },
-          data: {
-            collection,
-            tasks,
-            onClick: onTaskClick,
-          },
+          data: collectionNodeData,
         });
 
         if (viewMode === "hierarchical") {
@@ -135,6 +136,23 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
 
     // Create individual task nodes for tasks without collection or in collections with < 2 tasks
     tasksWithoutCollection.forEach((task, taskIndex) => {
+      const taskNodeData: TaskNodeData = {
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        collection: task.collection,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        dueTime: task.dueTime,
+        subtasks: task.subtasks,
+        attachments: task.attachments,
+        description: task.description,
+        tags: task.tags,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        onClick: () => onTaskClick(task),
+      };
+
       taskNodes.push({
         id: task.id,
         type: "task",
@@ -148,10 +166,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
               ? nodeYPosition + Math.floor(taskIndex / 3) * 150
               : Math.random() * 600,
         },
-        data: {
-          ...task,
-          onClick: () => onTaskClick(task),
-        },
+        data: taskNodeData,
       });
     });
 
