@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-// Updated with proper group switching logic and Google Tasks integration
+// Updated with enhanced filter states including collection, location, and time range
 
 import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -57,6 +57,14 @@ export function useTaskManager() {
         setShowArchiveDrawer,
     } = useTaskState();
 
+    // Enhanced filter states
+    const [filterCollection, setFilterCollection] = useState<string[]>([]);
+    const [filterLocation, setFilterLocation] = useState<string>("");
+    const [filterTimeRange, setFilterTimeRange] = useState<{
+        startDate?: Date;
+        endDate?: Date;
+    }>({});
+
     // Task operations
     const {
         saveTask,
@@ -86,7 +94,7 @@ export function useTaskManager() {
         createInitialActivityLog,
     } = useTaskHelpers();
 
-    // Task filters
+    // Task filters with enhanced filtering
     const {
         searchTerm,
         setSearchTerm,
@@ -102,9 +110,9 @@ export function useTaskManager() {
         setSortOrder,
         dateRange,
         setDateRange,
-        handleClearFilters,
+        handleClearFilters: originalHandleClearFilters,
         sortTasks,
-        getFilteredLists,
+        getFilteredLists: originalGetFilteredLists,
     } = useTaskFilters();
 
     // Virtual scrolling state
@@ -179,6 +187,58 @@ export function useTaskManager() {
             loadTasks();
         }
     }, [activeGroup, authState.user?.accessToken, loadTasks]);
+
+    // Enhanced filtering function that includes new filter types
+    const getEnhancedFilteredLists = useCallback((lists: any[]) => {
+        return lists.map(list => ({
+            ...list,
+            tasks: list.tasks.filter((task: Task) => {
+                // Apply original filters
+                const originalFiltered = originalGetFilteredLists([{ ...list, tasks: [task] }])[0].tasks;
+                if (originalFiltered.length === 0) return false;
+
+                // Apply collection filter
+                if (filterCollection.length > 0) {
+                    if (!task.collection || !filterCollection.includes(task.collection)) {
+                        return false;
+                    }
+                }
+
+                // Apply location filter
+                if (filterLocation) {
+                    if (!task.locationName || !task.locationName.toLowerCase().includes(filterLocation.toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                // Apply time range filter
+                if (filterTimeRange.startDate || filterTimeRange.endDate) {
+                    const taskDate = task.startDate || task.dueDate || task.createdAt;
+                    if (!taskDate) return false;
+
+                    const taskDateTime = new Date(taskDate);
+
+                    if (filterTimeRange.startDate && taskDateTime < filterTimeRange.startDate) {
+                        return false;
+                    }
+
+                    if (filterTimeRange.endDate && taskDateTime > filterTimeRange.endDate) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+        }));
+    }, [originalGetFilteredLists, filterCollection, filterLocation, filterTimeRange]);
+
+    // Enhanced clear filters function
+    const handleClearFilters = useCallback(() => {
+        originalHandleClearFilters();
+        setFilterCollection([]);
+        setFilterLocation("");
+        setFilterTimeRange({});
+    }, [originalHandleClearFilters]);
 
     // Enhanced drag and drop
     const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -338,10 +398,10 @@ export function useTaskManager() {
         });
     }, [sortTasks, sortOrder, setLists]);
 
-    // Filtered lists using the hook
+    // Enhanced filtered lists using the new filtering logic
     const filteredLists = useMemo(() => {
-        return getFilteredLists(lists);
-    }, [lists, getFilteredLists]);
+        return getEnhancedFilteredLists(lists);
+    }, [lists, getEnhancedFilteredLists]);
 
     // Virtual scrolling helpers
     const calculateVirtualScrollData = useCallback((tasks: Task[]) => {
@@ -413,6 +473,14 @@ export function useTaskManager() {
         setSortOrder,
         dateRange,
         setDateRange,
+
+        // Enhanced filter states
+        filterCollection,
+        setFilterCollection,
+        filterLocation,
+        setFilterLocation,
+        filterTimeRange,
+        setFilterTimeRange,
 
         // Quick add state
         quickAddStatus,

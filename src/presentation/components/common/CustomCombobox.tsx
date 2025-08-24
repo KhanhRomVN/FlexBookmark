@@ -1,6 +1,7 @@
 import { FC, useMemo, useRef, useState, KeyboardEvent, useEffect } from "react";
 import { ChevronDown, Search, X as XIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+
 type Option = {
   value: string;
   label: string;
@@ -26,7 +27,7 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
   options,
   onChange,
   className,
-  placeholder = "Vui lòng nhập/chọn lựa chọn của bạn...",
+  placeholder = "Please enter/select your option...",
   searchable,
   multiple = false,
   creatable = false,
@@ -70,8 +71,28 @@ const ComboboxInput: FC<
   const [dynamicOptions, setDynamicOptions] = useState<Option[]>([]);
   const isMulti = !!multiple;
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- ADD: Sync dynamicOptions for values from outside (AI, setValue, etc.) ---
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDrop(false);
+        setInput("");
+      }
+    };
+
+    if (showDrop) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showDrop]);
+
+  // Sync dynamicOptions for values from outside (AI, setValue, etc.)
   useEffect(() => {
     if (isMulti && Array.isArray(value)) {
       const missing = value.filter(
@@ -103,9 +124,7 @@ const ComboboxInput: FC<
         ]);
       }
     }
-    // eslint-disable-next-line
-  }, [value, options]);
-  // --- END ADD ---
+  }, [value, options, dynamicOptions, isMulti]);
 
   // Merge options
   const allOptions = useMemo(
@@ -147,7 +166,7 @@ const ComboboxInput: FC<
       ? allOptions.filter((o) => o.value === value)
       : [];
 
-  // --- displayValue logic here ---
+  // Display value logic
   let displayValue: string = input;
   if (isMulti && Array.isArray(value)) {
     // badges handle display, input is just search
@@ -160,7 +179,6 @@ const ComboboxInput: FC<
     displayValue =
       input !== "" ? input : allOptions.find((o) => o.value === value)!.label;
   }
-  // --- END FIX ---
 
   // Dropdown toggles
   const openDropdown = () => {
@@ -169,6 +187,7 @@ const ComboboxInput: FC<
       inputRef.current?.focus();
     }, 0);
   };
+
   const closeDropdown = () => {
     setShowDrop(false);
     setInput("");
@@ -227,12 +246,13 @@ const ComboboxInput: FC<
   return (
     <div className={cn("w-full", className)}>
       {label && (
-        <label className="block text-sm font-medium text-[#2D3748] mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label}
         </label>
       )}
-      {/* Input + icons */}
-      <div className="relative">
+
+      {/* Input container */}
+      <div className="relative" ref={dropdownRef}>
         <div className="relative flex items-center">
           <input
             ref={inputRef}
@@ -241,103 +261,114 @@ const ComboboxInput: FC<
             value={displayValue}
             placeholder={placeholder}
             className={cn(
-              "w-full px-10 py-2 rounded-xl border border-[#ddd] text-[#2D3748] placeholder-[#718096] focus:outline-none transition-colors bg-transparent focus:border-[#52aaaf]"
+              "w-full pl-10 pr-8 py-2 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             )}
             onChange={(e) => {
               setInput(e.target.value);
               setShowDrop(true);
             }}
             onFocus={() => setShowDrop(true)}
-            onBlur={() => setTimeout(() => setShowDrop(false), 100)}
-            readOnly={false}
             onKeyDown={handleKeyDown}
           />
-          {/* Icon Search */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#718096] pointer-events-none" />
+
+          {/* Search Icon */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+
+          {/* Chevron/Close Button */}
           {showDrop ? (
             <button
               type="button"
-              aria-label="Đóng menu"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors"
+              aria-label="Close menu"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
               tabIndex={0}
               onClick={closeDropdown}
             >
-              <XIcon className="w-4 h-4 text-[#52aaa5]" />
+              <XIcon className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           ) : (
             <button
               type="button"
-              aria-label="Mở menu"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors"
+              aria-label="Open menu"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-600"
               tabIndex={0}
               onClick={openDropdown}
               onMouseDown={(e) => {
                 e.preventDefault();
               }}
             >
-              <ChevronDown className="w-4 h-4 text-[#718096] transition-colors hover:text-[#52aaa5]" />
+              <ChevronDown className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform" />
             </button>
           )}
         </div>
-        {/* Dropdown */}
+
+        {/* Dropdown Menu - Styled like Header's menu */}
         {showDrop && (
-          <ul className="absolute left-0 right-0 top-full z-30 mt-1 w-full max-h-60 overflow-auto bg-white rounded-xl border hover:border-[#52aaa5] py-1">
-            {filteredOpts.length === 0 ? (
-              <li className="px-4 py-2 text-[#bdbdbd]">
-                Không tìm thấy
-                {creatable &&
-                  input.trim() !== "" &&
-                  !allOptions.some(
-                    (opt) =>
-                      opt.value.toLowerCase() === input.trim().toLowerCase()
-                  ) && (
-                    <div className="text-[#52aaa5] mt-1">
-                      Nhấn <b>Enter</b> để tạo "{input.trim()}"
-                    </div>
-                  )}
-              </li>
-            ) : (
-              filteredOpts.map((opt: Option) => (
-                <li
-                  key={opt.value}
-                  tabIndex={0}
-                  className={cn(
-                    "px-4 py-2 cursor-pointer hover:bg-[#f0fdfa] hover:text-[#52aaaf]",
-                    isMulti && Array.isArray(value)
-                      ? value.includes(opt.value)
-                        ? "text-[#2D3748] font-semibold bg-[#e6fffa]"
-                        : "text-[#333]"
-                      : value === opt.value
-                      ? "text-[#2D3748] font-semibold bg-[#e6fffa]"
-                      : "text-[#333]"
-                  )}
-                  onMouseDown={() => toggleMulti(opt.value)}
-                >
-                  {isMulti &&
-                    Array.isArray(value) &&
-                    value.includes(opt.value) && <span>✓ </span>}
-                  {opt.label}
-                </li>
-              ))
-            )}
-          </ul>
+          <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+            <div className="max-h-60 overflow-auto py-1">
+              {filteredOpts.length === 0 ? (
+                <div className="px-3 py-2.5 text-gray-400 dark:text-gray-600 text-sm">
+                  No options found
+                  {creatable &&
+                    input.trim() !== "" &&
+                    !allOptions.some(
+                      (opt) =>
+                        opt.value.toLowerCase() === input.trim().toLowerCase()
+                    ) && (
+                      <div className="text-blue-500 dark:text-blue-400 mt-1">
+                        Press <b>Enter</b> to create "{input.trim()}"
+                      </div>
+                    )}
+                </div>
+              ) : (
+                filteredOpts.map((opt: Option, index) => (
+                  <button
+                    key={opt.value}
+                    tabIndex={0}
+                    className={cn(
+                      "w-full text-left px-3 py-2.5 flex items-center gap-2.5 transition-colors text-sm",
+                      isMulti && Array.isArray(value)
+                        ? value.includes(opt.value)
+                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        : value === opt.value
+                        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700",
+                      index === 0 ? "rounded-t-lg" : "",
+                      index === filteredOpts.length - 1 ? "rounded-b-lg" : ""
+                    )}
+                    onMouseDown={() => toggleMulti(opt.value)}
+                  >
+                    {isMulti &&
+                      Array.isArray(value) &&
+                      value.includes(opt.value) && (
+                        <span className="w-3.5 h-3.5 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                          ✓
+                        </span>
+                      )}
+                    <span className="flex-1">{opt.label}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         )}
       </div>
-      {/* BADGES cho multiple, đặt ngoài input+dropdown */}
+
+      {/* Multi-select badges */}
       {isMulti && selectedOpts.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
           {selectedOpts.map((opt) => (
             <span
               key={opt.value}
-              className="bg-[#52aaa5]/10 text-[#52aaa5] text-sm px-3 py-1 rounded-lg flex items-center gap-1"
+              className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm px-3 py-1 rounded-md flex items-center gap-1.5 font-medium"
             >
-              {opt.label}
+              <span>{opt.label}</span>
               <button
                 type="button"
-                className="ml-1 hover:text-red-500 focus:outline-none"
+                className="hover:text-red-500 dark:hover:text-red-400 focus:outline-none transition-colors"
                 onClick={() => handleRemoveBadge(opt.value)}
               >
-                <XIcon className="w-4 h-4" />
+                <XIcon className="w-3.5 h-3.5" />
               </button>
             </span>
           ))}

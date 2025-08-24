@@ -1,5 +1,5 @@
 // src/presentation/components/TaskManager/TaskHeader.tsx
-// Updated with 1/4 height reduction
+// Updated with enhanced filter system including collection, location, time range, and multi-select support
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -19,7 +19,11 @@ import {
   LayoutGrid,
   Workflow,
   Table,
+  FolderOpen,
+  MapPin,
+  Clock,
 } from "lucide-react";
+import CustomCombobox from "../common/CustomCombobox";
 
 export type LayoutType = "kanban" | "list" | "flowchart" | "table";
 
@@ -54,6 +58,17 @@ interface TaskHeaderProps {
   onCreateTask: () => void;
   onOpenTheme: () => void;
   onClearFilters: () => void;
+  // Add new filter props
+  lists?: any[]; // To extract collections, locations, and tags from tasks
+  filterCollection?: string[];
+  setFilterCollection?: (collections: string[]) => void;
+  filterLocation?: string;
+  setFilterLocation?: (location: string) => void;
+  filterTimeRange?: {
+    startDate?: Date;
+    endDate?: Date;
+  };
+  setFilterTimeRange?: (range: { startDate?: Date; endDate?: Date }) => void;
 }
 
 const folders = [
@@ -88,6 +103,14 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   onCreateTask,
   onOpenTheme,
   onClearFilters,
+  // New filter props
+  lists = [],
+  filterCollection = [],
+  setFilterCollection,
+  filterLocation = "",
+  setFilterLocation,
+  filterTimeRange = {},
+  setFilterTimeRange,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -107,19 +130,65 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
     };
   }, []);
 
-  if (!authState.isAuthenticated) {
-    return null;
-  }
+  // Extract unique options from tasks
+  const extractOptionsFromTasks = () => {
+    const allTasks = lists.flatMap((list) => list.tasks || []);
 
+    // Extract unique priorities
+    const priorities = Array.from(
+      new Set(allTasks.map((task) => task.priority).filter(Boolean))
+    ).map((priority) => ({
+      value: priority,
+      label: priority.charAt(0).toUpperCase() + priority.slice(1),
+    }));
+
+    // Extract unique collections
+    const collections = Array.from(
+      new Set(allTasks.map((task) => task.collection).filter(Boolean))
+    ).map((collection) => ({
+      value: collection,
+      label: collection,
+    }));
+
+    // Extract unique location names
+    const locations = Array.from(
+      new Set(allTasks.map((task) => task.locationName).filter(Boolean))
+    ).map((location) => ({
+      value: location,
+      label: location,
+    }));
+
+    // Extract unique tags
+    const tags = Array.from(
+      new Set(allTasks.flatMap((task) => task.tags || []).filter(Boolean))
+    ).map((tag) => ({
+      value: tag,
+      label: tag,
+    }));
+
+    return { priorities, collections, locations, tags };
+  };
+
+  const { priorities, collections, locations, tags } =
+    extractOptionsFromTasks();
+
+  // Check if any advanced filters are active
   const hasActiveFilters =
     searchTerm !== "" ||
     filterPriority !== "all" ||
     filterStatus !== "all" ||
     filterTags !== "" ||
-    sortBy !== "created-desc";
+    sortBy !== "created-desc" ||
+    (filterCollection && filterCollection.length > 0) ||
+    filterLocation !== "" ||
+    (filterTimeRange && (filterTimeRange.startDate || filterTimeRange.endDate));
 
-  // Calculate header height to match sidebar header (reduced from 96px to 72px = 1/4 reduction)
+  // Calculate header height to match sidebar header (72px)
   const baseHeaderHeight = "72px";
+
+  if (!authState.isAuthenticated) {
+    return null;
+  }
 
   return (
     <div
@@ -303,29 +372,34 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
         </div>
       )}
 
-      {/* Advanced Filters Panel */}
+      {/* Enhanced Advanced Filters Panel */}
       {showAdvancedFilters && (
         <div className="px-4 pb-4">
-          <div className="p-3 bg-gradient-to-br from-gray-50/80 to-white/80 dark:from-gray-800/50 dark:to-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-sm animate-in slide-in-from-top duration-200">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              {/* Priority Filter */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                  <Flag className="w-3 h-3" />
-                  Priority
-                </label>
-                <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  className="w-full bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200"
-                >
-                  <option value="all">All Priorities</option>
-                  <option value="low">🌱 Low</option>
-                  <option value="medium">📋 Medium</option>
-                  <option value="high">⚡ High</option>
-                  <option value="urgent">🔥 Urgent</option>
-                </select>
-              </div>
+          <div className="p-4 bg-gradient-to-br from-gray-50/80 to-white/80 dark:from-gray-800/50 dark:to-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-sm animate-in slide-in-from-top duration-200">
+            {/* First Row - Priority, Status, Collection */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* Priority Filter - Multi-select */}
+              <CustomCombobox
+                label="Priority"
+                value={filterPriority === "all" ? [] : [filterPriority]}
+                options={[
+                  { value: "low", label: "🌱 Low" },
+                  { value: "medium", label: "📋 Medium" },
+                  { value: "high", label: "⚡ High" },
+                  { value: "urgent", label: "🔥 Urgent" },
+                  ...priorities,
+                ]}
+                onChange={(value) => {
+                  if (Array.isArray(value)) {
+                    setFilterPriority(value.length > 0 ? value[0] : "all");
+                  } else {
+                    setFilterPriority(value || "all");
+                  }
+                }}
+                placeholder="Select priorities..."
+                multiple={true}
+                className="text-xs"
+              />
 
               {/* Status Filter */}
               <div className="space-y-1.5">
@@ -336,7 +410,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200"
+                  className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
                 >
                   <option value="all">All Statuses</option>
                   {folders.map((f) => (
@@ -347,32 +421,129 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                 </select>
               </div>
 
-              {/* Tags Filter */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                  <Tag className="w-3 h-3" />
-                  Tags
-                </label>
-                <input
-                  type="text"
-                  placeholder="Filter by tags..."
-                  value={filterTags}
-                  onChange={(e) => setFilterTags(e.target.value)}
-                  className="w-full bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200"
+              {/* Collection Filter - Multi-select */}
+              {setFilterCollection && (
+                <CustomCombobox
+                  label="Collection"
+                  value={filterCollection}
+                  options={collections}
+                  onChange={(value) => {
+                    if (Array.isArray(value)) {
+                      setFilterCollection(value);
+                    } else {
+                      setFilterCollection(value ? [value] : []);
+                    }
+                  }}
+                  placeholder="Select collections..."
+                  multiple={true}
+                  creatable={true}
+                  className="text-xs"
                 />
-              </div>
+              )}
+            </div>
 
-              {/* Sort Options */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                  <ArrowUpDown className="w-3 h-3" />
-                  Sort By
-                </label>
-                <div className="flex gap-1.5">
+            {/* Second Row - Location, Time Range, Tags */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Location Filter - Searchable */}
+              {setFilterLocation && (
+                <CustomCombobox
+                  label="Location"
+                  value={filterLocation}
+                  options={locations}
+                  onChange={(value) => {
+                    setFilterLocation(
+                      Array.isArray(value) ? value[0] || "" : value
+                    );
+                  }}
+                  placeholder="Search locations..."
+                  searchable={true}
+                  className="text-xs"
+                />
+              )}
+
+              {/* Time Range Filter */}
+              {setFilterTimeRange && (
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <Clock className="w-3 h-3" />
+                    Time Range
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={
+                        filterTimeRange.startDate
+                          ? filterTimeRange.startDate
+                              .toISOString()
+                              .split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const startDate = e.target.value
+                          ? new Date(e.target.value)
+                          : undefined;
+                        setFilterTimeRange({
+                          ...filterTimeRange,
+                          startDate,
+                        });
+                      }}
+                      className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
+                      placeholder="Start date"
+                    />
+                    <input
+                      type="date"
+                      value={
+                        filterTimeRange.endDate
+                          ? filterTimeRange.endDate.toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const endDate = e.target.value
+                          ? new Date(e.target.value)
+                          : undefined;
+                        setFilterTimeRange({
+                          ...filterTimeRange,
+                          endDate,
+                        });
+                      }}
+                      className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
+                      placeholder="End date"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tags Filter - Multi-select with creation */}
+              <CustomCombobox
+                label="Tags"
+                value={filterTags ? filterTags.split(",").filter(Boolean) : []}
+                options={tags}
+                onChange={(value) => {
+                  if (Array.isArray(value)) {
+                    setFilterTags(value.join(","));
+                  } else {
+                    setFilterTags(value);
+                  }
+                }}
+                placeholder="Select tags..."
+                multiple={true}
+                creatable={true}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Third Row - Sort Options */}
+            <div className="mt-4 pt-4 border-t border-gray-200/60 dark:border-gray-700/60">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <ArrowUpDown className="w-3 h-3" />
+                    Sort By
+                  </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="flex-1 bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200"
+                    className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
                   >
                     <option value="created-desc">Created (Newest)</option>
                     <option value="created-asc">Created (Oldest)</option>
@@ -384,22 +555,40 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                     <option value="title-desc">Title (Z-A)</option>
                     <option value="completion">Completion</option>
                   </select>
-                  <button
-                    onClick={() =>
-                      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                    }
-                    className={`p-1.5 rounded-md border transition-all duration-200 ${
-                      sortOrder === "desc"
-                        ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400"
-                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-                    }`}
-                  >
-                    <ArrowUpDown
-                      className={`w-3.5 h-3.5 ${
-                        sortOrder === "desc" ? "rotate-180" : ""
-                      } transition-transform`}
-                    />
-                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Sort Order
+                  </label>
+                  <div className="flex gap-1">
+                    <select
+                      value={sortOrder}
+                      onChange={(e) =>
+                        setSortOrder(e.target.value as "asc" | "desc")
+                      }
+                      className="flex-1 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
+                    >
+                      <option value="desc">Descending</option>
+                      <option value="asc">Ascending</option>
+                    </select>
+                    <button
+                      onClick={() =>
+                        setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                      }
+                      className={`px-2 py-2 rounded-lg border transition-all duration-200 ${
+                        sortOrder === "desc"
+                          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400"
+                          : "bg-gray-50/80 dark:bg-gray-800/80 border-gray-200/60 dark:border-gray-700/60 text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
+                      <ArrowUpDown
+                        className={`w-3.5 h-3.5 ${
+                          sortOrder === "desc" ? "rotate-180" : ""
+                        } transition-transform`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

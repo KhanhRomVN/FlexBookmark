@@ -1,4 +1,5 @@
-// src/presentation/tab/TaskManager/index.tsx - Fixed group switching and added Google Tasks group creation
+// src/presentation/tab/TaskManager/index.tsx
+// Updated with enhanced filter support and proper group management
 
 import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
@@ -17,6 +18,8 @@ import {
   createGoogleTask,
   deleteGoogleTask,
   fetchGoogleTasks,
+  updateGoogleTaskList,
+  deleteGoogleTaskList,
 } from "../../../utils/GGTask";
 import { createGoogleTaskList } from "../../../utils/GGTask";
 import { Status, Task } from "@/presentation/types/task";
@@ -83,7 +86,14 @@ const TaskManager: React.FC = () => {
     handleClearFilters,
     lists,
     setLists,
-    loadTasks, // Add this to reload tasks when switching groups
+    loadTasks,
+    // Add enhanced filter states
+    filterCollection,
+    setFilterCollection,
+    filterLocation,
+    setFilterLocation,
+    filterTimeRange,
+    setFilterTimeRange,
   } = useTaskManager();
 
   // Layout state
@@ -119,7 +129,7 @@ const TaskManager: React.FC = () => {
   // Function to handle refresh
   const handleRefresh = () => {
     if (activeGroup) {
-      loadTasks(); // Reload tasks for current group
+      loadTasks();
     } else {
       window.location.reload();
     }
@@ -510,6 +520,54 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  // Enhanced group rename handler
+  const handleRenameGroupWrapper = async (id: string, newName: string) => {
+    try {
+      if (!authState.user?.accessToken) {
+        throw new Error("Authentication required to rename task groups");
+      }
+
+      const token = await getFreshToken();
+      await updateGoogleTaskList(token, id, newName);
+
+      // Reload groups to reflect the change
+      // This would typically trigger a refresh in useTaskGroups
+      // For now, we'll just reload the page or implement a group refresh
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error renaming group:", error);
+      setError(error.message || "Failed to rename task group");
+      throw error;
+    }
+  };
+
+  // Enhanced group delete handler
+  const handleDeleteGroupWrapper = async (id: string) => {
+    try {
+      if (!authState.user?.accessToken) {
+        throw new Error("Authentication required to delete task groups");
+      }
+
+      const token = await getFreshToken();
+      await deleteGoogleTaskList(token, id);
+
+      // If we're deleting the active group, switch to the first available group
+      if (activeGroup === id && groups.length > 1) {
+        const remainingGroups = groups.filter((g) => g.id !== id);
+        if (remainingGroups.length > 0) {
+          setActiveGroup(remainingGroups[0].id);
+        }
+      }
+
+      // Reload groups to reflect the change
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error deleting group:", error);
+      setError(error.message || "Failed to delete task group");
+      throw error;
+    }
+  };
+
   // Enhanced group selection handler that properly loads tasks for the selected group
   const handleGroupSelection = async (groupId: string) => {
     try {
@@ -543,6 +601,14 @@ const TaskManager: React.FC = () => {
   // Transition start function for React 18 concurrent features
   const startTransition = (callback: () => void) => {
     React.startTransition(callback);
+  };
+
+  // Enhanced clear filters to include new filter types
+  const handleClearFiltersWrapper = () => {
+    handleClearFilters();
+    if (setFilterCollection) setFilterCollection([]);
+    if (setFilterLocation) setFilterLocation("");
+    if (setFilterTimeRange) setFilterTimeRange({});
   };
 
   if (!authState.isAuthenticated) {
@@ -589,8 +655,10 @@ const TaskManager: React.FC = () => {
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
-        onSelectGroup={handleGroupSelection} // Use enhanced group selection handler
-        onCreateGroup={handleCreateGroupWrapper} // Use enhanced group creation handler
+        onSelectGroup={handleGroupSelection}
+        onCreateGroup={handleCreateGroupWrapper}
+        onRenameGroup={handleRenameGroupWrapper}
+        onDeleteGroup={handleDeleteGroupWrapper}
         getFreshToken={getFreshToken}
         createGoogleTaskList={createGoogleTaskList}
       />
@@ -623,7 +691,15 @@ const TaskManager: React.FC = () => {
           onOpenTheme={() => setShowThemeDrawer(true)}
           onRefresh={handleRefresh}
           onCreateTask={handleCreateTask}
-          onClearFilters={handleClearFilters}
+          onClearFilters={handleClearFiltersWrapper}
+          // Enhanced filter props
+          lists={lists}
+          filterCollection={filterCollection}
+          setFilterCollection={setFilterCollection}
+          filterLocation={filterLocation}
+          setFilterLocation={setFilterLocation}
+          filterTimeRange={filterTimeRange}
+          setFilterTimeRange={setFilterTimeRange}
         />
 
         {layoutType === "table" ? (
