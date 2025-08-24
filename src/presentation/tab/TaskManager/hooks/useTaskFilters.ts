@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { Task } from "../../../types/task";
 import { advancedFilters, sortingAlgorithms } from "./useAdvancedAlgorithms";
 
@@ -30,7 +30,7 @@ export function useTaskFilters() {
     };
 
     // Enhanced sorting with multiple algorithms
-    const sortTasks = (tasks: Task[], sortType: string, order: 'asc' | 'desc' = 'desc'): Task[] => {
+    const sortTasks = (tasks: Task[], sortType: string, _order: 'asc' | 'desc' = 'desc'): Task[] => {
         const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
 
         // Use different sorting algorithms based on data size

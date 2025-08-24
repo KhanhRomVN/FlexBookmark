@@ -5,6 +5,7 @@ import FolderCard from "../../../components/TaskManager/KanbanStyle/FolderCard";
 interface KanbanLayoutProps {
   filteredLists: any[];
   onTaskClick: (task: any) => void;
+  onDragEnd: (event: any) => void; // Thêm prop này
   quickAddStatus: Status | null;
   setQuickAddStatus: Dispatch<SetStateAction<Status | null>>;
   quickAddTitle: string;
@@ -13,6 +14,11 @@ interface KanbanLayoutProps {
   onArchiveTasks?: (folderId: string) => void;
   onDeleteTasks?: (folderId: string) => void;
   onSortTasks?: (folderId: string, sortType: string) => void;
+  onStatusTransition?: (
+    taskId: string,
+    fromStatus: Status,
+    toStatus: Status
+  ) => void;
 }
 
 const KanbanLayout: React.FC<KanbanLayoutProps> = ({

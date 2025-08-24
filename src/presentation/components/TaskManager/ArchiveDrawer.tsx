@@ -49,7 +49,7 @@ const ArchiveDrawer: React.FC<ArchiveDrawerProps> = ({
     }
   };
 
-  const formatDate = (dateString?: string | Date) => {
+  const formatDate = (dateString?: string | number | Date) => {
     if (!dateString) return "Unknown date";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {

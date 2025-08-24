@@ -1,25 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchGoogleEvents, fetchGoogleCalendars } from "../../../utils/GGCalender";
 import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
-
-export interface CalendarEvent {
-    id: string;
-    title: string;
-    start: Date | string;
-    end: Date | string;
-    description?: string;
-    location?: string;
-    attendees?: string[];
-    calendarId?: string;
-}
-
-export interface GoogleCalendar {
-    id: string;
-    summary: string;
-    description?: string;
-    backgroundColor?: string;
-    selected?: boolean;
-}
+import type { CalendarEvent, GoogleCalendar } from "../../types/calendar";
 
 export const useCalendarData = () => {
     const authManager = ChromeAuthManager.getInstance();

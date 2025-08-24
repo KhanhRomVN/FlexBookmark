@@ -172,7 +172,7 @@ export const useDashboardData = () => {
         }
     }, [loadBookmarks]);
 
-    const handleBookmarkDelete = useCallback((bookmarkId: string) => {
+    const handleBookmarkDelete = useCallback(() => {
         loadBookmarks();
     }, [loadBookmarks]);
 

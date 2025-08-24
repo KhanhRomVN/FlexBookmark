@@ -73,17 +73,17 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       }
     });
 
-    // Process events
-    events.forEach((event) => {
-      const startDate = safeParseDate(event.start);
-      if (startDate) {
+    // Process events - filter out events with invalid start dates
+    events
+      .filter((event) => safeParseDate(event.start) !== null)
+      .forEach((event) => {
+        const startDate = safeParseDate(event.start)!; // We know it's not null from filter
         const dayKey = format(startDate, "yyyy-MM-dd");
         const hour = getHours(startDate);
         if (dateMap[dayKey] && dateMap[dayKey][hour]) {
           dateMap[dayKey][hour].push(event);
         }
-      }
-    });
+      });
 
     return dateMap;
   }, [events, weekDays]);

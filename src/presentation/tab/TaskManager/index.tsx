@@ -580,8 +580,8 @@ const TaskManager: React.FC = () => {
             }
             quickAddTitle={quickAddTitle}
             setQuickAddTitle={setQuickAddTitle}
-            handleQuickAddTask={(status) => {
-              void handleQuickAddTask(status as Status);
+            handleQuickAddTask={async (status) => {
+              await handleQuickAddTask(status as Status);
             }}
             onArchiveTasks={handleArchiveTasks}
             onDeleteTasks={handleDeleteTasks}
@@ -599,8 +599,8 @@ const TaskManager: React.FC = () => {
             }
             quickAddTitle={quickAddTitle}
             setQuickAddTitle={setQuickAddTitle}
-            handleQuickAddTask={(status) => {
-              void handleQuickAddTask(status as Status);
+            handleQuickAddTask={async (status) => {
+              await handleQuickAddTask(status as Status);
             }}
             onArchiveTasks={handleArchiveTasks}
             onDeleteTasks={handleDeleteTasks}

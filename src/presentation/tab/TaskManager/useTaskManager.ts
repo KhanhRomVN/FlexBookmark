@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-import { startTransition, useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { startTransition, useCallback, useMemo, useState } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useAuth } from "./hooks/useAuth";
@@ -29,7 +29,7 @@ export function useTaskManager() {
     const { performanceMonitor } = usePerformance();
 
     // Auth state
-    const { authState, getFreshToken } = useAuth();
+    const { authState } = useAuth();
 
     // Task groups
     const { groups, activeGroup, setActiveGroup } = useTaskGroups();
@@ -79,7 +79,6 @@ export function useTaskManager() {
 
     // Task helpers
     const {
-        determineTaskStatus,
         addActivityLogEntry,
         createInitialActivityLog,
     } = useTaskHelpers();

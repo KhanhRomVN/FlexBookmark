@@ -16,7 +16,6 @@ import {
   Archive,
   Palette,
   LayoutGrid,
-  List,
   Workflow,
   Table,
 } from "lucide-react";

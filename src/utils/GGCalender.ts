@@ -1,4 +1,4 @@
-import { CalendarEvent, GoogleCalendar } from "../presentation/tab/Calendar";
+import { CalendarEvent, GoogleCalendar } from "../presentation/types/calendar";
 
 // Helper function to safely parse dates
 function safeDateParse(dateStr: string): Date {
@@ -114,11 +114,11 @@ export async function createGoogleEvent(accessToken: string, event: Partial<Cale
         description: event.description,
         location: event.location,
         start: {
-            dateTime: event.start?.toISOString(),
+            dateTime: event.start?.toString(),
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         end: {
-            dateTime: event.end?.toISOString(),
+            dateTime: event.end?.toString(),
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         attendees: event.attendees?.map((email: any) => ({ email }))

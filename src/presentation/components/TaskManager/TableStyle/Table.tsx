@@ -233,20 +233,28 @@ const TableRow: React.FC<{
       const start = new Date(task.startDate);
       const end = new Date(task.dueDate);
 
-      const startFormat =
+      const startFormat: Intl.DateTimeFormatOptions =
         start.getFullYear() !== currentYear
-          ? { day: "numeric", month: "numeric", year: "numeric" }
-          : { day: "numeric", month: "numeric" };
+          ? {
+              day: "numeric" as const,
+              month: "numeric" as const,
+              year: "numeric" as const,
+            }
+          : { day: "numeric" as const, month: "numeric" as const };
 
-      const endFormat =
+      const endFormat: Intl.DateTimeFormatOptions =
         end.getFullYear() !== currentYear
-          ? { day: "numeric", month: "numeric", year: "numeric" }
-          : { day: "numeric", month: "numeric" };
+          ? {
+              day: "numeric" as const,
+              month: "numeric" as const,
+              year: "numeric" as const,
+            }
+          : { day: "numeric" as const, month: "numeric" as const };
 
       const startTime = task.startTime
         ? new Date(task.startTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
+            hour: "2-digit" as const,
+            minute: "2-digit" as const,
           })
         : "";
       const startStr = startTime
@@ -256,15 +264,19 @@ const TableRow: React.FC<{
       return `${startStr} - ${end.toLocaleDateString("en-US", endFormat)}`;
     } else if (task.dueDate) {
       const due = new Date(task.dueDate);
-      const dueFormat =
+      const dueFormat: Intl.DateTimeFormatOptions =
         due.getFullYear() !== currentYear
-          ? { day: "numeric", month: "numeric", year: "numeric" }
-          : { day: "numeric", month: "numeric" };
+          ? {
+              day: "numeric" as const,
+              month: "numeric" as const,
+              year: "numeric" as const,
+            }
+          : { day: "numeric" as const, month: "numeric" as const };
 
       const dueTime = task.dueTime
         ? new Date(task.dueTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
+            hour: "2-digit" as const,
+            minute: "2-digit" as const,
           })
         : "";
 
