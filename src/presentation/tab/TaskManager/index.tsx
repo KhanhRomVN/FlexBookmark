@@ -1,4 +1,4 @@
-// src/presentation/tab/TaskManager/index.tsx - Enhanced with drag-drop status transition dialogs
+// src/presentation/tab/TaskManager/index.tsx - Fixed group switching and added Google Tasks group creation
 
 import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
@@ -13,7 +13,12 @@ import TableLayout from "./layout/TableLayout";
 import FlowchartLayout from "./layout/FlowchartLayout";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
-import { createGoogleTask, deleteGoogleTask } from "../../../utils/GGTask";
+import {
+  createGoogleTask,
+  deleteGoogleTask,
+  fetchGoogleTasks,
+} from "../../../utils/GGTask";
+import { createGoogleTaskList } from "../../../utils/GGTask";
 import { Status, Task } from "@/presentation/types/task";
 
 // Import dialog components for status transitions
@@ -78,6 +83,7 @@ const TaskManager: React.FC = () => {
     handleClearFilters,
     lists,
     setLists,
+    loadTasks, // Add this to reload tasks when switching groups
   } = useTaskManager();
 
   // Layout state
@@ -112,7 +118,11 @@ const TaskManager: React.FC = () => {
 
   // Function to handle refresh
   const handleRefresh = () => {
-    window.location.reload();
+    if (activeGroup) {
+      loadTasks(); // Reload tasks for current group
+    } else {
+      window.location.reload();
+    }
   };
 
   // Function to handle create new task - opens TaskDialog in create mode
@@ -476,6 +486,60 @@ const TaskManager: React.FC = () => {
     }
   };
 
+  // Enhanced group creation with Google Tasks API integration
+  const handleCreateGroupWrapper = async (name: string) => {
+    try {
+      if (!authState.user?.accessToken) {
+        throw new Error("Authentication required to create task groups");
+      }
+
+      const token = await getFreshToken();
+      const newGroup = await createGoogleTaskList(token, name);
+
+      // Trigger group reload in useTaskManager
+      await handleCreateGroup(name);
+
+      // Set the new group as active and load its tasks
+      setActiveGroup(newGroup.id);
+
+      return newGroup;
+    } catch (error: any) {
+      console.error("Error creating group:", error);
+      setError(error.message || "Failed to create task group");
+      throw error;
+    }
+  };
+
+  // Enhanced group selection handler that properly loads tasks for the selected group
+  const handleGroupSelection = async (groupId: string) => {
+    try {
+      // Set the active group immediately for UI feedback
+      setActiveGroup(groupId);
+
+      // Clear current lists to show loading state
+      setLists([]);
+
+      // Load tasks for the selected group
+      if (authState.user?.accessToken) {
+        const token = await getFreshToken();
+        const tasks = await fetchGoogleTasks(token, groupId);
+
+        // Organize tasks into folders/lists
+        const organizedLists = folders.map((folder) => ({
+          id: folder.id,
+          title: folder.title,
+          emoji: folder.emoji,
+          tasks: tasks.filter((task: Task) => task.status === folder.id),
+        }));
+
+        setLists(organizedLists);
+      }
+    } catch (error: any) {
+      console.error("Error switching groups:", error);
+      setError(error.message || "Failed to load tasks for selected group");
+    }
+  };
+
   // Transition start function for React 18 concurrent features
   const startTransition = (callback: () => void) => {
     React.startTransition(callback);
@@ -525,8 +589,10 @@ const TaskManager: React.FC = () => {
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
-        onSelectGroup={setActiveGroup}
-        onCreateGroup={handleCreateGroup}
+        onSelectGroup={handleGroupSelection} // Use enhanced group selection handler
+        onCreateGroup={handleCreateGroupWrapper} // Use enhanced group creation handler
+        getFreshToken={getFreshToken}
+        createGoogleTaskList={createGoogleTaskList}
       />
 
       <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">

@@ -1,5 +1,7 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-import { startTransition, useCallback, useMemo, useState } from "react";
+// Updated with proper group switching logic and Google Tasks integration
+
+import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useAuth } from "./hooks/useAuth";
@@ -9,6 +11,7 @@ import { useTaskOperations } from "./hooks/useTaskOperations";
 import { useTaskFilters } from "./hooks/useTaskFilters";
 import { useTaskHelpers } from "./hooks/useTaskHelpers";
 import { usePerformance } from "./hooks/usePerformance";
+import { fetchGoogleTasks } from "../../../utils/GGTask";
 import type { Task, Status } from "../../types/task";
 
 export const folders = [
@@ -57,7 +60,7 @@ export function useTaskManager() {
     // Task operations
     const {
         saveTask,
-        loadTasks,
+        loadTasks: originalLoadTasks,
         handleDeleteTask,
         handleDuplicateTask,
         handleMove,
@@ -107,6 +110,75 @@ export function useTaskManager() {
     // Virtual scrolling state
     const [virtualScrollOffset, setVirtualScrollOffset] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
+
+    // Enhanced loadTasks function that works with specific groups
+    const loadTasks = useCallback(async () => {
+        if (!authState.user?.accessToken || !activeGroup) {
+            console.warn('Cannot load tasks: missing auth or active group');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Get fresh token
+            const token = await new Promise<string>((resolve, reject) => {
+                if (typeof chrome !== "undefined" && chrome.identity) {
+                    chrome.identity.getAuthToken(
+                        {
+                            interactive: false,
+                            scopes: [
+                                "openid",
+                                "email",
+                                "profile",
+                                "https://www.googleapis.com/auth/tasks",
+                                "https://www.googleapis.com/auth/tasks.readonly",
+                            ],
+                        },
+                        (result) => {
+                            if (result?.token) {
+                                resolve(result.token);
+                            } else {
+                                reject(new Error("No token received"));
+                            }
+                        }
+                    );
+                } else {
+                    resolve(authState.user.accessToken);
+                }
+            });
+
+            // Fetch tasks for the active group
+            const tasks = await fetchGoogleTasks(token, activeGroup);
+
+            // Organize tasks into folder structure
+            const organizedLists = folders.map(folder => ({
+                id: folder.id,
+                title: folder.title,
+                emoji: folder.emoji,
+                tasks: tasks.filter((task: Task) => task.status === folder.id)
+            }));
+
+            // Update lists with React transition
+            startTransition(() => {
+                setLists(organizedLists);
+            });
+
+        } catch (error: any) {
+            console.error('Error loading tasks:', error);
+            setError(error.message || 'Failed to load tasks');
+        } finally {
+            setLoading(false);
+        }
+    }, [authState.user?.accessToken, activeGroup, setLoading, setError, setLists]);
+
+    // Load tasks when active group changes
+    useEffect(() => {
+        if (activeGroup && authState.user?.accessToken) {
+            loadTasks();
+        }
+    }, [activeGroup, authState.user?.accessToken, loadTasks]);
 
     // Enhanced drag and drop
     const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -170,7 +242,7 @@ export function useTaskManager() {
             }
         }
         endTimer();
-    }, [lists, saveTask, performanceMonitor, addActivityLogEntry]);
+    }, [lists, saveTask, performanceMonitor, addActivityLogEntry, setLists]);
 
     // Task click handler
     const handleTaskClick = useCallback((task: Task) => {
@@ -309,9 +381,10 @@ export function useTaskManager() {
         };
     }, [lists, performanceMonitor]);
 
-    // Create group handler
-    const handleCreateGroup = useCallback(async () => {
-
+    // Create group handler - placeholder that should be implemented in parent
+    const handleCreateGroup = useCallback(async (name: string) => {
+        // This will be overridden in the parent component
+        console.log('Creating group:', name);
     }, []);
 
     return {
@@ -392,7 +465,7 @@ export function useTaskManager() {
 
         // Utilities
         handleClearFilters,
-        loadTasks,
+        loadTasks, // Export the enhanced loadTasks function
 
         // Statistics
         ...statistics,

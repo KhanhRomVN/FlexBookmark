@@ -120,6 +120,100 @@ async function makeAuthenticatedRequest(
     }
 }
 
+// Create a new Google Tasks list (task group)
+export async function createGoogleTaskList(
+    accessToken: string,
+    listTitle: string
+): Promise<{ id: string; title: string }> {
+    try {
+        const taskListData = {
+            title: listTitle.trim()
+        };
+
+        // Validate data
+        if (!taskListData.title) {
+            throw new Error('Task list title is required');
+        }
+
+        if (taskListData.title.length > 1024) {
+            throw new Error('Task list title too long (max 1024 characters)');
+        }
+
+        const response = await makeAuthenticatedRequest(
+            'https://www.googleapis.com/tasks/v1/users/@me/lists',
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskListData),
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Create task list error response:', errorText);
+
+            try {
+                const errorData = JSON.parse(errorText);
+                console.error('Detailed error:', errorData);
+
+                if (errorData.error?.message) {
+                    throw new Error(`Google Tasks API Error: ${errorData.error.message}`);
+                }
+            } catch (parseError) {
+                // If we can't parse the error, just throw the original
+            }
+
+            throw new Error(`Failed to create task list: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        return {
+            id: data.id,
+            title: data.title
+        };
+    } catch (error) {
+        console.error('Error in createGoogleTaskList:', error);
+        throw error;
+    }
+}
+
+// Fetch all Google Tasks lists (task groups)
+export async function fetchGoogleTaskLists(accessToken: string) {
+    try {
+        const response = await makeAuthenticatedRequest(
+            "https://www.googleapis.com/tasks/v1/users/@me/lists",
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Fetch task lists error:', errorText);
+            throw new Error(`Failed to fetch task lists: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        return (data.items || []).map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            selfLink: item.selfLink,
+            updated: item.updated
+        }));
+    } catch (error) {
+        console.error('Error in fetchGoogleTaskLists:', error);
+        throw error;
+    }
+}
+
+
 // Helper to create simplified task notes with full format
 function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: number; isOverLimit: boolean } {
     try {
@@ -443,6 +537,84 @@ function setDefaultTaskTimes(): { startTime: Date; dueTime: Date; startDate: Dat
     const dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     return { startTime, dueTime, startDate, dueDate };
+}
+
+// Update a Google Tasks list
+export async function updateGoogleTaskList(
+    accessToken: string,
+    listId: string,
+    listTitle: string
+): Promise<{ id: string; title: string }> {
+    try {
+        const taskListData = {
+            id: listId,
+            title: listTitle.trim()
+        };
+
+        // Validate data
+        if (!taskListData.title) {
+            throw new Error('Task list title is required');
+        }
+
+        if (taskListData.title.length > 1024) {
+            throw new Error('Task list title too long (max 1024 characters)');
+        }
+
+        const response = await makeAuthenticatedRequest(
+            `https://www.googleapis.com/tasks/v1/users/@me/lists/${listId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskListData),
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Update task list error response:', errorText);
+            throw new Error(`Failed to update task list: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        return {
+            id: data.id,
+            title: data.title
+        };
+    } catch (error) {
+        console.error('Error in updateGoogleTaskList:', error);
+        throw error;
+    }
+}
+
+// Delete a Google Tasks list
+export async function deleteGoogleTaskList(
+    accessToken: string,
+    listId: string
+): Promise<void> {
+    try {
+        const response = await makeAuthenticatedRequest(
+            `https://www.googleapis.com/tasks/v1/users/@me/lists/${listId}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Delete task list error response:', errorText);
+            throw new Error(`Failed to delete task list: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error in deleteGoogleTaskList:', error);
+        throw error;
+    }
 }
 
 export async function fetchGoogleTasks(token: string, tasklistId: string = '@default') {
