@@ -131,7 +131,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             priority: task.priority || "",
             collection: task.collection || "",
 
-            // FIXED: Location fields - store individual fields like tags
+            // Location fields
             locationName: task.locationName || "",
             locationAddress: task.locationAddress || "",
             locationCoordinates: task.locationCoordinates || "",
@@ -164,6 +164,33 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             metadata.dueDate = "";
         }
 
+        // *** FIX: Add actual start/end date/time fields ***
+        if (task.actualStartTime && task.actualStartTime instanceof Date && !isNaN(task.actualStartTime.getTime())) {
+            const timeStr = task.actualStartTime.toISOString().split("T")[1];
+            metadata.actualStartTime = timeStr;
+        } else {
+            metadata.actualStartTime = "";
+        }
+
+        if (task.actualEndTime && task.actualEndTime instanceof Date && !isNaN(task.actualEndTime.getTime())) {
+            const timeStr = task.actualEndTime.toISOString().split("T")[1];
+            metadata.actualEndTime = timeStr;
+        } else {
+            metadata.actualEndTime = "";
+        }
+
+        if (task.actualStartDate && task.actualStartDate instanceof Date && !isNaN(task.actualStartDate.getTime())) {
+            metadata.actualStartDate = task.actualStartDate.toISOString().split("T")[0];
+        } else {
+            metadata.actualStartDate = "";
+        }
+
+        if (task.actualEndDate && task.actualEndDate instanceof Date && !isNaN(task.actualEndDate.getTime())) {
+            metadata.actualEndDate = task.actualEndDate.toISOString().split("T")[0];
+        } else {
+            metadata.actualEndDate = "";
+        }
+
         // Luôn include array (rỗng nếu không có)
         metadata.subtasks = task.subtasks || [];
         metadata.attachments = task.attachments || [];
@@ -193,6 +220,16 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             activityLog = [creationEntry];
         }
         metadata.activityLog = activityLog;
+
+        // Also update fetchGoogleTasks to parse actual times
+        // This part should be added to fetchGoogleTasks function:
+        /*
+        // Parse actual start/end date/time fields
+        actualStartTime: taskData.actualStartTime ? safeDateParse(taskData.actualStartTime) : null,
+        actualEndTime: taskData.actualEndTime ? safeDateParse(taskData.actualEndTime) : null,
+        actualStartDate: taskData.actualStartDate ? safeDateParse(taskData.actualStartDate) : null,
+        actualEndDate: taskData.actualEndDate ? safeDateParse(taskData.actualEndDate) : null,
+        */
 
         // Serialize JSON
         let jsonString = JSON.stringify(metadata, null, 0);
@@ -247,7 +284,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
-            // FIXED: Truncate location fields if needed
+            // Truncate location fields if needed
             if (metadata.locationAddress && metadata.locationAddress.length > 200) {
                 metadata.locationAddress = metadata.locationAddress.substring(0, 200) + "...";
                 jsonString = JSON.stringify(metadata, null, 0);
@@ -269,10 +306,15 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     locationName: metadata.locationName || "",
                     locationAddress: "",  // Clear long address
                     locationCoordinates: metadata.locationCoordinates || "",
-                    startTime: "",
-                    dueTime: "",
-                    startDate: "",
-                    dueDate: "",
+                    startTime: metadata.startTime,
+                    dueTime: metadata.dueTime,
+                    startDate: metadata.startDate,
+                    dueDate: metadata.dueDate,
+                    // *** IMPORTANT: Keep actual times even in minimal metadata ***
+                    actualStartTime: metadata.actualStartTime,
+                    actualEndTime: metadata.actualEndTime,
+                    actualStartDate: metadata.actualStartDate,
+                    actualEndDate: metadata.actualEndDate,
                     subtasks: [],
                     attachments: [],
                     tags: [],
@@ -300,6 +342,15 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             dueTime: "",
             startDate: "",
             dueDate: "",
+            // *** IMPORTANT: Include actual times in safe fallback too ***
+            actualStartTime: task.actualStartTime ?
+                task.actualStartTime.toISOString().split("T")[1] : "",
+            actualEndTime: task.actualEndTime ?
+                task.actualEndTime.toISOString().split("T")[1] : "",
+            actualStartDate: task.actualStartDate ?
+                task.actualStartDate.toISOString().split("T")[0] : "",
+            actualEndDate: task.actualEndDate ?
+                task.actualEndDate.toISOString().split("T")[0] : "",
             subtasks: [],
             attachments: [],
             tags: [],
@@ -434,15 +485,23 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             priority: taskData.priority || "medium", // Default priority
             collection: taskData.collection || "",
 
-            // FIXED: Parse individual location fields from metadata
+            // Parse individual location fields from metadata
             locationName: taskData.locationName || "",
             locationAddress: taskData.locationAddress || "",
             locationCoordinates: taskData.locationCoordinates || "",
 
+            // Parse planned date/time fields
             startTime: taskData.startTime ? safeDateParse(taskData.startTime) : null,
             dueTime: taskData.dueTime ? safeDateParse(taskData.dueTime) : null,
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
             dueDate: taskData.dueDate ? safeDateParse(taskData.dueDate) : null,
+
+            // *** FIX: Parse actual start/end date/time fields ***
+            actualStartTime: taskData.actualStartTime ? safeDateParse(taskData.actualStartTime) : null,
+            actualEndTime: taskData.actualEndTime ? safeDateParse(taskData.actualEndTime) : null,
+            actualStartDate: taskData.actualStartDate ? safeDateParse(taskData.actualStartDate) : null,
+            actualEndDate: taskData.actualEndDate ? safeDateParse(taskData.actualEndDate) : null,
+
             completed: item.status === "completed",
             subtasks: taskData.subtasks || [],
             attachments: taskData.attachments || [],
@@ -705,7 +764,8 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
         subtasks: number;
         attachments: number;
         tags: number;
-        location: number; // FIXED: Add location to breakdown
+        location: number;
+        actualTimes: number; // NEW: Add actual times to breakdown
         other: number;
     }
 } {
@@ -717,12 +777,19 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
     const attachmentsSize = JSON.stringify(task.attachments || []).length;
     const tagsSize = JSON.stringify(task.tags || []).length;
 
-    // FIXED: Calculate location size
+    // Calculate location size
     const locationSize = (task.locationName || "").length +
         (task.locationAddress || "").length +
         (task.locationCoordinates || "").length;
 
-    const other = Math.max(0, characterCount - description - subtasksSize - attachmentsSize - tagsSize - locationSize);
+    // *** NEW: Calculate actual times size ***
+    const actualTimesSize =
+        (task.actualStartTime ? task.actualStartTime.toISOString().length : 0) +
+        (task.actualEndTime ? task.actualEndTime.toISOString().length : 0) +
+        (task.actualStartDate ? task.actualStartDate.toISOString().split("T")[0].length : 0) +
+        (task.actualEndDate ? task.actualEndDate.toISOString().split("T")[0].length : 0);
+
+    const other = Math.max(0, characterCount - description - subtasksSize - attachmentsSize - tagsSize - locationSize - actualTimesSize);
 
     return {
         characterCount,
@@ -733,6 +800,7 @@ export function calculateTaskMetadataSize(task: Partial<Task>): {
             attachments: attachmentsSize,
             tags: tagsSize,
             location: locationSize,
+            actualTimes: actualTimesSize, // NEW: Include actual times in breakdown
             other
         }
     };

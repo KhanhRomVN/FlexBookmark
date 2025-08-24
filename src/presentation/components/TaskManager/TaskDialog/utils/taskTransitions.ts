@@ -68,7 +68,6 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
     // NEW: Check for missing required fields when transitioning to in-progress
     if (to === "in-progress") {
         const hasRequiredFields = task.startTime && task.startDate && task.actualStartTime && task.actualStartDate;
-        const hasStartButNoActual = (task.startTime || task.startDate) && (!task.actualStartTime || !task.actualStartDate);
 
         if (!hasRequiredFields) {
             scenarios.push({
