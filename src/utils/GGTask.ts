@@ -645,10 +645,10 @@ export const updateGoogleTask = async (
 export const deleteGoogleTask = async (
     accessToken: string,
     taskId: string,
-    taskListId: string
+    taskListId: string = '@default'  // Added missing parameter
 ): Promise<void> => {
     const response = await makeAuthenticatedRequest(
-        `https://www.googleapis.com/tasks/v1/lists/${tasklistId}/tasks/${taskId}`,
+        `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,  // Fixed: use taskListId instead of tasklistId
         {
             method: 'DELETE',
             headers: {

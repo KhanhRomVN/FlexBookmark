@@ -14,6 +14,7 @@ import {
   Maximize2,
   Map,
 } from "lucide-react";
+import { Task } from "../../../../types/task"; // Add this import
 
 interface LocationSectionProps {
   editedTask: {
@@ -22,7 +23,7 @@ interface LocationSectionProps {
     locationCoordinates?: string;
     [key: string]: any;
   };
-  handleChange: (field: string, value: any) => void;
+  handleChange: (field: keyof Task, value: any) => void; // Change from (field: string, value: any) to (field: keyof Task, value: any)
 }
 
 // Temporary Location type for internal operations
@@ -42,11 +43,11 @@ const NOMINATIM_CONFIG = {
   REVERSE_ENDPOINT: "/reverse",
   DEFAULT_PARAMS: {
     format: "json",
-    limit: 10,
-    addressdetails: 1,
-    extratags: 1,
-    namedetails: 1,
-    dedupe: 1,
+    limit: "10", // Changed from number to string
+    addressdetails: "1", // Changed from number to string
+    extratags: "1", // Changed from number to string
+    namedetails: "1", // Changed from number to string
+    dedupe: "1", // Changed from number to string
   },
   USER_AGENT: "TaskFlow/1.0 (Location Feature)",
   RATE_LIMIT_DELAY: 1000, // 1 second between requests
@@ -540,7 +541,7 @@ const InteractiveMapDialog: React.FC<{
   location: Location;
   onLocationChange: (location: Location) => void;
   onClose: () => void;
-}> = ({ location, onLocationChange, onClose }) => {
+}> = ({ location, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">

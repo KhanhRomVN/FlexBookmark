@@ -1,5 +1,5 @@
 // src/presentation/components/TaskManager/TaskDialog/index.tsx - Added debug logs
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef } from "react";
 import { Textarea } from "../../ui/textarea";
 import { Task, Status } from "../../../types/task";
 import {
@@ -32,7 +32,6 @@ import { useTags } from "./hooks/useTags";
 import { useActivityLog } from "./hooks/useActivityLog";
 import { useStatusTransitions } from "./hooks/useStatusTransitions";
 import { useGoogleTasksIntegration } from "./hooks/useGoogleTasksIntegration";
-import { useClickOutside } from "./hooks/useClickOutside";
 import LinkedTasksSection from "./components/LinkedTasksSection";
 import RestoreConfirmationDialog from "./components/RestoreConfirmationDialog";
 
@@ -310,13 +309,15 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       />
 
       {/* Google Tasks Restore Confirmation Dialog */}
-      <RestoreConfirmationDialog
-        isOpen={showRestoreDialog}
-        taskTitle={editedTask?.title || ""}
-        targetStatus={pendingRestoreStatus || ""}
-        onConfirm={handleRestoreConfirm}
-        onCancel={handleRestoreCancel}
-      />
+      {pendingRestoreStatus && (
+        <RestoreConfirmationDialog
+          isOpen={showRestoreDialog}
+          taskTitle={editedTask?.title || ""}
+          targetStatus={pendingRestoreStatus}
+          onConfirm={handleRestoreConfirm}
+          onCancel={handleRestoreCancel}
+        />
+      )}
 
       <div className="w-full max-w-5xl max-h-[95vh] bg-dialog-background rounded-lg border border-border-default overflow-hidden flex flex-col">
         {/* Header */}

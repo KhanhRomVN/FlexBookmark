@@ -1,10 +1,10 @@
 import React from "react";
-import { Priority } from "../../../../types/task";
+import { Priority, Task } from "../../../../types/task";
 import { Flag, Star } from "lucide-react";
 
 interface PrioritySectionProps {
   editedTask: { priority: Priority };
-  handleChange: (field: keyof any, value: any) => void;
+  handleChange: (field: keyof Task, value: any) => void;
 }
 
 const priorityColors = {
