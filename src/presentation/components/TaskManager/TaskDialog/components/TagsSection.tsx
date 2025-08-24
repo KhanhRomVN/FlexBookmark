@@ -49,7 +49,6 @@ const EMOJI_SUGGESTIONS = [
 
 const TagsSection: React.FC<TagsSectionProps> = ({
   editedTask,
-  handleChange,
   newTag,
   setNewTag,
   handleAddTag,
