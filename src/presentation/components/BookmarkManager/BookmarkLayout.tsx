@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, Fragment } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import BookmarkForm from "./BookmarkForm";
 import {
   DndContext,
@@ -16,10 +16,9 @@ import {
 import type { CollisionDetection } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import BookmarkCard from "./BookmarkCard";
-import FolderCard, { GapDropZone } from "./FolderCard";
+import FolderCard from "./FolderCard";
 import EmptyState from "./EmptyState";
 import GridHeader from "./GridHeader";
-import { motion } from "framer-motion";
 
 export interface BookmarkNode {
   parentId: string;
@@ -28,6 +27,7 @@ export interface BookmarkNode {
   url?: string;
   children?: BookmarkNode[];
 }
+
 interface FolderModel {
   id: string;
   title: string;
@@ -79,8 +79,8 @@ const BookmarkLayout: React.FC<BookmarkLayoutProps> = ({
   const [highlightFolderId, setHighlightFolderId] = useState<string | null>(
     null
   );
-  const [highlightColumn, setHighlightColumn] = useState<number | null>(null);
-  const [insertHint, setInsertHint] = useState<{
+  const [, setHighlightColumn] = useState<number | null>(null);
+  const [, setInsertHint] = useState<{
     column: number;
     index: number;
   } | null>(null);

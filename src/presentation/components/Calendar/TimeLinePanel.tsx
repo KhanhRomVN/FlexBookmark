@@ -9,7 +9,7 @@ import {
   endOfWeek,
   eachDayOfInterval,
 } from "date-fns";
-import { CalendarEvent } from "../../tab/Calendar";
+import type { CalendarEvent } from "../../types/calendar";
 
 interface TimeLinePanelProps {
   date: Date;

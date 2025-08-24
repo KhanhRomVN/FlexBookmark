@@ -23,8 +23,30 @@ export const getTransitionScenarios = (from: Status, to: Status, task: Task): Tr
     const isPastDate = (date: Date | null) => date && new Date(date) < now;
     const isFutureDate = (date: Date | null) => date && new Date(date) > now;
 
+    const hasIncompleteRequiredSubtasks = (task: Task): boolean => {
+        if (!task.subtasks) return false;
+        return task.subtasks.some(
+            (subtask) => subtask.requiredCompleted && !subtask.completed
+        );
+    };
+
     const startDate = task.startDate ? new Date(task.startDate) : null;
     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+
+    if (to === "done" && hasIncompleteRequiredSubtasks(task)) {
+        scenarios.push({
+            title: "Incomplete Required Subtasks",
+            options: [
+                {
+                    label: "Some required subtasks are not completed",
+                    value: "invalid",
+                    description: "Complete all required subtasks before marking as done"
+                },
+                { label: "Cancel", value: "cancel" },
+            ],
+        });
+        return scenarios;
+    }
 
     // Pre-validation for impossible transitions
     const validation = validateTransition(task, from, to);

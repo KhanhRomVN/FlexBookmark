@@ -1,7 +1,5 @@
-// src/presentation/components/TaskManager/TaskDialog/components/DateTimeValidation.tsx
 import React from "react";
 import { AlertTriangle, CheckCircle, Clock, X } from "lucide-react";
-import { Status } from "../../../../types/task";
 
 interface DateTimeValidationDialogProps {
   isOpen: boolean;
@@ -14,7 +12,6 @@ interface DateTimeValidationDialogProps {
 
 const DateTimeValidationDialog: React.FC<DateTimeValidationDialogProps> = ({
   isOpen,
-  onClose,
   onConfirm,
   validationType,
   dueDate,
@@ -22,7 +19,7 @@ const DateTimeValidationDialog: React.FC<DateTimeValidationDialogProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const formatDateTime = (date: Date | null, time: Date | null) => {
+  const formatDateTime = (date?: Date | null, time?: Date | null) => {
     if (!date) return "";
 
     const dateStr = date.toLocaleDateString("vi-VN", {

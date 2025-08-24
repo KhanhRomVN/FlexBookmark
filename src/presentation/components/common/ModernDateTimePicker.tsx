@@ -44,7 +44,20 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     selectedTime ? selectedTime.toISOString().slice(11, 16) : "09:00"
   );
 
-  const colorThemes = {
+  const colorThemes: Record<
+    "green" | "red" | "blue" | "purple",
+    {
+      primary: string;
+      secondary: string;
+      ring: string;
+      bg: string;
+      text: string;
+      dot: string;
+      button: string;
+      hover: string;
+      selected: string;
+    }
+  > = {
     green: {
       primary: "from-emerald-500 via-green-500 to-teal-500",
       secondary: "border-emerald-300 dark:border-emerald-600",
@@ -67,6 +80,29 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       button: "from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700",
       hover: "hover:bg-rose-500 dark:hover:bg-rose-600",
       selected: "bg-rose-500 dark:bg-rose-600",
+    },
+    blue: {
+      primary: "from-sky-500 via-blue-500 to-indigo-500",
+      secondary: "border-sky-300 dark:border-sky-600",
+      ring: "ring-sky-500/30 dark:ring-sky-400/40",
+      bg: "bg-sky-50 dark:bg-sky-950/50",
+      text: "text-sky-700 dark:text-sky-300",
+      dot: "bg-sky-500",
+      button: "from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700",
+      hover: "hover:bg-sky-500 dark:hover:bg-sky-600",
+      selected: "bg-sky-500 dark:bg-sky-600",
+    },
+    purple: {
+      primary: "from-violet-500 via-purple-500 to-fuchsia-500",
+      secondary: "border-violet-300 dark:border-violet-600",
+      ring: "ring-violet-500/30 dark:ring-violet-400/40",
+      bg: "bg-violet-50 dark:bg-violet-950/50",
+      text: "text-violet-700 dark:text-violet-300",
+      dot: "bg-violet-500",
+      button:
+        "from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700",
+      hover: "hover:bg-violet-500 dark:hover:bg-violet-600",
+      selected: "bg-violet-500 dark:bg-violet-600",
     },
   };
 
@@ -281,7 +317,7 @@ const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             opacity: 0;

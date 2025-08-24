@@ -114,7 +114,12 @@ const TransitionConfirmationDialog: React.FC<TransitionConfirmationProps> = ({
               onClick={() => onConfirm(selectedOptions)}
               disabled={
                 Object.keys(selectedOptions).length !==
-                transition.scenarios.length
+                  transition.scenarios.length ||
+                (transition.to === "done" &&
+                  transition.scenarios.some(
+                    (s: { title: string }) =>
+                      s.title === "Incomplete Required Subtasks"
+                  ))
               }
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >

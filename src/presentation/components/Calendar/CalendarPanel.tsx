@@ -13,7 +13,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import type { CalendarEvent } from "../../tab/Calendar";
+import type { CalendarEvent } from "../../types/calendar";
 
 interface CalendarPanelProps {
   selectedDate: Date;

@@ -30,7 +30,6 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import BookmarkForm from "../BookmarkManager/BookmarkForm";
 
 interface BookmarkNode {
   id: string;

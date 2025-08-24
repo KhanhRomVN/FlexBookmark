@@ -328,6 +328,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 suggestedStatus={suggestedStatus}
                 effectiveStatus={getEffectiveStatus()}
                 onStatusChange={handleStatusChange}
+                task={editedTask}
               />
             )}
             {!isCreateMode && (

@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { Task, Status } from "../../../../types/task";
 import { getSuggestedStatusFromDates } from "../utils/taskTransitions";
 
+const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
+    if (!task?.subtasks) return false;
+    return task.subtasks.some(
+        (subtask) => subtask.requiredCompleted && !subtask.completed
+    );
+};
+
 export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
     const [editedTask, setEditedTask] = useState<Task | null>(task);
     const [suggestedStatus, setSuggestedStatus] = useState<Status | null>(null);
@@ -84,6 +91,11 @@ export const useTaskState = (task: Task | null, isCreateMode: boolean) => {
 
     // NEW: Method để handle system-triggered status changes (từ validation dialog)
     const handleSystemStatusChange = (newStatus: Status, additionalFields?: Partial<Task>) => {
+        // Block transition to done if there are incomplete required subtasks
+        if (newStatus === "done" && hasIncompleteRequiredSubtasks(editedTask)) {
+            console.warn("Cannot transition to done: incomplete required subtasks exist");
+            return;
+        }
 
         setEditedTask(prev => {
             if (!prev) return prev;

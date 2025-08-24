@@ -1,5 +1,4 @@
 import React from "react";
-import { useTheme } from "../../providers/theme-provider";
 import { Bolt } from "lucide-react";
 import {
   DropdownMenu,

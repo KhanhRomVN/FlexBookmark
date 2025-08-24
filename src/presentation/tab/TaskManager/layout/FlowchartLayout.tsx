@@ -31,12 +31,33 @@ interface FlowchartLayoutProps {
   onArchiveTasks?: (folderId: string) => void;
   onDeleteTasks?: (folderId: string) => void;
   onSortTasks?: (folderId: string, sortType: string) => void;
+  onStatusTransition?: (
+    taskId: string,
+    fromStatus: Status,
+    toStatus: Status
+  ) => void;
 }
 
-// Node types for React Flow
+// Define proper data types for your nodes
+interface TaskNodeData extends Record<string, unknown> {
+  id: string;
+  title: string;
+  status: Status;
+  collection?: string;
+  onClick: () => void;
+  [key: string]: any; // Allow additional task properties
+}
+
+interface CollectionNodeData extends Record<string, unknown> {
+  collection: string;
+  tasks: Task[];
+  onClick: (task: any) => void;
+}
+
+// Create properly typed node types
 const nodeTypes: NodeTypes = {
-  task: TaskNode,
-  collection: CollectionNode,
+  task: TaskNode as React.ComponentType<any>,
+  collection: CollectionNode as React.ComponentType<any>,
 };
 
 const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
@@ -45,6 +66,23 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<"hierarchical" | "network">(
     "hierarchical"
+  );
+
+  // Helper function to get node ID for a task (either individual task node or collection node)
+  const getNodeIdForTask = useCallback(
+    (task: Task, tasksByCollection: Record<string, Task[]>): string | null => {
+      // Check if task is in a collection with 2+ tasks
+      if (
+        task.collection &&
+        tasksByCollection[task.collection] &&
+        tasksByCollection[task.collection].length >= 2
+      ) {
+        return `collection-${task.collection}`;
+      }
+      // Otherwise it's an individual task node
+      return task.id;
+    },
+    []
   );
 
   // Transform tasks to nodes and edges for React Flow
@@ -90,7 +128,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
             collection,
             tasks,
             onClick: onTaskClick,
-          },
+          } as CollectionNodeData,
         });
 
         if (viewMode === "hierarchical") {
@@ -107,31 +145,31 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
     });
 
     // Create individual task nodes for tasks without collection or in collections with < 2 tasks
-    tasksWithoutCollection.forEach((task, index) => {
+    tasksWithoutCollection.forEach((task, taskIndex) => {
       taskNodes.push({
         id: task.id,
         type: "task",
         position: {
           x:
             viewMode === "hierarchical"
-              ? nodeXPosition + (index % 3) * 280 // Arrange in grid
+              ? nodeXPosition + (taskIndex % 3) * 280 // Arrange in grid
               : Math.random() * 800,
           y:
             viewMode === "hierarchical"
-              ? nodeYPosition + Math.floor(index / 3) * 150
+              ? nodeYPosition + Math.floor(taskIndex / 3) * 150
               : Math.random() * 600,
         },
         data: {
           ...task,
           onClick: () => onTaskClick(task),
-        },
+        } as TaskNodeData,
       });
     });
 
     // Create edges based on actual linkedTaskId relationships
     allTasks.forEach((task) => {
       if (task.subtasks) {
-        task.subtasks.forEach((subtask) => {
+        task.subtasks.forEach((subtask: { linkedTaskId: any; title: any }) => {
           if (subtask.linkedTaskId) {
             const linkedTask = allTasks.find(
               (t) => t.id === subtask.linkedTaskId
@@ -171,24 +209,7 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
     });
 
     return { nodes: taskNodes, edges: taskEdges };
-  }, [filteredLists, onTaskClick, viewMode]);
-
-  // Helper function to get node ID for a task (either individual task node or collection node)
-  const getNodeIdForTask = (
-    task: Task,
-    tasksByCollection: Record<string, Task[]>
-  ): string | null => {
-    // Check if task is in a collection with 2+ tasks
-    if (
-      task.collection &&
-      tasksByCollection[task.collection] &&
-      tasksByCollection[task.collection].length >= 2
-    ) {
-      return `collection-${task.collection}`;
-    }
-    // Otherwise it's an individual task node
-    return task.id;
-  };
+  }, [filteredLists, onTaskClick, viewMode, getNodeIdForTask]);
 
   const [reactFlowNodes, setReactFlowNodes, onNodesChange] =
     useNodesState(nodes);

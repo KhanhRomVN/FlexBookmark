@@ -12,7 +12,6 @@ interface BookmarkSearchLayoutProps {
 const BookmarkSearchLayout: React.FC<BookmarkSearchLayoutProps> = ({
   searchQuery,
   folders,
-  onSelectFolder,
   onBookmarkEdit,
 }) => {
   // Derive sidebar folders (only top-level bar and first-level children under "Other Bookmarks")

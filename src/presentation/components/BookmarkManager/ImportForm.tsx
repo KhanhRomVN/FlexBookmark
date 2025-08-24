@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createBookmark, createFolder } from "../../../utils/api";
+import { createBookmark } from "../../../utils/api";
 
 interface ImportFormProps {
   parentId: string;

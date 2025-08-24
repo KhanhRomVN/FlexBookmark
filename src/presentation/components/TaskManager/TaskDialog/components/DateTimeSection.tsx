@@ -5,6 +5,13 @@ import { Calendar, Clock, AlertTriangle, CheckCircle, X } from "lucide-react";
 import { Task, Status } from "../../../../types/task";
 import { formatDisplayDate, formatDisplayTime } from "../utils/taskTransitions";
 
+const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
+  if (!task?.subtasks) return false;
+  return task.subtasks.some(
+    (subtask) => subtask.requiredCompleted && !subtask.completed
+  );
+};
+
 // Inline validation utilities
 const combineDateTime = (date: Date | null, time: Date | null): Date | null => {
   if (!date) return null;
@@ -37,11 +44,12 @@ const isDateTimeRangeInvalid = (
 interface ValidationDialogProps {
   isOpen: boolean;
   type: "overdue" | "invalid-range";
-  dueDate?: Date | null;
-  dueTime?: Date | null;
+  dueDate?: Date | null; // Keep as optional Date | null
+  dueTime?: Date | null; // Keep as optional Date | null
   onComplete: () => void;
   onOverdue: () => void;
   onCancel: () => void;
+  editedTask: Task | null;
 }
 
 const ValidationDialog: React.FC<ValidationDialogProps> = ({
@@ -52,10 +60,14 @@ const ValidationDialog: React.FC<ValidationDialogProps> = ({
   onComplete,
   onOverdue,
   onCancel,
+  editedTask,
 }) => {
   if (!isOpen) return null;
 
-  const formatDateTime = (date: Date | null, time: Date | null) => {
+  const formatDateTime = (
+    date: Date | null | undefined, // Add undefined to the type
+    time: Date | null | undefined // Add undefined to the type
+  ) => {
     if (!date) return "";
     const dateStr = date.toLocaleDateString("vi-VN", {
       weekday: "short",
@@ -109,7 +121,8 @@ const ValidationDialog: React.FC<ValidationDialogProps> = ({
             <div className="space-y-3">
               <button
                 onClick={onComplete}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200 text-left group"
+                disabled={hasIncompleteRequiredSubtasks(editedTask)}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckCircle size={20} className="text-green-500" />
                 <div>
@@ -117,7 +130,9 @@ const ValidationDialog: React.FC<ValidationDialogProps> = ({
                     Task đã hoàn thành
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Đánh dấu task là đã hoàn thành (Done)
+                    {hasIncompleteRequiredSubtasks(editedTask)
+                      ? "Cannot complete: incomplete required subtasks"
+                      : "Đánh dấu task là đã hoàn thành (Done)"}
                   </div>
                 </div>
               </button>
@@ -169,14 +184,14 @@ interface DateTimeSectionProps {
   handleSystemStatusChange?: (
     newStatus: Status,
     additionalFields?: Partial<Task>
-  ) => void; // NEW: Add this prop
+  ) => void;
   isCreateMode: boolean;
 }
 
 const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   editedTask,
   handleChange,
-  handleSystemStatusChange, // NEW: Accept this prop
+  handleSystemStatusChange,
   isCreateMode,
 }) => {
   const [validationDialog, setValidationDialog] = useState<{
@@ -199,8 +214,8 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
 
       if (
         isDateTimeRangeInvalid(
-          editedTask.startDate,
-          editedTask.startTime,
+          editedTask.startDate ?? null,
+          editedTask.startTime ?? null,
           newDueDate,
           newDueTime
         )
@@ -224,7 +239,10 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
       }
 
       // Prevent invalid range
-      const corrected = preventInvalidRange(newDueDate, editedTask.dueTime);
+      const corrected = preventInvalidRange(
+        newDueDate,
+        editedTask.dueTime ?? null
+      );
 
       // If corrected, apply the correction
       if (
@@ -245,7 +263,10 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   const handleDueTimeChange = useCallback(
     (newDueTime: Date | null) => {
       // Prevent invalid range
-      const corrected = preventInvalidRange(editedTask.dueDate, newDueTime);
+      const corrected = preventInvalidRange(
+        editedTask.dueDate ?? null,
+        newDueTime
+      );
 
       // If corrected, apply the correction
       if (corrected.dueTime !== newDueTime) {
@@ -262,7 +283,7 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   // Custom validation function for ModernDateTimePicker
   const handleDateTimeValidation = useCallback(
     (
-      finalStartDate: Date | null,
+      _finalStartDate: Date | null,
       finalDueDate: Date | null,
       onSuccess: () => void
     ) => {
@@ -298,49 +319,52 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   const handleValidationComplete = useCallback(() => {
     const now = new Date();
 
-    // Apply pending date/time changes and set status via system method
+    if (hasIncompleteRequiredSubtasks(editedTask)) {
+      alert("Cannot complete task: there are incomplete required subtasks");
+      setValidationDialog({ isOpen: false, type: "overdue" });
+      validationSuccessCallback.current = null;
+      return;
+    }
+
     if (handleSystemStatusChange) {
       handleSystemStatusChange("done", {
-        dueDate: validationDialog.pendingDueDate,
-        dueTime: validationDialog.pendingDueTime,
+        dueDate: validationDialog.pendingDueDate ?? null, // Use nullish coalescing
+        dueTime: validationDialog.pendingDueTime ?? null, // Use nullish coalescing
         actualEndDate: now,
         actualEndTime: now,
       });
     } else {
-      // Fallback to old method
+      // fallback: chỉ cập nhật dueDate/dueTime
       if (validationDialog.pendingDueDate !== undefined) {
-        handleChange("dueDate", validationDialog.pendingDueDate);
+        handleChange("dueDate", validationDialog.pendingDueDate ?? null);
       }
       if (validationDialog.pendingDueTime !== undefined) {
-        handleChange("dueTime", validationDialog.pendingDueTime);
+        handleChange("dueTime", validationDialog.pendingDueTime ?? null);
       }
-      handleChange("status", "done" as Status);
-      handleChange("actualEndDate", now);
-      handleChange("actualEndTime", now);
+    }
+
+    if (validationSuccessCallback.current) {
+      validationSuccessCallback.current();
+      validationSuccessCallback.current = null;
     }
 
     setValidationDialog({ isOpen: false, type: "overdue" });
-
-    // Call validation success callback to close ModernDateTimePicker
-    if (validationSuccessCallback.current) {
-      validationSuccessCallback.current();
-    }
-  }, [validationDialog, handleChange, handleSystemStatusChange]);
+  }, [editedTask, handleSystemStatusChange, validationDialog, handleChange]);
 
   const handleValidationOverdue = useCallback(() => {
     // Apply pending date/time changes and set status via system method
     if (handleSystemStatusChange) {
       handleSystemStatusChange("overdue", {
-        dueDate: validationDialog.pendingDueDate,
-        dueTime: validationDialog.pendingDueTime,
+        dueDate: validationDialog.pendingDueDate ?? null, // Use nullish coalescing
+        dueTime: validationDialog.pendingDueTime ?? null, // Use nullish coalescing
       });
     } else {
       // Fallback to old method
       if (validationDialog.pendingDueDate !== undefined) {
-        handleChange("dueDate", validationDialog.pendingDueDate);
+        handleChange("dueDate", validationDialog.pendingDueDate ?? null);
       }
       if (validationDialog.pendingDueTime !== undefined) {
-        handleChange("dueTime", validationDialog.pendingDueTime);
+        handleChange("dueTime", validationDialog.pendingDueTime ?? null);
       }
       handleChange("status", "overdue" as Status);
     }
@@ -503,11 +527,12 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
       <ValidationDialog
         isOpen={validationDialog.isOpen}
         type={validationDialog.type}
-        dueDate={validationDialog.pendingDueDate}
-        dueTime={validationDialog.pendingDueTime}
+        dueDate={validationDialog.pendingDueDate ?? null}
+        dueTime={validationDialog.pendingDueTime ?? null}
         onComplete={handleValidationComplete}
         onOverdue={handleValidationOverdue}
         onCancel={handleValidationCancel}
+        editedTask={editedTask}
       />
     </>
   );

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { BookmarkNode } from "../../tab/Dashboard";
+import { BookmarkNode } from "../../types/bookmark";
 import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
   DragStartEvent,

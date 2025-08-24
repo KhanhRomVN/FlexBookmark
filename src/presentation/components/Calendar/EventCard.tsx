@@ -1,6 +1,6 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
-import { CalendarEvent } from "../../tab/Calendar";
+import type { CalendarEvent } from "../../types/calendar";
 
 interface EventCardProps {
   event: CalendarEvent;
