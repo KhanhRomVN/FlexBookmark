@@ -1,3 +1,5 @@
+// src/presentation/tab/TaskManager/layout/FlowchartLayout.tsx
+
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ReactFlow,
@@ -46,6 +48,15 @@ interface FlowchartLayoutProps {
 const nodeTypes: NodeTypes = {
   task: TaskNode as React.ComponentType<any>,
   collection: CollectionNode as React.ComponentType<any>,
+};
+
+// Helper function to convert string/number/Date to Date
+const toDate = (
+  value: string | number | Date | null | undefined
+): Date | undefined => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  return new Date(value);
 };
 
 const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
@@ -142,14 +153,14 @@ const FlowchartLayout: React.FC<FlowchartLayoutProps> = ({
         status: task.status,
         collection: task.collection,
         priority: task.priority,
-        dueDate: task.dueDate,
-        dueTime: task.dueTime,
+        dueDate: toDate(task.dueDate),
+        dueTime: toDate(task.dueTime),
         subtasks: task.subtasks,
         attachments: task.attachments,
         description: task.description,
         tags: task.tags,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
+        createdAt: toDate(task.createdAt),
+        updatedAt: toDate(task.updatedAt),
         onClick: () => onTaskClick(task),
       };
 
