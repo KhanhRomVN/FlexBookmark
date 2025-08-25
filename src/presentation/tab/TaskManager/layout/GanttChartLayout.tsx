@@ -1,10 +1,9 @@
 // src/presentation/tab/TaskManager/layout/GanttChartLayout.tsx
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { Task, Status } from "../../../types/task";
-import { Calendar } from "lucide-react";
 import TaskListPanel from "../../../components/TaskManager/KanttChartStyle/TaskListPanel";
-import GanttTimelinePanel from "../../../components/TaskManager/KanttChartStyle/GanttTimelinePanel";
+import GanttChartPanel from "../../../components/TaskManager/KanttChartStyle/GanttChartPanel";
 
 interface GanttChartLayoutProps {
   filteredLists: {
@@ -30,150 +29,68 @@ interface GanttChartLayoutProps {
   ) => void;
 }
 
-const HEADER_HEIGHT = 50; // Increased for two-row header
-const ROW_HEIGHT = 60;
-
 const GanttChartLayout: React.FC<GanttChartLayoutProps> = ({
   filteredLists,
   onTaskClick,
 }) => {
-  // State for view controls
-  const [timeRange, setTimeRange] = useState<string>("month");
-  const [taskListWidth, setTaskListWidth] = useState(300);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>();
+  const [showTaskList, setShowTaskList] = useState<boolean>(true);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [timelineWidth, setTimelineWidth] = useState(800);
-
-  // Get all tasks from filtered lists and sort by start date/time
-  const allTasks = useMemo(() => {
-    const tasks = filteredLists.flatMap((list) => list.tasks);
-
-    return tasks
-      .filter((task) => {
-        // Only include tasks that have both start and due dates
-        return task.startDate && task.dueDate && task.startTime && task.dueTime;
-      })
-      .sort((a, b) => {
-        // Sort by start date/time
-        const aStart = new Date(a.startDate!);
-        const bStart = new Date(b.startDate!);
-
-        if (a.startTime && b.startTime) {
-          const aTime = new Date(a.startTime);
-          const bTime = new Date(b.startTime);
-
-          // Combine date and time for accurate sorting
-          const aCombined = new Date(
-            aStart.getFullYear(),
-            aStart.getMonth(),
-            aStart.getDate(),
-            aTime.getHours(),
-            aTime.getMinutes()
-          );
-
-          const bCombined = new Date(
-            bStart.getFullYear(),
-            bStart.getMonth(),
-            bStart.getDate(),
-            bTime.getHours(),
-            bTime.getMinutes()
-          );
-
-          return aCombined.getTime() - bCombined.getTime();
-        }
-
-        return aStart.getTime() - bStart.getTime();
-      });
-  }, [filteredLists]);
-
-  // Group tasks by collection for consistent row calculation
-  const groupedTasks = useMemo(() => {
-    const groups: Record<string, Task[]> = {};
-
-    allTasks.forEach((task) => {
-      const collection = task.collection || "No Collection";
-      if (!groups[collection]) {
-        groups[collection] = [];
-      }
-      groups[collection].push(task);
-    });
-
-    return groups;
-  }, [allTasks]);
-
-  // Handle timeline container width
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.offsetWidth;
-        setTimelineWidth(Math.max(containerWidth - taskListWidth, 400));
-      }
-    };
-
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, [taskListWidth]);
-
-  // Handle width change from TaskListPanel
-  const handleTaskListWidthChange = (newWidth: number) => {
-    setTaskListWidth(newWidth);
+  const handleTaskClick = (task: Task) => {
+    setSelectedTaskId(task.id);
+    onTaskClick(task);
   };
 
-  // Handle time range change from TaskListPanel
-  const handleTimeRangeChange = (newRange: string) => {
-    setTimeRange(newRange);
+  const toggleTaskList = () => {
+    setShowTaskList(!showTaskList);
   };
-
-  if (allTasks.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center p-8 max-w-md">
-          <div className="text-6xl mb-4 opacity-50">📊</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            No Gantt Data Available
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            To use the Gantt chart view, tasks must have both start date/time
-            and due date/time configured.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Calendar className="w-4 h-4" />
-            <span>Add dates to your tasks to see them here</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 h-full flex bg-white dark:bg-gray-900"
-    >
-      {/* Task List Panel */}
-      <TaskListPanel
-        allTasks={allTasks}
-        groupedTasks={groupedTasks}
-        onTaskClick={onTaskClick}
-        width={taskListWidth}
-        onWidthChange={handleTaskListWidthChange}
-        timeRange={timeRange}
-        onTimeRangeChange={handleTimeRangeChange}
-        headerHeight={HEADER_HEIGHT}
-        rowHeight={ROW_HEIGHT}
-      />
+    <div className="flex-1 h-full flex bg-white dark:bg-gray-900 overflow-hidden">
+      {/* Left Panel - Task List (Collapsible) */}
+      {showTaskList && (
+        <div className="flex-shrink-0">
+          <TaskListPanel
+            filteredLists={filteredLists}
+            onTaskClick={handleTaskClick}
+            selectedTaskId={selectedTaskId}
+          />
+        </div>
+      )}
 
-      {/* Timeline Panel */}
-      <GanttTimelinePanel
-        allTasks={allTasks}
-        groupedTasks={groupedTasks}
-        onTaskClick={onTaskClick}
-        timeRange={timeRange}
-        containerWidth={timelineWidth}
-        headerHeight={HEADER_HEIGHT}
-        rowHeight={ROW_HEIGHT}
-      />
+      {/* Toggle Button */}
+      <div className="flex-shrink-0 w-8 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-600 flex items-center justify-center">
+        <button
+          onClick={toggleTaskList}
+          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+          title={showTaskList ? "Hide task list" : "Show task list"}
+        >
+          <svg
+            className={`w-4 h-4 text-gray-600 dark:text-gray-400 transform transition-transform ${
+              showTaskList ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Right Panel - Gantt Chart */}
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <GanttChartPanel
+          filteredLists={filteredLists}
+          onTaskClick={handleTaskClick}
+          selectedTaskId={selectedTaskId}
+        />
+      </div>
     </div>
   );
 };
