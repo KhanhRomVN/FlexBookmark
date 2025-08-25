@@ -69,26 +69,31 @@ const TableLayout: React.FC<TableLayoutProps> = ({
   };
 
   return (
-    <div className="flex-1 p-8 min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-full mx-auto">
-        <div className="space-y-6">
-          <Table
-            tasks={tasks}
-            selectedTasks={selectedTasks}
-            globalSearch={globalSearch}
-            groupStates={groupStates}
-            onGlobalSearchChange={() => {}}
-            onSelectTask={handleSelectTask}
-            onSelectAll={handleSelectAll}
-            onToggleGroup={handleToggleGroup}
-            onTaskClick={onTaskClick}
-            onEditTask={onEditTask}
-            onArchiveTask={onArchiveTask}
-            onDeleteTask={onDeleteTask}
-            onToggleComplete={onToggleComplete}
-            onArchiveSelected={handleArchiveSelected}
-            onDeleteSelected={handleDeleteSelected}
-          />
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      {/* Scrollable table container */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-full">
+          <div className="max-w-full mx-auto">
+            <div className="space-y-6">
+              <Table
+                tasks={tasks}
+                selectedTasks={selectedTasks}
+                globalSearch={globalSearch}
+                groupStates={groupStates}
+                onGlobalSearchChange={() => {}}
+                onSelectTask={handleSelectTask}
+                onSelectAll={handleSelectAll}
+                onToggleGroup={handleToggleGroup}
+                onTaskClick={onTaskClick}
+                onEditTask={onEditTask}
+                onArchiveTask={onArchiveTask}
+                onDeleteTask={onDeleteTask}
+                onToggleComplete={onToggleComplete}
+                onArchiveSelected={handleArchiveSelected}
+                onDeleteSelected={handleDeleteSelected}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

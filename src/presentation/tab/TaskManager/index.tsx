@@ -651,7 +651,7 @@ const TaskManager: React.FC = () => {
   const allTasks = mainBoardLists.flatMap((list) => list.tasks);
 
   return (
-    <div className="flex w-full min-h-screen bg-background">
+    <div className="flex w-full h-screen bg-background overflow-hidden">
       <TaskGroupSidebar
         groups={groups}
         activeGroup={activeGroup || ""}
@@ -663,7 +663,7 @@ const TaskManager: React.FC = () => {
         createGoogleTaskList={createGoogleTaskList}
       />
 
-      <div className="flex-1 w-full min-h-screen overflow-auto flex flex-col">
+      <div className="flex-1 h-full overflow-hidden flex flex-col">
         <TaskHeader
           authState={authState}
           totalTasks={totalTasks}
@@ -702,54 +702,56 @@ const TaskManager: React.FC = () => {
           setFilterTimeRange={setFilterTimeRange}
         />
 
-        {layoutType === "table" ? (
-          <TableLayout
-            tasks={allTasks}
-            onTaskClick={handleTaskClickWrapper}
-            onEditTask={handleTaskClickWrapper}
-            onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
-            onDeleteTask={handleDeleteTask}
-            onToggleComplete={handleToggleComplete}
-          />
-        ) : layoutType === "kanban" ? (
-          <KanbanLayout
-            filteredLists={mainBoardLists}
-            onTaskClick={handleTaskClickWrapper}
-            onDragEnd={handleDragEnd}
-            quickAddStatus={quickAddStatus}
-            setQuickAddStatus={(status) =>
-              setQuickAddStatus(status as Status | null)
-            }
-            quickAddTitle={quickAddTitle}
-            setQuickAddTitle={setQuickAddTitle}
-            handleQuickAddTask={async (status) => {
-              await handleQuickAddTask(status as Status);
-            }}
-            onArchiveTasks={handleArchiveTasks}
-            onDeleteTasks={handleDeleteTasks}
-            onSortTasks={handleSortTasks}
-            onStatusTransition={handleStatusTransition}
-          />
-        ) : (
-          <FlowchartLayout
-            filteredLists={mainBoardLists}
-            onTaskClick={handleTaskClickWrapper}
-            onDragEnd={handleDragEnd}
-            quickAddStatus={quickAddStatus}
-            setQuickAddStatus={(status) =>
-              setQuickAddStatus(status as Status | null)
-            }
-            quickAddTitle={quickAddTitle}
-            setQuickAddTitle={setQuickAddTitle}
-            handleQuickAddTask={async (status) => {
-              await handleQuickAddTask(status as Status);
-            }}
-            onArchiveTasks={handleArchiveTasks}
-            onDeleteTasks={handleDeleteTasks}
-            onSortTasks={handleSortTasks}
-            onStatusTransition={handleStatusTransition}
-          />
-        )}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {layoutType === "table" ? (
+            <TableLayout
+              tasks={allTasks}
+              onTaskClick={handleTaskClickWrapper}
+              onEditTask={handleTaskClickWrapper}
+              onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
+              onDeleteTask={handleDeleteTask}
+              onToggleComplete={handleToggleComplete}
+            />
+          ) : layoutType === "kanban" ? (
+            <KanbanLayout
+              filteredLists={mainBoardLists}
+              onTaskClick={handleTaskClickWrapper}
+              onDragEnd={handleDragEnd}
+              quickAddStatus={quickAddStatus}
+              setQuickAddStatus={(status) =>
+                setQuickAddStatus(status as Status | null)
+              }
+              quickAddTitle={quickAddTitle}
+              setQuickAddTitle={setQuickAddTitle}
+              handleQuickAddTask={async (status) => {
+                await handleQuickAddTask(status as Status);
+              }}
+              onArchiveTasks={handleArchiveTasks}
+              onDeleteTasks={handleDeleteTasks}
+              onSortTasks={handleSortTasks}
+              onStatusTransition={handleStatusTransition}
+            />
+          ) : (
+            <FlowchartLayout
+              filteredLists={mainBoardLists}
+              onTaskClick={handleTaskClickWrapper}
+              onDragEnd={handleDragEnd}
+              quickAddStatus={quickAddStatus}
+              setQuickAddStatus={(status) =>
+                setQuickAddStatus(status as Status | null)
+              }
+              quickAddTitle={quickAddTitle}
+              setQuickAddTitle={setQuickAddTitle}
+              handleQuickAddTask={async (status) => {
+                await handleQuickAddTask(status as Status);
+              }}
+              onArchiveTasks={handleArchiveTasks}
+              onDeleteTasks={handleDeleteTasks}
+              onSortTasks={handleSortTasks}
+              onStatusTransition={handleStatusTransition}
+            />
+          )}
+        </div>
       </div>
 
       <ArchiveDrawer

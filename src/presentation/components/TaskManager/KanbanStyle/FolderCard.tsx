@@ -1,3 +1,4 @@
+// src/presentation/components/TaskManager/KanbanStyle/FolderCard.tsx
 import React, { useState, useRef, useEffect } from "react";
 import TaskCard from "./TaskCard";
 import type { Task } from "../../../types/task";
@@ -85,7 +86,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   };
 
   return (
-    <div className="bg-card-background rounded-xl w-full flex flex-col shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 h-full">
+    <div className="bg-card-background rounded-xl w-full max-h-full flex flex-col shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden">
       {/* Header - Fixed height */}
       <div className="p-4 border-b border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -163,8 +164,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
         </div>
       </div>
 
-      {/* Scrollable Content Area - Takes remaining height */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+      {/* Scrollable Content Area - Takes remaining height với strict overflow control */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
