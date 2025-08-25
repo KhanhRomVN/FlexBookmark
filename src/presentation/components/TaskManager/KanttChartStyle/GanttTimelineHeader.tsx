@@ -170,11 +170,11 @@ const GanttTimelineHeader: React.FC<TimelineHeaderProps> = ({
         className="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 relative"
         style={{ height: headerHeight }}
       >
-        {/* Top row */}
+        {/* Top row - increased height */}
         <div
           className="flex border-b border-gray-200 dark:border-gray-600"
           style={{
-            height: headerHeight * 0.65, // Tăng chiều cao top row
+            height: headerHeight * 0.6, // tăng chiều cao top row
             width: timelineWidth,
           }}
         >
@@ -194,35 +194,28 @@ const GanttTimelineHeader: React.FC<TimelineHeaderProps> = ({
           ))}
         </div>
 
-        {/* Bottom row - Reduced height and text size */}
+        {/* Bottom row - reduced height */}
         <div
           className="flex relative"
           style={{
-            height: headerHeight * 0.35, // Giảm chiều cao bottom row
+            height: headerHeight * 0.4,
             width: timelineWidth,
           }}
         >
           {bottomUnits.map((unit, index) => (
             <div
               key={`${unit.label}-${unit.date.getTime()}-${index}`}
-              className={`flex-shrink-0 text-center relative flex items-center justify-center ${
-                index % 2 === 0
-                  ? "bg-gray-100 dark:bg-gray-700"
-                  : "bg-gray-200 dark:bg-gray-600"
-              }`}
+              className="flex-shrink-0 text-center relative flex items-center justify-center bg-transparent"
               style={{
                 width: unit.width,
               }}
             >
               {unit.isCurrent ? (
-                <div
-                  className="bg-blue-500 dark:bg-blue-600 rounded-lg px-1 py-0.5"
-                  style={{ minWidth: "16px" }} // Giảm minWidth
-                >
+                <div className="text-primary" style={{ minWidth: "16px" }}>
                   <div
-                    className="text-white dark:text-white font-bold truncate leading-none text-center"
+                    className="text-white font-bold truncate leading-none text-center"
                     style={{
-                      fontSize: "8px", // Giảm từ 10px xuống 8px
+                      fontSize: "8px",
                       lineHeight: "1",
                       letterSpacing: "-0.02em",
                     }}
@@ -234,7 +227,7 @@ const GanttTimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <div
                   className="text-gray-500 dark:text-gray-400 truncate leading-none font-medium"
                   style={{
-                    fontSize: "8px", // Giảm từ 10px xuống 8px
+                    fontSize: "8px",
                     lineHeight: "1",
                     letterSpacing: "-0.02em",
                   }}
@@ -242,26 +235,7 @@ const GanttTimelineHeader: React.FC<TimelineHeaderProps> = ({
                   {unit.label}
                 </div>
               )}
-
-              {/* Bottom Circle - chỉ hiển thị khi là current */}
-              {unit.isCurrent && (
-                <div
-                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 rounded-full border border-white dark:border-gray-800 bg-red-500"
-                  style={{
-                    zIndex: 10,
-                  }}
-                />
-              )}
             </div>
-          ))}
-
-          {/* Grid lines */}
-          {gridLines.map((position, i) => (
-            <div
-              key={`grid-${i}`}
-              className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-500"
-              style={{ left: `${position}px` }}
-            />
           ))}
         </div>
       </div>

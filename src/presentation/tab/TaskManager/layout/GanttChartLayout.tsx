@@ -30,7 +30,7 @@ interface GanttChartLayoutProps {
   ) => void;
 }
 
-const HEADER_HEIGHT = 80; // Increased for two-row header
+const HEADER_HEIGHT = 50; // Increased for two-row header
 const ROW_HEIGHT = 60;
 
 const GanttChartLayout: React.FC<GanttChartLayoutProps> = ({
