@@ -11,6 +11,7 @@ import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
 import TableLayout from "./layout/TableLayout";
+import GanttChartLayout from "./layout/GanttChartLayout";
 import FlowchartLayout from "./layout/FlowchartLayout";
 import { Globe } from "lucide-react";
 import { useTaskManager, folders } from "./useTaskManager";
@@ -714,6 +715,25 @@ const TaskManager: React.FC = () => {
             />
           ) : layoutType === "kanban" ? (
             <KanbanLayout
+              filteredLists={mainBoardLists}
+              onTaskClick={handleTaskClickWrapper}
+              onDragEnd={handleDragEnd}
+              quickAddStatus={quickAddStatus}
+              setQuickAddStatus={(status) =>
+                setQuickAddStatus(status as Status | null)
+              }
+              quickAddTitle={quickAddTitle}
+              setQuickAddTitle={setQuickAddTitle}
+              handleQuickAddTask={async (status) => {
+                await handleQuickAddTask(status as Status);
+              }}
+              onArchiveTasks={handleArchiveTasks}
+              onDeleteTasks={handleDeleteTasks}
+              onSortTasks={handleSortTasks}
+              onStatusTransition={handleStatusTransition}
+            />
+          ) : layoutType === "gantt" ? (
+            <GanttChartLayout
               filteredLists={mainBoardLists}
               onTaskClick={handleTaskClickWrapper}
               onDragEnd={handleDragEnd}
