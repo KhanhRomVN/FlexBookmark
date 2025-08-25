@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-// Updated with enhanced filter states including collection, location, and time range
+// Fixed version with proper tag filtering logic that prevents the toLowerCase error
 
 import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -26,6 +26,25 @@ export const folders = [
 // Virtual scrolling constants
 const VIRTUAL_ITEM_HEIGHT = 120;
 const OVERSCAN = 5;
+
+// Helper function to safely convert values to strings for comparison
+const safeStringify = (value: any): string => {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    return String(value);
+};
+
+// Helper function for safe case-insensitive string matching
+const safeStringMatch = (text: string, searchTerm: string): boolean => {
+    try {
+        const safeText = safeStringify(text).toLowerCase();
+        const safeTerm = safeStringify(searchTerm).toLowerCase();
+        return safeText.includes(safeTerm);
+    } catch (error) {
+        console.warn('Error in string matching:', error);
+        return false;
+    }
+};
 
 export function useTaskManager() {
     // Performance monitoring
@@ -188,25 +207,87 @@ export function useTaskManager() {
         }
     }, [activeGroup, authState.user?.accessToken, loadTasks]);
 
-    // Enhanced filtering function that includes new filter types
+    // FIXED: Enhanced filtering function with safe tag filtering logic
     const getEnhancedFilteredLists = useCallback((lists: any[]) => {
         return lists.map(list => ({
             ...list,
             tasks: list.tasks.filter((task: Task) => {
-                // Apply original filters
-                const originalFiltered = originalGetFilteredLists([{ ...list, tasks: [task] }])[0].tasks;
-                if (originalFiltered.length === 0) return false;
+                // Apply basic filters manually to avoid the fuzzySearch issue
+                // Search term filter
+                if (searchTerm) {
+                    const searchLower = searchTerm.toLowerCase();
+                    const matchesSearch = [
+                        task.title,
+                        task.description,
+                        ...(task.tags || [])
+                    ].some(field =>
+                        field && safeStringify(field).toLowerCase().includes(searchLower)
+                    );
+                    if (!matchesSearch) return false;
+                }
+
+                // Priority filter
+                if (filterPriority && filterPriority !== "all" && Array.isArray(filterPriority) && filterPriority.length > 0) {
+                    if (!filterPriority.includes(task.priority)) {
+                        return false;
+                    }
+                }
+
+                // Status filter
+                if (filterStatus && filterStatus !== "all") {
+                    if (task.status !== filterStatus) {
+                        return false;
+                    }
+                }
 
                 // Apply collection filter
                 if (filterCollection.length > 0) {
-                    if (!task.collection || !filterCollection.includes(task.collection)) {
+                    const taskCollection = safeStringify(task.collection);
+                    if (!filterCollection.some(collection =>
+                        safeStringMatch(taskCollection, collection)
+                    )) {
                         return false;
                     }
                 }
 
                 // Apply location filter
                 if (filterLocation) {
-                    if (!task.locationName || !task.locationName.toLowerCase().includes(filterLocation.toLowerCase())) {
+                    const taskLocationName = safeStringify(task.locationName);
+                    if (!safeStringMatch(taskLocationName, filterLocation)) {
+                        return false;
+                    }
+                }
+
+                // FIXED: Apply tags filter with safe string handling
+                if (filterTags && Array.isArray(filterTags) && filterTags.length > 0) {
+                    const taskTags = task.tags || [];
+
+                    // Ensure taskTags is an array
+                    if (!Array.isArray(taskTags)) {
+                        console.warn('Task tags is not an array:', taskTags);
+                        return false;
+                    }
+
+                    // Convert all task tags to safe strings
+                    const safeTaskTags = taskTags.map(tag => safeStringify(tag)).filter(tag => tag.length > 0);
+
+                    // Check if any of the filter tags match any of the task tags using safe string matching
+                    const hasMatchingTag = filterTags.some(filterTag => {
+                        const safeFilterTag = safeStringify(filterTag);
+
+                        if (!safeFilterTag) {
+                            console.warn('Filter tag is empty after stringification:', filterTag);
+                            return false;
+                        }
+
+                        return safeTaskTags.some(taskTag => {
+                            // Use safe string matching instead of fuzzy search to avoid the toLowerCase error
+                            return safeStringMatch(taskTag, safeFilterTag) ||
+                                safeStringMatch(safeFilterTag, taskTag);
+                        });
+                    });
+
+                    if (!hasMatchingTag) {
                         return false;
                     }
                 }
@@ -216,13 +297,23 @@ export function useTaskManager() {
                     const taskDate = task.startDate || task.dueDate || task.createdAt;
                     if (!taskDate) return false;
 
-                    const taskDateTime = new Date(taskDate);
+                    try {
+                        const taskDateTime = new Date(taskDate);
 
-                    if (filterTimeRange.startDate && taskDateTime < filterTimeRange.startDate) {
-                        return false;
-                    }
+                        if (isNaN(taskDateTime.getTime())) {
+                            console.warn('Invalid task date:', taskDate);
+                            return false;
+                        }
 
-                    if (filterTimeRange.endDate && taskDateTime > filterTimeRange.endDate) {
+                        if (filterTimeRange.startDate && taskDateTime < filterTimeRange.startDate) {
+                            return false;
+                        }
+
+                        if (filterTimeRange.endDate && taskDateTime > filterTimeRange.endDate) {
+                            return false;
+                        }
+                    } catch (error) {
+                        console.warn('Error parsing task date:', taskDate, error);
                         return false;
                     }
                 }
@@ -230,7 +321,7 @@ export function useTaskManager() {
                 return true;
             })
         }));
-    }, [originalGetFilteredLists, filterCollection, filterLocation, filterTimeRange]);
+    }, [originalGetFilteredLists, filterCollection, filterLocation, filterTags, filterTimeRange]);
 
     // Enhanced clear filters function
     const handleClearFilters = useCallback(() => {

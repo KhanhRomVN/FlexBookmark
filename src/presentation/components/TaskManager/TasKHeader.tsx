@@ -1,5 +1,5 @@
 // src/presentation/components/TaskManager/TaskHeader.tsx
-// Updated with enhanced filter system including collection, location, time range, and multi-select support
+// Updated with FilterSection component and removed sort/status filters
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -9,21 +9,14 @@ import {
   Plus,
   ChevronDown,
   X,
-  Flag,
-  Tag,
-  CheckCircle,
-  ArrowUpDown,
   MoreVertical,
   Archive,
   Palette,
   LayoutGrid,
   Workflow,
   Table,
-  FolderOpen,
-  MapPin,
-  Clock,
 } from "lucide-react";
-import CustomCombobox from "../common/CustomCombobox";
+import FilterSection from "./FilterSection";
 
 export type LayoutType = "kanban" | "list" | "flowchart" | "table";
 
@@ -41,16 +34,10 @@ interface TaskHeaderProps {
   error: string | null;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  filterPriority: string;
-  setFilterPriority: (priority: string) => void;
-  filterStatus: string;
-  setFilterStatus: (status: string) => void;
-  filterTags: string;
-  setFilterTags: (tags: string) => void;
-  sortBy: string;
-  setSortBy: (sort: string) => void;
-  sortOrder: "asc" | "desc";
-  setSortOrder: (order: "asc" | "desc") => void;
+  filterPriority: string[];
+  setFilterPriority: (priority: string[]) => void;
+  filterTags: string[];
+  setFilterTags: (tags: string[]) => void;
   layoutType: LayoutType;
   setLayoutType: (layout: LayoutType) => void;
   setShowArchiveDrawer: (show: boolean) => void;
@@ -59,25 +46,16 @@ interface TaskHeaderProps {
   onOpenTheme: () => void;
   onClearFilters: () => void;
   // Add new filter props
-  lists?: any[]; // To extract collections, locations, and tags from tasks
+  lists?: any[];
   filterCollection?: string[];
   setFilterCollection?: (collections: string[]) => void;
   filterLocation?: string;
   setFilterLocation?: (location: string) => void;
-  filterTimeRange?: {
-    startDate?: Date;
-    endDate?: Date;
-  };
-  setFilterTimeRange?: (range: { startDate?: Date; endDate?: Date }) => void;
+  filterStartTime?: Date | null;
+  setFilterStartTime?: (time: Date | null) => void;
+  filterEndTime?: Date | null;
+  setFilterEndTime?: (time: Date | null) => void;
 }
-
-const folders = [
-  { id: "backlog", title: "Backlog", emoji: "📥" },
-  { id: "todo", title: "To Do", emoji: "📋" },
-  { id: "in-progress", title: "In Progress", emoji: "🚧" },
-  { id: "overdue", title: "Overdue", emoji: "⏰" },
-  { id: "done", title: "Done", emoji: "✅" },
-];
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
   authState,
@@ -88,14 +66,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   setSearchTerm,
   filterPriority,
   setFilterPriority,
-  filterStatus,
-  setFilterStatus,
   filterTags,
   setFilterTags,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
   layoutType,
   setLayoutType,
   setShowArchiveDrawer,
@@ -109,8 +81,10 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   setFilterCollection,
   filterLocation = "",
   setFilterLocation,
-  filterTimeRange = {},
-  setFilterTimeRange,
+  filterStartTime,
+  setFilterStartTime,
+  filterEndTime,
+  setFilterEndTime,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -130,58 +104,17 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
     };
   }, []);
 
-  // Extract unique options from tasks
-  const extractOptionsFromTasks = () => {
-    const allTasks = lists.flatMap((list) => list.tasks || []);
-
-    // Extract unique priorities
-    const priorities = Array.from(
-      new Set(allTasks.map((task) => task.priority).filter(Boolean))
-    ).map((priority) => ({
-      value: priority,
-      label: priority.charAt(0).toUpperCase() + priority.slice(1),
-    }));
-
-    // Extract unique collections
-    const collections = Array.from(
-      new Set(allTasks.map((task) => task.collection).filter(Boolean))
-    ).map((collection) => ({
-      value: collection,
-      label: collection,
-    }));
-
-    // Extract unique location names
-    const locations = Array.from(
-      new Set(allTasks.map((task) => task.locationName).filter(Boolean))
-    ).map((location) => ({
-      value: location,
-      label: location,
-    }));
-
-    // Extract unique tags
-    const tags = Array.from(
-      new Set(allTasks.flatMap((task) => task.tags || []).filter(Boolean))
-    ).map((tag) => ({
-      value: tag,
-      label: tag,
-    }));
-
-    return { priorities, collections, locations, tags };
-  };
-
-  const { priorities, collections, locations, tags } =
-    extractOptionsFromTasks();
-
   // Check if any advanced filters are active
   const hasActiveFilters =
     searchTerm !== "" ||
-    filterPriority !== "all" ||
-    filterStatus !== "all" ||
-    filterTags !== "" ||
-    sortBy !== "created-desc" ||
-    (filterCollection && filterCollection.length > 0) ||
+    (Array.isArray(filterPriority) && filterPriority.length > 0) ||
+    (Array.isArray(filterTags) && filterTags.length > 0) ||
+    (filterCollection &&
+      Array.isArray(filterCollection) &&
+      filterCollection.length > 0) ||
     filterLocation !== "" ||
-    (filterTimeRange && (filterTimeRange.startDate || filterTimeRange.endDate));
+    filterStartTime !== null ||
+    filterEndTime !== null;
 
   // Calculate header height to match sidebar header (72px)
   const baseHeaderHeight = "72px";
@@ -372,229 +305,26 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
         </div>
       )}
 
-      {/* Enhanced Advanced Filters Panel */}
-      {showAdvancedFilters && (
-        <div className="px-4 pb-4">
-          <div className="p-4 bg-gradient-to-br from-gray-50/80 to-white/80 dark:from-gray-800/50 dark:to-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-sm animate-in slide-in-from-top duration-200">
-            {/* First Row - Priority, Status, Collection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              {/* Priority Filter - Multi-select */}
-              <CustomCombobox
-                label="Priority"
-                value={filterPriority === "all" ? [] : [filterPriority]}
-                options={[
-                  { value: "low", label: "🌱 Low" },
-                  { value: "medium", label: "📋 Medium" },
-                  { value: "high", label: "⚡ High" },
-                  { value: "urgent", label: "🔥 Urgent" },
-                  ...priorities,
-                ]}
-                onChange={(value) => {
-                  if (Array.isArray(value)) {
-                    setFilterPriority(value.length > 0 ? value[0] : "all");
-                  } else {
-                    setFilterPriority(value || "all");
-                  }
-                }}
-                placeholder="Select priorities..."
-                multiple={true}
-                className="text-xs"
-              />
-
-              {/* Status Filter */}
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                  <CheckCircle className="w-3 h-3" />
-                  Status
-                </label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="all">All Statuses</option>
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.emoji} {f.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Collection Filter - Multi-select */}
-              {setFilterCollection && (
-                <CustomCombobox
-                  label="Collection"
-                  value={filterCollection}
-                  options={collections}
-                  onChange={(value) => {
-                    if (Array.isArray(value)) {
-                      setFilterCollection(value);
-                    } else {
-                      setFilterCollection(value ? [value] : []);
-                    }
-                  }}
-                  placeholder="Select collections..."
-                  multiple={true}
-                  creatable={true}
-                  className="text-xs"
-                />
-              )}
-            </div>
-
-            {/* Second Row - Location, Time Range, Tags */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Location Filter - Searchable */}
-              {setFilterLocation && (
-                <CustomCombobox
-                  label="Location"
-                  value={filterLocation}
-                  options={locations}
-                  onChange={(value) => {
-                    setFilterLocation(
-                      Array.isArray(value) ? value[0] || "" : value
-                    );
-                  }}
-                  placeholder="Search locations..."
-                  searchable={true}
-                  className="text-xs"
-                />
-              )}
-
-              {/* Time Range Filter */}
-              {setFilterTimeRange && (
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    <Clock className="w-3 h-3" />
-                    Time Range
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={
-                        filterTimeRange.startDate
-                          ? filterTimeRange.startDate
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const startDate = e.target.value
-                          ? new Date(e.target.value)
-                          : undefined;
-                        setFilterTimeRange({
-                          ...filterTimeRange,
-                          startDate,
-                        });
-                      }}
-                      className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
-                      placeholder="Start date"
-                    />
-                    <input
-                      type="date"
-                      value={
-                        filterTimeRange.endDate
-                          ? filterTimeRange.endDate.toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const endDate = e.target.value
-                          ? new Date(e.target.value)
-                          : undefined;
-                        setFilterTimeRange({
-                          ...filterTimeRange,
-                          endDate,
-                        });
-                      }}
-                      className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-md px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
-                      placeholder="End date"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tags Filter - Multi-select with creation */}
-              <CustomCombobox
-                label="Tags"
-                value={filterTags ? filterTags.split(",").filter(Boolean) : []}
-                options={tags}
-                onChange={(value) => {
-                  if (Array.isArray(value)) {
-                    setFilterTags(value.join(","));
-                  } else {
-                    setFilterTags(value);
-                  }
-                }}
-                placeholder="Select tags..."
-                multiple={true}
-                creatable={true}
-                className="text-xs"
-              />
-            </div>
-
-            {/* Third Row - Sort Options */}
-            <div className="mt-4 pt-4 border-t border-gray-200/60 dark:border-gray-700/60">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    <ArrowUpDown className="w-3 h-3" />
-                    Sort By
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="created-desc">Created (Newest)</option>
-                    <option value="created-asc">Created (Oldest)</option>
-                    <option value="priority-high">Priority (High-Low)</option>
-                    <option value="priority-low">Priority (Low-High)</option>
-                    <option value="due-date-asc">Due Date (Nearest)</option>
-                    <option value="due-date-desc">Due Date (Farthest)</option>
-                    <option value="title-asc">Title (A-Z)</option>
-                    <option value="title-desc">Title (Z-A)</option>
-                    <option value="completion">Completion</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Sort Order
-                  </label>
-                  <div className="flex gap-1">
-                    <select
-                      value={sortOrder}
-                      onChange={(e) =>
-                        setSortOrder(e.target.value as "asc" | "desc")
-                      }
-                      className="flex-1 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg px-2.5 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="desc">Descending</option>
-                      <option value="asc">Ascending</option>
-                    </select>
-                    <button
-                      onClick={() =>
-                        setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                      }
-                      className={`px-2 py-2 rounded-lg border transition-all duration-200 ${
-                        sortOrder === "desc"
-                          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400"
-                          : "bg-gray-50/80 dark:bg-gray-800/80 border-gray-200/60 dark:border-gray-700/60 text-gray-600 dark:text-gray-400"
-                      }`}
-                    >
-                      <ArrowUpDown
-                        className={`w-3.5 h-3.5 ${
-                          sortOrder === "desc" ? "rotate-180" : ""
-                        } transition-transform`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Filter Section */}
+      <FilterSection
+        showAdvancedFilters={showAdvancedFilters}
+        searchTerm={searchTerm}
+        filterPriority={filterPriority}
+        setFilterPriority={setFilterPriority}
+        filterTags={filterTags}
+        setFilterTags={setFilterTags}
+        filterCollection={filterCollection}
+        setFilterCollection={setFilterCollection}
+        filterLocation={filterLocation}
+        setFilterLocation={setFilterLocation}
+        filterStartTime={filterStartTime}
+        setFilterStartTime={setFilterStartTime}
+        filterEndTime={filterEndTime}
+        setFilterEndTime={setFilterEndTime}
+        lists={lists}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={onClearFilters}
+      />
     </div>
   );
 };

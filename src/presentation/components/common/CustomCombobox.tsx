@@ -139,22 +139,27 @@ const ComboboxInput: FC<
 
   // Filtered options
   const filteredOpts = useMemo(() => {
+    const safeInput = String(input || "").toLowerCase();
+
     if (isMulti && Array.isArray(value)) {
       return allOptions
-        .filter((opt) => !value.includes(opt.value))
-        .filter((opt) =>
-          input
-            ? opt.label.toLowerCase().includes(input.toLowerCase()) ||
-              opt.value.toLowerCase().includes(input.toLowerCase())
-            : true
-        );
-    }
-    return input
-      ? allOptions.filter(
-          (opt) =>
-            opt.label.toLowerCase().includes(input.toLowerCase()) ||
-            opt.value.toLowerCase().includes(input.toLowerCase())
+        .filter(
+          (opt) => !value.some((v) => String(v) === String(opt.value || ""))
         )
+        .filter((opt) => {
+          if (!input) return true;
+          const safeLabel = String(opt.label || "").toLowerCase();
+          const safeValue = String(opt.value || "").toLowerCase();
+          return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
+        });
+    }
+
+    return input
+      ? allOptions.filter((opt) => {
+          const safeLabel = String(opt.label || "").toLowerCase();
+          const safeValue = String(opt.value || "").toLowerCase();
+          return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
+        })
       : allOptions;
   }, [allOptions, input, value, isMulti]);
 
