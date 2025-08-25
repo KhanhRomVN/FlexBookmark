@@ -30,6 +30,9 @@ interface GanttChartLayoutProps {
   ) => void;
 }
 
+const HEADER_HEIGHT = 80; // Increased for two-row header
+const ROW_HEIGHT = 60;
+
 const GanttChartLayout: React.FC<GanttChartLayoutProps> = ({
   filteredLists,
   onTaskClick,
@@ -82,6 +85,21 @@ const GanttChartLayout: React.FC<GanttChartLayoutProps> = ({
         return aStart.getTime() - bStart.getTime();
       });
   }, [filteredLists]);
+
+  // Group tasks by collection for consistent row calculation
+  const groupedTasks = useMemo(() => {
+    const groups: Record<string, Task[]> = {};
+
+    allTasks.forEach((task) => {
+      const collection = task.collection || "No Collection";
+      if (!groups[collection]) {
+        groups[collection] = [];
+      }
+      groups[collection].push(task);
+    });
+
+    return groups;
+  }, [allTasks]);
 
   // Handle timeline container width
   useEffect(() => {
@@ -136,19 +154,25 @@ const GanttChartLayout: React.FC<GanttChartLayoutProps> = ({
       {/* Task List Panel */}
       <TaskListPanel
         allTasks={allTasks}
+        groupedTasks={groupedTasks}
         onTaskClick={onTaskClick}
         width={taskListWidth}
         onWidthChange={handleTaskListWidthChange}
         timeRange={timeRange}
         onTimeRangeChange={handleTimeRangeChange}
+        headerHeight={HEADER_HEIGHT}
+        rowHeight={ROW_HEIGHT}
       />
 
       {/* Timeline Panel */}
       <GanttTimelinePanel
         allTasks={allTasks}
+        groupedTasks={groupedTasks}
         onTaskClick={onTaskClick}
         timeRange={timeRange}
         containerWidth={timelineWidth}
+        headerHeight={HEADER_HEIGHT}
+        rowHeight={ROW_HEIGHT}
       />
     </div>
   );

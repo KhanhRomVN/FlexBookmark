@@ -7,11 +7,14 @@ import CustomDropdown, { DropdownOption } from "../../common/CustomDropdown";
 
 interface TaskListPanelProps {
   allTasks: Task[];
+  groupedTasks: Record<string, Task[]>;
   onTaskClick: (task: Task) => void;
   width: number;
   onWidthChange: (width: number) => void;
   timeRange: string;
   onTimeRangeChange: (range: string) => void;
+  headerHeight: number;
+  rowHeight: number;
 }
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -32,31 +35,19 @@ const STATUS_COLORS: Record<Status, string> = {
 
 const TaskListPanel: React.FC<TaskListPanelProps> = ({
   allTasks,
+  groupedTasks,
   onTaskClick,
   width,
   onWidthChange,
   timeRange,
   onTimeRangeChange,
+  headerHeight,
+  rowHeight,
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Group tasks by collection
-  const groupedTasks = React.useMemo(() => {
-    const groups: Record<string, Task[]> = {};
-
-    allTasks.forEach((task) => {
-      const collection = task.collection || "No Collection";
-      if (!groups[collection]) {
-        groups[collection] = [];
-      }
-      groups[collection].push(task);
-    });
-
-    return groups;
-  }, [allTasks]);
 
   // Handle resizing
   useEffect(() => {
@@ -110,11 +101,14 @@ const TaskListPanel: React.FC<TaskListPanelProps> = ({
   return (
     <div
       ref={panelRef}
-      className="flex-shrink-0 border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 relative"
+      className="flex-shrink-0 border-r border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 relative flex flex-col"
       style={{ width }}
     >
-      {/* Header */}
-      <div className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 p-3 flex items-center justify-between">
+      {/* Header - Single row to match timeline header */}
+      <div
+        className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between px-3"
+        style={{ height: headerHeight }}
+      >
         <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">
           Tasks ({allTasks.length})
         </h4>
@@ -143,12 +137,15 @@ const TaskListPanel: React.FC<TaskListPanelProps> = ({
       </div>
 
       {/* Task List */}
-      <div className="overflow-y-auto h-full">
+      <div className="flex-1 overflow-y-auto">
         {Object.entries(groupedTasks).map(([collection, tasks]) => (
           <div key={collection}>
             {/* Collection Header */}
             {collection !== "No Collection" && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-700 p-2">
+              <div
+                className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-700 flex items-center px-3"
+                style={{ height: rowHeight }}
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-blue-600 dark:text-blue-400 text-sm font-medium">
                     📁 {collection}
@@ -164,10 +161,11 @@ const TaskListPanel: React.FC<TaskListPanelProps> = ({
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="border-b border-gray-200 dark:border-gray-600 p-3 hover:bg-white dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                className="border-b border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-700 cursor-pointer transition-colors flex items-center px-3"
+                style={{ height: rowHeight }}
                 onClick={() => onTaskClick(task)}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   {/* Priority Indicator */}
                   <div
                     className="w-2 h-2 rounded-full flex-shrink-0"
