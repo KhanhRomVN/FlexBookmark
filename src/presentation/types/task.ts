@@ -30,6 +30,7 @@ export interface ActivityLog {
 }
 
 export interface Task {
+    linkedTasks: never[];
     updatedAt: string | number | Date;
     createdAt: string | number | Date;
     id: string;
