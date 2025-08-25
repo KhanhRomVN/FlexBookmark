@@ -243,27 +243,12 @@ const GanttTimelineHeader: React.FC<TimelineHeaderProps> = ({
                 </div>
               )}
 
-              {/* Bottom Circle */}
-              <div
-                className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 rounded-full border border-white dark:border-gray-800"
-                style={{
-                  backgroundColor: unit.isCurrent ? "#EF4444" : "#6B7280",
-                  zIndex: 10,
-                }}
-              />
-
-              {/* Red line extending down (will be visible through body) */}
+              {/* Bottom Circle - chỉ hiển thị khi là current */}
               {unit.isCurrent && (
                 <div
-                  className="absolute bg-red-500 pointer-events-none"
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-2 h-2 rounded-full border border-white dark:border-gray-800 bg-red-500"
                   style={{
-                    left: "50%",
-                    top: "100%",
-                    width: "2px",
-                    height: "2000px",
-                    transform: "translateX(-50%)",
-                    zIndex: 15,
-                    opacity: 0.7,
+                    zIndex: 10,
                   }}
                 />
               )}

@@ -137,10 +137,14 @@ const GanttTimelineBody: React.FC<GanttTimelineBodyProps> = ({
   }, [timelineWidth]);
 
   return (
-    <div className="flex-1 overflow-auto relative" ref={scrollContainerRef}>
+    <div
+      className="flex-1 overflow-auto relative"
+      ref={scrollContainerRef}
+      style={{ zIndex: 1 }}
+    >
       {/* Scroll Controls */}
       {(canScrollLeft || canScrollRight) && (
-        <div className="absolute top-2 right-2 z-20 flex gap-2">
+        <div className="absolute top-2 right-2 z-10 flex gap-2">
           <button
             onClick={() => handleScroll("left")}
             disabled={!canScrollLeft}
@@ -222,6 +226,7 @@ const GanttTimelineBody: React.FC<GanttTimelineBodyProps> = ({
                         top: "12px",
                         height: "36px",
                         background: getTaskGradient(task),
+                        zIndex: 2, // Thấp hơn current time line
                       }}
                       onClick={() => onTaskClick(task)}
                     >
