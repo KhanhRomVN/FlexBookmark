@@ -4,6 +4,17 @@ import React, { useMemo, useRef, useEffect, useState } from "react";
 import { Task, Priority, Status } from "../../../types/task";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+const getLineOffset = () => {
+  const viewportWidth = window.innerWidth;
+
+  // Tính theo tỉ lệ, ví dụ ở 1920px thì offset = 5
+  // offset sẽ scale theo tỉ lệ nghịch
+  const baseViewport = 1920;
+  const baseOffset = 5;
+
+  return (viewportWidth / baseViewport) * baseOffset;
+};
+
 interface GanttTimelinePanelProps {
   allTasks: Task[];
   groupedTasks: Record<string, Task[]>;
@@ -36,7 +47,7 @@ interface TimelineHeaderProps {
   timeRange: TimeRange;
   startDate: Date;
   endDate: Date;
-  containerWidth: number;
+  timelineWidth: number; // Changed from containerWidth
   headerHeight: number;
 }
 
@@ -44,7 +55,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   timeRange,
   startDate,
   endDate,
-  containerWidth,
+  timelineWidth, // Use consistent width
   headerHeight,
 }) => {
   const generateTimeUnits = () => {
@@ -72,7 +83,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           const next = new Date(current.getTime() + 60 * 60 * 1000); // Add 1 hour
           const durationMs =
             Math.min(next.getTime(), endDate.getTime()) - current.getTime();
-          const width = Math.max(60, (durationMs / totalMs) * containerWidth); // Minimum 60px per hour
+          const width = (durationMs / totalMs) * timelineWidth; // Use exact proportion
 
           // Check if this hour is the current hour
           const isCurrent = now >= current && now < next;
@@ -100,7 +111,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           const next = new Date(current.getTime() + 24 * 60 * 60 * 1000); // Add 1 day
           const durationMs =
             Math.min(next.getTime(), endDate.getTime()) - current.getTime();
-          const width = Math.max(30, (durationMs / totalMs) * containerWidth); // Minimum 30px per day
+          const width = (durationMs / totalMs) * timelineWidth; // Use exact proportion
 
           // Check if this day is today
           const isCurrent =
@@ -135,7 +146,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           );
           const actualNext = next > endDate ? endDate : next;
           const durationMs = actualNext.getTime() - current.getTime();
-          const width = Math.max(80, (durationMs / totalMs) * containerWidth); // Minimum 80px per month
+          const width = (durationMs / totalMs) * timelineWidth; // Use exact proportion
 
           // Check if this month is the current month
           const isCurrent =
@@ -217,21 +228,14 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
       (a, b) => a.date.getTime() - b.date.getTime()
     );
 
-    const totalBottomWidth = bottomUnits.reduce(
-      (sum, unit) => sum + unit.width,
-      0
-    );
-
     return {
       topUnits: topUnitsArray,
       bottomUnits,
-      totalBottomWidth: Math.max(totalBottomWidth, containerWidth),
       gridLines: gridLines,
     };
   };
 
-  const { topUnits, bottomUnits, totalBottomWidth, gridLines } =
-    generateTimeUnits();
+  const { topUnits, bottomUnits, gridLines } = generateTimeUnits();
 
   return (
     <div
@@ -243,7 +247,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         className="flex border-b border-gray-200 dark:border-gray-600"
         style={{
           height: headerHeight / 2,
-          width: totalBottomWidth,
+          width: timelineWidth,
         }}
       >
         {topUnits.map((unit, index) => (
@@ -267,7 +271,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
         className="flex relative"
         style={{
           height: headerHeight / 2,
-          width: totalBottomWidth,
+          width: timelineWidth,
         }}
       >
         {bottomUnits.map((unit, index) => (
@@ -318,7 +322,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
           <div
             key={`grid-${i}`}
             className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-500"
-            style={{ left: position - 0.5 }} // Offset by half pixel for perfect alignment
+            style={{ left: `${position}px` }}
           />
         ))}
       </div>
@@ -386,14 +390,10 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
           break;
       }
 
-      // Calculate timeline width and grid lines
-      const totalMs = end.getTime() - start.getTime();
-      const gridLines: number[] = [];
-      let current = new Date(start);
-      let accumulatedWidth = 0;
-
-      // Generate consistent width calculation
+      // Calculate timeline width based on time range
       let calculatedWidth = containerWidth;
+      const totalMs = end.getTime() - start.getTime();
+
       switch (timeRange) {
         case "day":
           calculatedWidth = Math.max(containerWidth, 60 * 24); // 60px per hour
@@ -411,17 +411,18 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
           break;
       }
 
-      // Generate grid lines that match header calculation
+      // Generate grid lines that exactly match header calculation
+      const gridLines: number[] = [];
+      let current = new Date(start);
+      let accumulatedWidth = 0;
+
       switch (timeRange) {
         case "day": {
           while (current <= end) {
             const next = new Date(current.getTime() + 60 * 60 * 1000);
             const durationMs =
               Math.min(next.getTime(), end.getTime()) - current.getTime();
-            const width = Math.max(
-              60,
-              (durationMs / totalMs) * calculatedWidth
-            );
+            const width = (durationMs / totalMs) * calculatedWidth; // Use exact proportion
 
             accumulatedWidth += width;
             if (current < end) {
@@ -436,10 +437,7 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
             const next = new Date(current.getTime() + 24 * 60 * 60 * 1000);
             const durationMs =
               Math.min(next.getTime(), end.getTime()) - current.getTime();
-            const width = Math.max(
-              30,
-              (durationMs / totalMs) * calculatedWidth
-            );
+            const width = (durationMs / totalMs) * calculatedWidth; // Use exact proportion
 
             accumulatedWidth += width;
             if (current < end) {
@@ -458,10 +456,7 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
             );
             const actualNext = next > end ? end : next;
             const durationMs = actualNext.getTime() - current.getTime();
-            const width = Math.max(
-              80,
-              (durationMs / totalMs) * calculatedWidth
-            );
+            const width = (durationMs / totalMs) * calculatedWidth; // Use exact proportion
 
             accumulatedWidth += width;
             if (current < end) {
@@ -483,19 +478,103 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
       };
     }, [allTasks, timeRange, containerWidth]);
 
-  // Calculate current time position for timeline content
+  // Calculate current time position for timeline content - match exactly with header logic
   const calculateCurrentTimePosition = () => {
     const now = new Date();
-    const totalMs = timelineEnd.getTime() - timelineStart.getTime();
 
     if (now < timelineStart || now > timelineEnd) {
       return null;
     }
 
-    const currentTimeMs = now.getTime() - timelineStart.getTime();
-    const position = (currentTimeMs / totalMs) * timelineWidth;
+    // Use the same logic as header to find which time unit we're in
+    const totalMs = timelineEnd.getTime() - timelineStart.getTime();
+    let current = new Date(timelineStart);
+    let accumulatedWidth = 0;
 
-    return Math.max(0, Math.min(position, timelineWidth));
+    switch (timeRange) {
+      case "day": {
+        while (current <= timelineEnd) {
+          const next = new Date(current.getTime() + 60 * 60 * 1000);
+          const durationMs =
+            Math.min(next.getTime(), timelineEnd.getTime()) - current.getTime();
+          const width = (durationMs / totalMs) * timelineWidth;
+
+          // Check if current time is within this hour
+          if (now >= current && now < next) {
+            const offsetMs = now.getTime() - current.getTime();
+            const offsetWidth = (offsetMs / durationMs) * width;
+            return accumulatedWidth + offsetWidth + width / 2;
+          }
+
+          accumulatedWidth += width;
+          current = next;
+        }
+        break;
+      }
+      case "month": {
+        while (current <= timelineEnd) {
+          const next = new Date(current.getTime() + 24 * 60 * 60 * 1000);
+          const durationMs =
+            Math.min(next.getTime(), timelineEnd.getTime()) - current.getTime();
+          const width = (durationMs / totalMs) * timelineWidth;
+
+          // Check if current time is within this day
+          if (
+            now.getFullYear() === current.getFullYear() &&
+            now.getMonth() === current.getMonth() &&
+            now.getDate() === current.getDate()
+          ) {
+            const dayStart = new Date(
+              current.getFullYear(),
+              current.getMonth(),
+              current.getDate()
+            );
+            const offsetMs = now.getTime() - dayStart.getTime();
+            const offsetWidth = (offsetMs / (24 * 60 * 60 * 1000)) * width;
+            return accumulatedWidth + offsetWidth;
+          }
+
+          accumulatedWidth += width;
+          current = next;
+        }
+        break;
+      }
+      case "year": {
+        while (current <= timelineEnd) {
+          const next = new Date(
+            current.getFullYear(),
+            current.getMonth() + 1,
+            1
+          );
+          const actualNext = next > timelineEnd ? timelineEnd : next;
+          const durationMs = actualNext.getTime() - current.getTime();
+          const width = (durationMs / totalMs) * timelineWidth;
+
+          // Check if current time is within this month
+          if (
+            now.getFullYear() === current.getFullYear() &&
+            now.getMonth() === current.getMonth()
+          ) {
+            const monthStart = new Date(
+              current.getFullYear(),
+              current.getMonth(),
+              1
+            );
+            const offsetMs = now.getTime() - monthStart.getTime();
+            const offsetWidth = (offsetMs / durationMs) * width;
+            return accumulatedWidth + offsetWidth;
+          }
+
+          accumulatedWidth += width;
+          current = next;
+        }
+        break;
+      }
+    }
+
+    // Fallback to simple calculation
+    const currentTimeMs = now.getTime() - timelineStart.getTime();
+    return (currentTimeMs / totalMs) * timelineWidth;
   };
 
   const currentTimePosition = calculateCurrentTimePosition();
@@ -634,7 +713,7 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
           timeRange={timeRange as TimeRange}
           startDate={timelineStart}
           endDate={timelineEnd}
-          containerWidth={timelineWidth}
+          timelineWidth={timelineWidth} // Use consistent width
           headerHeight={headerHeight}
         />
       </div>
@@ -675,7 +754,7 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
                     <div
                       key={i}
                       className="absolute top-0 bottom-0 w-px bg-blue-300 dark:bg-blue-600 opacity-40"
-                      style={{ left: position }}
+                      style={{ left: `${position}px` }}
                     />
                   ))}
                 </div>
@@ -697,7 +776,7 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
                       <div
                         key={i}
                         className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-500 opacity-30"
-                        style={{ left: position }}
+                        style={{ left: `${position}px` }}
                       />
                     ))}
 
@@ -761,16 +840,29 @@ const GanttTimelinePanel: React.FC<GanttTimelinePanelProps> = ({
           ))}
         </div>
 
-        {/* Current time indicator line extending through all rows - only show if within timeline range */}
+        {/* Debug info - remove this after fixing */}
         {currentTimePosition !== null && (
-          <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 opacity-70 pointer-events-none z-10"
-            style={{ left: currentTimePosition }}
-          >
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full" />
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full" />
+          <div className="absolute top-0 left-4 z-30 bg-black text-white text-xs p-2 rounded">
+            Position: {currentTimePosition?.toFixed(2)}px | Time:{" "}
+            {new Date().toLocaleTimeString()}
           </div>
         )}
+
+        {/* Current time indicator line extending through all rows - only show if within timeline range */}
+        {currentTimePosition !== null &&
+          currentTimePosition >= 0 &&
+          currentTimePosition <= timelineWidth && (
+            <div
+              className="absolute top-0 bottom-0 bg-red-500 opacity-70 pointer-events-none z-10"
+              style={{
+                left: `${currentTimePosition - getLineOffset()}px`,
+                width: "2px",
+              }}
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full" />
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full" />
+            </div>
+          )}
       </div>
     </div>
   );
