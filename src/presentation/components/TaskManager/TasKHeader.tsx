@@ -1,5 +1,5 @@
 // src/presentation/components/TaskManager/TaskHeader.tsx
-// Updated with FilterSection component and removed sort/status filters
+// Updated with date filter mode support
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -45,7 +45,7 @@ interface TaskHeaderProps {
   onCreateTask: () => void;
   onOpenTheme: () => void;
   onClearFilters: () => void;
-  // Add new filter props
+  // Enhanced filter props
   lists?: any[];
   filterCollection?: string[];
   setFilterCollection?: (collections: string[]) => void;
@@ -55,6 +55,10 @@ interface TaskHeaderProps {
   setFilterStartTime?: (time: Date | null) => void;
   filterEndTime?: Date | null;
   setFilterEndTime?: (time: Date | null) => void;
+  dateFilterMode?: "any" | "start" | "due" | "actual" | "created";
+  setDateFilterMode?: (
+    mode: "any" | "start" | "due" | "actual" | "created"
+  ) => void;
 }
 
 const TaskHeader: React.FC<TaskHeaderProps> = ({
@@ -75,7 +79,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   onCreateTask,
   onOpenTheme,
   onClearFilters,
-  // New filter props
+  // Enhanced filter props
   lists = [],
   filterCollection = [],
   setFilterCollection,
@@ -85,6 +89,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   setFilterStartTime,
   filterEndTime,
   setFilterEndTime,
+  dateFilterMode = "any",
+  setDateFilterMode,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -114,7 +120,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
       filterCollection.length > 0) ||
     filterLocation !== "" ||
     filterStartTime !== null ||
-    filterEndTime !== null;
+    filterEndTime !== null ||
+    dateFilterMode !== "any";
 
   // Calculate header height to match sidebar header (72px)
   const baseHeaderHeight = "72px";
@@ -293,18 +300,6 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="mx-4 mb-3 p-2.5 bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 border border-red-200/60 dark:border-red-700/60 text-red-700 dark:text-red-400 rounded-lg shadow-sm animate-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-2.5">
-            <span className="flex-1 font-medium text-sm">{error}</span>
-            <button className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 transition-colors duration-200">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Filter Section */}
       <FilterSection
         showAdvancedFilters={showAdvancedFilters}
@@ -321,6 +316,8 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
         setFilterStartTime={setFilterStartTime}
         filterEndTime={filterEndTime}
         setFilterEndTime={setFilterEndTime}
+        dateFilterMode={dateFilterMode}
+        setDateFilterMode={setDateFilterMode}
         lists={lists}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={onClearFilters}

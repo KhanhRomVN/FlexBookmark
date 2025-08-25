@@ -1,5 +1,5 @@
 // src/presentation/tab/TaskManager/useTaskManager.ts
-// Fixed version with proper tag filtering logic that prevents the toLowerCase error
+// Enhanced version with proper startDate/endDate range filtering
 
 import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -46,6 +46,65 @@ const safeStringMatch = (text: string, searchTerm: string): boolean => {
     }
 };
 
+// Helper function to extract and validate dates from a task
+const getTaskDates = (task: Task): Date[] => {
+    const dates: Date[] = [];
+
+    // Define date fields to check
+    const dateFields = [
+        'startDate', 'startTime', 'dueDate', 'dueTime',
+        'actualStartDate', 'actualStartTime', 'actualEndDate', 'actualEndTime',
+        'createdAt', 'updatedAt'
+    ];
+
+    dateFields.forEach(field => {
+        const dateValue = task[field as keyof Task];
+        if (dateValue) {
+            try {
+                const parsedDate = new Date(dateValue);
+                if (!isNaN(parsedDate.getTime())) {
+                    dates.push(parsedDate);
+                }
+            } catch (error) {
+                console.warn(`Invalid date in field ${field}:`, dateValue);
+            }
+        }
+    });
+
+    return dates;
+};
+
+// Enhanced date range filter function
+const isTaskInDateRange = (
+    task: Task,
+    filterStartTime: Date | null,
+    filterEndTime: Date | null
+): boolean => {
+    if (!filterStartTime && !filterEndTime) return true;
+
+    const taskDates = getTaskDates(task);
+
+    // If task has no valid dates, exclude it from date-filtered results
+    if (taskDates.length === 0) {
+        return false;
+    }
+
+    // Check if any task date falls within the specified range
+    return taskDates.some(taskDate => {
+        // Check start time constraint
+        if (filterStartTime && taskDate < filterStartTime) {
+            return false;
+        }
+
+        // Check end time constraint
+        if (filterEndTime && taskDate > filterEndTime) {
+            return false;
+        }
+
+        return true;
+    });
+};
+
 export function useTaskManager() {
     // Performance monitoring
     const { performanceMonitor } = usePerformance();
@@ -79,10 +138,13 @@ export function useTaskManager() {
     // Enhanced filter states
     const [filterCollection, setFilterCollection] = useState<string[]>([]);
     const [filterLocation, setFilterLocation] = useState<string>("");
-    const [filterTimeRange, setFilterTimeRange] = useState<{
-        startDate?: Date;
-        endDate?: Date;
-    }>({});
+
+    // ENHANCED: Separate start and end time filters for better UX
+    const [filterStartTime, setFilterStartTime] = useState<Date | null>(null);
+    const [filterEndTime, setFilterEndTime] = useState<Date | null>(null);
+
+    // Additional filter options for different date types
+    const [dateFilterMode, setDateFilterMode] = useState<'any' | 'start' | 'due' | 'actual' | 'created'>('any');
 
     // Task operations
     const {
@@ -138,7 +200,7 @@ export function useTaskManager() {
     const [virtualScrollOffset, setVirtualScrollOffset] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
 
-    // Enhanced loadTasks function that works with specific groups
+    // Enhanced loadTasks function
     const loadTasks = useCallback(async () => {
         if (!authState.user?.accessToken || !activeGroup) {
             console.warn('Cannot load tasks: missing auth or active group');
@@ -207,7 +269,7 @@ export function useTaskManager() {
         }
     }, [activeGroup, authState.user?.accessToken, loadTasks]);
 
-    // FIXED: Enhanced filtering function with safe tag filtering logic
+    // ENHANCED: Advanced filtering function with improved date range logic
     const getEnhancedFilteredLists = useCallback((lists: any[]) => {
         return lists.map(list => ({
             ...list,
@@ -258,20 +320,17 @@ export function useTaskManager() {
                     }
                 }
 
-                // FIXED: Apply tags filter with safe string handling
+                // Apply tags filter with safe string handling
                 if (filterTags && Array.isArray(filterTags) && filterTags.length > 0) {
                     const taskTags = task.tags || [];
 
-                    // Ensure taskTags is an array
                     if (!Array.isArray(taskTags)) {
                         console.warn('Task tags is not an array:', taskTags);
                         return false;
                     }
 
-                    // Convert all task tags to safe strings
                     const safeTaskTags = taskTags.map(tag => safeStringify(tag)).filter(tag => tag.length > 0);
 
-                    // Check if any of the filter tags match any of the task tags using safe string matching
                     const hasMatchingTag = filterTags.some(filterTag => {
                         const safeFilterTag = safeStringify(filterTag);
 
@@ -281,7 +340,6 @@ export function useTaskManager() {
                         }
 
                         return safeTaskTags.some(taskTag => {
-                            // Use safe string matching instead of fuzzy search to avoid the toLowerCase error
                             return safeStringMatch(taskTag, safeFilterTag) ||
                                 safeStringMatch(safeFilterTag, taskTag);
                         });
@@ -292,28 +350,106 @@ export function useTaskManager() {
                     }
                 }
 
-                // Apply time range filter
-                if (filterTimeRange.startDate || filterTimeRange.endDate) {
-                    const taskDate = task.startDate || task.dueDate || task.createdAt;
-                    if (!taskDate) return false;
+                // ENHANCED: Apply date/time range filter with mode-specific logic
+                if (filterStartTime || filterEndTime) {
+                    let relevantDates: Date[] = [];
 
-                    try {
-                        const taskDateTime = new Date(taskDate);
+                    // Get dates based on filter mode
+                    switch (dateFilterMode) {
+                        case 'start':
+                            // Only check start dates
+                            [task.startDate, task.startTime, task.actualStartDate, task.actualStartTime]
+                                .forEach(date => {
+                                    if (date) {
+                                        try {
+                                            const parsedDate = new Date(date);
+                                            if (!isNaN(parsedDate.getTime())) {
+                                                relevantDates.push(parsedDate);
+                                            }
+                                        } catch (e) {
+                                            console.warn('Invalid start date:', date);
+                                        }
+                                    }
+                                });
+                            break;
 
-                        if (isNaN(taskDateTime.getTime())) {
-                            console.warn('Invalid task date:', taskDate);
-                            return false;
+                        case 'due':
+                            // Only check due dates
+                            [task.dueDate, task.dueTime].forEach(date => {
+                                if (date) {
+                                    try {
+                                        const parsedDate = new Date(date);
+                                        if (!isNaN(parsedDate.getTime())) {
+                                            relevantDates.push(parsedDate);
+                                        }
+                                    } catch (e) {
+                                        console.warn('Invalid due date:', date);
+                                    }
+                                }
+                            });
+                            break;
+
+                        case 'actual':
+                            // Only check actual completion dates
+                            [task.actualStartDate, task.actualStartTime, task.actualEndDate, task.actualEndTime]
+                                .forEach(date => {
+                                    if (date) {
+                                        try {
+                                            const parsedDate = new Date(date);
+                                            if (!isNaN(parsedDate.getTime())) {
+                                                relevantDates.push(parsedDate);
+                                            }
+                                        } catch (e) {
+                                            console.warn('Invalid actual date:', date);
+                                        }
+                                    }
+                                });
+                            break;
+
+                        case 'created':
+                            // Only check creation/update dates
+                            [task.createdAt, task.updatedAt].forEach(date => {
+                                if (date) {
+                                    try {
+                                        const parsedDate = new Date(date);
+                                        if (!isNaN(parsedDate.getTime())) {
+                                            relevantDates.push(parsedDate);
+                                        }
+                                    } catch (e) {
+                                        console.warn('Invalid created date:', date);
+                                    }
+                                }
+                            });
+                            break;
+
+                        case 'any':
+                        default:
+                            // Check all available dates
+                            relevantDates = getTaskDates(task);
+                            break;
+                    }
+
+                    // If no relevant dates found, exclude the task
+                    if (relevantDates.length === 0) {
+                        return false;
+                    }
+
+                    // Check if any relevant date falls within the range
+                    const isInRange = relevantDates.some(taskDate => {
+                        let withinRange = true;
+
+                        if (filterStartTime) {
+                            withinRange = withinRange && taskDate >= filterStartTime;
                         }
 
-                        if (filterTimeRange.startDate && taskDateTime < filterTimeRange.startDate) {
-                            return false;
+                        if (filterEndTime) {
+                            withinRange = withinRange && taskDate <= filterEndTime;
                         }
 
-                        if (filterTimeRange.endDate && taskDateTime > filterTimeRange.endDate) {
-                            return false;
-                        }
-                    } catch (error) {
-                        console.warn('Error parsing task date:', taskDate, error);
+                        return withinRange;
+                    });
+
+                    if (!isInRange) {
                         return false;
                     }
                 }
@@ -321,17 +457,23 @@ export function useTaskManager() {
                 return true;
             })
         }));
-    }, [originalGetFilteredLists, filterCollection, filterLocation, filterTags, filterTimeRange]);
+    }, [
+        searchTerm, filterPriority, filterStatus, filterTags,
+        filterCollection, filterLocation, filterStartTime, filterEndTime,
+        dateFilterMode
+    ]);
 
     // Enhanced clear filters function
     const handleClearFilters = useCallback(() => {
         originalHandleClearFilters();
         setFilterCollection([]);
         setFilterLocation("");
-        setFilterTimeRange({});
+        setFilterStartTime(null);
+        setFilterEndTime(null);
+        setDateFilterMode('any');
     }, [originalHandleClearFilters]);
 
-    // Enhanced drag and drop
+    // Enhanced drag and drop handler
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         const endTimer = performanceMonitor.startTimer('dragEnd');
         const { active, over } = event;
@@ -570,8 +712,12 @@ export function useTaskManager() {
         setFilterCollection,
         filterLocation,
         setFilterLocation,
-        filterTimeRange,
-        setFilterTimeRange,
+        filterStartTime,
+        setFilterStartTime,
+        filterEndTime,
+        setFilterEndTime,
+        dateFilterMode,
+        setDateFilterMode,
 
         // Quick add state
         quickAddStatus,
@@ -624,7 +770,7 @@ export function useTaskManager() {
 
         // Utilities
         handleClearFilters,
-        loadTasks, // Export the enhanced loadTasks function
+        loadTasks,
 
         // Statistics
         ...statistics,
