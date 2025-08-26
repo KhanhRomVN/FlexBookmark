@@ -140,6 +140,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     if (hour === 0) hour = 24;
 
     // Position relative to 1 AM start (hour 1 = position 0)
+    // Adjusted for header height (40px)
     return hour - 1 + minute / 60;
   }, [currentTime, date]);
 
@@ -250,22 +251,26 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         {currentTimePosition !== null && (
           <div
             className="absolute left-20 right-0 h-0.5 bg-red-500 z-10 pointer-events-none"
-            style={{ top: `${32 + currentTimePosition * 64}px` }}
+            style={{ top: `${40 + currentTimePosition * 64}px` }}
           >
             <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-red-500 rounded-full"></div>
           </div>
         )}
 
         <div className="flex">
-          {/* Time column - starting from 1 AM */}
+          {/* Time column - starting from 1 AM, aligned with day headers */}
           <div className="w-20 shrink-0 bg-gray-50 dark:bg-gray-900">
+            {/* Empty header space to align with day headers */}
+            <div className="h-10 border-b border-gray-200 dark:border-gray-700"></div>
+
+            {/* Time slots */}
             {Array.from({ length: 24 }).map((_, index) => {
               const hour = index + 1; // 1 to 24
               const displayHour = hour === 24 ? 0 : hour; // Display 24 as 0 (midnight)
               return (
                 <div
                   key={hour}
-                  className="h-16 flex items-start justify-end pr-2 pt-1 text-xs text-gray-500 dark:text-gray-400"
+                  className="h-16 flex items-start justify-end pr-2 pt-1 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700"
                 >
                   {format(new Date().setHours(displayHour, 0), "h a")}
                 </div>
@@ -285,7 +290,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   isToday(day) ? "bg-blue-50/30 dark:bg-blue-900/10" : ""
                 }`}
               >
-                <div className="text-center py-2 text-xs font-medium border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div className="h-10 text-center py-2 text-xs font-medium border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                   {format(day, "EEE d")}
                 </div>
 
@@ -296,7 +301,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   return (
                     <div
                       key={`${dayKey}-${hour}`}
-                      className="h-16 relative px-1 border-r border-gray-100 dark:border-gray-700"
+                      className="h-16 relative px-1 border-b border-gray-100 dark:border-gray-700"
                     >
                       {events.map((event, eventIndex) => {
                         const isExpanded = expandedItems.has(event.id);
