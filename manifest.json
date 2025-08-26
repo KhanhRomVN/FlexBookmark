@@ -21,19 +21,19 @@
       "email",
       "profile",
       "https://www.googleapis.com/auth/tasks",
-      "https://www.googleapis.com/auth/tasks.readonly",
-      "https://www.googleapis.com/auth/calendar.readonly"
+      "https://www.googleapis.com/auth/calendar"
     ]
   },
   "host_permissions": [
-    "https://www.googleapis.com/*",
-    "https://api.open-meteo.com/*",
-    "https://tasks.googleapis.com/*",
-    "https://oauth2.googleapis.com/*",
-    "https://nominatim.openstreetmap.org/*",
-    "https://*.tile.openstreetmap.org/*",
-    "https://server.arcgisonline.com/*"
-  ],
+  "https://www.googleapis.com/*", 
+  "https://www.googleapis.com/calendar/v3/*",
+  "https://api.open-meteo.com/*",
+  "https://tasks.googleapis.com/*",
+  "https://oauth2.googleapis.com/*",
+  "https://nominatim.openstreetmap.org/*",
+  "https://*.tile.openstreetmap.org/*",
+  "https://server.arcgisonline.com/*"
+],
   "background": {
     "service_worker": "service-worker.js"
   },

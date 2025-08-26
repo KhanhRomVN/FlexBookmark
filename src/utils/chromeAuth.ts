@@ -61,6 +61,82 @@ class ChromeAuthManager {
         return this.authState;
     }
 
+    // NEW: Force re-authentication with full scopes
+    async forceReauth(): Promise<User> {
+        this.updateState({ loading: true, error: null });
+
+        try {
+            // Clear all cached tokens first
+            await new Promise<void>((resolve) => {
+                chrome.identity.clearAllCachedAuthTokens(() => resolve());
+            });
+
+            // Clear cached user data
+            await this.clearCachedUser();
+
+            // Reset auth state
+            this.updateState({
+                isAuthenticated: false,
+                user: null,
+                loading: true,
+                error: null
+            });
+
+            // Force interactive login to get new token with full scopes
+            const user = await this.login();
+            return user;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Re-authentication failed';
+            this.updateState({
+                isAuthenticated: false,
+                user: null,
+                loading: false,
+                error: errorMessage
+            });
+            throw error;
+        }
+    }
+
+    // NEW: Check if current token has calendar write permissions
+    async hasCalendarWritePermission(): Promise<boolean> {
+        const token = this.getCurrentToken();
+        if (!token) return false;
+
+        try {
+            // Test calendar write permission by making a minimal API call
+            const response = await fetch(
+                'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) return false;
+
+            // Check token info for scopes
+            const tokenInfoResponse = await fetch(
+                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+            );
+
+            if (tokenInfoResponse.ok) {
+                const tokenInfo = await tokenInfoResponse.json();
+                const scopes = tokenInfo.scope || '';
+
+                // Check if we have calendar write scope
+                return scopes.includes('https://www.googleapis.com/auth/calendar') ||
+                    scopes.includes('https://www.googleapis.com/auth/calendar.events');
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Error checking calendar permissions:', error);
+            return false;
+        }
+    }
+
     // Initialize - check for existing token
     async initialize(): Promise<void> {
         this.updateState({ loading: true, error: null });
@@ -77,6 +153,13 @@ class ChromeAuthManager {
                         user: cachedUser,
                         loading: false
                     });
+
+                    // Check if we have calendar write permissions
+                    const hasWritePermission = await this.hasCalendarWritePermission();
+                    if (!hasWritePermission) {
+                        console.warn('Current token lacks calendar write permissions. Re-authentication may be needed.');
+                    }
+
                     return;
                 } else {
                     // Token expired, clear cache

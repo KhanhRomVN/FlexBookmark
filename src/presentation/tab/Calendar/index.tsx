@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import CalendarPanel from "../../components/Calendar/CalendarPanel";
 import TimeLinePanel from "../../components/Calendar/TimeLinePanel";
+import EventDialog from "../../components/Calendar/EventDialog";
 import { useCalendarData } from "./useCalendarData";
+import type { CalendarEvent } from "../../types/calendar";
 
 const Calendar: React.FC = () => {
   const {
@@ -12,13 +14,66 @@ const Calendar: React.FC = () => {
     error,
     filteredEvents,
     calendars,
+    needsReauth,
     handleLogin,
     handleLogout,
     handleDateChange,
     handleSelectItem,
     handleRefresh,
     handleToggleCalendar,
+    handleSaveEvent,
+    handleForceReauth,
   } = useCalendarData();
+
+  // State cho EventDialog
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null
+  );
+  const [isCreateMode, setIsCreateMode] = useState(false);
+  const [createEventDate, setCreateEventDate] = useState<Date | null>(null);
+  const [createEventHour, setCreateEventHour] = useState<number | null>(null);
+
+  // Xử lý khi click vào event có sẵn
+  const handleSelectEventWithDialog = (event: CalendarEvent) => {
+    handleSelectItem(event); // Call original handler
+    setSelectedEvent(event);
+    setIsCreateMode(false);
+    setCreateEventDate(null);
+    setCreateEventHour(null);
+    setIsEventDialogOpen(true);
+  };
+
+  // Xử lý khi click vào khoảng trống để tạo event mới
+  const handleCreateEvent = (selectedDate: Date, hour: number) => {
+    if (needsReauth) {
+      // Show re-auth prompt instead of opening event dialog
+      return;
+    }
+
+    setSelectedEvent(null);
+    setIsCreateMode(true);
+    setCreateEventDate(selectedDate);
+    setCreateEventHour(hour);
+    setIsEventDialogOpen(true);
+  };
+
+  // Đóng dialog
+  const handleCloseDialog = () => {
+    setIsEventDialogOpen(false);
+    setSelectedEvent(null);
+    setIsCreateMode(false);
+    setCreateEventDate(null);
+    setCreateEventHour(null);
+  };
+
+  // Lưu event (cả edit và create)
+  const handleSaveEventWithDialog = (event: CalendarEvent) => {
+    if (handleSaveEvent) {
+      handleSaveEvent(event);
+    }
+    handleCloseDialog();
+  };
 
   if (authState.loading) {
     return (
@@ -172,6 +227,34 @@ const Calendar: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* Re-authentication notice */}
+            {needsReauth && (
+              <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                <svg
+                  className="w-4 h-4 text-amber-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                  Cần cấp quyền để tạo sự kiện
+                </span>
+                <button
+                  onClick={handleForceReauth}
+                  disabled={loading}
+                  className="ml-2 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs rounded-md font-medium transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Đang xử lý..." : "Cấp quyền"}
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handleRefresh}
               disabled={loading}
@@ -221,6 +304,7 @@ const Calendar: React.FC = () => {
           </div>
         </div>
       </div>
+
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden gap-1">
         <div
@@ -243,12 +327,25 @@ const Calendar: React.FC = () => {
           <TimeLinePanel
             date={selectedDate}
             events={filteredEvents}
-            onSelectItem={handleSelectItem}
+            onSelectItem={handleSelectEventWithDialog}
+            onDateChange={handleDateChange}
+            onCreateEvent={handleCreateEvent}
             loading={loading}
             error={error}
           />
         </div>
       </div>
+
+      {/* Event Dialog */}
+      <EventDialog
+        isOpen={isEventDialogOpen}
+        onClose={handleCloseDialog}
+        event={selectedEvent}
+        onSave={handleSaveEventWithDialog}
+        isCreateMode={isCreateMode}
+        initialDate={createEventDate || undefined}
+        initialHour={createEventHour || undefined}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchGoogleEvents, fetchGoogleCalendars } from "../../../utils/GGCalender";
+import { fetchGoogleEvents, fetchGoogleCalendars, createGoogleEvent, updateGoogleEvent } from "../../../utils/GGCalender";
 import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
 import type { CalendarEvent, GoogleCalendar } from "../../types/calendar";
 
@@ -17,6 +17,7 @@ export const useCalendarData = () => {
     const [selectedItem, setSelectedItem] = useState<CalendarEvent | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [needsReauth, setNeedsReauth] = useState<boolean>(false);
 
     useEffect(() => {
         const unsubscribe = authManager.subscribe((newState) => {
@@ -52,6 +53,101 @@ export const useCalendarData = () => {
         }
     }, [authState.isAuthenticated, fetchData]);
 
+    // NEW: Check calendar write permissions on auth
+    useEffect(() => {
+        if (authState.isAuthenticated && authState.user) {
+            const checkPermissions = async () => {
+                const hasWritePermission = await authManager.hasCalendarWritePermission();
+                setNeedsReauth(!hasWritePermission);
+
+                if (!hasWritePermission) {
+                    setError("Cần cấp quyền để tạo/chỉnh sửa sự kiện. Vui lòng đăng nhập lại.");
+                }
+            };
+
+            checkPermissions();
+        }
+    }, [authState.isAuthenticated, authState.user, authManager]);
+
+    // NEW: Handle re-authentication for calendar write permissions
+    const handleForceReauth = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            await authManager.forceReauth();
+            setNeedsReauth(false);
+            // Refresh data after re-auth
+            setTimeout(() => {
+                fetchData();
+            }, 500);
+        } catch (error) {
+            console.error("Re-authentication error:", error);
+            setError("Không thể cấp quyền. Vui lòng thử lại.");
+        } finally {
+            setLoading(false);
+        }
+    }, [authManager, fetchData]);
+
+    const handleSaveEvent = useCallback(async (event: CalendarEvent) => {
+        if (!authState.isAuthenticated || !authState.user?.accessToken) {
+            setError("Không thể lưu: Chưa đăng nhập");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            let savedEvent: CalendarEvent;
+
+            // Check if this is a new event (temp ID or no existing event with this ID)
+            const isNewEvent = event.id.startsWith('temp-') || !events.find(e => e.id === event.id);
+
+            if (isNewEvent) {
+                // Create new event
+                console.log('Creating new event:', event);
+                savedEvent = await createGoogleEvent(authState.user.accessToken, event);
+
+                // Add to local state
+                setEvents(prev => [...prev, savedEvent]);
+            } else {
+                // Update existing event
+                console.log('Updating existing event:', event);
+                savedEvent = await updateGoogleEvent(authState.user.accessToken, event);
+
+                // Update local state
+                setEvents(prev => prev.map(e => e.id === event.id ? savedEvent : e));
+            }
+
+            console.log('Event saved successfully:', savedEvent);
+
+            // Refresh data to ensure sync
+            setTimeout(() => {
+                fetchData();
+            }, 500);
+
+        } catch (err) {
+            console.error("Save event error:", err);
+
+            if (err instanceof Error) {
+                if (err.message === 'UNAUTHORIZED') {
+                    setError("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+                    handleLogout();
+                } else if (err.message.includes('403') || err.message.includes('insufficient authentication scopes') || err.message.includes('insufficientPermissions')) {
+                    // Handle permission error specifically
+                    setError("Không có quyền tạo/chỉnh sửa sự kiện. Cần cấp quyền bổ sung.");
+                    setNeedsReauth(true);
+                } else {
+                    setError(`Lỗi lưu sự kiện: ${err.message}`);
+                }
+            } else {
+                setError("Lỗi không xác định khi lưu sự kiện");
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [authState.isAuthenticated, authState.user?.accessToken, events]);
+
     const handleLogin = useCallback(async () => {
         try {
             await authManager.login();
@@ -68,6 +164,7 @@ export const useCalendarData = () => {
             setCalendars([]);
             setSelectedItem(null);
             setError(null);
+            setNeedsReauth(false);
         } catch (err) {
             console.error("Logout error:", err);
         }
@@ -129,6 +226,7 @@ export const useCalendarData = () => {
         loading,
         error,
         filteredEvents,
+        needsReauth, // NEW: Export this flag
         handleLogin,
         handleLogout,
         handleDateChange,
@@ -136,5 +234,7 @@ export const useCalendarData = () => {
         handleCloseModal,
         handleRefresh,
         handleToggleCalendar,
+        handleSaveEvent,
+        handleForceReauth, // NEW: Export this function
     };
 };

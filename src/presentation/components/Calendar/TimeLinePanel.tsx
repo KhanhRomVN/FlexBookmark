@@ -21,6 +21,7 @@ interface TimeLinePanelProps {
   events: CalendarEvent[];
   onSelectItem: (item: CalendarEvent) => void;
   onDateChange: (date: Date) => void;
+  onCreateEvent?: (date: Date, hour: number) => void; // Thêm prop này
   loading: boolean;
   error: string | null;
 }
@@ -30,6 +31,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   events,
   onSelectItem,
   onDateChange,
+  onCreateEvent, // Thêm prop này
   loading,
   error,
 }) => {
@@ -121,6 +123,22 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       }
       return newSet;
     });
+  };
+
+  // Handle click on time slot to create new event
+  const handleTimeSlotClick = (
+    day: Date,
+    hour: number,
+    event: React.MouseEvent
+  ) => {
+    // Ngăn chặn event bubbling từ EventCard
+    if ((event.target as HTMLElement).closest("[data-event-card]")) {
+      return;
+    }
+
+    if (onCreateEvent) {
+      onCreateEvent(day, hour);
+    }
   };
 
   // Calculate current time position - adjusted for 1 AM start
@@ -335,16 +353,24 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   {format(day, "EEE d")}
                 </div>
 
-                {/* Time slots background */}
-                {Array.from({ length: 24 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-16 border-b border-gray-100 dark:border-gray-700"
-                  />
-                ))}
+                {/* Time slots background - Clickable */}
+                {Array.from({ length: 24 }).map((_, index) => {
+                  const hour = index + 1; // 1 to 24
+                  return (
+                    <div
+                      key={index}
+                      className="h-16 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                      onClick={(e) => handleTimeSlotClick(day, hour, e)}
+                      title={`Tạo sự kiện mới lúc ${format(
+                        new Date().setHours(hour === 24 ? 0 : hour, 0),
+                        "h:mm a"
+                      )}`}
+                    />
+                  );
+                })}
 
                 {/* Events overlay */}
-                <div className="absolute top-10 left-0 right-0 bottom-0">
+                <div className="absolute top-10 left-0 right-0 bottom-0 pointer-events-none">
                   {dayEvents.map((event, eventIndex) => {
                     const dimensions = calculateEventDimensions(event);
                     if (!dimensions) return null;
@@ -358,17 +384,22 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                       totalEvents === 1 ? 2.5 : (eventIndex * 95) / totalEvents; // Center single event
 
                     return (
-                      <EventCard
+                      <div
                         key={event.id}
-                        event={event}
-                        dimensions={dimensions}
-                        widthPercent={widthPercent}
-                        left={left}
-                        zIndex={5 + eventIndex}
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleItem(event.id)}
-                        onSelectItem={onSelectItem}
-                      />
+                        data-event-card
+                        className="pointer-events-auto"
+                      >
+                        <EventCard
+                          event={event}
+                          dimensions={dimensions}
+                          widthPercent={widthPercent}
+                          left={left}
+                          zIndex={5 + eventIndex}
+                          isExpanded={isExpanded}
+                          onToggle={() => toggleItem(event.id)}
+                          onSelectItem={onSelectItem}
+                        />
+                      </div>
                     );
                   })}
                 </div>
@@ -379,7 +410,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 
         {/* Empty state */}
         {!hasEvents && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-gray-500 dark:text-gray-400 p-4">
               <svg
                 className="w-16 h-16 mx-auto mb-4 opacity-50"
