@@ -10,8 +10,11 @@ import {
   eachDayOfInterval,
   addWeeks,
   subWeeks,
+  differenceInMinutes,
+  isSameDay,
 } from "date-fns";
 import type { CalendarEvent } from "../../types/calendar";
+import EventCard from "./EventCard";
 
 interface TimeLinePanelProps {
   date: Date;
@@ -79,17 +82,14 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     }
   };
 
-  // Group events by date and hour - starting from 1 AM
-  const eventsByDateAndHour = useMemo(() => {
-    const dateMap: Record<string, Record<number, CalendarEvent[]>> = {};
+  // Group events by date - now we'll handle positioning differently
+  const eventsByDate = useMemo(() => {
+    const dateMap: Record<string, CalendarEvent[]> = {};
 
-    // Initialize structure - hours 1-24 (1 AM to 12 AM next day)
+    // Initialize structure
     weekDays.forEach((day) => {
       const dayKey = format(day, "yyyy-MM-dd");
-      dateMap[dayKey] = {};
-      for (let hour = 1; hour <= 24; hour++) {
-        dateMap[dayKey][hour] = [];
-      }
+      dateMap[dayKey] = [];
     });
 
     // Process events - filter out events with invalid start dates
@@ -98,12 +98,9 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       .forEach((event) => {
         const startDate = safeParseDate(event.start)!;
         const dayKey = format(startDate, "yyyy-MM-dd");
-        let hour = getHours(startDate);
-        // Convert 0 (midnight) to 24 for our 1-24 system
-        if (hour === 0) hour = 24;
 
-        if (dateMap[dayKey] && dateMap[dayKey][hour]) {
-          dateMap[dayKey][hour].push(event);
+        if (dateMap[dayKey]) {
+          dateMap[dayKey].push(event);
         }
       });
 
@@ -111,10 +108,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   }, [events, weekDays]);
 
   const hasEvents = useMemo(() => {
-    return Object.values(eventsByDateAndHour).some((day) =>
-      Object.values(day).some((events) => events.length > 0)
-    );
-  }, [eventsByDateAndHour]);
+    return Object.values(eventsByDate).some((events) => events.length > 0);
+  }, [eventsByDate]);
 
   const toggleItem = (id: string) => {
     setExpandedItems((prev) => {
@@ -143,6 +138,52 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     // Adjusted for header height (40px)
     return hour - 1 + minute / 60;
   }, [currentTime, date]);
+
+  // Helper function to calculate event position and height
+  const calculateEventDimensions = (event: CalendarEvent) => {
+    const startDate = safeParseDate(event.start);
+    const endDate = safeParseDate(event.end) || startDate;
+
+    if (!startDate || !endDate) return null;
+
+    let startHour = getHours(startDate);
+    const startMinute = getMinutes(startDate);
+
+    let endHour = getHours(endDate);
+    const endMinute = getMinutes(endDate);
+
+    // Convert to our 1-24 system
+    if (startHour === 0) startHour = 24;
+    if (endHour === 0) endHour = 24;
+
+    // Calculate position (64px per hour, starting from hour 1)
+    const topPosition = (startHour - 1) * 64 + (startMinute / 60) * 64;
+
+    // Calculate height
+    let durationInMinutes;
+    if (isSameDay(startDate, endDate)) {
+      // Same day event
+      durationInMinutes = differenceInMinutes(endDate, startDate);
+    } else {
+      // Multi-day event - only show until end of day
+      const endOfStartDay = new Date(startDate);
+      endOfStartDay.setHours(23, 59, 59, 999);
+      durationInMinutes = differenceInMinutes(endOfStartDay, startDate);
+    }
+
+    // Minimum height of 30px for very short events
+    const height = Math.max(30, (durationInMinutes / 60) * 64);
+
+    return {
+      top: topPosition,
+      height,
+      startHour,
+      startMinute,
+      endHour,
+      endMinute,
+      duration: durationInMinutes,
+    };
+  };
 
   if (loading) {
     return (
@@ -281,106 +322,56 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
           {/* Days columns */}
           {weekDays.map((day) => {
             const dayKey = format(day, "yyyy-MM-dd");
-            const dayEvents = eventsByDateAndHour[dayKey] || {};
+            const dayEvents = eventsByDate[dayKey] || [];
 
             return (
               <div
                 key={dayKey}
                 className={`w-[calc((100%-5rem)/7)] border-l border-gray-200 dark:border-gray-700 ${
                   isToday(day) ? "bg-blue-50/30 dark:bg-blue-900/10" : ""
-                }`}
+                } relative`}
               >
                 <div className="h-10 text-center py-2 text-xs font-medium border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                   {format(day, "EEE d")}
                 </div>
 
-                {Array.from({ length: 24 }).map((_, index) => {
-                  const hour = index + 1; // 1 to 24
-                  const events = dayEvents[hour] || [];
+                {/* Time slots background */}
+                {Array.from({ length: 24 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-16 border-b border-gray-100 dark:border-gray-700"
+                  />
+                ))}
 
-                  return (
-                    <div
-                      key={`${dayKey}-${hour}`}
-                      className="h-16 relative px-1 border-b border-gray-100 dark:border-gray-700"
-                    >
-                      {events.map((event, eventIndex) => {
-                        const isExpanded = expandedItems.has(event.id);
-                        const eventDate = safeParseDate(event.start);
-                        const minutes = eventDate ? getMinutes(eventDate) : 0;
-                        const top = (minutes / 60) * 64;
-                        const totalEvents = events.length;
-                        const widthPercent = 100 / totalEvents;
-                        const left = eventIndex * widthPercent;
+                {/* Events overlay */}
+                <div className="absolute top-10 left-0 right-0 bottom-0">
+                  {dayEvents.map((event, eventIndex) => {
+                    const dimensions = calculateEventDimensions(event);
+                    if (!dimensions) return null;
 
-                        const bgColor =
-                          "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800/40";
-                        const dotColor = "bg-blue-500";
+                    const isExpanded = expandedItems.has(event.id);
+                    const totalEvents = dayEvents.length;
+                    // If only one event, use full width (95%), otherwise distribute evenly
+                    const widthPercent =
+                      totalEvents === 1 ? 95 : Math.max(95 / totalEvents, 30);
+                    const left =
+                      totalEvents === 1 ? 2.5 : (eventIndex * 95) / totalEvents; // Center single event
 
-                        return (
-                          <div
-                            key={`${event.id}-${hour}`}
-                            className={`absolute rounded p-1.5 cursor-pointer transition-all text-xs shadow-sm border ${bgColor}`}
-                            style={{
-                              top: `${top}px`,
-                              height: "30px",
-                              width: `${widthPercent}%`,
-                              left: `${left}%`,
-                              zIndex: 5 + eventIndex,
-                            }}
-                            onClick={() => toggleItem(event.id)}
-                          >
-                            <div className="flex items-center h-full gap-1">
-                              <span
-                                className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`}
-                              ></span>
-                              <span className="truncate flex-1 font-medium">
-                                {event.title}
-                              </span>
-                              {eventDate && (
-                                <span className="text-[10px] text-gray-600 dark:text-gray-300 flex-shrink-0">
-                                  {format(eventDate, "h:mm")}
-                                </span>
-                              )}
-                            </div>
-
-                            {isExpanded && (
-                              <div
-                                className="absolute z-50 top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-60 max-w-80"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="font-medium mb-1 text-sm">
-                                  {event.title}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                  {eventDate && format(eventDate, "h:mm a")}
-                                </div>
-
-                                {event.description && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
-                                    {event.description}
-                                  </div>
-                                )}
-
-                                {event.location && (
-                                  <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">
-                                    📍 {event.location}
-                                  </div>
-                                )}
-
-                                <button
-                                  className="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-medium"
-                                  onClick={() => onSelectItem(event)}
-                                >
-                                  Xem chi tiết
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                    return (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        dimensions={dimensions}
+                        widthPercent={widthPercent}
+                        left={left}
+                        zIndex={5 + eventIndex}
+                        isExpanded={isExpanded}
+                        onToggle={() => toggleItem(event.id)}
+                        onSelectItem={onSelectItem}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
