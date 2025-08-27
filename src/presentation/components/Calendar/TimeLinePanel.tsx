@@ -21,7 +21,7 @@ interface TimeLinePanelProps {
   events: CalendarEvent[];
   onSelectItem: (item: CalendarEvent) => void;
   onDateChange: (date: Date) => void;
-  onCreateEvent?: (date: Date, hour: number) => void; // Thêm prop này
+  onCreateEvent?: (date: Date, hour: number) => void;
   loading: boolean;
   error: string | null;
 }
@@ -31,12 +31,12 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   events,
   onSelectItem,
   onDateChange,
-  onCreateEvent, // Thêm prop này
+  onCreateEvent,
   loading,
   error,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  // Remove expandedItems state since we're not using inline popups anymore
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -84,7 +84,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     }
   };
 
-  // Group events by date - now we'll handle positioning differently
+  // Group events by date
   const eventsByDate = useMemo(() => {
     const dateMap: Record<string, CalendarEvent[]> = {};
 
@@ -113,17 +113,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     return Object.values(eventsByDate).some((events) => events.length > 0);
   }, [eventsByDate]);
 
-  const toggleItem = (id: string) => {
-    setExpandedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
+  // Remove toggleItem function since we're not using it anymore
 
   // Handle click on time slot to create new event
   const handleTimeSlotClick = (
@@ -131,7 +121,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     hour: number,
     event: React.MouseEvent
   ) => {
-    // Ngăn chặn event bubbling từ EventCard
+    // Prevent event bubbling from EventCard
     if ((event.target as HTMLElement).closest("[data-event-card]")) {
       return;
     }
@@ -375,7 +365,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                     const dimensions = calculateEventDimensions(event);
                     if (!dimensions) return null;
 
-                    const isExpanded = expandedItems.has(event.id);
                     const totalEvents = dayEvents.length;
                     // If only one event, use full width (95%), otherwise distribute evenly
                     const widthPercent =
@@ -395,8 +384,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                           widthPercent={widthPercent}
                           left={left}
                           zIndex={5 + eventIndex}
-                          isExpanded={isExpanded}
-                          onToggle={() => toggleItem(event.id)}
+                          isExpanded={false} // No longer using expanded state
+                          onToggle={() => {}} // No longer needed but keeping for compatibility
                           onSelectItem={onSelectItem}
                         />
                       </div>

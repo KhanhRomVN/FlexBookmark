@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
-import { Task } from "../../../../types/task";
+import { CalendarEvent } from "../../../../types/calendar";
 
 interface CollectionSectionProps {
-  editedTask: Task;
-  handleChange: (field: keyof Task, value: any) => void;
-  availableTasks: Task[];
+  editedEvent: CalendarEvent;
+  handleChange: (field: keyof CalendarEvent, value: any) => void;
+  availableEvents: CalendarEvent[];
 }
 
 // Common emojis for collections
@@ -48,9 +48,9 @@ const EMOJI_SUGGESTIONS = [
 ];
 
 const CollectionSection: React.FC<CollectionSectionProps> = ({
-  editedTask,
+  editedEvent,
   handleChange,
-  availableTasks,
+  availableEvents,
 }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,20 +63,20 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get all existing collections from available tasks
+  // Get all existing collections from available events
   const allCollections = useMemo(() => {
     const setCols = new Set<string>();
-    availableTasks.forEach((task) => {
-      if (task.collection) {
-        setCols.add(task.collection);
+    availableEvents.forEach((event) => {
+      if (event.collection) {
+        setCols.add(event.collection);
       }
     });
-    // Add current task's collection if it exists
-    if (editedTask.collection) {
-      setCols.add(editedTask.collection);
+    // Add current event's collection if it exists
+    if (editedEvent.collection) {
+      setCols.add(editedEvent.collection);
     }
     return Array.from(setCols).sort();
-  }, [availableTasks, editedTask.collection]);
+  }, [availableEvents, editedEvent.collection]);
 
   // Filter collections based on search term
   const filteredCollections = useMemo(() => {
@@ -86,10 +86,10 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
     );
   }, [allCollections, searchTerm]);
 
-  // Check if a collection is used by other tasks
+  // Check if a collection is used by other events
   const isCollectionUsedByOthers = (collection: string): boolean => {
-    return availableTasks.some(
-      (task) => task.collection === collection && task.id !== editedTask.id
+    return availableEvents.some(
+      (event) => event.collection === collection && event.id !== editedEvent.id
     );
   };
 
@@ -158,8 +158,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   };
 
   const confirmDeleteCollection = () => {
-    // Clear collection from current task if it uses the deleted collection
-    if (editedTask.collection === collectionToDelete) {
+    // Clear collection from current event if it uses the deleted collection
+    if (editedEvent.collection === collectionToDelete) {
       handleChange("collection", "");
     }
     setShowDeleteConfirm(false);
@@ -183,10 +183,10 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
       </div>
 
       <div className="relative" ref={searchContainerRef}>
-        {editedTask.collection ? (
+        {editedEvent.collection ? (
           <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg">
             <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-              {editedTask.collection}
+              {editedEvent.collection}
             </span>
             <button
               onClick={() => setShowSearch(true)}
@@ -364,8 +364,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
                 <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
                   <p className="text-sm text-amber-700 dark:text-amber-300">
                     ⚠️ <strong>Warning:</strong> This collection is used by
-                    other tasks. Deleting it will remove the collection from all
-                    tasks.
+                    other events. Deleting it will remove the collection from
+                    all events.
                   </p>
                 </div>
               )}
@@ -373,7 +373,7 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               <div className="bg-gray-50 dark:bg-gray-900/20 p-3 rounded-lg">
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   <strong>Note:</strong> Collections are automatically removed
-                  when not used by any tasks.
+                  when not used by any events.
                 </p>
               </div>
             </div>

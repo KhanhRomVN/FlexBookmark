@@ -1,10 +1,10 @@
-// src/presentation/components/TaskManager/TaskDialog/hooks/useTags.ts - Debug version
+// src/presentation/components/EventManager/EventDialog/hooks/useTags.ts - Debug version
 import { useState } from "react";
-import { Task } from "../../../../types/task";
+import { CalendarEvent } from "../../../../types/calendar";
 
 export const useTags = (
-    editedTask: Task | null,
-    handleChange: (field: keyof Task, value: any) => void,
+    editedEvent: CalendarEvent | null,
+    handleChange: (field: keyof CalendarEvent, value: any) => void,
     addActivityLog: (action: string, details: string) => void
 ) => {
     const [newTag, setNewTag] = useState("");
@@ -14,12 +14,12 @@ export const useTags = (
         // Use passed tag or current newTag state
         const finalTag = tagToAdd || newTag;
 
-        if (!finalTag.trim() || !editedTask) {
+        if (!finalTag.trim() || !editedEvent) {
             return;
         }
 
         // Check if tag already exists (case-insensitive)
-        const existingTags = editedTask?.tags || [];
+        const existingTags = editedEvent?.tags || [];
 
         const tagExists = existingTags.some(
             (tag) => tag.toLowerCase() === finalTag.toLowerCase()
@@ -30,7 +30,7 @@ export const useTags = (
             return;
         }
 
-        // Update the task using handleChange (similar to CollectionSection)
+        // Update the event using handleChange (similar to CollectionSection)
         const newTags = [...existingTags, finalTag];
 
         // Add activity log FIRST
@@ -45,11 +45,11 @@ export const useTags = (
 
     const handleDeleteTag = (tag: string) => {
 
-        if (!editedTask) {
+        if (!editedEvent) {
             return;
         }
 
-        const newTags = editedTask.tags?.filter((t) => t !== tag) || [];
+        const newTags = editedEvent.tags?.filter((t) => t !== tag) || [];
 
         // Add activity log FIRST
         addActivityLog("tag_removed", `Removed tag: "${tag}"`);

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus, X, Smile } from "lucide-react";
-import { Task } from "../../../../types/task";
+import { CalendarEvent } from "../../../../types/calendar";
 
 interface TagsSectionProps {
-  editedTask: Task;
-  handleChange: (field: keyof Task, value: any) => void;
+  editedEvent: CalendarEvent;
+  handleChange: (field: keyof CalendarEvent, value: any) => void;
   newTag: string;
   setNewTag: React.Dispatch<React.SetStateAction<string>>;
   handleAddTag: (tagToAdd?: string) => void;
@@ -48,7 +48,7 @@ const EMOJI_SUGGESTIONS = [
 ];
 
 const TagsSection: React.FC<TagsSectionProps> = ({
-  editedTask,
+  editedEvent,
   newTag,
   setNewTag,
   handleAddTag,
@@ -123,9 +123,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       <div className="flex items-center gap-3">
         <h4 className="font-medium text-gray-800 dark:text-gray-200">Tags</h4>
         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
-        {editedTask?.tags?.length ? (
+        {editedEvent?.tags?.length ? (
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-            {editedTask.tags.length}
+            {editedEvent.tags.length}
           </span>
         ) : null}
       </div>
@@ -133,14 +133,14 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       {/* Debug Info (remove in production) */}
       {process.env.NODE_ENV === "development" && (
         <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-          Debug: Tags array: {JSON.stringify(editedTask?.tags || [])}
+          Debug: Tags array: {JSON.stringify(editedEvent?.tags || [])}
         </div>
       )}
 
       {/* Tags Display */}
-      {editedTask?.tags?.length ? (
+      {editedEvent?.tags?.length ? (
         <div className="flex flex-wrap gap-2">
-          {editedTask.tags.map((tag, index) => (
+          {editedEvent.tags.map((tag, index) => (
             <div
               key={`${tag}-${index}`}
               className="group relative flex items-center gap-1.5 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium hover:shadow-sm transition-all duration-200"

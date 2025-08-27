@@ -15,7 +15,10 @@ import {
   formatTimeZone,
   combineDateTime,
 } from "../../../../types/calendar";
-import { formatDisplayDate, formatDisplayTime } from "../utils/taskTransitions";
+import {
+  formatDisplayDate,
+  formatDisplayTime,
+} from "../utils/eventTransitions";
 
 // Validation utilities
 const isDateTimeInPast = (date: Date | null, time: Date | null): boolean => {

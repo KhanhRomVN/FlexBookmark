@@ -1,10 +1,10 @@
 import React from "react";
-import { Priority, Task } from "../../../../types/task";
+import { Priority, CalendarEvent } from "../../../../types/calendar";
 import { Flag, Star } from "lucide-react";
 
 interface PrioritySectionProps {
-  editedTask: { priority: Priority };
-  handleChange: (field: keyof Task, value: any) => void;
+  editedEvent: { priority: Priority };
+  handleChange: (field: keyof CalendarEvent, value: any) => void;
 }
 
 const priorityColors = {
@@ -22,7 +22,7 @@ const priorityIcons = {
 };
 
 const PrioritySection: React.FC<PrioritySectionProps> = ({
-  editedTask,
+  editedEvent,
   handleChange,
 }) => {
   return (
@@ -36,7 +36,7 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
             key={level}
             onClick={() => handleChange("priority", level)}
             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
-              editedTask.priority === level
+              editedEvent.priority === level
                 ? priorityColors[level]
                 : "bg-button-secondBg text-text-secondary border border-border-default"
             }`}

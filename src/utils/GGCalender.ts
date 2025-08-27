@@ -131,22 +131,93 @@ export async function fetchGoogleEvents(token: string): Promise<CalendarEvent[]>
                         const start = startStr ? safeDateParse(startStr) : new Date();
                         const end = endStr ? safeDateParse(endStr) : start;
 
+                        // Extract separate date and time components
+                        const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+                        const startTime = new Date();
+                        startTime.setHours(start.getHours(), start.getMinutes(), start.getSeconds(), 0);
+
+                        const dueDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                        const dueTime = new Date();
+                        dueTime.setHours(end.getHours(), end.getMinutes(), end.getSeconds(), 0);
+
+                        // Parse extended properties if available
+                        const extendedProps = item.extendedProperties?.shared || {};
+                        let tags: string[] = [];
+                        let subtasks: any[] = [];
+                        let attachments: any[] = [];
+
+                        try {
+                            if (extendedProps.tags) {
+                                tags = JSON.parse(extendedProps.tags);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse tags:', e);
+                        }
+
+                        try {
+                            if (extendedProps.subtasks) {
+                                subtasks = JSON.parse(extendedProps.subtasks);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse subtasks:', e);
+                        }
+
+                        try {
+                            if (extendedProps.attachments) {
+                                attachments = JSON.parse(extendedProps.attachments);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse attachments:', e);
+                        }
+
+                        // Parse reminders
+                        let reminders: number[] = [];
+                        if (item.reminders && !item.reminders.useDefault && item.reminders.overrides) {
+                            reminders = item.reminders.overrides
+                                .filter((override: any) => override.method === 'popup')
+                                .map((override: any) => override.minutes);
+                        }
+
                         return {
                             id: item.id,
                             summary: item.summary || "No title",
                             description: item.description || "",
-                            location: item.location || "",
+
+                            // New separate date/time fields
+                            startDate,
+                            startTime,
+                            dueDate,
+                            dueTime,
+
+                            // Legacy fields for backward compatibility
                             start,
                             end,
+
+                            // Location fields
+                            location: item.location || "",
+                            locationName: extendedProps.locationName || "",
+                            locationAddress: extendedProps.locationAddress || "",
+                            locationCoordinates: extendedProps.locationCoordinates || "",
+
+                            // Event properties
+                            priority: (extendedProps.priority as 'low' | 'medium' | 'high') || 'medium',
+                            tags,
+                            subtasks,
+                            attachments,
+                            completed: false,
+
+                            // Reminders and recurrence
+                            reminders: reminders.length > 0 ? reminders : undefined,
+                            recurrence: item.recurrence ? parseGoogleRecurrence(item.recurrence) : undefined,
+
+                            // Google Calendar specific
                             calendarId: calendar.id,
                             attendees: (item.attendees || []).map((attendee: any) => attendee.email).filter(Boolean),
-                            // Add default values for required fields
-                            priority: 'medium' as const,
-                            tags: [],
-                            subtasks: [],
-                            attachments: [],
-                            completed: false,
                             timeZone: item.start?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            status: item.status,
+                            created: item.created,
+                            updated: item.updated,
+                            creator: item.creator,
                         };
                     });
 
@@ -167,11 +238,88 @@ export async function fetchGoogleEvents(token: string): Promise<CalendarEvent[]>
     }
 }
 
+function parseGoogleRecurrence(recurrenceArray: string[]): CalendarEvent['recurrence'] {
+    if (!recurrenceArray || recurrenceArray.length === 0) return undefined;
+
+    const rrule = recurrenceArray[0];
+    if (!rrule.startsWith('RRULE:')) return undefined;
+
+    const rules = rrule.substring(6).split(';');
+    const recurrence: NonNullable<CalendarEvent['recurrence']> = {
+        type: 'none',
+        interval: 1,
+        endDate: null,
+        endAfterOccurrences: null,
+    };
+
+    for (const rule of rules) {
+        const [key, value] = rule.split('=');
+        switch (key) {
+            case 'FREQ':
+                recurrence.type = value.toLowerCase();
+                break;
+            case 'INTERVAL':
+                recurrence.interval = parseInt(value) || 1;
+                break;
+            case 'UNTIL':
+                try {
+                    recurrence.endDate = safeDateParse(value);
+                } catch (e) {
+                    console.warn('Failed to parse recurrence end date:', e);
+                }
+                break;
+            case 'COUNT':
+                recurrence.endAfterOccurrences = parseInt(value) || null;
+                break;
+        }
+    }
+
+    return recurrence.type !== 'none' ? recurrence : undefined;
+}
+
 export async function createGoogleEvent(accessToken: string, event: CalendarEvent): Promise<CalendarEvent> {
     console.log("Creating Google Calendar event:", event);
 
+    // Convert separate date/time fields to combined datetime
+    let startDateTime: Date;
+    let endDateTime: Date;
+
+    if (event.startDate && event.startTime) {
+        startDateTime = new Date(event.startDate);
+        startDateTime.setHours(
+            event.startTime.getHours(),
+            event.startTime.getMinutes(),
+            event.startTime.getSeconds(),
+            0
+        );
+    } else if (event.start) {
+        startDateTime = event.start;
+    } else {
+        throw new Error("Start date and time are required");
+    }
+
+    if (event.dueDate && event.dueTime) {
+        endDateTime = new Date(event.dueDate);
+        endDateTime.setHours(
+            event.dueTime.getHours(),
+            event.dueTime.getMinutes(),
+            event.dueTime.getSeconds(),
+            0
+        );
+    } else if (event.end) {
+        endDateTime = event.end;
+    } else {
+        // Default to 1 hour after start
+        endDateTime = new Date(startDateTime);
+        endDateTime.setHours(endDateTime.getHours() + 1);
+    }
+
     // Validate event data
-    const validation = validateEventData(event);
+    const validation = validateEventData({
+        ...event,
+        start: startDateTime,
+        end: endDateTime
+    });
     if (!validation.isValid) {
         throw new Error(`Invalid event data: ${validation.errors.join(", ")}`);
     }
@@ -182,11 +330,11 @@ export async function createGoogleEvent(accessToken: string, event: CalendarEven
         description: event.description || "",
         location: event.location || "",
         start: {
-            dateTime: formatDateForGoogle(event.start),
+            dateTime: formatDateForGoogle(startDateTime),
             timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         end: {
-            dateTime: formatDateForGoogle(event.end),
+            dateTime: formatDateForGoogle(endDateTime),
             timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         attendees: event.attendees?.filter(Boolean).map((email: string) => ({ email })) || [],
@@ -260,13 +408,25 @@ export async function createGoogleEvent(accessToken: string, event: CalendarEven
         const data = JSON.parse(responseText);
         console.log("Event created successfully:", data);
 
-        // Convert the response back to our CalendarEvent format
+        // Convert the response back to our CalendarEvent format with separate fields
+        const responseStart = safeDateParse(data.start.dateTime || data.start.date);
+        const responseEnd = safeDateParse(data.end.dateTime || data.end.date);
+
         const createdEvent: CalendarEvent = {
-            ...event, // Keep all the original event data
+            ...event,
             id: data.id,
             summary: data.summary || event.summary,
-            start: safeDateParse(data.start.dateTime || data.start.date),
-            end: safeDateParse(data.end.dateTime || data.end.date),
+
+            // Update separate date/time fields
+            startDate: new Date(responseStart.getFullYear(), responseStart.getMonth(), responseStart.getDate()),
+            startTime: new Date(0, 0, 0, responseStart.getHours(), responseStart.getMinutes(), responseStart.getSeconds()),
+            dueDate: new Date(responseEnd.getFullYear(), responseEnd.getMonth(), responseEnd.getDate()),
+            dueTime: new Date(0, 0, 0, responseEnd.getHours(), responseEnd.getMinutes(), responseEnd.getSeconds()),
+
+            // Update legacy fields
+            start: responseStart,
+            end: responseEnd,
+
             description: data.description || event.description,
             location: data.location || event.location,
             attendees: data.attendees?.map((attendee: any) => attendee.email) || event.attendees || [],
@@ -283,11 +443,50 @@ export async function createGoogleEvent(accessToken: string, event: CalendarEven
     }
 }
 
+
 export async function updateGoogleEvent(accessToken: string, event: CalendarEvent): Promise<CalendarEvent> {
     console.log("Updating Google Calendar event:", event);
 
+    // Convert separate date/time fields to combined datetime
+    let startDateTime: Date;
+    let endDateTime: Date;
+
+    if (event.startDate && event.startTime) {
+        startDateTime = new Date(event.startDate);
+        startDateTime.setHours(
+            event.startTime.getHours(),
+            event.startTime.getMinutes(),
+            event.startTime.getSeconds(),
+            0
+        );
+    } else if (event.start) {
+        startDateTime = event.start;
+    } else {
+        throw new Error("Start date and time are required");
+    }
+
+    if (event.dueDate && event.dueTime) {
+        endDateTime = new Date(event.dueDate);
+        endDateTime.setHours(
+            event.dueTime.getHours(),
+            event.dueTime.getMinutes(),
+            event.dueTime.getSeconds(),
+            0
+        );
+    } else if (event.end) {
+        endDateTime = event.end;
+    } else {
+        // Default to 1 hour after start
+        endDateTime = new Date(startDateTime);
+        endDateTime.setHours(endDateTime.getHours() + 1);
+    }
+
     // Validate event data
-    const validation = validateEventData(event);
+    const validation = validateEventData({
+        ...event,
+        start: startDateTime,
+        end: endDateTime
+    });
     if (!validation.isValid) {
         throw new Error(`Invalid event data: ${validation.errors.join(", ")}`);
     }
@@ -297,11 +496,11 @@ export async function updateGoogleEvent(accessToken: string, event: CalendarEven
         description: event.description || "",
         location: event.location || "",
         start: {
-            dateTime: formatDateForGoogle(event.start),
+            dateTime: formatDateForGoogle(startDateTime),
             timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         end: {
-            dateTime: formatDateForGoogle(event.end),
+            dateTime: formatDateForGoogle(endDateTime),
             timeZone: event.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
         },
         attendees: event.attendees?.filter(Boolean).map((email: string) => ({ email })) || [],
@@ -355,11 +554,24 @@ export async function updateGoogleEvent(accessToken: string, event: CalendarEven
 
         const data = await response.json();
 
+        // Convert the response back to our CalendarEvent format with separate fields
+        const responseStart = safeDateParse(data.start.dateTime || data.start.date);
+        const responseEnd = safeDateParse(data.end.dateTime || data.end.date);
+
         return {
             ...event,
             summary: data.summary || event.summary,
-            start: safeDateParse(data.start.dateTime || data.start.date),
-            end: safeDateParse(data.end.dateTime || data.end.date),
+
+            // Update separate date/time fields
+            startDate: new Date(responseStart.getFullYear(), responseStart.getMonth(), responseStart.getDate()),
+            startTime: new Date(0, 0, 0, responseStart.getHours(), responseStart.getMinutes(), responseStart.getSeconds()),
+            dueDate: new Date(responseEnd.getFullYear(), responseEnd.getMonth(), responseEnd.getDate()),
+            dueTime: new Date(0, 0, 0, responseEnd.getHours(), responseEnd.getMinutes(), responseEnd.getSeconds()),
+
+            // Update legacy fields
+            start: responseStart,
+            end: responseEnd,
+
             description: data.description || event.description,
             location: data.location || event.location,
             attendees: data.attendees?.map((attendee: any) => attendee.email) || event.attendees || [],

@@ -9,16 +9,16 @@ import {
   Lock,
   Smile,
 } from "lucide-react";
-import { Subtask, Task } from "../../../../types/task";
+import { Subtask, CalendarEvent } from "../../../../types/calendar";
 
 interface SubtasksSectionProps {
-  editedTask: Task;
+  editedEvent: CalendarEvent;
   newSubtask: string;
   setNewSubtask: React.Dispatch<React.SetStateAction<string>>;
   handleSubtaskChange: (id: string, field: keyof Subtask, value: any) => void;
   handleAddSubtask: (subtaskData?: Partial<Subtask>) => void;
   handleDeleteSubtask: (id: string) => void;
-  availableTasks?: Task[];
+  availableTasks?: CalendarEvent[];
   onTaskClick?: (taskId: string) => void;
 }
 
@@ -59,7 +59,7 @@ const SUBTASK_EMOJIS = [
 ];
 
 const SubtasksSection: React.FC<SubtasksSectionProps> = ({
-  editedTask,
+  editedEvent,
   newSubtask,
   setNewSubtask,
   handleSubtaskChange,
@@ -94,41 +94,45 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   const editingEmojiPickerRef = useRef<HTMLDivElement>(null);
 
   const completionPercentage =
-    editedTask.subtasks && editedTask.subtasks.length > 0
+    editedEvent.subtasks && editedEvent.subtasks.length > 0
       ? Math.round(
-          (editedTask.subtasks.filter((st) => st.completed).length /
-            editedTask.subtasks.length) *
+          (editedEvent.subtasks.filter((st) => st.completed).length /
+            editedEvent.subtasks.length) *
             100
         )
       : 0;
 
-  // Filter available tasks
+  // Filter available events/tasks
   const filteredTasks = availableTasks.filter(
-    (task) =>
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    (event) =>
+      event.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredEditingTasks = availableTasks.filter(
-    (task) =>
-      task.title.toLowerCase().includes(editingSearchQuery.toLowerCase()) ||
-      task.description?.toLowerCase().includes(editingSearchQuery.toLowerCase())
+    (event) =>
+      event.summary.toLowerCase().includes(editingSearchQuery.toLowerCase()) ||
+      event.description
+        ?.toLowerCase()
+        .includes(editingSearchQuery.toLowerCase())
   );
 
-  // Add function to check if linked task is completed
+  // Check if linked event/task is confirmed
   const isLinkedTaskCompleted = (linkedTaskId?: string): boolean => {
     if (!linkedTaskId) return false;
-    const linkedTask = availableTasks.find((task) => task.id === linkedTaskId);
-    return linkedTask?.completed || false;
+    const linkedTask = availableTasks.find(
+      (event) => event.id === linkedTaskId
+    );
+    return linkedTask?.status === "confirmed";
   };
 
-  // Add validation for completing required subtasks with incomplete linked tasks
+  // Handle subtask completion with validation
   const handleSubtaskCompletion = (subtask: Subtask, completed: boolean) => {
     if (completed && subtask.requiredCompleted && subtask.linkedTaskId) {
       const linkedTaskCompleted = isLinkedTaskCompleted(subtask.linkedTaskId);
       if (!linkedTaskCompleted) {
         alert(
-          "Cannot complete this subtask until the linked task is completed."
+          "Cannot complete this subtask until the linked event is confirmed."
         );
         return;
       }
@@ -150,7 +154,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
 
   const handleEditingEmojiSelect = (subtaskId: string, emoji: string) => {
     const currentTitle =
-      editedTask.subtasks?.find((st) => st.id === subtaskId)?.title || "";
+      editedEvent.subtasks?.find((st) => st.id === subtaskId)?.title || "";
     const titleWithoutEmoji = currentTitle.replace(/^[^\w\s]+\s*/, "");
     const newTitle = emoji
       ? `${emoji} ${titleWithoutEmoji}`
@@ -178,9 +182,9 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     setShowTaskDropdown(value.length > 0);
   };
 
-  const handleTaskSelect = (task: Task) => {
-    setNewSubtaskForm((prev) => ({ ...prev, linkedTaskId: task.id }));
-    setSearchQuery(task.title);
+  const handleTaskSelect = (event: CalendarEvent) => {
+    setNewSubtaskForm((prev) => ({ ...prev, linkedTaskId: event.id }));
+    setSearchQuery(event.summary);
     setShowTaskDropdown(false);
   };
 
@@ -189,7 +193,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     setSearchQuery("");
   };
 
-  // Enhanced add subtask function
   const handleEnhancedAddSubtask = () => {
     if (!newSubtaskForm.title.trim()) {
       console.warn("⚠️ No title in form");
@@ -200,7 +203,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       ? `${newSubtaskForm.emoji} ${newSubtaskForm.title.trim()}`
       : newSubtaskForm.title.trim();
 
-    // Use the hook's handleAddSubtask with all data
     handleAddSubtask({
       title: fullTitle,
       description: newSubtaskForm.description,
@@ -208,7 +210,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
       requiredCompleted: newSubtaskForm.requiredCompleted,
     });
 
-    // Reset form
     setNewSubtaskForm({
       title: "",
       description: "",
@@ -224,8 +225,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     setEditingTaskDropdown(subtaskId);
   };
 
-  const handleEditingTaskSelect = (subtaskId: string, task: Task) => {
-    handleSubtaskChange(subtaskId, "linkedTaskId", task.id);
+  const handleEditingTaskSelect = (subtaskId: string, event: CalendarEvent) => {
+    handleSubtaskChange(subtaskId, "linkedTaskId", event.id);
     setEditingTaskDropdown(null);
     setEditingSearchQuery("");
   };
@@ -237,13 +238,13 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
 
   const getLinkedTask = (linkedTaskId?: string) => {
     if (!linkedTaskId) return null;
-    return availableTasks.find((task) => task.id === linkedTaskId);
+    return availableTasks.find((event) => event.id === linkedTaskId);
   };
 
   const getSelectedLinkedTask = () => {
     if (!newSubtaskForm.linkedTaskId) return null;
     return availableTasks.find(
-      (task) => task.id === newSubtaskForm.linkedTaskId
+      (event) => event.id === newSubtaskForm.linkedTaskId
     );
   };
 
@@ -287,10 +288,12 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-lg text-text-default">Subtasks</h3>
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
+            Subtasks
+          </h3>
           <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
         </div>
-        {(editedTask.subtasks?.length ?? 0) > 0 && (
+        {(editedEvent.subtasks?.length ?? 0) > 0 && (
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {completionPercentage}% Complete
@@ -307,8 +310,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
 
       {/* Subtasks Display */}
       <div className="space-y-2">
-        {editedTask.subtasks && editedTask.subtasks.length > 0 ? (
-          editedTask.subtasks.map((subtask) => {
+        {editedEvent.subtasks && editedEvent.subtasks.length > 0 ? (
+          editedEvent.subtasks.map((subtask) => {
             const linkedTask = getLinkedTask(subtask.linkedTaskId);
             const { emoji, titleWithoutEmoji } = extractEmoji(subtask.title);
             const linkedTaskCompleted = isLinkedTaskCompleted(
@@ -377,7 +380,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                       </button>
 
                       {editingEmojiPicker === subtask.id && (
-                        <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
+                        <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 w-48">
                           <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                             Choose emoji:
                           </div>
@@ -417,8 +420,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                       }}
                       className={`flex-1 bg-transparent border-none focus:ring-0 font-medium text-sm transition-all truncate ${
                         subtask.completed
-                          ? "text-text-secondary line-through"
-                          : "text-text-default"
+                          ? "text-gray-500 dark:text-gray-400 line-through"
+                          : "text-gray-900 dark:text-gray-100"
                       }`}
                       placeholder="Subtask title"
                     />
@@ -468,29 +471,29 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                     />
                   </div>
 
-                  {/* Linked Task Section - Improved styling */}
+                  {/* Linked Event Section */}
                   {subtask.linkedTaskId && (
                     <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                       <div className="flex items-center gap-2 mb-1">
                         <Link size={12} className="text-gray-500" />
                         <span className="text-xs text-gray-600 dark:text-gray-400">
-                          Linked Task:
+                          Linked Event:
                         </span>
                         <div
                           className={`flex items-center gap-1 text-xs ${
                             linkedTaskCompleted
-                              ? "text-green-600 dark:text-green-400"
+                              ? "text-blue-600 dark:text-blue-400"
                               : "text-amber-600 dark:text-amber-400"
                           }`}
                         >
                           <div
                             className={`w-2 h-2 rounded-full ${
                               linkedTaskCompleted
-                                ? "bg-green-500"
+                                ? "bg-blue-500"
                                 : "bg-amber-500"
                             }`}
                           />
-                          {linkedTaskCompleted ? "Completed" : "Not Completed"}
+                          {linkedTaskCompleted ? "Confirmed" : "Not Confirmed"}
                         </div>
                       </div>
 
@@ -498,7 +501,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                         <div className="flex items-center gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate">
-                              {linkedTask.title}
+                              {linkedTask.summary}
                             </div>
                             {linkedTask.description && (
                               <div className="text-xs text-blue-600 dark:text-blue-400 truncate">
@@ -527,23 +530,23 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                         </div>
                       ) : (
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Linked task not found
+                          Linked event not found
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Linked Task Input - Improved styling */}
+                  {/* Linked Event Input */}
                   {!subtask.linkedTaskId && (
                     <div className="relative mt-2">
-                      <div className="flex items-center gap-2 p-1.5 border border-border-default rounded-lg bg-white dark:bg-gray-700">
+                      <div className="flex items-center gap-2 p-1.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-700">
                         <Search
                           size={12}
                           className="text-gray-400 flex-shrink-0"
                         />
                         <input
                           type="text"
-                          placeholder="Link to task..."
+                          placeholder="Link to event..."
                           value={
                             editingTaskDropdown === subtask.id
                               ? editingSearchQuery
@@ -553,42 +556,42 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                             handleEditingTaskSearch(subtask.id, e.target.value)
                           }
                           onFocus={() => setEditingTaskDropdown(subtask.id)}
-                          className="flex-1 text-sm bg-transparent border-none focus:ring-0 text-text-default min-w-0"
+                          className="flex-1 text-sm bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 min-w-0"
                         />
                       </div>
 
                       {editingTaskDropdown === subtask.id && (
                         <div
                           ref={editingDropdownRef}
-                          className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
+                          className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
                         >
                           {filteredEditingTasks.length > 0 ? (
-                            filteredEditingTasks.slice(0, 5).map((task) => (
+                            filteredEditingTasks.slice(0, 5).map((event) => (
                               <div
-                                key={task.id}
+                                key={event.id}
                                 onClick={() =>
-                                  handleEditingTaskSelect(subtask.id, task)
+                                  handleEditingTaskSelect(subtask.id, event)
                                 }
                                 className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
                               >
                                 <div
                                   className={`w-2 h-2 rounded-full ${
-                                    task.priority === "urgent"
+                                    event.priority === "urgent"
                                       ? "bg-red-500"
-                                      : task.priority === "high"
+                                      : event.priority === "high"
                                       ? "bg-orange-500"
-                                      : task.priority === "medium"
+                                      : event.priority === "medium"
                                       ? "bg-yellow-500"
                                       : "bg-green-500"
                                   }`}
                                 ></div>
                                 <div>
                                   <div className="text-sm font-medium">
-                                    {task.title}
+                                    {event.summary}
                                   </div>
-                                  {task.description && (
+                                  {event.description && (
                                     <div className="text-xs text-gray-500 truncate">
-                                      {task.description.substring(0, 50)}...
+                                      {event.description.substring(0, 50)}...
                                     </div>
                                   )}
                                 </div>
@@ -596,7 +599,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                             ))
                           ) : (
                             <div className="px-3 py-2 text-sm text-gray-500">
-                              No tasks found
+                              No events found
                             </div>
                           )}
                         </div>
@@ -625,7 +628,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
           </div>
         )}
 
-        {/* New Subtask Form - Improved styling */}
+        {/* New Subtask Form */}
         <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
           <div className="flex items-center gap-2 mb-2">
             <Plus size={14} className="text-gray-600 dark:text-gray-400" />
@@ -652,7 +655,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
               </button>
 
               {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
+                <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 w-48">
                   <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                     Choose emoji:
                   </div>
@@ -683,7 +686,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
               placeholder="What needs to be done?"
               value={newSubtaskForm.title}
               onChange={(e) => handleFormChange("title", e.target.value)}
-              className="flex-1 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="flex-1 bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
 
@@ -693,7 +696,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             value={newSubtaskForm.description}
             onChange={(e) => handleFormChange("description", e.target.value)}
             rows={1}
-            className="w-full bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-border-default text-text-default focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-2 text-sm"
+            className="w-full bg-white dark:bg-gray-700 rounded-lg px-2 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-2 text-sm"
           />
 
           {/* Options */}
@@ -716,12 +719,12 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             </button>
           </div>
 
-          {/* Linked Task */}
+          {/* Linked Event */}
           {getSelectedLinkedTask() ? (
             <div className="flex items-center gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md mb-2">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
-                  {getSelectedLinkedTask()!.title}
+                  {getSelectedLinkedTask()!.summary}
                 </div>
               </div>
               <button
@@ -733,36 +736,38 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             </div>
           ) : (
             <div className="relative mb-2">
-              <div className="flex items-center gap-2 p-1.5 border border-border-default rounded-lg bg-white dark:bg-gray-700">
+              <div className="flex items-center gap-2 p-1.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-700">
                 <Search size={12} className="text-gray-400 flex-shrink-0" />
                 <input
                   ref={linkedTaskSearchRef}
                   type="text"
-                  placeholder="Link to task..."
+                  placeholder="Link to event..."
                   value={searchQuery}
                   onChange={(e) => handleLinkedTaskSearch(e.target.value)}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-text-default text-sm min-w-0"
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 text-sm min-w-0"
                 />
               </div>
 
               {showTaskDropdown && (
                 <div
                   ref={dropdownRef}
-                  className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-border-default rounded-lg shadow-lg z-50 max-h-32 overflow-y-auto"
+                  className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-32 overflow-y-auto"
                 >
                   {filteredTasks.length > 0 ? (
-                    filteredTasks.slice(0, 3).map((task) => (
+                    filteredTasks.slice(0, 3).map((event) => (
                       <div
-                        key={task.id}
-                        onClick={() => handleTaskSelect(task)}
+                        key={event.id}
+                        onClick={() => handleTaskSelect(event)}
                         className="px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm"
                       >
-                        <div className="font-medium truncate">{task.title}</div>
+                        <div className="font-medium truncate">
+                          {event.summary}
+                        </div>
                       </div>
                     ))
                   ) : searchQuery ? (
                     <div className="px-2 py-1.5 text-sm text-gray-500">
-                      No tasks found
+                      No events found
                     </div>
                   ) : null}
                 </div>
@@ -775,7 +780,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
             <button
               onClick={handleEnhancedAddSubtask}
               disabled={!newSubtaskForm.title.trim()}
-              className="flex items-center gap-1 bg-button-bg hover:bg-button-bgHover disabled:bg-gray-400 disabled:cursor-not-allowed text-button-bgText px-3 py-1.5 rounded-lg font-medium transition-colors text-sm"
+              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg font-medium transition-colors text-sm"
             >
               <Plus size={14} />
               Add

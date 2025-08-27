@@ -9,10 +9,10 @@ import {
   File,
   FileText,
 } from "lucide-react";
-import { Attachment } from "../../../../types/task";
+import { Attachment } from "../../../../types/calendar";
 
 interface AttachmentsSectionProps {
-  editedTask: { attachments?: Attachment[] };
+  editedEvent: { attachments?: Attachment[] };
   newAttachment: {
     title: string;
     url: string;
@@ -45,7 +45,7 @@ const getAttachmentIcon = (type: string) => {
 };
 
 const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
-  editedTask,
+  editedEvent,
   newAttachment,
   setNewAttachment,
   handleAddAttachment,
@@ -62,7 +62,7 @@ const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {editedTask.attachments?.map((att) => (
+        {editedEvent.attachments?.map((att) => (
           <div
             key={att.id}
             className="flex items-center justify-between p-4 rounded-lg border border-border-default"

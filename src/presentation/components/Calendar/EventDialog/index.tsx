@@ -1,16 +1,7 @@
 // src/presentation/components/Calendar/EventDialog/index.tsx
 import React, { useState, useRef, useEffect } from "react";
-import {
-  X,
-  Repeat,
-  Bell,
-  Clock,
-  ChevronDown,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { X, Repeat, Bell, Clock } from "lucide-react";
 import { CalendarEvent } from "../../../types/calendar";
-import { Task } from "../../../types/task";
 import {
   DateTimeSection,
   TagsSection,
@@ -28,7 +19,7 @@ interface EventDialogProps {
   isCreateMode?: boolean;
   initialDate?: Date;
   initialHour?: number;
-  availableTasks?: Task[];
+  availableTasks?: CalendarEvent[];
   onTaskClick?: (taskId: string) => void;
 }
 
@@ -127,9 +118,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
         id: `temp-${Date.now()}`,
         summary: "",
         description: "",
-        start: startDate, // Legacy field
-        end: endDate, // Legacy field
-        // New separate fields
+        // Use new separate fields from calendar.ts
         startDate: new Date(
           startDate.getFullYear(),
           startDate.getMonth(),
@@ -142,6 +131,10 @@ const EventDialog: React.FC<EventDialogProps> = ({
           endDate.getDate()
         ),
         dueTime: endTime,
+        actualStartDate: null,
+        actualStartTime: null,
+        actualEndDate: null,
+        actualEndTime: null,
         location: "",
         locationName: "",
         locationAddress: "",
@@ -150,10 +143,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
         tags: [],
         subtasks: [],
         attachments: [],
-        completed: false,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Set timezone
-        calendarId: "primary", // ADD: Set default calendar
-        attendees: [], // ADD: Initialize attendees array
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
       setEditedEvent(newEvent);
@@ -201,12 +191,12 @@ const EventDialog: React.FC<EventDialogProps> = ({
   const summaryMaxChar = 1023;
   const isSummaryOverLimit = summaryCharCount > summaryMaxChar;
 
-  // Validation checks
+  // Validation checks - updated to use new date fields
   const hasValidSummary = editedEvent.summary?.trim() && !isSummaryOverLimit;
   const hasStartDateTime =
-    editedEvent.start &&
-    editedEvent.start instanceof Date &&
-    !isNaN(editedEvent.start.getTime());
+    editedEvent.startDate &&
+    editedEvent.startDate instanceof Date &&
+    !isNaN(editedEvent.startDate.getTime());
 
   // Main validation: require both summary and start datetime
   const canSave = hasValidSummary && hasStartDateTime;
@@ -216,7 +206,10 @@ const EventDialog: React.FC<EventDialogProps> = ({
 
     // Handle special cases for date fields
     if (
-      (field === "start" || field === "end") &&
+      (field === "startDate" ||
+        field === "dueDate" ||
+        field === "actualStartDate" ||
+        field === "actualEndDate") &&
       value &&
       !(value instanceof Date)
     ) {
@@ -334,18 +327,18 @@ const EventDialog: React.FC<EventDialogProps> = ({
       // Ensure end date is after start date
       let finalEvent = { ...editedEvent };
 
-      // IMPROVED: Better end date handling
-      if (finalEvent.start && finalEvent.end) {
-        if (finalEvent.end <= finalEvent.start) {
-          const newEnd = new Date(finalEvent.start);
-          newEnd.setHours(newEnd.getHours() + 1);
-          finalEvent.end = newEnd;
+      // Updated end date handling for new structure
+      if (finalEvent.startDate && finalEvent.dueDate) {
+        if (finalEvent.dueDate <= finalEvent.startDate) {
+          const newEnd = new Date(finalEvent.startDate);
+          newEnd.setDate(newEnd.getDate() + 1); // Add one day instead of one hour
+          finalEvent.dueDate = newEnd;
         }
-      } else if (finalEvent.start && !finalEvent.end) {
-        // If no end date, create one hour after start
-        const newEnd = new Date(finalEvent.start);
-        newEnd.setHours(newEnd.getHours() + 1);
-        finalEvent.end = newEnd;
+      } else if (finalEvent.startDate && !finalEvent.dueDate) {
+        // If no due date, create one day after start
+        const newEnd = new Date(finalEvent.startDate);
+        newEnd.setDate(newEnd.getDate() + 1);
+        finalEvent.dueDate = newEnd;
       }
 
       // Add recurrence and reminders to event
@@ -357,15 +350,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
           showReminders && reminders.length > 0 ? reminders : undefined,
       };
 
-      // IMPROVED: Ensure required fields are set
-      if (!finalEvent.calendarId) {
-        finalEvent.calendarId = "primary";
-      }
-
-      if (!finalEvent.attendees) {
-        finalEvent.attendees = [];
-      }
-
+      // Ensure required fields are set
       if (!finalEvent.timeZone) {
         finalEvent.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       }

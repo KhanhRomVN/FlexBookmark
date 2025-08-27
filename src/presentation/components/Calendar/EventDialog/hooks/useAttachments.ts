@@ -1,10 +1,10 @@
-// src/presentation/components/TaskManager/TaskDialog/hooks/useAttachments.ts
+// src/presentation/components/EventManager/EventDialog/hooks/useAttachments.ts
 import { useState } from "react";
-import { Task, Attachment } from "../../../../types/task";
+import { CalendarEvent, Attachment } from "../../../../types/calendar";
 
 export const useAttachments = (
-    editedTask: Task | null,
-    setEditedTask: (task: Task) => void,
+    editedEvent: CalendarEvent | null,
+    setEditedEvent: (event: CalendarEvent) => void,
     addActivityLog: (action: string, details: string) => void
 ) => {
     const [newAttachment, setNewAttachment] = useState({
@@ -21,9 +21,9 @@ export const useAttachments = (
             url: newAttachment.url,
             type: newAttachment.type,
         };
-        setEditedTask({
-            ...editedTask!,
-            attachments: [...(editedTask!.attachments || []), newAtt],
+        setEditedEvent({
+            ...editedEvent!,
+            attachments: [...(editedEvent!.attachments || []), newAtt],
         });
         setNewAttachment({ title: "", url: "", type: "file" });
         addActivityLog(
@@ -33,10 +33,10 @@ export const useAttachments = (
     };
 
     const handleDeleteAttachment = (id: string) => {
-        const attachment = editedTask!.attachments?.find((att) => att.id === id);
-        setEditedTask({
-            ...editedTask!,
-            attachments: editedTask!.attachments?.filter((att) => att.id !== id) || [],
+        const attachment = editedEvent!.attachments?.find((att) => att.id === id);
+        setEditedEvent({
+            ...editedEvent!,
+            attachments: editedEvent!.attachments?.filter((att) => att.id !== id) || [],
         });
         if (attachment) {
             addActivityLog(

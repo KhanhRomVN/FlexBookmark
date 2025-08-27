@@ -40,6 +40,12 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
   // Adjust height for margin bottom (2px)
   const adjustedHeight = Math.max(28, dimensions.height - 2);
 
+  // Handle card click - directly open EventDialog
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectItem(event); // This will open the EventDialog
+  };
+
   return (
     <div
       key={event.id}
@@ -52,7 +58,7 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
         zIndex,
         minHeight: "28px",
       }}
-      onClick={onToggle}
+      onClick={handleCardClick} // Changed from onToggle to handleCardClick
     >
       <div className="flex flex-col h-full">
         <div className="flex items-start gap-1 mb-1">
@@ -61,7 +67,7 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
           ></span>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-gray-900 dark:text-white truncate">
-              {event.title}
+              {event.title || event.summary}
             </div>
             <div className="text-[10px] text-gray-600 dark:text-gray-400">
               {format(
@@ -102,54 +108,7 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
         )}
       </div>
 
-      {isExpanded && (
-        <div
-          className="absolute z-50 top-full left-0 mt-1 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-60 max-w-80"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="font-medium mb-1 text-sm">{event.title}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            {format(
-              new Date().setHours(
-                dimensions.startHour === 24 ? 0 : dimensions.startHour,
-                dimensions.startMinute
-              ),
-              "h:mm a"
-            )}
-            {dimensions.duration > 30 && (
-              <>
-                {" - "}
-                {format(
-                  new Date().setHours(
-                    dimensions.endHour === 24 ? 0 : dimensions.endHour,
-                    dimensions.endMinute
-                  ),
-                  "h:mm a"
-                )}
-              </>
-            )}
-          </div>
-
-          {event.description && (
-            <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-3">
-              {event.description}
-            </div>
-          )}
-
-          {event.location && (
-            <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">
-              📍 {event.location}
-            </div>
-          )}
-
-          <button
-            className="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-medium"
-            onClick={() => onSelectItem(event)}
-          >
-            Xem chi tiết
-          </button>
-        </div>
-      )}
+      {/* Remove the expanded popup since we're opening EventDialog directly */}
     </div>
   );
 };

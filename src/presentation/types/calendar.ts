@@ -1,130 +1,64 @@
-// // src/presentation/types/calendar.ts
+export type Priority = "low" | "medium" | "high" | "urgent";
+export type Status = "confirmed" | "tentative" | "cancelled";
 
-// export interface CalendarEvent {
-//     id: string;                         // ID duy nhất của sự kiện
-//     status: string;                     // Trạng thái: confirmed | tentative | cancelled
-//     created: string;                    // ISO datetime tạo sự kiện
-//     updated: string;                    // ISO datetime cập nhật sự kiện
-//     summary: string;                    // Tiêu đề sự kiện
-//     description?: string;               // Mô tả chi tiết (optional)
+export interface Subtask {
+    id: string;
+    title: string;
+    description?: string;
+    completed: boolean;
+    linkedTaskId?: string;
+    requiredCompleted?: boolean;
+}
 
-//     creator: {                          // Người tạo sự kiện
-//         id?: string;
-//         email: string;
-//         displayName?: string;
-//         self: boolean;
-//     };
+export interface Attachment {
+    id: string;
+    title: string;
+    url: string;
+    type: "image" | "video" | "audio" | "file" | "other";
+}
 
-//     start: {                            // Thời gian bắt đầu
-//         date?: string;                    // Nếu sự kiện cả ngày
-//         dateTime?: string;                // Nếu có giờ cụ thể
-//         timeZone?: string;
-//     };
-
-//     end: {                              // Thời gian kết thúc
-//         date?: string;
-//         dateTime?: string;
-//         timeZone?: string;
-//     };
-
-//     endTimeUnspecified?: boolean;       // true nếu không có giờ kết thúc
-
-//     recurrence?: string[];              // Quy tắc lặp lại (RRULE)
-
-//     reminders?: {                       // Nhắc nhở
-//         useDefault: boolean;
-//         overrides?: Array<{
-//             method: string;                 // popup | email
-//             minutes: number;
-//         }>;
-//     };
-
-//     extendedProperties?: {              // Metadata tùy chỉnh
-//         shared?: {
-//             tags?: string[];                // Mảng tag
-//             collection?: string;            // Nhóm/nhãn sưu tập
-//             location?: {                    // Địa điểm chi tiết
-//                 locationName?: string;
-//                 locationAddress?: string;
-//                 locationCoordinates?: {
-//                     lat: number;
-//                     lng: number;
-//                 };
-//             };
-//         };
-//     };
-// }
+export interface Recurrence {
+    type: string;
+    interval: number;
+    endDate?: Date | null;
+    endAfterOccurrences?: number | null;
+}
 
 export interface CalendarEvent {
     id: string;
-    summary: string;                    // Event title
-    description?: string;               // Optional description
+    summary: string;
+    description?: string;
 
-    // Planned times - using separate date and time fields like tasks
-    startDate: Date | null;            // Planned start date
-    startTime: Date | null;            // Planned start time
-    dueDate: Date | null;              // Planned end date (renamed from endDate for consistency)
-    dueTime: Date | null;              // Planned end time (renamed from endTime for consistency)
+    collection?: string;
 
-    // Actual times - when event actually started/ended
-    actualStartDate: Date | null;      // When event actually started
-    actualStartTime: Date | null;      // Actual start time 
-    actualEndDate: Date | null;        // When event actually ended
-    actualEndTime: Date | null;        // Actual end time
 
-    // Timezone information
-    timeZone?: string;                 // Auto-detected timezone (e.g., "Asia/Ho_Chi_Minh")
+    startDate: Date | null;
+    startTime: Date | null;
+    dueDate: Date | null;
+    dueTime: Date | null;
 
-    // Legacy fields for backward compatibility with Google Calendar
-    start?: Date;                      // Computed from startDate + startTime
-    end?: Date;                        // Computed from dueDate + dueTime
+    actualStartDate: Date | null;
+    actualStartTime: Date | null;
+    actualEndDate: Date | null;
+    actualEndTime: Date | null;
 
-    // Location information
-    location?: string;                  // Simple location string
-    locationName?: string;              // Detailed location name
-    locationAddress?: string;           // Address
-    locationCoordinates?: string;       // GPS coordinates
+    timeZone?: string;
 
-    // Event properties
-    priority?: 'low' | 'medium' | 'high';
+    location?: string;
+    locationName?: string;
+    locationAddress?: string;
+    locationCoordinates?: string;
+
+    priority?: Priority;
     tags?: string[];
-    subtasks?: Array<{
-        id: string;
-        title: string;
-        description?: string;
-        completed: boolean;
-        linkedTaskId?: string;
-        requiredCompleted?: boolean;
-    }>;
-    attachments?: Array<{
-        id: string;
-        title: string;
-        url: string;
-        type: 'image' | 'video' | 'audio' | 'file' | 'other';
-    }>;
-    completed?: boolean;
+    subtasks?: Subtask[];
+    attachments?: Attachment[];
 
-    // Recurrence and reminders
-    recurrence?: {
-        type: string;
-        interval: number;
-        endDate?: Date | null;
-        endAfterOccurrences?: number | null;
-    };
-    reminders?: number[];               // Array of minutes before event
+    recurrence?: Recurrence;
 
-    // Google Calendar specific (optional)
-    status?: string;
-    created?: string;
-    updated?: string;
-    creator?: {
-        id?: string;
-        email: string;
-        displayName?: string;
-        self: boolean;
-    };
-    calendarId?: string;
-    attendees?: string[];
+    reminders?: number[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface GoogleCalendar {

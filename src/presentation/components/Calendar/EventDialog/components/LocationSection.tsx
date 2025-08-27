@@ -14,16 +14,16 @@ import {
   Maximize2,
   Map,
 } from "lucide-react";
-import { Task } from "../../../../types/task"; // Add this import
+import { CalendarEvent } from "../../../../types/calendar"; // Add this import
 
 interface LocationSectionProps {
-  editedTask: {
+  editedEvent: {
     locationName?: string;
     locationAddress?: string;
     locationCoordinates?: string;
     [key: string]: any;
   };
-  handleChange: (field: keyof Task, value: any) => void; // Change from (field: string, value: any) to (field: keyof Task, value: any)
+  handleChange: (field: keyof CalendarEvent, value: any) => void; // Change from (field: string, value: any) to (field: keyof Event, value: any)
 }
 
 // Temporary Location type for internal operations
@@ -49,7 +49,7 @@ const NOMINATIM_CONFIG = {
     namedetails: "1", // Changed from number to string
     dedupe: "1", // Changed from number to string
   },
-  USER_AGENT: "TaskFlow/1.0 (Location Feature)",
+  USER_AGENT: "EventFlow/1.0 (Location Feature)",
   RATE_LIMIT_DELAY: 1000, // 1 second between requests
 };
 
@@ -331,27 +331,26 @@ const parseCoordinates = (
   return { lat, lon };
 };
 
-// Helper functions to convert task fields to/from Location object
-const taskToLocation = (
-  task: LocationSectionProps["editedTask"]
+const eventToLocation = (
+  event: LocationSectionProps["editedEvent"]
 ): Location | null => {
-  if (!task.locationName) return null;
+  if (!event.locationName) return null;
 
-  const coords = parseCoordinates(task.locationCoordinates || "");
+  const coords = parseCoordinates(event.locationCoordinates || "");
 
   // Only return location if we have coordinates (map mode)
   if (!coords) return null;
 
   return {
     id: Date.now().toString(),
-    name: task.locationName,
-    address: task.locationAddress || "",
+    name: event.locationName,
+    address: event.locationAddress || "",
     latitude: coords.lat,
     longitude: coords.lon,
   };
 };
 
-const locationToTaskFields = (
+const locationToEventFields = (
   location: Location
 ): {
   locationName: string;
@@ -588,7 +587,7 @@ const InteractiveMapDialog: React.FC<{
 };
 
 const LocationSection: React.FC<LocationSectionProps> = ({
-  editedTask,
+  editedEvent,
   handleChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -607,22 +606,22 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get current location from task fields (only if has coordinates - map mode)
-  const currentLocation = taskToLocation(editedTask);
+  // Get current location from event fields (only if has coordinates - map mode)
+  const currentLocation = eventToLocation(editedEvent);
 
   // Check if current location has map data (coordinates)
   const hasMapData =
-    editedTask.locationCoordinates &&
-    parseCoordinates(editedTask.locationCoordinates) !== null;
+    editedEvent.locationCoordinates &&
+    parseCoordinates(editedEvent.locationCoordinates) !== null;
 
   // Auto-detect mode based on current data
   useEffect(() => {
-    if (editedTask.locationName && !hasMapData) {
+    if (editedEvent.locationName && !hasMapData) {
       setInputMode("simple");
-    } else if (editedTask.locationName && hasMapData) {
+    } else if (editedEvent.locationName && hasMapData) {
       setInputMode("map");
     }
-  }, [editedTask.locationName, hasMapData]);
+  }, [editedEvent.locationName, hasMapData]);
 
   // Search function for map mode
   const handleSearch = useCallback(async (query: string) => {
@@ -665,7 +664,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     setIsGettingLocation(true);
     try {
       const location = await getCurrentLocationFromBrowser();
-      const fields = locationToTaskFields(location);
+      const fields = locationToEventFields(location);
 
       // Update all location fields at once
       handleChange("locationName", fields.locationName);
@@ -687,7 +686,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
   // Select location from search results (map mode)
   const selectLocation = (location: Location) => {
-    const fields = locationToTaskFields(location);
+    const fields = locationToEventFields(location);
 
     // Update all location fields at once
     handleChange("locationName", fields.locationName);
@@ -704,10 +703,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     if (value.trim()) {
       handleChange("locationName", value.trim());
       // Keep address and coordinates null/empty for simple mode
-      if (editedTask.locationAddress) {
+      if (editedEvent.locationAddress) {
         handleChange("locationAddress", "");
       }
-      if (editedTask.locationCoordinates) {
+      if (editedEvent.locationCoordinates) {
         handleChange("locationCoordinates", "");
       }
     } else {
@@ -730,7 +729,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
   // Handle location change from map dialog
   const handleLocationChangeFromMap = (newLocation: Location) => {
-    const fields = locationToTaskFields(newLocation);
+    const fields = locationToEventFields(newLocation);
 
     // Update all location fields at once
     handleChange("locationName", fields.locationName);
@@ -745,14 +744,14 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     setInputMode("map");
 
     // If switching from simple to map and we have previous map data, restore it
-    if (previousMapData && editedTask.locationName && !hasMapData) {
+    if (previousMapData && editedEvent.locationName && !hasMapData) {
       handleChange("locationAddress", previousMapData.locationAddress);
       handleChange("locationCoordinates", previousMapData.locationCoordinates);
       setPreviousMapData(null);
     }
 
-    if (editedTask.locationName) {
-      setSearchQuery(editedTask.locationName);
+    if (editedEvent.locationName) {
+      setSearchQuery(editedEvent.locationName);
     }
   };
 
@@ -760,8 +759,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     // Store current map data before switching to simple mode
     if (hasMapData) {
       setPreviousMapData({
-        locationAddress: editedTask.locationAddress || "",
-        locationCoordinates: editedTask.locationCoordinates || "",
+        locationAddress: editedEvent.locationAddress || "",
+        locationCoordinates: editedEvent.locationCoordinates || "",
       });
     }
 
@@ -771,10 +770,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     setShowSearchDropdown(false);
 
     // Clear address and coordinates for simple mode but keep locationName
-    if (editedTask.locationAddress) {
+    if (editedEvent.locationAddress) {
       handleChange("locationAddress", "");
     }
-    if (editedTask.locationCoordinates) {
+    if (editedEvent.locationCoordinates) {
       handleChange("locationCoordinates", "");
     }
   };
@@ -790,7 +789,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
 
         {/* Clear button - only show if has location */}
-        {editedTask.locationName && (
+        {editedEvent.locationName && (
           <button
             onClick={clearLocation}
             className="p-1 text-gray-400 hover:text-red-500 transition-colors"
@@ -852,7 +851,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             <input
               type="text"
               placeholder="Enter location name..."
-              value={editedTask.locationName || ""}
+              value={editedEvent.locationName || ""}
               onChange={(e) => handleSimpleLocationChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -937,7 +936,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       )}
 
       {/* Location Details - Only show in map mode if location exists */}
-      {inputMode === "map" && editedTask.locationName && hasMapData && (
+      {inputMode === "map" && editedEvent.locationName && hasMapData && (
         <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -945,7 +944,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             </label>
             <input
               type="text"
-              value={editedTask.locationName || ""}
+              value={editedEvent.locationName || ""}
               onChange={(e) => handleChange("locationName", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter custom location name..."
@@ -958,7 +957,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             </label>
             <input
               type="text"
-              value={editedTask.locationAddress || ""}
+              value={editedEvent.locationAddress || ""}
               readOnly
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm cursor-not-allowed"
               placeholder="Address will be filled from map"
@@ -971,7 +970,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             </label>
             <input
               type="text"
-              value={editedTask.locationCoordinates || ""}
+              value={editedEvent.locationCoordinates || ""}
               readOnly
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono cursor-not-allowed"
               placeholder="Coordinates will be filled from map"
