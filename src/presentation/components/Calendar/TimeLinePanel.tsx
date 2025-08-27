@@ -14,7 +14,31 @@ import {
   isSameDay,
 } from "date-fns";
 import type { CalendarEvent } from "../../types/calendar";
-import EventCard from "./EventCard";
+import MultiEventCard from "./MultiEventCard";
+
+interface TaskEvent {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  events: CalendarEvent[];
+  maxConcurrentEvents: number;
+}
+
+interface EventLayout {
+  events: CalendarEvent[]; // Changed from single event to array of events
+  width: number;
+  left: number;
+  zIndex: number;
+  dimensions: {
+    top: number;
+    height: number;
+    startHour: number;
+    startMinute: number;
+    endHour: number;
+    endMinute: number;
+    duration: number;
+  };
+}
 
 interface TimeLinePanelProps {
   date: Date;
@@ -24,6 +48,227 @@ interface TimeLinePanelProps {
   onCreateEvent?: (date: Date, hour: number) => void;
   loading: boolean;
   error: string | null;
+}
+
+/**
+ * Enhanced EventOverlapProcessor for timeline calendar
+ * Ensures overlapping events are properly grouped to avoid visual conflicts
+ */
+class EventOverlapProcessor {
+  static processEventOverlaps(events: CalendarEvent[]): TaskEvent[] {
+    if (events.length === 0) return [];
+
+    // Sort events by start time
+    const sortedEvents = events
+      .filter((event) => this.parseEventTime(event.start) !== null)
+      .sort((a, b) => {
+        const startA = this.parseEventTime(a.start)!.getTime();
+        const startB = this.parseEventTime(b.start)!.getTime();
+        return startA - startB;
+      });
+
+    const overlapGroups = this.findOverlapGroups(sortedEvents);
+    const taskEvents: TaskEvent[] = [];
+
+    overlapGroups.forEach((group, groupIndex) => {
+      if (group.length === 1) {
+        // Single event - no overlap
+        const event = group[0];
+        const startTime = this.parseEventTime(event.start)!;
+        const endTime = this.parseEventTime(event.end)!;
+
+        taskEvents.push({
+          id: `task-event-${groupIndex}-${startTime.getTime()}`,
+          startTime,
+          endTime,
+          events: [event],
+          maxConcurrentEvents: 1,
+        });
+      } else {
+        // Multiple overlapping events - create segments
+        const segments = this.createOverlapSegments(group);
+
+        segments.forEach((segment, segmentIndex) => {
+          taskEvents.push({
+            id: `task-event-${groupIndex}-${segmentIndex}-${segment.startTime.getTime()}`,
+            startTime: segment.startTime,
+            endTime: segment.endTime,
+            events: segment.events,
+            maxConcurrentEvents: segment.events.length,
+          });
+        });
+      }
+    });
+
+    return taskEvents;
+  }
+
+  /**
+   * Find groups of events that overlap with each other
+   */
+  private static findOverlapGroups(
+    sortedEvents: CalendarEvent[]
+  ): CalendarEvent[][] {
+    const groups: CalendarEvent[][] = [];
+    const processed = new Set<string>();
+
+    for (const event of sortedEvents) {
+      if (processed.has(event.id)) continue;
+
+      const group = this.findAllOverlappingEvents(
+        event,
+        sortedEvents,
+        processed
+      );
+      if (group.length > 0) {
+        groups.push(group);
+        group.forEach((e) => processed.add(e.id));
+      }
+    }
+
+    return groups;
+  }
+
+  /**
+   * Find all events that overlap with the given event (transitively)
+   */
+  private static findAllOverlappingEvents(
+    targetEvent: CalendarEvent,
+    allEvents: CalendarEvent[],
+    processed: Set<string>
+  ): CalendarEvent[] {
+    const group: CalendarEvent[] = [targetEvent];
+    const toCheck = [targetEvent];
+
+    while (toCheck.length > 0) {
+      const currentEvent = toCheck.pop()!;
+
+      for (const otherEvent of allEvents) {
+        if (
+          processed.has(otherEvent.id) ||
+          group.some((e) => e.id === otherEvent.id) ||
+          otherEvent.id === currentEvent.id
+        ) {
+          continue;
+        }
+
+        if (this.eventsOverlap(currentEvent, otherEvent)) {
+          group.push(otherEvent);
+          toCheck.push(otherEvent);
+        }
+      }
+    }
+
+    return group;
+  }
+
+  /**
+   * Check if two events overlap in time
+   */
+  private static eventsOverlap(
+    event1: CalendarEvent,
+    event2: CalendarEvent
+  ): boolean {
+    const start1 = this.parseEventTime(event1.start);
+    const end1 = this.parseEventTime(event1.end);
+    const start2 = this.parseEventTime(event2.start);
+    const end2 = this.parseEventTime(event2.end);
+
+    if (!start1 || !end1 || !start2 || !end2) return false;
+
+    return (
+      start1.getTime() < end2.getTime() && start2.getTime() < end1.getTime()
+    );
+  }
+
+  /**
+   * Create time segments for overlapping events
+   * This ensures that events sharing the same time period are grouped together
+   */
+  private static createOverlapSegments(
+    overlappingEvents: CalendarEvent[]
+  ): Array<{
+    startTime: Date;
+    endTime: Date;
+    events: CalendarEvent[];
+  }> {
+    // Get all unique time points
+    const timePoints = this.extractTimePoints(overlappingEvents);
+    const segments: Array<{
+      startTime: Date;
+      endTime: Date;
+      events: CalendarEvent[];
+    }> = [];
+
+    // Create segments between consecutive time points
+    for (let i = 0; i < timePoints.length - 1; i++) {
+      const segmentStart = timePoints[i];
+      const segmentEnd = timePoints[i + 1];
+
+      // Find all events that cover this segment
+      const segmentEvents = overlappingEvents.filter((event) => {
+        const eventStart = this.parseEventTime(event.start)!;
+        const eventEnd = this.parseEventTime(event.end)!;
+
+        return (
+          eventStart.getTime() <= segmentStart.getTime() &&
+          eventEnd.getTime() > segmentStart.getTime()
+        );
+      });
+
+      if (segmentEvents.length > 0) {
+        segments.push({
+          startTime: segmentStart,
+          endTime: segmentEnd,
+          events: segmentEvents,
+        });
+      }
+    }
+
+    return segments;
+  }
+
+  private static extractTimePoints(events: CalendarEvent[]): Date[] {
+    const timePoints: Date[] = [];
+
+    events.forEach((event) => {
+      const startTime = this.parseEventTime(event.start);
+      const endTime = this.parseEventTime(event.end);
+
+      if (startTime) timePoints.push(startTime);
+      if (endTime) timePoints.push(endTime);
+    });
+
+    // Remove duplicates and sort
+    const uniqueTimePoints = Array.from(
+      new Set(timePoints.map((t) => t.getTime()))
+    )
+      .map((time) => new Date(time))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    return uniqueTimePoints;
+  }
+
+  private static parseEventTime(
+    dateValue: Date | string | undefined
+  ): Date | null {
+    if (!dateValue) return null;
+
+    try {
+      if (dateValue instanceof Date) {
+        return isNaN(dateValue.getTime()) ? null : dateValue;
+      }
+
+      if (typeof dateValue === "string") {
+        const parsed = parseISO(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
 }
 
 const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
@@ -36,38 +281,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   error,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  // Remove expandedItems state since we're not using inline popups anymore
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Calculate week days - always start with Monday
-  const weekDays = useMemo(() => {
-    const start = startOfWeek(date, { weekStartsOn: 1 }); // Monday = 1
-    const end = endOfWeek(date, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
-  }, [date]);
-
-  // Navigation functions
-  const goToPreviousWeek = () => {
-    const prevWeek = subWeeks(date, 1);
-    onDateChange(prevWeek);
-  };
-
-  const goToNextWeek = () => {
-    const nextWeek = addWeeks(date, 1);
-    onDateChange(nextWeek);
-  };
-
-  const goToCurrentWeek = () => {
-    onDateChange(new Date());
-  };
-
-  // Helper function to safely parse dates
+  // Helper function được định nghĩa trước khi sử dụng
   const safeParseDate = (dateValue: Date | string | undefined): Date | null => {
     if (!dateValue) return null;
 
@@ -84,75 +299,10 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     }
   };
 
-  // Group events by date
-  const eventsByDate = useMemo(() => {
-    const dateMap: Record<string, CalendarEvent[]> = {};
-
-    // Initialize structure
-    weekDays.forEach((day) => {
-      const dayKey = format(day, "yyyy-MM-dd");
-      dateMap[dayKey] = [];
-    });
-
-    // Process events - filter out events with invalid start dates
-    events
-      .filter((event) => safeParseDate(event.start) !== null)
-      .forEach((event) => {
-        const startDate = safeParseDate(event.start)!;
-        const dayKey = format(startDate, "yyyy-MM-dd");
-
-        if (dateMap[dayKey]) {
-          dateMap[dayKey].push(event);
-        }
-      });
-
-    return dateMap;
-  }, [events, weekDays]);
-
-  const hasEvents = useMemo(() => {
-    return Object.values(eventsByDate).some((events) => events.length > 0);
-  }, [eventsByDate]);
-
-  // Remove toggleItem function since we're not using it anymore
-
-  // Handle click on time slot to create new event
-  const handleTimeSlotClick = (
-    day: Date,
-    hour: number,
-    event: React.MouseEvent
-  ) => {
-    // Prevent event bubbling from EventCard
-    if ((event.target as HTMLElement).closest("[data-event-card]")) {
-      return;
-    }
-
-    if (onCreateEvent) {
-      onCreateEvent(day, hour);
-    }
-  };
-
-  // Calculate current time position - adjusted for 1 AM start
-  const currentTimePosition = useMemo(() => {
-    if (!isToday(date)) return null;
-
-    const now = new Date();
-    let hour = getHours(now);
-    const minute = getMinutes(now);
-
-    // Convert to our 1-24 system
-    if (hour === 0) hour = 24;
-
-    // Position relative to 1 AM start (hour 1 = position 0)
-    // Adjusted for header height (40px)
-    return hour - 1 + minute / 60;
-  }, [currentTime, date]);
-
-  // Helper function to calculate event position and height
-  const calculateEventDimensions = (event: CalendarEvent) => {
-    const startDate = safeParseDate(event.start);
-    const endDate = safeParseDate(event.end) || startDate;
-
-    if (!startDate || !endDate) return null;
+  // Helper function để tính toán dimensions cho TaskEvent segments
+  const calculateSegmentDimensions = (taskEvent: TaskEvent) => {
+    const startDate = taskEvent.startTime;
+    const endDate = taskEvent.endTime;
 
     let startHour = getHours(startDate);
     const startMinute = getMinutes(startDate);
@@ -164,22 +314,8 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     if (startHour === 0) startHour = 24;
     if (endHour === 0) endHour = 24;
 
-    // Calculate position (64px per hour, starting from hour 1)
     const topPosition = (startHour - 1) * 64 + (startMinute / 60) * 64;
-
-    // Calculate height
-    let durationInMinutes;
-    if (isSameDay(startDate, endDate)) {
-      // Same day event
-      durationInMinutes = differenceInMinutes(endDate, startDate);
-    } else {
-      // Multi-day event - only show until end of day
-      const endOfStartDay = new Date(startDate);
-      endOfStartDay.setHours(23, 59, 59, 999);
-      durationInMinutes = differenceInMinutes(endOfStartDay, startDate);
-    }
-
-    // Minimum height of 30px for very short events
+    const durationInMinutes = differenceInMinutes(endDate, startDate);
     const height = Math.max(30, (durationInMinutes / 60) * 64);
 
     return {
@@ -192,6 +328,102 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       duration: durationInMinutes,
     };
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(date, { weekStartsOn: 1 });
+    const end = endOfWeek(date, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end });
+  }, [date]);
+
+  const goToPreviousWeek = () => onDateChange(subWeeks(date, 1));
+  const goToNextWeek = () => onDateChange(addWeeks(date, 1));
+  const goToCurrentWeek = () => onDateChange(new Date());
+
+  // Enhanced event processing với improved overlap algorithm
+  const eventsByDate = useMemo(() => {
+    const dateMap: Record<string, EventLayout[]> = {};
+
+    // Initialize structure
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      dateMap[dayKey] = [];
+    });
+
+    // Process events cho từng ngày
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+
+      // Filter events for this day
+      const dayEvents = events
+        .filter((event) => safeParseDate(event.start) !== null)
+        .filter((event) => {
+          const startDate = safeParseDate(event.start)!;
+          return isSameDay(startDate, day);
+        });
+
+      if (dayEvents.length === 0) return;
+
+      // Apply improved overlap processing
+      const taskEvents = EventOverlapProcessor.processEventOverlaps(dayEvents);
+
+      // Convert TaskEvents to EventLayouts
+      const eventLayouts: EventLayout[] = [];
+
+      taskEvents.forEach((taskEvent, taskIndex) => {
+        const segmentDimensions = calculateSegmentDimensions(taskEvent);
+
+        // Create ONE EventLayout per TaskEvent (not per individual event)
+        eventLayouts.push({
+          events: taskEvent.events, // All events in this segment
+          width: 95, // Full width since we're not splitting by individual events
+          left: 2.5, // Standard left margin
+          zIndex: 5 + taskIndex,
+          dimensions: segmentDimensions,
+        });
+      });
+
+      dateMap[dayKey] = eventLayouts;
+    });
+
+    return dateMap;
+  }, [events, weekDays, safeParseDate]);
+
+  const hasEvents = useMemo(() => {
+    return Object.values(eventsByDate).some((events) => events.length > 0);
+  }, [eventsByDate]);
+
+  const handleTimeSlotClick = (
+    day: Date,
+    hour: number,
+    event: React.MouseEvent
+  ) => {
+    if ((event.target as HTMLElement).closest("[data-event-card]")) {
+      return;
+    }
+
+    if (onCreateEvent) {
+      onCreateEvent(day, hour);
+    }
+  };
+
+  const currentTimePosition = useMemo(() => {
+    if (!isToday(date)) return null;
+
+    const now = new Date();
+    let hour = getHours(now);
+    const minute = getMinutes(now);
+
+    if (hour === 0) hour = 24;
+
+    return hour - 1 + minute / 60;
+  }, [currentTime, date]);
 
   if (loading) {
     return (
@@ -307,15 +539,13 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         )}
 
         <div className="flex">
-          {/* Time column - starting from 1 AM, aligned with day headers */}
+          {/* Time column */}
           <div className="w-20 shrink-0 bg-gray-50 dark:bg-gray-900">
-            {/* Empty header space to align with day headers */}
             <div className="h-10 border-b border-gray-200 dark:border-gray-700"></div>
 
-            {/* Time slots */}
             {Array.from({ length: 24 }).map((_, index) => {
-              const hour = index + 1; // 1 to 24
-              const displayHour = hour === 24 ? 0 : hour; // Display 24 as 0 (midnight)
+              const hour = index + 1;
+              const displayHour = hour === 24 ? 0 : hour;
               return (
                 <div
                   key={hour}
@@ -330,7 +560,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
           {/* Days columns */}
           {weekDays.map((day) => {
             const dayKey = format(day, "yyyy-MM-dd");
-            const dayEvents = eventsByDate[dayKey] || [];
+            const dayEventLayouts = eventsByDate[dayKey] || [];
 
             return (
               <div
@@ -343,9 +573,9 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   {format(day, "EEE d")}
                 </div>
 
-                {/* Time slots background - Clickable */}
+                {/* Time slots background */}
                 {Array.from({ length: 24 }).map((_, index) => {
-                  const hour = index + 1; // 1 to 24
+                  const hour = index + 1;
                   return (
                     <div
                       key={index}
@@ -359,38 +589,26 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   );
                 })}
 
-                {/* Events overlay */}
+                {/* Enhanced Events overlay with improved overlap processing */}
                 <div className="absolute top-10 left-0 right-0 bottom-0 pointer-events-none">
-                  {dayEvents.map((event, eventIndex) => {
-                    const dimensions = calculateEventDimensions(event);
-                    if (!dimensions) return null;
-
-                    const totalEvents = dayEvents.length;
-                    // If only one event, use full width (95%), otherwise distribute evenly
-                    const widthPercent =
-                      totalEvents === 1 ? 95 : Math.max(95 / totalEvents, 30);
-                    const left =
-                      totalEvents === 1 ? 2.5 : (eventIndex * 95) / totalEvents; // Center single event
-
-                    return (
-                      <div
-                        key={event.id}
-                        data-event-card
-                        className="pointer-events-auto"
-                      >
-                        <EventCard
-                          event={event}
-                          dimensions={dimensions}
-                          widthPercent={widthPercent}
-                          left={left}
-                          zIndex={5 + eventIndex}
-                          isExpanded={false} // No longer using expanded state
-                          onToggle={() => {}} // No longer needed but keeping for compatibility
-                          onSelectItem={onSelectItem}
-                        />
-                      </div>
-                    );
-                  })}
+                  {dayEventLayouts.map((eventLayout, index) => (
+                    <div
+                      key={`segment-${index}-${
+                        eventLayout.events[0]?.id || index
+                      }`}
+                      data-event-card
+                      className="pointer-events-auto"
+                    >
+                      <MultiEventCard
+                        events={eventLayout.events}
+                        dimensions={eventLayout.dimensions}
+                        widthPercent={eventLayout.width}
+                        left={eventLayout.left}
+                        zIndex={eventLayout.zIndex}
+                        onSelectItem={onSelectItem}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             );

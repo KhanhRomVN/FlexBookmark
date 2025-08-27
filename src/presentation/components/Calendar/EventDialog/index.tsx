@@ -469,9 +469,9 @@ const EventDialog: React.FC<EventDialogProps> = ({
                 </div>
               )}
 
-              {/* Location */}
+              {/* Location - FIXED: Changed editedTask to editedEvent */}
               <LocationSection
-                editedTask={editedEvent}
+                editedEvent={editedEvent}
                 handleChange={handleChange}
               />
             </div>
@@ -479,7 +479,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
             <div className="space-y-8">
               {/* Tags */}
               <TagsSection
-                editedTask={editedEvent}
+                editedEvent={editedEvent}
                 handleChange={handleChange}
                 newTag={newTag}
                 setNewTag={setNewTag}
@@ -679,7 +679,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
           <div className="space-y-8">
             {/* Subtasks */}
             <SubtasksSection
-              editedTask={editedEvent}
+              editedEvent={editedEvent}
               newSubtask={newSubtask}
               setNewSubtask={setNewSubtask}
               handleSubtaskChange={handleSubtaskChange}
@@ -691,7 +691,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
 
             {/* Attachments */}
             <AttachmentsSection
-              editedTask={editedEvent}
+              editedEvent={editedEvent}
               newAttachment={newAttachment}
               setNewAttachment={setNewAttachment}
               handleAddAttachment={handleAddAttachment}
