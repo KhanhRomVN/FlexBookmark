@@ -393,7 +393,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
             // FIXED: Ensure we set a sufficient height for the time slot
             const newHeight = Math.max(
               heights[dayKey][actualStartHour],
-              requiredHeight + 20 // Add extra padding for better display
+              requiredHeight + 5 // Add extra padding for better display
             );
 
             heights[dayKey][actualStartHour] = newHeight;
@@ -450,7 +450,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     if (startHour === 0) startHour = 24;
     if (endHour === 0) endHour = 24;
 
-    // FIXED: Get the actual available slot height for this hour (including expansions from other events)
+    // Get the actual available slot height for this hour (including expansions from other events)
     let availableSlotHeight = timeSlotHeights[dayKey]?.[startHour] || 64;
 
     // Calculate the maximum slot height across all days for this hour (for consistency)
@@ -460,53 +460,70 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       availableSlotHeight = Math.max(availableSlotHeight, weekDayHeight);
     });
 
-    // For multi-event cards, ensure we use the full calculated height
-    if (taskEvent.events.length > 1) {
-      const requiredHeight = calculateRequiredHeight(taskEvent.events);
-      if (requiredHeight) {
-        availableSlotHeight = Math.max(
-          availableSlotHeight,
-          requiredHeight + 20
-        );
-      }
-    }
-
     // Use cumulative heights for correct positioning
     const baseCumulativeHeight = cumulativeHeights[dayKey]?.[startHour] || 0;
     const topPosition =
       baseCumulativeHeight + (startMinute / 60) * availableSlotHeight;
 
     const durationInMinutes = differenceInMinutes(endDate, startDate);
-    let originalHeight = Math.max(30, (durationInMinutes / 60) * 64);
 
-    // FIXED: For single events, scale height based on available slot height
-    if (taskEvent.events.length === 1 && availableSlotHeight > 64) {
-      // Scale the original height proportionally to the expanded slot
-      const expansionRatio = availableSlotHeight / 64;
-      originalHeight = Math.min(
-        originalHeight * expansionRatio,
-        availableSlotHeight * 0.8 // Don't use more than 80% of slot height
+    // CRITICAL FIX: Calculate height based on available slot height
+    let finalHeight;
+
+    if (taskEvent.events.length === 1) {
+      // For single events: if slot is expanded, expand the event proportionally
+      const originalDurationHeight = Math.max(
+        30,
+        (durationInMinutes / 60) * 64
       );
-    }
 
-    // Calculate required height for multi-event cards
-    const requiredHeight = calculateRequiredHeight(taskEvent.events);
+      if (availableSlotHeight > 64) {
+        // Slot has been expanded - scale the single event
+        const expansionRatio = availableSlotHeight / 64;
+        finalHeight = Math.max(
+          originalDurationHeight,
+          originalDurationHeight * Math.min(expansionRatio, 3) // Scale up to 3x max
+        );
 
-    // For multi-event cards, use the required height
-    let finalHeight = originalHeight;
-    if (requiredHeight && taskEvent.events.length > 1) {
-      finalHeight = Math.min(requiredHeight, availableSlotHeight - 8);
+        // Cap at 85% of available slot height
+        finalHeight = Math.min(finalHeight, availableSlotHeight * 0.85);
+
+        console.log(
+          `SINGLE EVENT ${
+            taskEvent.events[0].title || taskEvent.events[0].summary
+          }:`
+        );
+        console.log(`  - availableSlotHeight: ${availableSlotHeight}`);
+        console.log(`  - originalDurationHeight: ${originalDurationHeight}`);
+        console.log(`  - expansionRatio: ${expansionRatio}`);
+        console.log(`  - finalHeight: ${finalHeight}`);
+      } else {
+        finalHeight = originalDurationHeight;
+      }
+    } else {
+      // For multi-events, use the required height calculation
+      const requiredHeight = calculateRequiredHeight(taskEvent.events);
+      finalHeight = requiredHeight
+        ? Math.min(requiredHeight, availableSlotHeight - 8)
+        : Math.max(80, (durationInMinutes / 60) * availableSlotHeight);
+
+      console.log(`MULTI EVENT (${taskEvent.events.length} events):`);
+      console.log(`  - requiredHeight: ${requiredHeight}`);
+      console.log(`  - finalHeight: ${finalHeight}`);
     }
 
     return {
       top: topPosition,
-      height: finalHeight,
+      height: finalHeight, // This is the key - use finalHeight instead of the old logic
       startHour,
       startMinute,
       endHour,
       endMinute,
       duration: durationInMinutes,
-      requiredHeight: requiredHeight,
+      requiredHeight:
+        taskEvent.events.length > 1
+          ? calculateRequiredHeight(taskEvent.events)
+          : null,
       availableSlotHeight,
     };
   };
