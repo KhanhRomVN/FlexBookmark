@@ -25,7 +25,7 @@ interface TaskEvent {
 }
 
 interface EventLayout {
-  events: CalendarEvent[]; // Changed from single event to array of events
+  events: CalendarEvent[];
   width: number;
   left: number;
   zIndex: number;
@@ -37,6 +37,7 @@ interface EventLayout {
     endHour: number;
     endMinute: number;
     duration: number;
+    requiredHeight?: number;
   };
 }
 
@@ -282,6 +283,31 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Helper function để tính toán chiều cao cần thiết cho MultiEventCard
+  const calculateRequiredHeight = (events: CalendarEvent[]) => {
+    if (events.length === 1) {
+      return null; // Use default height for single events
+    }
+
+    // For multiple events:
+    const headerHeight = 20;
+    const eventHeight = 18;
+    const gapHeight = 2;
+    const paddingHeight = 8;
+    const footerHeight = 12; // "Click để xem chi tiết"
+
+    const totalEventsHeight = events.length * eventHeight;
+    const totalGapsHeight = (events.length - 1) * gapHeight;
+
+    return (
+      headerHeight +
+      totalEventsHeight +
+      totalGapsHeight +
+      paddingHeight +
+      footerHeight
+    );
+  };
+
   // Helper function được định nghĩa trước khi sử dụng
   const safeParseDate = (dateValue: Date | string | undefined): Date | null => {
     if (!dateValue) return null;
@@ -297,36 +323,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       console.warn("Failed to parse date:", dateValue, error);
       return null;
     }
-  };
-
-  // Helper function để tính toán dimensions cho TaskEvent segments
-  const calculateSegmentDimensions = (taskEvent: TaskEvent) => {
-    const startDate = taskEvent.startTime;
-    const endDate = taskEvent.endTime;
-
-    let startHour = getHours(startDate);
-    const startMinute = getMinutes(startDate);
-
-    let endHour = getHours(endDate);
-    const endMinute = getMinutes(endDate);
-
-    // Convert to our 1-24 system
-    if (startHour === 0) startHour = 24;
-    if (endHour === 0) endHour = 24;
-
-    const topPosition = (startHour - 1) * 64 + (startMinute / 60) * 64;
-    const durationInMinutes = differenceInMinutes(endDate, startDate);
-    const height = Math.max(30, (durationInMinutes / 60) * 64);
-
-    return {
-      top: topPosition,
-      height,
-      startHour,
-      startMinute,
-      endHour,
-      endMinute,
-      duration: durationInMinutes,
-    };
   };
 
   useEffect(() => {
@@ -345,6 +341,127 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   const goToPreviousWeek = () => onDateChange(subWeeks(date, 1));
   const goToNextWeek = () => onDateChange(addWeeks(date, 1));
   const goToCurrentWeek = () => onDateChange(new Date());
+
+  // Calculate dynamic heights for time slots based on event requirements
+  const timeSlotHeights = useMemo(() => {
+    const heights: Record<string, Record<number, number>> = {};
+
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      heights[dayKey] = {};
+
+      // Initialize all hours with default height
+      for (let hour = 1; hour <= 24; hour++) {
+        heights[dayKey][hour] = 64; // Default 64px height
+      }
+
+      // Filter events for this day
+      const dayEvents = events
+        .filter((event) => safeParseDate(event.start) !== null)
+        .filter((event) => {
+          const startDate = safeParseDate(event.start)!;
+          return isSameDay(startDate, day);
+        });
+
+      if (dayEvents.length === 0) return;
+
+      // Apply improved overlap processing
+      const taskEvents = EventOverlapProcessor.processEventOverlaps(dayEvents);
+
+      // Calculate required heights based on events
+      taskEvents.forEach((taskEvent) => {
+        if (taskEvent.events.length > 1) {
+          const startHour = getHours(taskEvent.startTime);
+          const actualStartHour = startHour === 0 ? 24 : startHour;
+
+          const requiredHeight = calculateRequiredHeight(taskEvent.events);
+
+          if (requiredHeight) {
+            // Set the height for the primary hour to accommodate the full event
+            const newHeight = Math.max(
+              heights[dayKey][actualStartHour],
+              requiredHeight + 16 // Add some padding
+            );
+
+            heights[dayKey][actualStartHour] = newHeight;
+          }
+        }
+      });
+    });
+
+    return heights;
+  }, [events, weekDays, safeParseDate, calculateRequiredHeight]);
+
+  // FIXED: Calculate cumulative heights for position calculation
+  const cumulativeHeights = useMemo(() => {
+    const cumulative: Record<string, Record<number, number>> = {};
+
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      cumulative[dayKey] = {};
+
+      let totalHeight = 0;
+      for (let hour = 1; hour <= 24; hour++) {
+        cumulative[dayKey][hour] = totalHeight;
+        // Use the maximum height across all days for this hour to keep consistency
+        let maxHeightForHour = 64;
+        weekDays.forEach((weekDay) => {
+          const weekDayKey = format(weekDay, "yyyy-MM-dd");
+          const weekDayHeight = timeSlotHeights[weekDayKey]?.[hour] || 64;
+          maxHeightForHour = Math.max(maxHeightForHour, weekDayHeight);
+        });
+        totalHeight += maxHeightForHour;
+      }
+    });
+
+    return cumulative;
+  }, [timeSlotHeights, weekDays]);
+
+  // FIXED: Helper function to calculate correct position using cumulative heights
+  const calculateSegmentDimensions = (taskEvent: TaskEvent, dayKey: string) => {
+    const startDate = taskEvent.startTime;
+    const endDate = taskEvent.endTime;
+
+    let startHour = getHours(startDate);
+    const startMinute = getMinutes(startDate);
+
+    let endHour = getHours(endDate);
+    const endMinute = getMinutes(endDate);
+
+    // Convert to our 1-24 system
+    if (startHour === 0) startHour = 24;
+    if (endHour === 0) endHour = 24;
+
+    // FIXED: Use cumulative heights for correct positioning
+    const baseCumulativeHeight = cumulativeHeights[dayKey]?.[startHour] || 0;
+    const topPosition =
+      baseCumulativeHeight +
+      (startMinute / 60) * (timeSlotHeights[dayKey]?.[startHour] || 64);
+
+    const durationInMinutes = differenceInMinutes(endDate, startDate);
+    let originalHeight = Math.max(30, (durationInMinutes / 60) * 64);
+
+    // Calculate required height for multi-event cards
+    const requiredHeight = calculateRequiredHeight(taskEvent.events);
+
+    // FIXED: For multi-event cards, use the expanded height from timeSlotHeights
+    let finalHeight = originalHeight;
+    if (requiredHeight && taskEvent.events.length > 1) {
+      const expandedSlotHeight = timeSlotHeights[dayKey]?.[startHour] || 64;
+      finalHeight = Math.min(requiredHeight, expandedSlotHeight - 8); // Leave some padding
+    }
+
+    return {
+      top: topPosition,
+      height: finalHeight,
+      startHour,
+      startMinute,
+      endHour,
+      endMinute,
+      duration: durationInMinutes,
+      requiredHeight: requiredHeight,
+    };
+  };
 
   // Enhanced event processing với improved overlap algorithm
   const eventsByDate = useMemo(() => {
@@ -377,13 +494,14 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       const eventLayouts: EventLayout[] = [];
 
       taskEvents.forEach((taskEvent, taskIndex) => {
-        const segmentDimensions = calculateSegmentDimensions(taskEvent);
+        // FIXED: Pass dayKey to calculateSegmentDimensions
+        const segmentDimensions = calculateSegmentDimensions(taskEvent, dayKey);
 
         // Create ONE EventLayout per TaskEvent (not per individual event)
         eventLayouts.push({
-          events: taskEvent.events, // All events in this segment
-          width: 95, // Full width since we're not splitting by individual events
-          left: 2.5, // Standard left margin
+          events: taskEvent.events,
+          width: 95,
+          left: 2.5,
           zIndex: 5 + taskIndex,
           dimensions: segmentDimensions,
         });
@@ -393,7 +511,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     });
 
     return dateMap;
-  }, [events, weekDays, safeParseDate]);
+  }, [events, weekDays, safeParseDate, calculateSegmentDimensions]);
 
   const hasEvents = useMemo(() => {
     return Object.values(eventsByDate).some((events) => events.length > 0);
@@ -422,8 +540,16 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 
     if (hour === 0) hour = 24;
 
-    return hour - 1 + minute / 60;
-  }, [currentTime, date]);
+    // FIXED: Use cumulative heights for current time position
+    const todayKey = format(new Date(), "yyyy-MM-dd");
+    let totalHeight = cumulativeHeights[todayKey]?.[hour] || 0;
+
+    // Add the portion of current hour
+    const currentHourHeight = timeSlotHeights[todayKey]?.[hour] || 64;
+    totalHeight += (minute / 60) * currentHourHeight;
+
+    return totalHeight;
+  }, [currentTime, date, timeSlotHeights, cumulativeHeights]);
 
   if (loading) {
     return (
@@ -532,24 +658,34 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
         {currentTimePosition !== null && (
           <div
             className="absolute left-20 right-0 h-0.5 bg-red-500 z-10 pointer-events-none"
-            style={{ top: `${40 + currentTimePosition * 64}px` }}
+            style={{ top: `${40 + currentTimePosition}px` }}
           >
             <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-red-500 rounded-full"></div>
           </div>
         )}
 
         <div className="flex">
-          {/* Time column */}
+          {/* Time column with dynamic heights */}
           <div className="w-20 shrink-0 bg-gray-50 dark:bg-gray-900">
             <div className="h-10 border-b border-gray-200 dark:border-gray-700"></div>
 
             {Array.from({ length: 24 }).map((_, index) => {
               const hour = index + 1;
               const displayHour = hour === 24 ? 0 : hour;
+
+              // Calculate the maximum height needed across all days for this hour
+              let maxHeightForHour = 64;
+              weekDays.forEach((day) => {
+                const dayKey = format(day, "yyyy-MM-dd");
+                const dayHeight = timeSlotHeights[dayKey]?.[hour] || 64;
+                maxHeightForHour = Math.max(maxHeightForHour, dayHeight);
+              });
+
               return (
                 <div
                   key={hour}
-                  className="h-16 flex items-start justify-end pr-2 pt-1 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700"
+                  className="flex items-start justify-end pr-2 pt-1 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700"
+                  style={{ height: `${maxHeightForHour}px` }}
                 >
                   {format(new Date().setHours(displayHour, 0), "h a")}
                 </div>
@@ -573,13 +709,27 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   {format(day, "EEE d")}
                 </div>
 
-                {/* Time slots background */}
+                {/* Time slots background with dynamic heights */}
                 {Array.from({ length: 24 }).map((_, index) => {
                   const hour = index + 1;
+
+                  // Use the same height calculation as the time column
+                  let maxHeightForHour = 64;
+                  weekDays.forEach((weekDay) => {
+                    const weekDayKey = format(weekDay, "yyyy-MM-dd");
+                    const weekDayHeight =
+                      timeSlotHeights[weekDayKey]?.[hour] || 64;
+                    maxHeightForHour = Math.max(
+                      maxHeightForHour,
+                      weekDayHeight
+                    );
+                  });
+
                   return (
                     <div
                       key={index}
-                      className="h-16 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                      className="border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                      style={{ height: `${maxHeightForHour}px` }}
                       onClick={(e) => handleTimeSlotClick(day, hour, e)}
                       title={`Tạo sự kiện mới lúc ${format(
                         new Date().setHours(hour === 24 ? 0 : hour, 0),
