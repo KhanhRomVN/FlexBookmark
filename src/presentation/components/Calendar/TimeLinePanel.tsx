@@ -1,3 +1,5 @@
+// TimeLinePanel.tsx - Fixed height calculation for MultiEventCard
+
 import React, { useMemo, useState, useEffect } from "react";
 import {
   format,
@@ -38,6 +40,7 @@ interface EventLayout {
     endMinute: number;
     duration: number;
     requiredHeight?: number;
+    availableSlotHeight?: number;
   };
 }
 
@@ -283,29 +286,38 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Helper function để tính toán chiều cao cần thiết cho MultiEventCard
+  // FIXED: Improved function to calculate required height for MultiEventCard
   const calculateRequiredHeight = (events: CalendarEvent[]) => {
     if (events.length === 1) {
       return null; // Use default height for single events
     }
 
-    // For multiple events:
-    const headerHeight = 20;
-    const eventHeight = 18;
-    const gapHeight = 2;
-    const paddingHeight = 8;
-    const footerHeight = 12; // "Click để xem chi tiết"
+    // For multiple events - calculate more accurately to show ALL events:
+    const headerHeight = 36; // Header with event count and time
+    const eventItemHeight = 32; // Height per event item (increased for better readability)
+    const eventSpacing = 6; // Space between events (increased)
+    const paddingHeight = 20; // Top and bottom padding
+    const borderSpacing = 12; // Space for borders and margins
 
-    const totalEventsHeight = events.length * eventHeight;
-    const totalGapsHeight = (events.length - 1) * gapHeight;
+    // Calculate total height needed for ALL events
+    const totalEventsHeight = events.length * eventItemHeight;
+    const totalSpacingHeight = Math.max(0, (events.length - 1) * eventSpacing);
 
-    return (
+    const totalRequiredHeight =
       headerHeight +
       totalEventsHeight +
-      totalGapsHeight +
+      totalSpacingHeight +
       paddingHeight +
-      footerHeight
+      borderSpacing;
+
+    // Ensure minimum height for readability but prioritize showing all events
+    const minimumHeight = Math.max(
+      100,
+      headerHeight + eventItemHeight * 2 + paddingHeight
     );
+
+    // Always return the full calculated height to show all events
+    return Math.max(minimumHeight, totalRequiredHeight);
   };
 
   // Helper function được định nghĩa trước khi sử dụng
@@ -342,7 +354,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   const goToNextWeek = () => onDateChange(addWeeks(date, 1));
   const goToCurrentWeek = () => onDateChange(new Date());
 
-  // Calculate dynamic heights for time slots based on event requirements
+  // FIXED: Improved dynamic heights calculation
   const timeSlotHeights = useMemo(() => {
     const heights: Record<string, Record<number, number>> = {};
 
@@ -377,13 +389,18 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
           const requiredHeight = calculateRequiredHeight(taskEvent.events);
 
           if (requiredHeight) {
-            // Set the height for the primary hour to accommodate the full event
+            // FIXED: Ensure we set a sufficient height for the time slot
             const newHeight = Math.max(
               heights[dayKey][actualStartHour],
-              requiredHeight + 16 // Add some padding
+              requiredHeight + 20 // Add extra padding for better display
             );
 
             heights[dayKey][actualStartHour] = newHeight;
+
+            // DEBUGGING: Log the calculation
+            console.log(
+              `Day: ${dayKey}, Hour: ${actualStartHour}, Events: ${taskEvent.events.length}, Required Height: ${requiredHeight}, Set Height: ${newHeight}`
+            );
           }
         }
       });
@@ -392,7 +409,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     return heights;
   }, [events, weekDays, safeParseDate, calculateRequiredHeight]);
 
-  // FIXED: Calculate cumulative heights for position calculation
+  // Calculate cumulative heights for position calculation
   const cumulativeHeights = useMemo(() => {
     const cumulative: Record<string, Record<number, number>> = {};
 
@@ -417,7 +434,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     return cumulative;
   }, [timeSlotHeights, weekDays]);
 
-  // FIXED: Helper function to calculate correct position using cumulative heights
+  // Update calculateSegmentDimensions to include slot height info
   const calculateSegmentDimensions = (taskEvent: TaskEvent, dayKey: string) => {
     const startDate = taskEvent.startTime;
     const endDate = taskEvent.endTime;
@@ -432,11 +449,24 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     if (startHour === 0) startHour = 24;
     if (endHour === 0) endHour = 24;
 
-    // FIXED: Use cumulative heights for correct positioning
+    // Get the available slot height for this hour
+    let availableSlotHeight = timeSlotHeights[dayKey]?.[startHour] || 64;
+
+    // For multi-event cards, ensure we use the full calculated height
+    if (taskEvent.events.length > 1) {
+      const requiredHeight = calculateRequiredHeight(taskEvent.events);
+      if (requiredHeight) {
+        availableSlotHeight = Math.max(
+          availableSlotHeight,
+          requiredHeight + 20
+        );
+      }
+    }
+
+    // Use cumulative heights for correct positioning
     const baseCumulativeHeight = cumulativeHeights[dayKey]?.[startHour] || 0;
     const topPosition =
-      baseCumulativeHeight +
-      (startMinute / 60) * (timeSlotHeights[dayKey]?.[startHour] || 64);
+      baseCumulativeHeight + (startMinute / 60) * availableSlotHeight;
 
     const durationInMinutes = differenceInMinutes(endDate, startDate);
     let originalHeight = Math.max(30, (durationInMinutes / 60) * 64);
@@ -444,11 +474,10 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     // Calculate required height for multi-event cards
     const requiredHeight = calculateRequiredHeight(taskEvent.events);
 
-    // FIXED: For multi-event cards, use the expanded height from timeSlotHeights
+    // For multi-event cards, use the required height
     let finalHeight = originalHeight;
     if (requiredHeight && taskEvent.events.length > 1) {
-      const expandedSlotHeight = timeSlotHeights[dayKey]?.[startHour] || 64;
-      finalHeight = Math.min(requiredHeight, expandedSlotHeight - 8); // Leave some padding
+      finalHeight = Math.min(requiredHeight, availableSlotHeight - 8);
     }
 
     return {
@@ -460,6 +489,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       endMinute,
       duration: durationInMinutes,
       requiredHeight: requiredHeight,
+      availableSlotHeight,
     };
   };
 
@@ -494,7 +524,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       const eventLayouts: EventLayout[] = [];
 
       taskEvents.forEach((taskEvent, taskIndex) => {
-        // FIXED: Pass dayKey to calculateSegmentDimensions
         const segmentDimensions = calculateSegmentDimensions(taskEvent, dayKey);
 
         // Create ONE EventLayout per TaskEvent (not per individual event)
@@ -540,7 +569,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 
     if (hour === 0) hour = 24;
 
-    // FIXED: Use cumulative heights for current time position
+    // Use cumulative heights for current time position
     const todayKey = format(new Date(), "yyyy-MM-dd");
     let totalHeight = cumulativeHeights[todayKey]?.[hour] || 0;
 
@@ -756,6 +785,9 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                         left={eventLayout.left}
                         zIndex={eventLayout.zIndex}
                         onSelectItem={onSelectItem}
+                        availableSlotHeight={
+                          eventLayout.dimensions.availableSlotHeight
+                        }
                       />
                     </div>
                   ))}

@@ -10,6 +10,7 @@ interface EventDimensions {
   endHour: number;
   endMinute: number;
   duration: number;
+  availableSlotHeight?: number; // ADDED: Available slot height
 }
 
 interface TimelineEventCardProps {
@@ -21,6 +22,7 @@ interface TimelineEventCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   onSelectItem: (event: CalendarEvent) => void;
+  availableSlotHeight?: number; // ADDED: Pass available slot height
 }
 
 const EventCard: React.FC<TimelineEventCardProps> = ({
@@ -32,18 +34,40 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
   isExpanded,
   onToggle,
   onSelectItem,
+  availableSlotHeight, // ADDED: Receive available slot height
 }) => {
   const bgColor =
     "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800/40";
   const dotColor = "bg-blue-500";
 
-  // Adjust height for margin bottom (2px)
-  const adjustedHeight = Math.max(28, dimensions.height - 2);
+  // FIXED: Calculate height based on available slot height if provided
+  const calculateEventHeight = () => {
+    // If we have available slot height (meaning row was expanded), use it
+    if (availableSlotHeight && availableSlotHeight > 64) {
+      // Calculate what portion of the expanded slot this event should occupy
+      const originalSlotHeight = 64; // Default slot height
+      const expansionRatio = availableSlotHeight / originalSlotHeight;
+
+      // Scale the event height proportionally, but with reasonable limits
+      const scaledHeight = dimensions.height * expansionRatio;
+
+      // Ensure minimum and maximum bounds
+      const minHeight = Math.max(dimensions.height, 40);
+      const maxHeight = availableSlotHeight - 8; // Leave some margin
+
+      return Math.min(maxHeight, Math.max(minHeight, scaledHeight));
+    }
+
+    // Otherwise use original height
+    return Math.max(28, dimensions.height - 2);
+  };
+
+  const adjustedHeight = calculateEventHeight();
 
   // Handle card click - directly open EventDialog
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelectItem(event); // This will open the EventDialog
+    onSelectItem(event);
   };
 
   return (
@@ -58,7 +82,7 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
         zIndex,
         minHeight: "28px",
       }}
-      onClick={handleCardClick} // Changed from onToggle to handleCardClick
+      onClick={handleCardClick}
     >
       <div className="flex flex-col h-full">
         <div className="flex items-start gap-1 mb-1">
@@ -95,7 +119,7 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
 
         {/* Show description if event is tall enough */}
         {adjustedHeight > 60 && event.description && (
-          <div className="text-[10px] text-gray-600 dark:text-gray-400 line-clamp-2 flex-1">
+          <div className="text-[10px] text-gray-600 dark:text-gray-400 line-clamp-3 flex-1 overflow-hidden">
             {event.description}
           </div>
         )}
@@ -106,9 +130,14 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
             📍 {event.location}
           </div>
         )}
-      </div>
 
-      {/* Remove the expanded popup since we're opening EventDialog directly */}
+        {/* Show additional content for very expanded slots */}
+        {adjustedHeight > 120 && event.description && (
+          <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-2 flex-1 overflow-y-auto">
+            <div className="leading-tight">{event.description}</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
