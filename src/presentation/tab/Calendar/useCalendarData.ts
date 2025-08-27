@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { fetchGoogleEvents, fetchGoogleCalendars, createGoogleEvent, updateGoogleEvent } from "../../../utils/GGCalender";
 import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
 import type { CalendarEvent, GoogleCalendar } from "../../types/calendar";
+import { startOfWeek, endOfWeek } from "date-fns";
 
 export const useCalendarData = () => {
     const authManager = ChromeAuthManager.getInstance();
@@ -196,11 +197,7 @@ export const useCalendarData = () => {
         );
     }, []);
 
-    const isSameDate = useCallback((d1: Date, d2: Date) => {
-        return d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
-    }, []);
-
-    // Filter events based on selected calendars and date
+    // Filter events based on selected calendars and week
     const filteredEvents = events.filter((event) => {
         // Check if event's calendar is selected
         const eventCalendar = calendars.find(cal => cal.id === event.calendarId);
@@ -208,10 +205,16 @@ export const useCalendarData = () => {
             return false;
         }
 
-        // Check if event is on selected date
+        // Check if event is within the current week being displayed
         try {
             const eventDate = event.start instanceof Date ? event.start : new Date(event.start);
-            return isSameDate(eventDate, selectedDate);
+
+            // Get week boundaries for the selected date
+            const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
+            const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 }); // Sunday
+
+            // Check if event falls within this week
+            return eventDate >= weekStart && eventDate <= weekEnd;
         } catch {
             return false;
         }
