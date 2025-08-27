@@ -1,4 +1,4 @@
-// TimeLinePanel.tsx - Fixed height calculation for MultiEventCard
+// TimeLinePanel.tsx - Fixed to pass availableSlotHeight to EventCard
 
 import React, { useMemo, useState, useEffect } from "react";
 import {
@@ -17,6 +17,7 @@ import {
 } from "date-fns";
 import type { CalendarEvent } from "../../types/calendar";
 import MultiEventCard from "./MultiEventCard";
+import EventCard from "./EventCard"; // Import EventCard
 
 interface TaskEvent {
   id: string;
@@ -449,8 +450,15 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
     if (startHour === 0) startHour = 24;
     if (endHour === 0) endHour = 24;
 
-    // Get the available slot height for this hour
+    // FIXED: Get the actual available slot height for this hour (including expansions from other events)
     let availableSlotHeight = timeSlotHeights[dayKey]?.[startHour] || 64;
+
+    // Calculate the maximum slot height across all days for this hour (for consistency)
+    weekDays.forEach((weekDay) => {
+      const weekDayKey = format(weekDay, "yyyy-MM-dd");
+      const weekDayHeight = timeSlotHeights[weekDayKey]?.[startHour] || 64;
+      availableSlotHeight = Math.max(availableSlotHeight, weekDayHeight);
+    });
 
     // For multi-event cards, ensure we use the full calculated height
     if (taskEvent.events.length > 1) {
@@ -470,6 +478,16 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 
     const durationInMinutes = differenceInMinutes(endDate, startDate);
     let originalHeight = Math.max(30, (durationInMinutes / 60) * 64);
+
+    // FIXED: For single events, scale height based on available slot height
+    if (taskEvent.events.length === 1 && availableSlotHeight > 64) {
+      // Scale the original height proportionally to the expanded slot
+      const expansionRatio = availableSlotHeight / 64;
+      originalHeight = Math.min(
+        originalHeight * expansionRatio,
+        availableSlotHeight * 0.8 // Don't use more than 80% of slot height
+      );
+    }
 
     // Calculate required height for multi-event cards
     const requiredHeight = calculateRequiredHeight(taskEvent.events);
@@ -621,7 +639,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+    <div className="h-full flex flex-col bg-background">
       {/* Header with navigation */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
@@ -768,7 +786,7 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                   );
                 })}
 
-                {/* Enhanced Events overlay with improved overlap processing */}
+                {/* FIXED: Enhanced Events overlay with proper component rendering */}
                 <div className="absolute top-10 left-0 right-0 bottom-0 pointer-events-none">
                   {dayEventLayouts.map((eventLayout, index) => (
                     <div
@@ -778,17 +796,34 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
                       data-event-card
                       className="pointer-events-auto"
                     >
-                      <MultiEventCard
-                        events={eventLayout.events}
-                        dimensions={eventLayout.dimensions}
-                        widthPercent={eventLayout.width}
-                        left={eventLayout.left}
-                        zIndex={eventLayout.zIndex}
-                        onSelectItem={onSelectItem}
-                        availableSlotHeight={
-                          eventLayout.dimensions.availableSlotHeight
-                        }
-                      />
+                      {/* FIXED: Properly render MultiEventCard vs EventCard based on event count */}
+                      {eventLayout.events.length > 1 ? (
+                        <MultiEventCard
+                          events={eventLayout.events}
+                          dimensions={eventLayout.dimensions}
+                          widthPercent={eventLayout.width}
+                          left={eventLayout.left}
+                          zIndex={eventLayout.zIndex}
+                          onSelectItem={onSelectItem}
+                          availableSlotHeight={
+                            eventLayout.dimensions.availableSlotHeight
+                          }
+                        />
+                      ) : (
+                        <EventCard
+                          event={eventLayout.events[0]}
+                          dimensions={eventLayout.dimensions}
+                          widthPercent={eventLayout.width}
+                          left={eventLayout.left}
+                          zIndex={eventLayout.zIndex}
+                          isExpanded={false} // Not used for timeline view
+                          onToggle={() => {}} // Not used for timeline view
+                          onSelectItem={onSelectItem}
+                          availableSlotHeight={
+                            eventLayout.dimensions.availableSlotHeight
+                          }
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

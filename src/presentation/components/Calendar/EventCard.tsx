@@ -10,7 +10,7 @@ interface EventDimensions {
   endHour: number;
   endMinute: number;
   duration: number;
-  availableSlotHeight?: number; // ADDED: Available slot height
+  availableSlotHeight?: number;
 }
 
 interface TimelineEventCardProps {
@@ -22,7 +22,7 @@ interface TimelineEventCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   onSelectItem: (event: CalendarEvent) => void;
-  availableSlotHeight?: number; // ADDED: Pass available slot height
+  availableSlotHeight?: number;
 }
 
 const EventCard: React.FC<TimelineEventCardProps> = ({
@@ -34,32 +34,39 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
   isExpanded,
   onToggle,
   onSelectItem,
-  availableSlotHeight, // ADDED: Receive available slot height
+  availableSlotHeight,
 }) => {
   const bgColor =
     "bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800/40";
   const dotColor = "bg-blue-500";
 
-  // FIXED: Calculate height based on available slot height if provided
+  // FIXED: Improved height calculation with better logic
   const calculateEventHeight = () => {
-    // If we have available slot height (meaning row was expanded), use it
-    if (availableSlotHeight && availableSlotHeight > 64) {
-      // Calculate what portion of the expanded slot this event should occupy
-      const originalSlotHeight = 64; // Default slot height
-      const expansionRatio = availableSlotHeight / originalSlotHeight;
+    // Use the height from dimensions (which should already include slot expansion scaling)
+    let calculatedHeight = dimensions.height;
 
-      // Scale the event height proportionally, but with reasonable limits
-      const scaledHeight = dimensions.height * expansionRatio;
+    // If availableSlotHeight is provided and is expanded (> 64), ensure we use appropriate height
+    const effectiveSlotHeight =
+      availableSlotHeight || dimensions.availableSlotHeight || 64;
 
-      // Ensure minimum and maximum bounds
-      const minHeight = Math.max(dimensions.height, 40);
-      const maxHeight = availableSlotHeight - 8; // Leave some margin
+    if (effectiveSlotHeight > 64) {
+      // Slot has been expanded, scale our event proportionally
+      const expansionRatio = effectiveSlotHeight / 64;
 
-      return Math.min(maxHeight, Math.max(minHeight, scaledHeight));
+      // Calculate base height from original event duration
+      const originalBaseHeight = Math.max(30, (dimensions.duration / 60) * 64);
+
+      // Scale it up but limit to reasonable bounds
+      const scaledHeight = originalBaseHeight * Math.min(expansionRatio, 3); // Max 3x expansion
+
+      // Ensure we don't exceed the slot bounds
+      const maxAllowedHeight = effectiveSlotHeight * 0.85; // Use up to 85% of slot height
+
+      calculatedHeight = Math.min(scaledHeight, maxAllowedHeight);
     }
 
-    // Otherwise use original height
-    return Math.max(28, dimensions.height - 2);
+    // Ensure minimum height for readability
+    return Math.max(calculatedHeight, 28);
   };
 
   const adjustedHeight = calculateEventHeight();
@@ -69,6 +76,15 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
     e.stopPropagation();
     onSelectItem(event);
   };
+
+  // DEBUGGING: Log height calculation
+  console.log(
+    `EventCard: ${event.title}, originalHeight: ${
+      dimensions.height
+    }, availableSlotHeight: ${
+      availableSlotHeight || dimensions.availableSlotHeight || 64
+    }, adjustedHeight: ${adjustedHeight}`
+  );
 
   return (
     <div
