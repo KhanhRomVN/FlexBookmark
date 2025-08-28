@@ -7,6 +7,7 @@ import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
 import TaskAndEvent from "@/presentation/tab/Calendar";
 import TaskManager from "@/presentation/tab/TaskManager";
+import HabitManager from "@/presentation/tab/HabitManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,10 +22,10 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "manager" | "tasks" | "taskManager"
+    "dashboard" | "manager" | "tasks" | "taskManager" | "habits"
   >("dashboard");
 
-  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Tasks, 4 = Task Manager
+  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Calendar, 4 = Task Manager, 5 = Habits
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
@@ -47,6 +48,9 @@ const App: React.FC = () => {
       if (e.key === "4" || e.code === "Digit4" || e.code === "Numpad4") {
         setActiveTab("taskManager");
       }
+      if (e.key === "5" || e.code === "Digit5" || e.code === "Numpad5") {
+        setActiveTab("habits");
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -60,7 +64,8 @@ const App: React.FC = () => {
         (result.flexbookmark_active_tab === "dashboard" ||
           result.flexbookmark_active_tab === "manager" ||
           result.flexbookmark_active_tab === "tasks" ||
-          result.flexbookmark_active_tab === "taskManager")
+          result.flexbookmark_active_tab === "taskManager" ||
+          result.flexbookmark_active_tab === "habits")
       ) {
         setActiveTab(result.flexbookmark_active_tab);
       }
@@ -81,7 +86,12 @@ const App: React.FC = () => {
               value={activeTab}
               onValueChange={(v) =>
                 setActiveTab(
-                  v as "dashboard" | "manager" | "tasks" | "taskManager"
+                  v as
+                    | "dashboard"
+                    | "manager"
+                    | "tasks"
+                    | "taskManager"
+                    | "habits"
                 )
               }
             >
@@ -96,6 +106,9 @@ const App: React.FC = () => {
               </TabsContent>
               <TabsContent value="taskManager" className="flex-1 overflow-auto">
                 <TaskManager />
+              </TabsContent>
+              <TabsContent value="habits" className="flex-1 overflow-auto">
+                <HabitManager />
               </TabsContent>
             </Tabs>
           </div>

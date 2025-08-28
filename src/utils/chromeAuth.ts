@@ -1,3 +1,5 @@
+// src/utils/chromeAuth.ts - Fixed version with better Drive permission handling
+
 // Chrome Identity API authentication - Pure Chrome Extension approach
 
 export interface User {
@@ -61,7 +63,7 @@ class ChromeAuthManager {
         return this.authState;
     }
 
-    // NEW: Force re-authentication with full scopes
+    // IMPROVED: Force re-authentication with full scopes
     async forceReauth(): Promise<User> {
         this.updateState({ loading: true, error: null });
 
@@ -84,6 +86,13 @@ class ChromeAuthManager {
 
             // Force interactive login to get new token with full scopes
             const user = await this.login();
+
+            // Verify permissions after login
+            const hasPermissions = await this.hasDriveFilePermission();
+            if (!hasPermissions) {
+                throw new Error('Failed to obtain Drive permissions after re-authentication');
+            }
+
             return user;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Re-authentication failed';
@@ -97,7 +106,69 @@ class ChromeAuthManager {
         }
     }
 
-    // NEW: Check if current token has calendar write permissions
+    // IMPROVED: Check if current token has drive.file permissions
+    async hasDriveFilePermission(): Promise<boolean> {
+        const token = this.getCurrentToken();
+        if (!token) {
+            console.log('No token available for permission check');
+            return false;
+        }
+
+        try {
+            console.log('Checking Drive permissions...');
+
+            // First, check token info for scopes
+            const tokenInfoResponse = await fetch(
+                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+            );
+
+            if (tokenInfoResponse.ok) {
+                const tokenInfo = await tokenInfoResponse.json();
+                const scopes = tokenInfo.scope || '';
+                console.log('Token scopes:', scopes);
+
+                // Check if we have drive.file scope
+                const hasDriveScope = scopes.includes('https://www.googleapis.com/auth/drive.file') ||
+                    scopes.includes('https://www.googleapis.com/auth/drive');
+
+                if (!hasDriveScope) {
+                    console.log('Drive scope not found in token');
+                    return false;
+                }
+            } else {
+                console.log('Failed to get token info:', tokenInfoResponse.status);
+                return false;
+            }
+
+            // Test actual Drive API access
+            const driveResponse = await fetch(
+                'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id,name)',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            const hasAccess = driveResponse.ok;
+            console.log('Drive API test result:', hasAccess, driveResponse.status);
+
+            if (!hasAccess) {
+                const errorText = await driveResponse.text();
+                console.log('Drive API error:', errorText);
+            }
+
+            return hasAccess;
+
+        } catch (error) {
+            console.error('Error checking drive permissions:', error);
+            return false;
+        }
+    }
+
+    // Check if current token has calendar write permissions
     async hasCalendarWritePermission(): Promise<boolean> {
         const token = this.getCurrentToken();
         if (!token) return false;
@@ -137,36 +208,54 @@ class ChromeAuthManager {
         }
     }
 
-    // Initialize - check for existing token
+    // IMPROVED: Initialize - check for existing token
     async initialize(): Promise<void> {
         this.updateState({ loading: true, error: null });
 
         try {
+            console.log('Initializing auth...');
+
             // Try to get cached user data
             const cachedUser = await this.getCachedUser();
             if (cachedUser) {
+                console.log('Found cached user, verifying token...');
+
                 // Verify token is still valid
                 const isValid = await this.verifyToken(cachedUser.accessToken);
                 if (isValid) {
+                    console.log('Token is valid, checking permissions...');
+
                     this.updateState({
                         isAuthenticated: true,
                         user: cachedUser,
                         loading: false
                     });
 
-                    // Check if we have calendar write permissions
-                    const hasWritePermission = await this.hasCalendarWritePermission();
-                    if (!hasWritePermission) {
+                    // Check permissions in background
+                    const [hasCalendarPermission, hasDrivePermission] = await Promise.all([
+                        this.hasCalendarWritePermission(),
+                        this.hasDriveFilePermission()
+                    ]);
+
+                    console.log('Permissions check:', { hasCalendarPermission, hasDrivePermission });
+
+                    if (!hasCalendarPermission) {
                         console.warn('Current token lacks calendar write permissions. Re-authentication may be needed.');
+                    }
+
+                    if (!hasDrivePermission) {
+                        console.warn('Current token lacks drive.file permissions. Re-authentication may be needed.');
                     }
 
                     return;
                 } else {
+                    console.log('Token expired, clearing cache...');
                     // Token expired, clear cache
                     await this.clearCachedUser();
                 }
             }
 
+            console.log('No valid cached token, attempting silent login...');
             // Try silent authentication
             await this.silentLogin();
         } catch (error) {
@@ -188,6 +277,7 @@ class ChromeAuthManager {
                 async (result: any) => {
 
                     if (chrome.runtime.lastError) {
+                        console.log('Silent login failed:', chrome.runtime.lastError.message);
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -201,6 +291,7 @@ class ChromeAuthManager {
                     const token = typeof result === 'string' ? result : result?.token;
 
                     if (!token) {
+                        console.log('No token from silent login');
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -211,13 +302,17 @@ class ChromeAuthManager {
                     }
 
                     try {
+                        console.log('Got token from silent login, getting user info...');
                         const user = await this.getUserInfo(token);
                         await this.cacheUser(user);
+
                         this.updateState({
                             isAuthenticated: true,
                             user,
                             loading: false
                         });
+
+                        console.log('Silent login successful');
                         resolve();
                     } catch (error) {
                         console.error('Silent login error:', error);
@@ -244,6 +339,7 @@ class ChromeAuthManager {
 
                     if (chrome.runtime.lastError) {
                         const error = chrome.runtime.lastError.message || 'Failed to get auth token';
+                        console.error('Interactive login error:', error);
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -259,6 +355,7 @@ class ChromeAuthManager {
 
                     if (!token) {
                         const error = 'No auth token received';
+                        console.error('Interactive login error:', error);
                         this.updateState({
                             isAuthenticated: false,
                             user: null,
@@ -270,6 +367,7 @@ class ChromeAuthManager {
                     }
 
                     try {
+                        console.log('Got token from interactive login, getting user info...');
                         const user = await this.getUserInfo(token);
                         await this.cacheUser(user);
                         this.updateState({
@@ -278,9 +376,11 @@ class ChromeAuthManager {
                             loading: false,
                             error: null
                         });
+                        console.log('Interactive login successful');
                         resolve(user);
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Login failed';
+                        console.error('Interactive login error:', errorMessage);
                         this.updateState({
                             isAuthenticated: false,
                             user: null,

@@ -1,4 +1,4 @@
-// MultiEventCard.tsx - Fixed to display all event titles with proper height calculation
+// MultiEventCard.tsx - Enhanced logging to debug height differences
 import React from "react";
 import { format } from "date-fns";
 import type { CalendarEvent } from "../../types/calendar";
@@ -34,15 +34,42 @@ const MultiEventCard: React.FC<MultiEventCardProps> = ({
   onSelectItem,
   availableSlotHeight,
 }) => {
+  // ENHANCED LOGGING: Log all input props for debugging
+  console.log("=== MultiEventCard DEBUG START ===");
+  console.log("Events count:", events.length);
+  console.log("Dimensions received:", {
+    top: dimensions.top,
+    height: dimensions.height,
+    startHour: dimensions.startHour,
+    startMinute: dimensions.startMinute,
+    endHour: dimensions.endHour,
+    endMinute: dimensions.endMinute,
+    duration: dimensions.duration,
+    requiredHeight: dimensions.requiredHeight,
+    availableSlotHeight: dimensions.availableSlotHeight,
+  });
+  console.log("Props availableSlotHeight:", availableSlotHeight);
+  console.log("Style props:", { widthPercent, left, zIndex });
+
   // FIXED: Use the calculated height from dimensions to show ALL events
   const calculateOptimalHeight = () => {
+    console.log("calculateOptimalHeight called for", events.length, "events");
+
     if (events.length === 1) {
       // For single events, use the dimension height
-      return Math.max(dimensions.height, 40);
+      const singleEventHeight = Math.max(dimensions.height, 40);
+      console.log("SINGLE EVENT HEIGHT CALCULATION:");
+      console.log("  - dimensions.height:", dimensions.height);
+      console.log("  - Math.max(dimensions.height, 40):", singleEventHeight);
+      return singleEventHeight;
     }
 
     // For multiple events, use the required height from dimensions
     if (dimensions.requiredHeight) {
+      console.log(
+        "MULTI EVENT - Using dimensions.requiredHeight:",
+        dimensions.requiredHeight
+      );
       return dimensions.requiredHeight;
     }
 
@@ -63,11 +90,27 @@ const MultiEventCard: React.FC<MultiEventCardProps> = ({
       paddingHeight +
       borderSpacing;
 
-    return Math.max(100, totalRequiredHeight);
+    const fallbackHeight = Math.max(100, totalRequiredHeight);
+
+    console.log("MULTI EVENT - Fallback calculation:");
+    console.log("  - headerHeight:", headerHeight);
+    console.log("  - eventItemHeight:", eventItemHeight);
+    console.log("  - eventSpacing:", eventSpacing);
+    console.log("  - paddingHeight:", paddingHeight);
+    console.log("  - borderSpacing:", borderSpacing);
+    console.log("  - totalEventsHeight:", totalEventsHeight);
+    console.log("  - totalSpacingHeight:", totalSpacingHeight);
+    console.log("  - totalRequiredHeight:", totalRequiredHeight);
+    console.log("  - fallbackHeight:", fallbackHeight);
+
+    return fallbackHeight;
   };
 
   const cardHeight = calculateOptimalHeight();
   const isMultiEvent = events.length > 1;
+
+  console.log("Final cardHeight:", cardHeight);
+  console.log("isMultiEvent:", isMultiEvent);
 
   // Single event rendering
   if (!isMultiEvent) {
@@ -80,6 +123,16 @@ const MultiEventCard: React.FC<MultiEventCardProps> = ({
       e.stopPropagation();
       onSelectItem(event);
     };
+
+    console.log("RENDERING SINGLE EVENT:");
+    console.log("  - Event title:", event.title || event.summary);
+    console.log("  - Final style.height:", `${cardHeight}px`);
+    console.log("  - Final style.top:", `${dimensions.top}px`);
+    console.log("  - Final style.width:", `${widthPercent}%`);
+    console.log("  - Final style.left:", `${left}%`);
+    console.log("  - Final style.zIndex:", zIndex);
+    console.log("  - minHeight:", "32px");
+    console.log("=== MultiEventCard SINGLE EVENT DEBUG END ===");
 
     return (
       <div
@@ -145,7 +198,7 @@ const MultiEventCard: React.FC<MultiEventCardProps> = ({
     );
   }
 
-  // Multiple events rendering - FIXED to display ALL events
+  // Multiple events rendering
   const bgColor =
     "bg-gradient-to-br from-blue-50 to-purple-50 border-blue-300 dark:from-blue-900/40 dark:to-purple-900/40 dark:border-blue-700 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-800/50 dark:hover:to-purple-800/50";
 
@@ -154,10 +207,15 @@ const MultiEventCard: React.FC<MultiEventCardProps> = ({
     onSelectItem(events[0]); // Select first event to open dialog
   };
 
-  // DEBUGGING: Log the height calculation
-  console.log(
-    `MultiEventCard: ${events.length} events, calculated height: ${cardHeight}px`
-  );
+  console.log("RENDERING MULTI EVENT:");
+  console.log("  - Events count:", events.length);
+  console.log("  - Final style.height:", `${cardHeight}px`);
+  console.log("  - Final style.top:", `${dimensions.top}px`);
+  console.log("  - Final style.width:", `${widthPercent}%`);
+  console.log("  - Final style.left:", `${left}%`);
+  console.log("  - Final style.zIndex:", zIndex);
+  console.log("  - minHeight:", "80px");
+  console.log("=== MultiEventCard MULTI EVENT DEBUG END ===");
 
   return (
     <div
