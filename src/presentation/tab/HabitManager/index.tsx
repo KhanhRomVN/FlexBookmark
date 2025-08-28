@@ -1,3 +1,5 @@
+// Fixed HabitManager/index.tsx - Pass driveManager to FolderSelector
+
 import React, { useState, useEffect } from "react";
 import FolderSelector from "./components/FolderSelector";
 import { useHabitData } from "./hooks/useHabitData";
@@ -7,6 +9,7 @@ const HabitManager: React.FC = () => {
   // Use the actual hook instead of mock data
   const {
     authState,
+    driveManager, // Get driveManager from the hook
     habits,
     habitLogs,
     loading,
@@ -20,6 +23,7 @@ const HabitManager: React.FC = () => {
     handleLogHabit,
     handleRefresh,
     handleForceReauth,
+    handleSelectFolder, // Get handleSelectFolder from the hook
   } = useHabitData();
 
   // Folder selection states
@@ -171,15 +175,21 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // Show folder selection if needed
+  // Show folder selection if needed - FIXED: Pass driveManager and handle folder selection properly
   if (needsFolderSelection) {
     return (
       <FolderSelector
-        driveManager={null} // This will be handled by the useHabitData hook
+        driveManager={driveManager} // Pass driveManager from useHabitData hook
         onFolderSelected={(folderId, folderName) => {
           setSelectedFolderId(folderId);
           setSelectedFolderName(folderName);
           setNeedsFolderSelection(false);
+
+          // Use handleSelectFolder from the hook
+          handleSelectFolder(folderId, folderName);
+
+          // Trigger data reload after folder selection
+          setTimeout(() => handleRefresh(), 500);
         }}
       />
     );
@@ -614,7 +624,7 @@ const HabitManager: React.FC = () => {
                     }
                   }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Ví dụ: Đọc sách 30 phút"
+                  placeholder="Nhập tên thói quen..."
                 />
               </div>
 
@@ -744,7 +754,10 @@ const HabitManager: React.FC = () => {
               <button
                 onClick={
                   editingHabit
-                    ? () => handleUpdateHabit(editingHabit)
+                    ? () => {
+                        handleUpdateHabit(editingHabit);
+                        setEditingHabit(null);
+                      }
                     : handleCreateSubmit
                 }
                 disabled={

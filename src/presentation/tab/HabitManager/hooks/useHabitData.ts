@@ -38,6 +38,7 @@ export const useHabitData = () => {
     const [error, setError] = useState<string | null>(null);
     const [needsReauth, setNeedsReauth] = useState<boolean>(false);
     const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
+    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
     // Auth state subscription
     useEffect(() => {
@@ -58,14 +59,21 @@ export const useHabitData = () => {
         }
     }, [authState.isAuthenticated, authState.user?.accessToken]);
 
-    // Check permissions and load data
+    // Check permissions when authenticated
     useEffect(() => {
         if (authState.isAuthenticated && authState.user && driveManager) {
-            checkPermissionsAndLoadData();
+            checkPermissions();
         }
     }, [authState.isAuthenticated, authState.user, driveManager]);
 
-    const checkPermissionsAndLoadData = useCallback(async () => {
+    // Load data when folder is selected
+    useEffect(() => {
+        if (selectedFolderId && driveManager && !needsReauth) {
+            loadHabitData();
+        }
+    }, [selectedFolderId, driveManager, needsReauth]);
+
+    const checkPermissions = useCallback(async () => {
         if (!driveManager) return;
 
         try {
@@ -78,10 +86,7 @@ export const useHabitData = () => {
 
             if (!hasPermissions) {
                 setError("Cần cấp quyền Drive để lưu trữ dữ liệu thói quen. Vui lòng cấp quyền.");
-                return;
             }
-
-            await loadHabitData();
         } catch (error) {
             console.error('Error checking permissions:', error);
             setError("Lỗi kiểm tra quyền truy cập");
@@ -91,11 +96,17 @@ export const useHabitData = () => {
     }, [driveManager, authManager]);
 
     const loadHabitData = useCallback(async () => {
-        if (!driveManager) return;
+        if (!driveManager || !selectedFolderId) {
+            console.log('Cannot load data: driveManager or selectedFolderId missing');
+            return;
+        }
 
         try {
             setLoading(true);
             setError(null);
+
+            // Set the selected folder in the drive manager
+            driveManager.setSelectedFolder(selectedFolderId);
 
             // Get current month/year sheet
             const sheetId = await driveManager.getCurrentMonthSheet();
@@ -115,7 +126,7 @@ export const useHabitData = () => {
         } finally {
             setLoading(false);
         }
-    }, [driveManager]);
+    }, [driveManager, selectedFolderId]);
 
     const handleLogin = useCallback(async () => {
         try {
@@ -134,6 +145,7 @@ export const useHabitData = () => {
             setError(null);
             setNeedsReauth(false);
             setCurrentSheetId(null);
+            setSelectedFolderId(null);
         } catch (err) {
             console.error("Logout error:", err);
         }
@@ -145,9 +157,9 @@ export const useHabitData = () => {
             setError(null);
             await authManager.forceReauth();
             setNeedsReauth(false);
-            // Refresh data after re-auth
+            // Refresh permissions check after re-auth
             setTimeout(() => {
-                checkPermissionsAndLoadData();
+                checkPermissions();
             }, 500);
         } catch (error) {
             console.error("Re-authentication error:", error);
@@ -155,29 +167,23 @@ export const useHabitData = () => {
         } finally {
             setLoading(false);
         }
-    }, [authManager, checkPermissionsAndLoadData]);
+    }, [authManager, checkPermissions]);
 
-    const handleSelectFolder = useCallback(async () => {
-        if (!driveManager) return;
-
-        try {
-            setLoading(true);
-            const folderId = await driveManager.selectFolder();
-            if (folderId) {
-                // Refresh data with new folder
-                await loadHabitData();
-            }
-        } catch (error) {
-            console.error("Error selecting folder:", error);
-            setError("Lỗi chọn thư mục");
-        } finally {
-            setLoading(false);
+    const handleSelectFolder = useCallback((folderId: string, folderName: string) => {
+        console.log('Folder selected:', folderId, folderName);
+        setSelectedFolderId(folderId);
+        if (driveManager) {
+            driveManager.setSelectedFolder(folderId);
         }
-    }, [driveManager, loadHabitData]);
+    }, [driveManager]);
 
     const handleRefresh = useCallback(() => {
-        loadHabitData();
-    }, [loadHabitData]);
+        if (selectedFolderId) {
+            loadHabitData();
+        } else {
+            setError("Chưa chọn thư mục lưu trữ");
+        }
+    }, [loadHabitData, selectedFolderId]);
 
     const handleCreateHabit = useCallback(async (habitData: Omit<Habit, "id" | "currentCount" | "createdAt">) => {
         if (!driveManager || !currentSheetId) {
@@ -293,12 +299,14 @@ export const useHabitData = () => {
 
     return {
         authState,
+        driveManager,
         habits,
         habitLogs,
         loading,
         error,
         currentSheetId,
         needsReauth,
+        selectedFolderId,
         handleLogin,
         handleLogout,
         handleCreateHabit,
