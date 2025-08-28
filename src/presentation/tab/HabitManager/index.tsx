@@ -1,59 +1,31 @@
 import React, { useState, useEffect } from "react";
-
-// Mock interfaces for demo
-interface Habit {
-  id: string;
-  name: string;
-  description?: string;
-  frequency: "daily" | "weekly" | "monthly";
-  targetCount: number;
-  currentCount: number;
-  createdAt: Date;
-  color?: string;
-}
-
-interface HabitLog {
-  date: string;
-  habitId: string;
-  completed: boolean;
-  note?: string;
-}
-
-interface DriveFolder {
-  id: string;
-  name: string;
-  parents?: string[];
-  webViewLink?: string;
-}
-
-// Mock auth state
-const mockAuthState = {
-  isAuthenticated: true,
-  user: { name: "User", accessToken: "mock-token" },
-  loading: false,
-  error: null,
-};
+import FolderSelector from "./components/FolderSelector";
+import { useHabitData } from "./hooks/useHabitData";
+import type { Habit } from "./hooks/useHabitData";
 
 const HabitManager: React.FC = () => {
-  // Mock data states
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [habitLogs, setHabitLogs] = useState<HabitLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Use the actual hook instead of mock data
+  const {
+    authState,
+    habits,
+    habitLogs,
+    loading,
+    error,
+    needsReauth,
+    handleLogin,
+    handleLogout,
+    handleCreateHabit,
+    handleUpdateHabit,
+    handleDeleteHabit,
+    handleLogHabit,
+    handleRefresh,
+    handleForceReauth,
+  } = useHabitData();
 
   // Folder selection states
   const [needsFolderSelection, setNeedsFolderSelection] = useState(true);
-  const [showFolderDialog, setShowFolderDialog] = useState(false);
-  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedFolderName, setSelectedFolderName] = useState<string>("");
-  const [currentFolders, setCurrentFolders] = useState<DriveFolder[]>([]);
-  const [currentParentId, setCurrentParentId] = useState<string>("root");
-  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([
-    { id: "root", name: "My Drive" },
-  ]);
-  const [searchQuery, setSearchQuery] = useState("");
-  // Remove newFolderName state as we'll use fixed "FlexBookmark" name
 
   // Habit management states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -66,567 +38,150 @@ const HabitManager: React.FC = () => {
     color: "#3b82f6",
   });
 
-  // Mock folders data
-  const mockFolders: { [key: string]: DriveFolder[] } = {
-    root: [
-      { id: "folder1", name: "Documents" },
-      { id: "folder2", name: "Projects" },
-      { id: "folder3", name: "FlexBookmark" },
-      { id: "folder4", name: "Work Files" },
-      { id: "folder5", name: "Personal" },
-    ],
-    folder1: [
-      { id: "folder1_1", name: "Archive" },
-      { id: "folder1_2", name: "Templates" },
-    ],
-    folder2: [
-      { id: "folder2_1", name: "Web Development" },
-      { id: "folder2_2", name: "Mobile Apps" },
-    ],
-    folder4: [
-      { id: "folder4_1", name: "Reports" },
-      { id: "folder4_2", name: "Presentations" },
-    ],
-  };
-
   // Get current date stats
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
   const todayLogs = habitLogs.filter((log) => log.date === todayStr);
   const completedToday = todayLogs.filter((log) => log.completed).length;
 
-  // Mock functions
-  const handleLogin = () => console.log("Login");
-  const handleLogout = () => console.log("Logout");
-  const handleRefresh = () => console.log("Refresh");
-
-  const loadFolders = (parentId: string = "root", searchTerm: string = "") => {
-    setLoading(true);
-
-    setTimeout(() => {
-      let folders = mockFolders[parentId] || [];
-
-      if (searchTerm) {
-        // Search across all folders, not just current level
-        const allFolders = Object.values(mockFolders).flat();
-        folders = allFolders.filter((f) =>
-          f.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      setCurrentFolders(folders);
-      setLoading(false);
-    }, 300);
-  };
-
-  const handleFolderSelect = (folder: DriveFolder) => {
-    // Check if this folder has subfolders
-    if (mockFolders[folder.id]) {
-      // Navigate into folder
-      setCurrentParentId(folder.id);
-      setFolderPath([...folderPath, { id: folder.id, name: folder.name }]);
-      loadFolders(folder.id);
-    }
-  };
-
-  const handleBackToParent = () => {
-    if (folderPath.length > 1) {
-      const newPath = folderPath.slice(0, -1);
-      const parentId = newPath[newPath.length - 1].id;
-      setFolderPath(newPath);
-      setCurrentParentId(parentId);
-      loadFolders(parentId);
-    }
-  };
-
-  const handleBreadcrumbClick = (targetFolder: {
-    id: string;
-    name: string;
-  }) => {
-    const targetIndex = folderPath.findIndex((f) => f.id === targetFolder.id);
-    if (targetIndex !== -1) {
-      const newPath = folderPath.slice(0, targetIndex + 1);
-      setFolderPath(newPath);
-      setCurrentParentId(targetFolder.id);
-      loadFolders(targetFolder.id);
-    }
-  };
-
-  const handleChooseFolder = (folderId: string, folderName: string) => {
-    setSelectedFolderId(folderId);
-    setSelectedFolderName(folderName);
-    setShowFolderDialog(false);
-    setNeedsFolderSelection(false);
-
-    // Mock: Check if habit sheet exists for current month
-    console.log("Selected folder:", folderId, folderName);
-    console.log("Checking for existing habit sheet...");
-
-    // Simulate initialization
-    setTimeout(() => {
-      console.log("Habit structure initialized");
-      // Initialize with some mock data
-      setHabits([
-        {
-          id: "1",
-          name: "Đọc sách",
-          description: "Đọc sách 30 phút mỗi ngày",
-          frequency: "daily",
-          targetCount: 1,
-          currentCount: 0,
-          createdAt: new Date(),
-          color: "#3b82f6",
-        },
-        {
-          id: "2",
-          name: "Tập thể dục",
-          description: "Tập thể dục 45 phút",
-          frequency: "daily",
-          targetCount: 1,
-          currentCount: 0,
-          createdAt: new Date(),
-          color: "#ef4444",
-        },
-      ]);
-    }, 1000);
-  };
-
-  const handleCreateFolder = () => {
-    // Fixed folder name - always "FlexBookmark"
-    const folderName = "FlexBookmark";
-    const currentLocation = folderPath[folderPath.length - 1];
-
-    console.log(`Creating "${folderName}" folder in:`, currentLocation);
-
-    // Mock folder creation
-    const newFolder: DriveFolder = {
-      id: `folder_${Date.now()}`,
-      name: folderName,
-    };
-
-    // Add to current folders
-    setCurrentFolders([...currentFolders, newFolder]);
-
-    // Automatically select the new FlexBookmark folder
-    console.log("Created FlexBookmark folder, auto-selecting...");
-    handleChooseFolder(newFolder.id, newFolder.name);
-
-    setShowCreateFolderDialog(false);
-  };
-
   const handleCreateSubmit = async () => {
     if (!newHabit.name?.trim()) return;
 
-    const habit: Habit = {
-      id: Date.now().toString(),
-      name: newHabit.name,
-      description: newHabit.description,
-      frequency: newHabit.frequency as "daily" | "weekly" | "monthly",
-      targetCount: newHabit.targetCount || 1,
-      currentCount: 0,
-      createdAt: new Date(),
-      color: newHabit.color,
-    };
+    try {
+      await handleCreateHabit({
+        name: newHabit.name,
+        description: newHabit.description,
+        frequency: newHabit.frequency as "daily" | "weekly" | "monthly",
+        targetCount: newHabit.targetCount || 1,
+        color: newHabit.color,
+      });
 
-    setHabits([...habits, habit]);
-    setNewHabit({
-      name: "",
-      description: "",
-      frequency: "daily",
-      targetCount: 1,
-      color: "#3b82f6",
-    });
-    setIsCreateDialogOpen(false);
+      setNewHabit({
+        name: "",
+        description: "",
+        frequency: "daily",
+        targetCount: 1,
+        color: "#3b82f6",
+      });
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating habit:", error);
+    }
   };
 
-  const handleToggleHabit = (habitId: string) => {
+  const handleToggleHabit = async (habitId: string) => {
     const existingLog = todayLogs.find((log) => log.habitId === habitId);
-    const newLog: HabitLog = {
-      date: todayStr,
-      habitId,
-      completed: !existingLog?.completed,
-    };
 
-    if (existingLog) {
-      setHabitLogs(
-        habitLogs.map((log) =>
-          log.date === todayStr && log.habitId === habitId ? newLog : log
-        )
-      );
-    } else {
-      setHabitLogs([...habitLogs, newLog]);
+    try {
+      await handleLogHabit({
+        date: todayStr,
+        habitId,
+        completed: !existingLog?.completed,
+        note: "",
+      });
+    } catch (error) {
+      console.error("Error toggling habit:", error);
     }
+  };
 
-    // Update habit current count
-    setHabits(
-      habits.map((habit) =>
-        habit.id === habitId
-          ? {
-              ...habit,
-              currentCount: newLog.completed
-                ? habit.currentCount + 1
-                : Math.max(0, habit.currentCount - 1),
-            }
-          : habit
-      )
+  // Handle authentication states
+  if (!authState.isAuthenticated && !authState.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
+        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md mx-4">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-slate-900 mb-2">
+            Đăng nhập Google
+          </h3>
+          <p className="text-slate-600 mb-6">
+            Để sử dụng tính năng quản lý thói quen, vui lòng đăng nhập Google
+            Drive
+          </p>
+          <button
+            onClick={handleLogin}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+          >
+            Đăng nhập với Google
+          </button>
+        </div>
+      </div>
     );
-  };
+  }
 
-  const handleDeleteHabit = (habitId: string) => {
-    setHabits(habits.filter((h) => h.id !== habitId));
-    setHabitLogs(habitLogs.filter((l) => l.habitId !== habitId));
-  };
+  if (authState.loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
+        <div className="text-center p-8">
+          <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Đang xác thực...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleUpdateHabit = (updatedHabit: Habit) => {
-    setHabits(habits.map((h) => (h.id === updatedHabit.id ? updatedHabit : h)));
-    setEditingHabit(null);
-  };
-
-  useEffect(() => {
-    if (showFolderDialog) {
-      loadFolders(currentParentId);
-    }
-  }, [showFolderDialog, currentParentId]);
-
-  // Reset search when dialog closes
-  useEffect(() => {
-    if (!showFolderDialog) {
-      setSearchQuery("");
-      setCurrentParentId("root");
-      setFolderPath([{ id: "root", name: "My Drive" }]);
-    }
-  }, [showFolderDialog]);
+  if (needsReauth) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
+        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md mx-4">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.892-.833-2.664 0L3.133 16.5C2.364 18.167 3.326 19 4.866 19z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-slate-900 mb-2">
+            Cần cấp thêm quyền
+          </h3>
+          <p className="text-slate-600 mb-6">
+            Ứng dụng cần quyền truy cập Google Drive để lưu trữ dữ liệu thói
+            quen
+          </p>
+          <button
+            onClick={handleForceReauth}
+            disabled={loading}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-400 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:cursor-not-allowed"
+          >
+            {loading ? "Đang cấp quyền..." : "Cấp quyền Google Drive"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show folder selection if needed
   if (needsFolderSelection) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
-        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md mx-4">
-          <div className="relative mb-8">
-            <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl w-20 h-20 mx-auto flex items-center justify-center shadow-xl">
-              <svg
-                className="w-10 h-10 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
-              </svg>
-            </div>
-          </div>
-
-          <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-            Chọn thư mục FlexBookmark
-          </h3>
-
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Vui lòng chọn thư mục FlexBookmark hiện có hoặc tạo mới để lưu trữ
-            dữ liệu thói quen
-          </p>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowFolderDialog(true)}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl"
-            >
-              <div className="flex items-center justify-center gap-3">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                  />
-                </svg>
-                Chọn thư mục có sẵn
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowCreateFolderDialog(true)}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl"
-            >
-              <div className="flex items-center justify-center gap-3">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Tạo thư mục FlexBookmark
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Folder Selection Dialog */}
-        {showFolderDialog && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-              {/* Header */}
-              <div className="p-6 border-b border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-slate-900">
-                    Chọn thư mục FlexBookmark
-                  </h3>
-                  <button
-                    onClick={() => setShowFolderDialog(false)}
-                    className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Search */}
-                <div className="relative">
-                  <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      loadFolders(currentParentId, e.target.value);
-                    }}
-                    placeholder="Tìm kiếm thư mục FlexBookmark..."
-                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Breadcrumb */}
-                <div className="flex items-center gap-2 mt-4 text-sm">
-                  {folderPath.map((folder, index) => (
-                    <React.Fragment key={folder.id}>
-                      <button
-                        onClick={() => handleBreadcrumbClick(folder)}
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {folder.name}
-                      </button>
-                      {index < folderPath.length - 1 && (
-                        <svg
-                          className="w-4 h-4 text-slate-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-auto p-6">
-                {folderPath.length > 1 && (
-                  <button
-                    onClick={handleBackToParent}
-                    className="flex items-center gap-3 p-3 w-full text-left hover:bg-slate-50 rounded-lg transition-colors mb-2"
-                  >
-                    <svg
-                      className="w-5 h-5 text-slate-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                      />
-                    </svg>
-                    <span className="text-slate-600">
-                      .. (Trở lại thư mục cha)
-                    </span>
-                  </button>
-                )}
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="ml-3 text-slate-600">Đang tải...</span>
-                  </div>
-                ) : currentFolders.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 text-slate-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-slate-600">Không tìm thấy thư mục nào</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {currentFolders.map((folder) => (
-                      <div
-                        key={folder.id}
-                        className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors"
-                      >
-                        <button
-                          onClick={() => handleFolderSelect(folder)}
-                          className="flex items-center gap-3 flex-1 text-left"
-                        >
-                          <svg
-                            className="w-5 h-5 text-blue-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                            />
-                          </svg>
-                          <span className="text-slate-900 font-medium">
-                            {folder.name}
-                          </span>
-                        </button>
-
-                        {folder.name.toLowerCase().includes("flexbookmark") && (
-                          <button
-                            onClick={() =>
-                              handleChooseFolder(folder.id, folder.name)
-                            }
-                            className="ml-3 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg font-medium transition-colors"
-                          >
-                            Chọn
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 border-t border-slate-200 bg-slate-50">
-                <p className="text-sm text-slate-600 text-center">
-                  Tìm kiếm hoặc điều hướng đến thư mục FlexBookmark để tiếp tục
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Create Folder Dialog - Simplified without name input */}
-        {showCreateFolderDialog && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-slate-900 mb-4">
-                  Tạo thư mục FlexBookmark
-                </h3>
-
-                <div className="space-y-4">
-                  {/* Fixed folder name display */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tên thư mục
-                    </label>
-                    <div className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600">
-                      FlexBookmark
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Tên thư mục cố định cho hệ thống quản lý thói quen
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Vị trí tạo
-                    </label>
-                    <button
-                      onClick={() => {
-                        setShowCreateFolderDialog(false);
-                        setShowFolderDialog(true);
-                      }}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-left text-slate-600 hover:bg-slate-50 transition-colors"
-                    >
-                      {folderPath[folderPath.length - 1].name} (click để thay
-                      đổi)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 mt-6">
-                  <button
-                    onClick={() => setShowCreateFolderDialog(false)}
-                    className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={handleCreateFolder}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Tạo thư mục FlexBookmark
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <FolderSelector
+        driveManager={null} // This will be handled by the useHabitData hook
+        onFolderSelected={(folderId, folderName) => {
+          setSelectedFolderId(folderId);
+          setSelectedFolderName(folderName);
+          setNeedsFolderSelection(false);
+        }}
+      />
     );
   }
 
@@ -948,7 +503,8 @@ const HabitManager: React.FC = () => {
 
                   <button
                     onClick={() => handleToggleHabit(habit.id)}
-                    className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 ${
+                    disabled={loading}
+                    className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 ${
                       isCompleted
                         ? "bg-green-500 hover:bg-green-600 text-white"
                         : "bg-slate-100 hover:bg-slate-200 text-slate-700"
