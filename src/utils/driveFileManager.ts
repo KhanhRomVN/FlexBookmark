@@ -1,5 +1,6 @@
 // src/utils/driveFileManager.ts
-import type { Habit, HabitLog } from "../presentation/tab/HabitManager/useHabitData";
+// Auto-finds or creates FlexBookmark folder structure with comprehensive habit tracking
+import type { Habit, HabitLog } from "../presentation/tab/HabitManager/hooks/useHabitData";
 
 export interface DriveFolder {
     id: string;
@@ -18,7 +19,7 @@ export class DriveFileManager {
     private accessToken: string;
     private baseApiUrl = 'https://www.googleapis.com/drive/v3';
     private sheetsApiUrl = 'https://sheets.googleapis.com/v4';
-    private selectedFolderId: string | null = null;
+    private flexBookmarkFolderId: string | null = null;
 
     constructor(accessToken: string) {
         this.accessToken = accessToken;
@@ -29,118 +30,57 @@ export class DriveFileManager {
         this.accessToken = newToken;
     }
 
-    // Set selected folder ID
-    setSelectedFolder(folderId: string): void {
-        this.selectedFolderId = folderId;
-    }
+    // Auto-initialize: find or create FlexBookmark folder structure
+    async autoInitialize(): Promise<string> {
+        console.log('Auto-initializing FlexBookmark folder structure...');
 
-    // Get selected folder ID
-    getSelectedFolder(): string | null {
-        return this.selectedFolderId;
-    }
-
-    // List folders for user selection
-    async listFolders(parentId: string = 'root', query?: string): Promise<DriveFolder[]> {
-        try {
-            let searchQuery = `mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
-            if (query) {
-                searchQuery += ` and name contains '${query}'`;
-            }
-
-            const response = await fetch(
-                `${this.baseApiUrl}/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name,parents)&orderBy=name`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.accessToken}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to list folders: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.files || [];
-        } catch (error) {
-            console.error('Error listing folders:', error);
-            throw error;
-        }
-    }
-
-    // Create FlexBookmark folder in selected location
-    async createFlexBookmarkFolder(parentId: string): Promise<string> {
-        console.log('Creating FlexBookmark folder in parent:', parentId);
-
-        // Check if FlexBookmark already exists
-        const existingFolder = await this.findFolder('FlexBookmark', parentId);
-        if (existingFolder) {
-            console.log('FlexBookmark folder already exists:', existingFolder.id);
-            this.selectedFolderId = existingFolder.id;
-            return existingFolder.id;
+        // Step 1: Find or create FlexBookmark folder in root
+        let flexBookmarkFolder = await this.findFolder('FlexBookmark', 'root');
+        if (!flexBookmarkFolder) {
+            console.log('FlexBookmark folder not found, creating it...');
+            flexBookmarkFolder = await this.createFolder('FlexBookmark', 'root');
+        } else {
+            console.log('FlexBookmark folder found:', flexBookmarkFolder.id);
         }
 
-        // Create FlexBookmark folder
-        const flexBookmarkFolder = await this.createFolder('FlexBookmark', parentId);
-        this.selectedFolderId = flexBookmarkFolder.id;
+        this.flexBookmarkFolderId = flexBookmarkFolder.id;
 
-        // Automatically create HabitManager subfolder and current month sheet
-        await this.initializeHabitStructure(flexBookmarkFolder.id);
+        // Step 2: Find or create HabitManager subfolder
+        let habitManagerFolder = await this.findFolder('HabitManager', flexBookmarkFolder.id);
+        if (!habitManagerFolder) {
+            console.log('HabitManager folder not found, creating it...');
+            habitManagerFolder = await this.createFolder('HabitManager', flexBookmarkFolder.id);
+        } else {
+            console.log('HabitManager folder found:', habitManagerFolder.id);
+        }
 
-        return flexBookmarkFolder.id;
-    }
-
-    // Initialize habit management structure
-    private async initializeHabitStructure(flexBookmarkFolderId: string): Promise<void> {
+        // Step 3: Find or create current year folder
         const currentYear = new Date().getFullYear().toString();
+        let yearFolder = await this.findFolder(currentYear, habitManagerFolder.id);
+        if (!yearFolder) {
+            console.log(`${currentYear} folder not found, creating it...`);
+            yearFolder = await this.createFolder(currentYear, habitManagerFolder.id);
+        } else {
+            console.log(`${currentYear} folder found:`, yearFolder.id);
+        }
 
-        // Create HabitManager folder
-        const habitManagerFolder = await this.createFolder('HabitManager', flexBookmarkFolderId);
-
-        // Create year folder
-        const yearFolder = await this.createFolder(currentYear, habitManagerFolder.id);
-
-        // Create current month sheet
+        // Step 4: Find or create current month sheet
         const currentDate = new Date();
-        const monthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-        const sheetName = `Habits_${monthYear}`;
+        const monthYear = `flex_bookmark_${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentYear}`;
 
-        const existingSheet = await this.findFile(sheetName, yearFolder.id);
-        if (!existingSheet) {
-            await this.createHabitSheet(sheetName, yearFolder.id);
+        let habitSheet = await this.findFile(monthYear, yearFolder.id);
+        if (!habitSheet) {
+            console.log(`${monthYear} sheet not found, creating it...`);
+            const sheetId = await this.createHabitSheet(monthYear, yearFolder.id);
+            return sheetId;
+        } else {
+            console.log(`${monthYear} sheet found:`, habitSheet.id);
+            return habitSheet.id;
         }
-    }
-
-    // Create folder structure: HabitManager/2025/ (inside already selected FlexBookmark)
-    private async createFolderStructure(parentId?: string): Promise<string> {
-        console.log('Creating folder structure...');
-
-        const currentYear = new Date().getFullYear().toString();
-        let currentParentId = parentId || this.selectedFolderId;
-
-        if (!currentParentId) {
-            throw new Error('No folder selected. Please select a FlexBookmark folder first.');
-        }
-
-        // Create HabitManager folder
-        const habitManagerFolder = await this.createFolder('HabitManager', currentParentId);
-        currentParentId = habitManagerFolder.id;
-
-        // Create year folder
-        const yearFolder = await this.createFolder(currentYear, currentParentId);
-
-        return yearFolder.id;
     }
 
     // Create a folder
     private async createFolder(name: string, parentId: string): Promise<DriveFolder> {
-        // First check if folder already exists
-        const existingFolder = await this.findFolder(name, parentId);
-        if (existingFolder) {
-            console.log(`Folder "${name}" already exists:`, existingFolder.id);
-            return existingFolder;
-        }
-
         console.log(`Creating folder: ${name} in parent: ${parentId}`);
 
         const folderMetadata = {
@@ -193,32 +133,6 @@ export class DriveFileManager {
             console.warn(`Error finding folder "${name}":`, error);
             return null;
         }
-    }
-
-    // Get current month sheet (create if not exists)
-    async getCurrentMonthSheet(): Promise<string> {
-        if (!this.selectedFolderId) {
-            throw new Error('No FlexBookmark folder selected');
-        }
-
-        const currentDate = new Date();
-        const monthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-        const sheetName = `Habits_${monthYear}`;
-
-        // Create folder structure first
-        const yearFolderId = await this.createFolderStructure();
-
-        // Check if sheet already exists
-        const existingSheet = await this.findFile(sheetName, yearFolderId);
-        if (existingSheet) {
-            console.log(`Sheet "${sheetName}" already exists:`, existingSheet.id);
-            return existingSheet.id;
-        }
-
-        // Create new sheet
-        console.log(`Creating new sheet: ${sheetName}`);
-        const sheetId = await this.createHabitSheet(sheetName, yearFolderId);
-        return sheetId;
     }
 
     // Find a file by name and parent
@@ -280,7 +194,7 @@ export class DriveFileManager {
         return sheetId;
     }
 
-    // Initialize sheet with proper structure
+    // Initialize sheet with comprehensive structure
     private async initializeSheetStructure(sheetId: string): Promise<void> {
         const requests = [
             // Clear existing sheets and create our custom sheets
@@ -290,7 +204,7 @@ export class DriveFileManager {
                         title: 'Habits',
                         gridProperties: {
                             rowCount: 1000,
-                            columnCount: 10
+                            columnCount: 50 // Increased to accommodate all columns
                         }
                     }
                 }
@@ -318,19 +232,45 @@ export class DriveFileManager {
             body: JSON.stringify({ requests }),
         });
 
-        // Add headers to Habits sheet
+        // Create comprehensive headers for Habits sheet
         const habitsHeaders = [
-            ['ID', 'Name', 'Description', 'Frequency', 'TargetCount', 'CurrentCount', 'CreatedAt', 'Color']
+            // PHẦN 1: THÔNG TIN CỐ ĐỊNH VỀ THÓI QUEN (A-H)
+            'ID', // A
+            'Tên Thói quen', // B
+            'Mô tả', // C
+            'Loại Thói quen', // D (Good/Bad)
+            'Mục tiêu (Mỗi ngày)', // E
+            'Đơn vị tính', // F
+            'Cường độ/Khoảng lặp', // G
+            'Mức độ Ưu tiên', // H
+
+            // PHẦN 2: THEO DÕI HÀNG NGÀY (I-AI) - 31 cột cho 31 ngày
+            ...Array.from({ length: 31 }, (_, i) => `Ngày ${i + 1}`), // I-AI (31 columns)
+
+            // PHẦN 3: CỘT TỔNG KẾT & PHÂN TÍCH (AJ-AP)
+            'Tổng số lần (Tháng)', // AJ
+            'Số ngày đạt mục tiêu', // AK
+            'Số ngày không đạt mục tiêu', // AL
+            'Tỷ lệ thành công (%)', // AM
+            'Trung bình mỗi ngày', // AN
+            'Đánh giá cảm tính', // AO
+            'Ghi chú tháng' // AP
         ];
 
-        await this.updateRange(sheetId, 'Habits!A1:H1', habitsHeaders);
+        await this.updateRange(sheetId, 'Habits!A1:AP1', [habitsHeaders]);
 
-        // Add headers to HabitLogs sheet
+        // Add headers to HabitLogs sheet (keeping original structure for compatibility)
         const logsHeaders = [
             ['Date', 'HabitID', 'Completed', 'Note', 'Timestamp']
         ];
 
         await this.updateRange(sheetId, 'HabitLogs!A1:E1', logsHeaders);
+
+        // Set up data validation for key columns
+        await this.setupDataValidation(sheetId);
+
+        // Apply conditional formatting
+        await this.setupConditionalFormatting(sheetId);
 
         // Delete the default Sheet1
         try {
@@ -359,6 +299,209 @@ export class DriveFileManager {
         } catch (error) {
             console.warn('Could not delete default sheet:', error);
         }
+    }
+
+    // Helper method to set up data validation
+    private async setupDataValidation(sheetId: string): Promise<void> {
+        const requests = [
+            // Data validation for "Loại Thói quen" column (D)
+            {
+                setDataValidation: {
+                    range: {
+                        sheetId: 0, // First sheet (Habits)
+                        startRowIndex: 1, // Skip header
+                        endRowIndex: 1000,
+                        startColumnIndex: 3, // Column D (0-indexed)
+                        endColumnIndex: 4
+                    },
+                    rule: {
+                        condition: {
+                            type: 'ONE_OF_LIST',
+                            values: [
+                                { userEnteredValue: 'Good' },
+                                { userEnteredValue: 'Bad' }
+                            ]
+                        },
+                        showCustomUi: true
+                    }
+                }
+            },
+            // Data validation for daily tracking columns (I-AI) - numbers 0-10
+            {
+                setDataValidation: {
+                    range: {
+                        sheetId: 0,
+                        startRowIndex: 1,
+                        endRowIndex: 1000,
+                        startColumnIndex: 8, // Column I (0-indexed)
+                        endColumnIndex: 39 // Column AI (0-indexed, I=8 + 31 columns = 39)
+                    },
+                    rule: {
+                        condition: {
+                            type: 'ONE_OF_LIST',
+                            values: [
+                                { userEnteredValue: '0' },
+                                { userEnteredValue: '1' },
+                                { userEnteredValue: '2' },
+                                { userEnteredValue: '3' },
+                                { userEnteredValue: '4' },
+                                { userEnteredValue: '5' },
+                                { userEnteredValue: '6' },
+                                { userEnteredValue: '7' },
+                                { userEnteredValue: '8' },
+                                { userEnteredValue: '9' },
+                                { userEnteredValue: '10' }
+                            ]
+                        },
+                        showCustomUi: true
+                    }
+                }
+            }
+        ];
+
+        await fetch(`${this.sheetsApiUrl}/spreadsheets/${sheetId}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ requests }),
+        });
+    }
+
+    // Helper method to set up conditional formatting
+    private async setupConditionalFormatting(sheetId: string): Promise<void> {
+        const requests = [
+            // Conditional formatting for Good habits - achieved target (green)
+            {
+                addConditionalFormatRule: {
+                    rule: {
+                        ranges: [{
+                            sheetId: 0,
+                            startRowIndex: 1,
+                            endRowIndex: 1000,
+                            startColumnIndex: 8, // Column I
+                            endColumnIndex: 39 // Column AI
+                        }],
+                        booleanRule: {
+                            condition: {
+                                type: 'CUSTOM_FORMULA',
+                                values: [{
+                                    userEnteredValue: '=AND($D2="Good", I2>=$E2)'
+                                }]
+                            },
+                            format: {
+                                backgroundColor: {
+                                    red: 0.8,
+                                    green: 1.0,
+                                    blue: 0.8
+                                }
+                            }
+                        }
+                    },
+                    index: 0
+                }
+            },
+            // Conditional formatting for Good habits - not achieved target (orange)
+            {
+                addConditionalFormatRule: {
+                    rule: {
+                        ranges: [{
+                            sheetId: 0,
+                            startRowIndex: 1,
+                            endRowIndex: 1000,
+                            startColumnIndex: 8,
+                            endColumnIndex: 39
+                        }],
+                        booleanRule: {
+                            condition: {
+                                type: 'CUSTOM_FORMULA',
+                                values: [{
+                                    userEnteredValue: '=AND($D2="Good", I2<$E2, I2<>"")'
+                                }]
+                            },
+                            format: {
+                                backgroundColor: {
+                                    red: 1.0,
+                                    green: 0.8,
+                                    blue: 0.6
+                                }
+                            }
+                        }
+                    },
+                    index: 1
+                }
+            },
+            // Conditional formatting for Bad habits - controlled well (green)
+            {
+                addConditionalFormatRule: {
+                    rule: {
+                        ranges: [{
+                            sheetId: 0,
+                            startRowIndex: 1,
+                            endRowIndex: 1000,
+                            startColumnIndex: 8,
+                            endColumnIndex: 39
+                        }],
+                        booleanRule: {
+                            condition: {
+                                type: 'CUSTOM_FORMULA',
+                                values: [{
+                                    userEnteredValue: '=AND($D2="Bad", I2<=$E2)'
+                                }]
+                            },
+                            format: {
+                                backgroundColor: {
+                                    red: 0.8,
+                                    green: 1.0,
+                                    blue: 0.8
+                                }
+                            }
+                        }
+                    },
+                    index: 2
+                }
+            },
+            // Conditional formatting for Bad habits - exceeded limit (red)
+            {
+                addConditionalFormatRule: {
+                    rule: {
+                        ranges: [{
+                            sheetId: 0,
+                            startRowIndex: 1,
+                            endRowIndex: 1000,
+                            startColumnIndex: 8,
+                            endColumnIndex: 39
+                        }],
+                        booleanRule: {
+                            condition: {
+                                type: 'CUSTOM_FORMULA',
+                                values: [{
+                                    userEnteredValue: '=AND($D2="Bad", I2>$E2)'
+                                }]
+                            },
+                            format: {
+                                backgroundColor: {
+                                    red: 1.0,
+                                    green: 0.6,
+                                    blue: 0.6
+                                }
+                            }
+                        }
+                    },
+                    index: 3
+                }
+            }
+        ];
+
+        await fetch(`${this.sheetsApiUrl}/spreadsheets/${sheetId}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ requests }),
+        });
     }
 
     // Update a range in the sheet
@@ -425,10 +568,11 @@ export class DriveFileManager {
         return data.values || [];
     }
 
-    // CRUD Operations for Habits
+    // CRUD Operations for Habits - Updated for new comprehensive structure
 
     async readHabits(sheetId: string): Promise<Habit[]> {
         try {
+            // Read only the basic habit info columns (A-H) for now
             const values = await this.readRange(sheetId, 'Habits!A2:H1000');
 
             return values.map(row => ({
@@ -448,18 +592,31 @@ export class DriveFileManager {
     }
 
     async createHabit(sheetId: string, habit: Habit): Promise<void> {
+        // For the comprehensive structure, we need to fill more columns
         const row = [
-            habit.id,
-            habit.name,
-            habit.description || '',
-            habit.frequency,
-            habit.targetCount.toString(),
-            habit.currentCount.toString(),
-            habit.createdAt.toISOString(),
-            habit.color || '#3b82f6'
+            habit.id, // A - ID
+            habit.name, // B - Tên Thói quen
+            habit.description || '', // C - Mô tả
+            'Good', // D - Loại Thói quen (default to Good, can be updated later)
+            habit.targetCount.toString(), // E - Mục tiêu (Mỗi ngày)
+            'lần', // F - Đơn vị tính (default unit)
+            '', // G - Cường độ/Khoảng lặp
+            'Trung bình', // H - Mức độ Ưu tiên (default priority)
+
+            // I-AI: Daily tracking columns (31 days) - initialize as empty
+            ...Array(31).fill(''),
+
+            // AJ-AP: Summary columns - will be calculated by formulas
+            `=SUM(I2:AI2)`, // AJ - Tổng số lần (Tháng)
+            `=COUNTIFS(I2:AI2,">="&E2)`, // AK - Số ngày đạt mục tiêu (for Good habits)
+            `=COUNTIFS(I2:AI2,"<"&E2)`, // AL - Số ngày không đạt mục tiêu
+            `=IFERROR(AK2/(AK2+AL2)*100,0)`, // AM - Tỷ lệ thành công (%)
+            `=IFERROR(AJ2/COUNTA(I2:AI2),0)`, // AN - Trung bình mỗi ngày
+            '', // AO - Đánh giá cảm tính
+            '' // AP - Ghi chú tháng
         ];
 
-        await this.appendRange(sheetId, 'Habits!A:H', [row]);
+        await this.appendRange(sheetId, 'Habits!A:AP', [row]);
     }
 
     async updateHabit(sheetId: string, habit: Habit): Promise<void> {
@@ -472,15 +629,17 @@ export class DriveFileManager {
         }
 
         const actualRowIndex = rowIndex + 2; // +2 because we start from A2 and arrays are 0-indexed
+
+        // Only update the basic habit info columns (A-H), preserve daily tracking and formulas
         const row = [
             habit.id,
             habit.name,
             habit.description || '',
-            habit.frequency,
+            'Good', // Keep as Good for now
             habit.targetCount.toString(),
-            habit.currentCount.toString(),
-            habit.createdAt.toISOString(),
-            habit.color || '#3b82f6'
+            'lần',
+            '',
+            'Trung bình'
         ];
 
         await this.updateRange(sheetId, `Habits!A${actualRowIndex}:H${actualRowIndex}`, [row]);
@@ -497,11 +656,61 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2;
 
-        // Clear the row
-        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:H${actualRowIndex}`, [['', '', '', '', '', '', '', '']]);
+        // Clear the entire row (all columns A-AP)
+        const emptyRow = Array(42).fill(''); // 42 columns total (A-AP)
+        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:AP${actualRowIndex}`, [emptyRow]);
     }
 
-    // CRUD Operations for Habit Logs
+    // Method to update daily habit tracking
+    async updateDailyHabit(sheetId: string, habitId: string, day: number, count: number): Promise<void> {
+        if (day < 1 || day > 31) {
+            throw new Error('Day must be between 1 and 31');
+        }
+
+        // Find the row index for this habit
+        const values = await this.readRange(sheetId, 'Habits!A2:A1000');
+        const rowIndex = values.findIndex(row => row[0] === habitId);
+
+        if (rowIndex === -1) {
+            throw new Error('Habit not found');
+        }
+
+        const actualRowIndex = rowIndex + 2;
+        const columnIndex = String.fromCharCode(72 + day); // Column I = 73, J = 74, etc.
+
+        await this.updateRange(sheetId, `Habits!${columnIndex}${actualRowIndex}`, [[count.toString()]]);
+    }
+
+    // Get comprehensive habit data including daily tracking
+    async getHabitWithTracking(sheetId: string, habitId: string): Promise<any> {
+        const values = await this.readRange(sheetId, 'Habits!A2:AP1000');
+        const habitRow = values.find(row => row[0] === habitId);
+
+        if (!habitRow) {
+            throw new Error('Habit not found');
+        }
+
+        return {
+            id: habitRow[0],
+            name: habitRow[1],
+            description: habitRow[2],
+            type: habitRow[3],
+            target: parseInt(habitRow[4]) || 1,
+            unit: habitRow[5],
+            intensity: habitRow[6],
+            priority: habitRow[7],
+            dailyTracking: habitRow.slice(8, 39), // Days 1-31
+            totalCount: habitRow[39],
+            daysAchieved: habitRow[40],
+            daysNotAchieved: habitRow[41],
+            successRate: habitRow[42],
+            dailyAverage: habitRow[43],
+            feeling: habitRow[44],
+            monthlyNote: habitRow[45]
+        };
+    }
+
+    // CRUD Operations for Habit Logs - Keep original structure for compatibility
 
     async readHabitLogs(sheetId: string): Promise<HabitLog[]> {
         try {
@@ -542,6 +751,17 @@ export class DriveFileManager {
         } else {
             // Create new log
             await this.appendRange(sheetId, 'HabitLogs!A:E', [row]);
+        }
+
+        // Also update the daily tracking in the main Habits sheet
+        const date = new Date(log.date);
+        const day = date.getDate();
+        const count = log.completed ? 1 : 0;
+
+        try {
+            await this.updateDailyHabit(sheetId, log.habitId, day, count);
+        } catch (error) {
+            console.warn('Could not update daily tracking:', error);
         }
     }
 

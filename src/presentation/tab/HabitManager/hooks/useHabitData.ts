@@ -1,3 +1,6 @@
+// src/presentation/tab/HabitManager/hooks/useHabitData.ts
+// Enhanced hook with comprehensive permission checking for Sheets API
+
 import { useState, useEffect, useCallback } from "react";
 import { DriveFileManager } from "../../../../utils/driveFileManager";
 import ChromeAuthManager, { AuthState } from "../../../../utils/chromeAuth";
@@ -38,7 +41,22 @@ export const useHabitData = () => {
     const [error, setError] = useState<string | null>(null);
     const [needsReauth, setNeedsReauth] = useState<boolean>(false);
     const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
-    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+    const [initialized, setInitialized] = useState<boolean>(false);
+
+    // NEW: Track specific permission states
+    const [permissions, setPermissions] = useState<{
+        hasDrive: boolean;
+        hasSheets: boolean;
+        hasCalendar: boolean;
+        allRequired: boolean;
+        checked: boolean;
+    }>({
+        hasDrive: false,
+        hasSheets: false,
+        hasCalendar: false,
+        allRequired: false,
+        checked: false
+    });
 
     // Auth state subscription
     useEffect(() => {
@@ -56,60 +74,98 @@ export const useHabitData = () => {
             setDriveManager(manager);
         } else {
             setDriveManager(null);
+            setInitialized(false);
+            setPermissions({
+                hasDrive: false,
+                hasSheets: false,
+                hasCalendar: false,
+                allRequired: false,
+                checked: false
+            });
         }
     }, [authState.isAuthenticated, authState.user?.accessToken]);
 
     // Check permissions when authenticated
     useEffect(() => {
-        if (authState.isAuthenticated && authState.user && driveManager) {
+        if (authState.isAuthenticated && authState.user && !permissions.checked) {
             checkPermissions();
         }
-    }, [authState.isAuthenticated, authState.user, driveManager]);
+    }, [authState.isAuthenticated, authState.user, permissions.checked]);
 
-    // Load data when folder is selected
+    // Auto-initialize when permissions are satisfied
     useEffect(() => {
-        if (selectedFolderId && driveManager && !needsReauth) {
-            loadHabitData();
+        if (authState.isAuthenticated && authState.user && driveManager &&
+            permissions.allRequired && !initialized && !needsReauth) {
+            autoInitialize();
         }
-    }, [selectedFolderId, driveManager, needsReauth]);
+    }, [authState.isAuthenticated, authState.user, driveManager,
+    permissions.allRequired, initialized, needsReauth]);
 
     const checkPermissions = useCallback(async () => {
-        if (!driveManager) return;
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Check if we have drive.file permissions
-            const hasPermissions = await authManager.hasDriveFilePermission();
-            setNeedsReauth(!hasPermissions);
-
-            if (!hasPermissions) {
-                setError("Cần cấp quyền Drive để lưu trữ dữ liệu thói quen. Vui lòng cấp quyền.");
-            }
-        } catch (error) {
-            console.error('Error checking permissions:', error);
-            setError("Lỗi kiểm tra quyền truy cập");
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, authManager]);
-
-    const loadHabitData = useCallback(async () => {
-        if (!driveManager || !selectedFolderId) {
-            console.log('Cannot load data: driveManager or selectedFolderId missing');
+        if (!authState.isAuthenticated || !authState.user) {
             return;
         }
 
+        setLoading(true);
+        setError(null);
+
         try {
-            setLoading(true);
-            setError(null);
+            console.log('Checking all required permissions for HabitManager...');
+            const permissionCheck = await authManager.hasAllHabitManagerPermissions();
 
-            // Set the selected folder in the drive manager
-            driveManager.setSelectedFolder(selectedFolderId);
+            console.log('Permission check results:', permissionCheck);
 
-            // Get current month/year sheet
-            const sheetId = await driveManager.getCurrentMonthSheet();
+            setPermissions({
+                ...permissionCheck,
+                checked: true
+            });
+
+            if (!permissionCheck.allRequired) {
+                console.log('Missing required permissions, needs re-auth');
+                setNeedsReauth(true);
+                setError(
+                    !permissionCheck.hasDrive
+                        ? "Thiếu quyền truy cập Google Drive"
+                        : "Thiếu quyền truy cập Google Sheets"
+                );
+            } else {
+                setNeedsReauth(false);
+                setError(null);
+            }
+
+        } catch (error) {
+            console.error('Permission check error:', error);
+            setError('Không thể kiểm tra quyền truy cập');
+            setNeedsReauth(true);
+        } finally {
+            setLoading(false);
+        }
+    }, [authState.isAuthenticated, authState.user, authManager]);
+
+    const autoInitialize = useCallback(async () => {
+        if (!driveManager) {
+            console.log('DriveManager not available');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            console.log('Starting auto-initialization...');
+
+            // Double-check permissions before proceeding
+            const permissionCheck = await authManager.hasAllHabitManagerPermissions();
+            if (!permissionCheck.allRequired) {
+                console.log('Permissions no longer valid during initialization');
+                setNeedsReauth(true);
+                setError('Quyền truy cập không hợp lệ, vui lòng đăng nhập lại');
+                setLoading(false);
+                return;
+            }
+
+            // Auto-initialize the folder structure and get the current month sheet
+            const sheetId = await driveManager.autoInitialize();
             setCurrentSheetId(sheetId);
 
             // Load habits and logs
@@ -120,20 +176,43 @@ export const useHabitData = () => {
 
             setHabits(habitsData);
             setHabitLogs(logsData);
+            setInitialized(true);
+
+            console.log(`Auto-initialization completed. Loaded ${habitsData.length} habits and ${logsData.length} logs`);
+
         } catch (error) {
-            console.error('Error loading habit data:', error);
-            setError(error instanceof Error ? error.message : "Lỗi tải dữ liệu thói quen");
+            console.error('Auto-initialization error:', error);
+
+            // Handle specific error types
+            if (error instanceof Error) {
+                if (error.message.includes('403') || error.message.includes('permission')) {
+                    setNeedsReauth(true);
+                    setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+                } else if (error.message.includes('CSP') || error.message.includes('Content Security Policy')) {
+                    setError("Lỗi bảo mật trình duyệt, vui lòng reload extension");
+                } else {
+                    setError(`Lỗi khởi tạo: ${error.message}`);
+                }
+            } else {
+                setError("Lỗi khởi tạo hệ thống quản lý thói quen");
+            }
         } finally {
             setLoading(false);
         }
-    }, [driveManager, selectedFolderId]);
+    }, [driveManager, authManager]);
 
     const handleLogin = useCallback(async () => {
         try {
+            setError(null);
+            setLoading(true);
             await authManager.login();
+            // Reset permission checking state to trigger re-check
+            setPermissions(prev => ({ ...prev, checked: false }));
         } catch (err) {
             console.error("Login error:", err);
             setError("Đăng nhập thất bại. Vui lòng thử lại.");
+        } finally {
+            setLoading(false);
         }
     }, [authManager]);
 
@@ -145,7 +224,14 @@ export const useHabitData = () => {
             setError(null);
             setNeedsReauth(false);
             setCurrentSheetId(null);
-            setSelectedFolderId(null);
+            setInitialized(false);
+            setPermissions({
+                hasDrive: false,
+                hasSheets: false,
+                hasCalendar: false,
+                allRequired: false,
+                checked: false
+            });
         } catch (err) {
             console.error("Logout error:", err);
         }
@@ -157,9 +243,22 @@ export const useHabitData = () => {
             setError(null);
             await authManager.forceReauth();
             setNeedsReauth(false);
-            // Refresh permissions check after re-auth
+            setInitialized(false);
+
+            // Reset and re-check permissions
+            setPermissions({
+                hasDrive: false,
+                hasSheets: false,
+                hasCalendar: false,
+                allRequired: false,
+                checked: false
+            });
+
+            // Re-initialize after successful re-auth
             setTimeout(() => {
-                checkPermissions();
+                if (driveManager) {
+                    checkPermissions();
+                }
             }, 500);
         } catch (error) {
             console.error("Re-authentication error:", error);
@@ -167,27 +266,47 @@ export const useHabitData = () => {
         } finally {
             setLoading(false);
         }
-    }, [authManager, checkPermissions]);
+    }, [authManager, driveManager, checkPermissions]);
 
-    const handleSelectFolder = useCallback((folderId: string, folderName: string) => {
-        console.log('Folder selected:', folderId, folderName);
-        setSelectedFolderId(folderId);
-        if (driveManager) {
-            driveManager.setSelectedFolder(folderId);
+    const handleRefresh = useCallback(async () => {
+        if (!currentSheetId || !driveManager) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
         }
-    }, [driveManager]);
 
-    const handleRefresh = useCallback(() => {
-        if (selectedFolderId) {
-            loadHabitData();
-        } else {
-            setError("Chưa chọn thư mục lưu trữ");
+        setLoading(true);
+        setError(null);
+
+        try {
+            const [habitsData, logsData] = await Promise.all([
+                driveManager.readHabits(currentSheetId),
+                driveManager.readHabitLogs(currentSheetId)
+            ]);
+
+            setHabits(habitsData);
+            setHabitLogs(logsData);
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+
+            // Handle specific error types
+            if (error instanceof Error) {
+                if (error.message.includes('403') || error.message.includes('permission')) {
+                    setNeedsReauth(true);
+                    setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+                } else {
+                    setError(`Lỗi làm mới dữ liệu: ${error.message}`);
+                }
+            } else {
+                setError("Lỗi làm mới dữ liệu");
+            }
+        } finally {
+            setLoading(false);
         }
-    }, [loadHabitData, selectedFolderId]);
+    }, [driveManager, currentSheetId]);
 
     const handleCreateHabit = useCallback(async (habitData: Omit<Habit, "id" | "currentCount" | "createdAt">) => {
         if (!driveManager || !currentSheetId) {
-            setError("Chưa khởi tạo hệ thống lưu trữ");
+            setError("Hệ thống chưa được khởi tạo");
             return;
         }
 
@@ -206,7 +325,13 @@ export const useHabitData = () => {
             setHabits(prev => [...prev, newHabit]);
         } catch (error) {
             console.error("Error creating habit:", error);
-            setError(error instanceof Error ? error.message : "Lỗi tạo thói quen");
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi tạo thói quen");
+            }
             throw error;
         } finally {
             setLoading(false);
@@ -215,7 +340,7 @@ export const useHabitData = () => {
 
     const handleUpdateHabit = useCallback(async (habit: Habit) => {
         if (!driveManager || !currentSheetId) {
-            setError("Chưa khởi tạo hệ thống lưu trữ");
+            setError("Hệ thống chưa được khởi tạo");
             return;
         }
 
@@ -227,7 +352,13 @@ export const useHabitData = () => {
             setHabits(prev => prev.map(h => h.id === habit.id ? habit : h));
         } catch (error) {
             console.error("Error updating habit:", error);
-            setError(error instanceof Error ? error.message : "Lỗi cập nhật thói quen");
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi cập nhật thói quen");
+            }
             throw error;
         } finally {
             setLoading(false);
@@ -236,7 +367,7 @@ export const useHabitData = () => {
 
     const handleDeleteHabit = useCallback(async (habitId: string) => {
         if (!driveManager || !currentSheetId) {
-            setError("Chưa khởi tạo hệ thống lưu trữ");
+            setError("Hệ thống chưa được khởi tạo");
             return;
         }
 
@@ -249,7 +380,13 @@ export const useHabitData = () => {
             setHabitLogs(prev => prev.filter(log => log.habitId !== habitId));
         } catch (error) {
             console.error("Error deleting habit:", error);
-            setError(error instanceof Error ? error.message : "Lỗi xóa thói quen");
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi xóa thói quen");
+            }
             throw error;
         } finally {
             setLoading(false);
@@ -258,7 +395,7 @@ export const useHabitData = () => {
 
     const handleLogHabit = useCallback(async (logData: Omit<HabitLog, "timestamp">) => {
         if (!driveManager || !currentSheetId) {
-            setError("Chưa khởi tạo hệ thống lưu trữ");
+            setError("Hệ thống chưa được khởi tạo");
             return;
         }
 
@@ -290,7 +427,13 @@ export const useHabitData = () => {
             }));
         } catch (error) {
             console.error("Error logging habit:", error);
-            setError(error instanceof Error ? error.message : "Lỗi ghi nhận thói quen");
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi ghi nhận thói quen");
+            }
             throw error;
         } finally {
             setLoading(false);
@@ -306,7 +449,8 @@ export const useHabitData = () => {
         error,
         currentSheetId,
         needsReauth,
-        selectedFolderId,
+        initialized,
+        permissions,
         handleLogin,
         handleLogout,
         handleCreateHabit,
@@ -315,6 +459,6 @@ export const useHabitData = () => {
         handleLogHabit,
         handleRefresh,
         handleForceReauth,
-        handleSelectFolder,
+        checkPermissions,
     };
 };

@@ -1,20 +1,17 @@
-// Fixed HabitManager/index.tsx - Pass driveManager to FolderSelector
-
 import React, { useState, useEffect } from "react";
-import FolderSelector from "./components/FolderSelector";
 import { useHabitData } from "./hooks/useHabitData";
 import type { Habit } from "./hooks/useHabitData";
 
 const HabitManager: React.FC = () => {
-  // Use the actual hook instead of mock data
   const {
     authState,
-    driveManager, // Get driveManager from the hook
     habits,
     habitLogs,
     loading,
     error,
     needsReauth,
+    permissions,
+    initialized,
     handleLogin,
     handleLogout,
     handleCreateHabit,
@@ -23,13 +20,7 @@ const HabitManager: React.FC = () => {
     handleLogHabit,
     handleRefresh,
     handleForceReauth,
-    handleSelectFolder, // Get handleSelectFolder from the hook
   } = useHabitData();
-
-  // Folder selection states
-  const [needsFolderSelection, setNeedsFolderSelection] = useState(true);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedFolderName, setSelectedFolderName] = useState<string>("");
 
   // Habit management states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -112,14 +103,45 @@ const HabitManager: React.FC = () => {
             Đăng nhập Google
           </h3>
           <p className="text-slate-600 mb-6">
-            Để sử dụng tính năng quản lý thói quen, vui lòng đăng nhập Google
-            Drive
+            Để sử dụng tính năng quản lý thói quen, vui lòng đăng nhập với các
+            quyền:
           </p>
+          <div className="text-left mb-6 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <svg
+                className="w-4 h-4 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Google Drive (Lưu trữ files)
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <svg
+                className="w-4 h-4 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Google Sheets (Theo dõi dữ liệu)
+            </div>
+          </div>
           <button
             onClick={handleLogin}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+            disabled={loading}
+            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-slate-400 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:cursor-not-allowed"
           >
-            Đăng nhập với Google
+            {loading ? "Đang đăng nhập..." : "Đăng nhập với Google"}
           </button>
         </div>
       </div>
@@ -137,7 +159,12 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  if (needsReauth) {
+  // Show permission requirements if not all required permissions are granted
+  if (
+    authState.isAuthenticated &&
+    permissions.checked &&
+    (needsReauth || !permissions.allRequired)
+  ) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
         <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md mx-4">
@@ -159,39 +186,115 @@ const HabitManager: React.FC = () => {
           <h3 className="text-xl font-semibold text-slate-900 mb-2">
             Cần cấp thêm quyền
           </h3>
-          <p className="text-slate-600 mb-6">
-            Ứng dụng cần quyền truy cập Google Drive để lưu trữ dữ liệu thói
-            quen
+          <p className="text-slate-600 mb-4">
+            Ứng dụng cần các quyền sau để hoạt động:
           </p>
+
+          {/* Permission Status */}
+          <div className="text-left mb-6 space-y-2">
+            <div
+              className={`flex items-center gap-2 text-sm ${
+                permissions.hasDrive ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              <svg
+                className={`w-4 h-4 ${
+                  permissions.hasDrive ? "text-green-500" : "text-red-500"
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                {permissions.hasDrive ? (
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                ) : (
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                )}
+              </svg>
+              Google Drive {permissions.hasDrive ? "✓" : "✗"}
+            </div>
+            <div
+              className={`flex items-center gap-2 text-sm ${
+                permissions.hasSheets ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              <svg
+                className={`w-4 h-4 ${
+                  permissions.hasSheets ? "text-green-500" : "text-red-500"
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                {permissions.hasSheets ? (
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                ) : (
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                )}
+              </svg>
+              Google Sheets {permissions.hasSheets ? "✓" : "✗"}
+            </div>
+            {permissions.hasCalendar && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <svg
+                  className="w-4 h-4 text-green-500"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Google Calendar ✓ (Tùy chọn)
+              </div>
+            )}
+          </div>
+
           <button
             onClick={handleForceReauth}
             disabled={loading}
             className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-400 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:cursor-not-allowed"
           >
-            {loading ? "Đang cấp quyền..." : "Cấp quyền Google Drive"}
+            {loading ? "Đang cấp quyền..." : "Cấp quyền bổ sung"}
           </button>
         </div>
       </div>
     );
   }
 
-  // Show folder selection if needed - FIXED: Pass driveManager and handle folder selection properly
-  if (needsFolderSelection) {
+  // Show loading while checking permissions or initializing
+  if (
+    authState.isAuthenticated &&
+    (!permissions.checked ||
+      (permissions.allRequired && !initialized && loading))
+  ) {
     return (
-      <FolderSelector
-        driveManager={driveManager} // Pass driveManager from useHabitData hook
-        onFolderSelected={(folderId, folderName) => {
-          setSelectedFolderId(folderId);
-          setSelectedFolderName(folderName);
-          setNeedsFolderSelection(false);
-
-          // Use handleSelectFolder from the hook
-          handleSelectFolder(folderId, folderName);
-
-          // Trigger data reload after folder selection
-          setTimeout(() => handleRefresh(), 500);
-        }}
-      />
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
+        <div className="text-center p-8">
+          <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">
+            {!permissions.checked
+              ? "Đang kiểm tra quyền truy cập..."
+              : "Đang khởi tạo hệ thống quản lý thói quen..."}
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -222,7 +325,7 @@ const HabitManager: React.FC = () => {
                   Quản lý Thói quen
                 </h1>
                 <p className="text-sm text-slate-500">
-                  {selectedFolderName && `📁 ${selectedFolderName}`}
+                  FlexBookmark - Habit Management System
                 </p>
               </div>
             </div>
@@ -246,26 +349,6 @@ const HabitManager: React.FC = () => {
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-
-            <button
-              onClick={() => setNeedsFolderSelection(true)}
-              className="group p-2.5 text-blue-600 hover:text-blue-700 transition-all duration-200 rounded-xl hover:bg-blue-50"
-              title="Chọn thư mục lưu trữ"
-            >
-              <svg
-                className="w-5 h-5 group-hover:scale-110 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                 />
               </svg>
             </button>
