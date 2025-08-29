@@ -1,6 +1,7 @@
 // src/utils/driveFileManager.ts
-// Auto-finds or creates FlexBookmark folder structure with comprehensive habit tracking
-import type { Habit, HabitLog } from "../presentation/tab/HabitManager/hooks/useHabitData";
+// Enhanced DriveFileManager with 52-column single-sheet structure for comprehensive habit tracking
+
+import type { Habit, HabitType, DifficultyLevel, HabitCategory } from "../presentation/tab/HabitManager/types/habit";
 
 export interface DriveFolder {
     id: string;
@@ -161,7 +162,7 @@ export class DriveFileManager {
         }
     }
 
-    // Create a new habit tracking sheet
+    // Create a new habit tracking sheet with 52-column structure
     private async createHabitSheet(name: string, parentId: string): Promise<string> {
         const sheetMetadata = {
             name: name,
@@ -205,28 +206,17 @@ export class DriveFileManager {
         return result;
     }
 
-    // Initialize sheet with comprehensive structure
+    // Initialize sheet with comprehensive 52-column structure
     private async initializeSheetStructure(sheetId: string): Promise<void> {
         const requests = [
-            // Clear existing sheets and create our custom sheets
+            // Clear existing sheets and create our custom sheet
             {
                 addSheet: {
                     properties: {
-                        title: 'Habits',
+                        title: 'HabitTracker',
                         gridProperties: {
                             rowCount: 1000,
-                            columnCount: 50 // Increased to accommodate all columns
-                        }
-                    }
-                }
-            },
-            {
-                addSheet: {
-                    properties: {
-                        title: 'HabitLogs',
-                        gridProperties: {
-                            rowCount: 10000,
-                            columnCount: 6
+                            columnCount: 52 // Exactly 52 columns for our structure
                         }
                     }
                 }
@@ -243,48 +233,43 @@ export class DriveFileManager {
             body: JSON.stringify({ requests }),
         });
 
-        // Create comprehensive headers for Habits sheet
-        const habitsHeaders = [
-            // PHẦN 1: THÔNG TIN CỐ ĐỊNH VỀ THÓI QUEN (A-H)
-            'ID', // A
-            'Tên Thói quen', // B
-            'Mô tả', // C
-            'Loại Thói quen', // D (Good/Bad)
-            'Mục tiêu (Mỗi ngày)', // E
-            'Đơn vị tính', // F
-            'Cường độ/Khoảng lặp', // G
-            'Mức độ Ưu tiên', // H
+        // Create comprehensive headers for 52-column structure
+        const headers = [
+            // Core Information (1-8)
+            'ID',                    // A
+            'Tên Thói quen',        // B
+            'Mô tả',                // C
+            'Loại Thói quen',       // D (good/bad)
+            'Mức độ Khó',          // E (1-5)
+            'Mục tiêu',            // F (for good habits)
+            'Giới hạn',            // G (for bad habits)
+            'Chuỗi Hiện tại',      // H
 
-            // PHẦN 2: THEO DÕI HÀNG NGÀY (I-AI) - 31 cột cho 31 ngày
-            ...Array.from({ length: 31 }, (_, i) => `Ngày ${i + 1}`), // I-AI (31 columns)
+            // Daily Tracking (9-39) - 31 days
+            ...Array.from({ length: 31 }, (_, i) => `Ngày ${i + 1}`), // I-AM (31 columns)
 
-            // PHẦN 3: CỘT TỔNG KẾT & PHÂN TÍCH (AJ-AP)
-            'Tổng số lần (Tháng)', // AJ
-            'Số ngày đạt mục tiêu', // AK
-            'Số ngày không đạt mục tiêu', // AL
-            'Tỷ lệ thành công (%)', // AM
-            'Trung bình mỗi ngày', // AN
-            'Đánh giá cảm tính', // AO
-            'Ghi chú tháng' // AP
+            // Additional Properties (40-52)
+            'Ngày tạo',            // AN - createdDate
+            'Mã màu',              // AO - colorCode
+            'Emoji',               // AP - emoji
+            'Chuỗi Dài nhất',      // AQ - longestStreak
+            'Danh mục',            // AR - category
+            'Tags',                // AS - tags (JSON string)
+            'Đã lưu trữ',          // AT - isArchived
+            'Lý do/Động lực',      // AU - whyReason
+            'Có thể đo lường',     // AV - isQuantifiable
+            'Đơn vị',              // AW - unit
+            'Thời gian bắt đầu',   // AX - startTime
+            'Các bước con',        // AY - subtasks (JSON string)
         ];
 
-        console.log(`Headers count: ${habitsHeaders.length}`); // Debug log
+        console.log(`Headers count: ${headers.length}`); // Should be 52
 
-        // Use dynamic range based on actual header count
-        const lastColumn = this.getColumnLetter(habitsHeaders.length);
-        await this.updateRange(sheetId, `Habits!A1:${lastColumn}1`, [habitsHeaders]);
+        // Set headers
+        await this.updateRange(sheetId, 'HabitTracker!A1:AY1', [headers]);
 
-        // Add headers to HabitLogs sheet (keeping original structure for compatibility)
-        const logsHeaders = [
-            ['Date', 'HabitID', 'Completed', 'Note', 'Timestamp']
-        ];
-
-        await this.updateRange(sheetId, 'HabitLogs!A1:E1', logsHeaders);
-
-        // Set up data validation for key columns
+        // Set up data validation and conditional formatting
         await this.setupDataValidation(sheetId);
-
-        // Apply conditional formatting
         await this.setupConditionalFormatting(sheetId);
 
         // Delete the default Sheet1
@@ -323,49 +308,116 @@ export class DriveFileManager {
             {
                 setDataValidation: {
                     range: {
-                        sheetId: 0, // First sheet (Habits)
-                        startRowIndex: 1, // Skip header
+                        sheetId: 0,
+                        startRowIndex: 1,
                         endRowIndex: 1000,
-                        startColumnIndex: 3, // Column D (0-indexed)
+                        startColumnIndex: 3, // Column D
                         endColumnIndex: 4
                     },
                     rule: {
                         condition: {
                             type: 'ONE_OF_LIST',
                             values: [
-                                { userEnteredValue: 'Good' },
-                                { userEnteredValue: 'Bad' }
+                                { userEnteredValue: 'good' },
+                                { userEnteredValue: 'bad' }
                             ]
                         },
                         showCustomUi: true
                     }
                 }
             },
-            // Data validation for daily tracking columns (I-AI) - numbers 0-10
+            // Data validation for difficulty level (E)
             {
                 setDataValidation: {
                     range: {
                         sheetId: 0,
                         startRowIndex: 1,
                         endRowIndex: 1000,
-                        startColumnIndex: 8, // Column I (0-indexed)
-                        endColumnIndex: 39 // Column AI (0-indexed, I=8 + 31 columns = 39)
+                        startColumnIndex: 4, // Column E
+                        endColumnIndex: 5
                     },
                     rule: {
                         condition: {
                             type: 'ONE_OF_LIST',
                             values: [
-                                { userEnteredValue: '0' },
                                 { userEnteredValue: '1' },
                                 { userEnteredValue: '2' },
                                 { userEnteredValue: '3' },
                                 { userEnteredValue: '4' },
-                                { userEnteredValue: '5' },
-                                { userEnteredValue: '6' },
-                                { userEnteredValue: '7' },
-                                { userEnteredValue: '8' },
-                                { userEnteredValue: '9' },
-                                { userEnteredValue: '10' }
+                                { userEnteredValue: '5' }
+                            ]
+                        },
+                        showCustomUi: true
+                    }
+                }
+            },
+            // Data validation for category (AR)
+            {
+                setDataValidation: {
+                    range: {
+                        sheetId: 0,
+                        startRowIndex: 1,
+                        endRowIndex: 1000,
+                        startColumnIndex: 43, // Column AR
+                        endColumnIndex: 44
+                    },
+                    rule: {
+                        condition: {
+                            type: 'ONE_OF_LIST',
+                            values: [
+                                { userEnteredValue: 'health' },
+                                { userEnteredValue: 'fitness' },
+                                { userEnteredValue: 'productivity' },
+                                { userEnteredValue: 'mindfulness' },
+                                { userEnteredValue: 'learning' },
+                                { userEnteredValue: 'social' },
+                                { userEnteredValue: 'finance' },
+                                { userEnteredValue: 'creativity' },
+                                { userEnteredValue: 'other' }
+                            ]
+                        },
+                        showCustomUi: true
+                    }
+                }
+            },
+            // Data validation for isArchived (AT)
+            {
+                setDataValidation: {
+                    range: {
+                        sheetId: 0,
+                        startRowIndex: 1,
+                        endRowIndex: 1000,
+                        startColumnIndex: 45, // Column AT
+                        endColumnIndex: 46
+                    },
+                    rule: {
+                        condition: {
+                            type: 'ONE_OF_LIST',
+                            values: [
+                                { userEnteredValue: 'TRUE' },
+                                { userEnteredValue: 'FALSE' }
+                            ]
+                        },
+                        showCustomUi: true
+                    }
+                }
+            },
+            // Data validation for isQuantifiable (AV)
+            {
+                setDataValidation: {
+                    range: {
+                        sheetId: 0,
+                        startRowIndex: 1,
+                        endRowIndex: 1000,
+                        startColumnIndex: 47, // Column AV
+                        endColumnIndex: 48
+                    },
+                    rule: {
+                        condition: {
+                            type: 'ONE_OF_LIST',
+                            values: [
+                                { userEnteredValue: 'TRUE' },
+                                { userEnteredValue: 'FALSE' }
                             ]
                         },
                         showCustomUi: true
@@ -387,7 +439,7 @@ export class DriveFileManager {
     // Helper method to set up conditional formatting
     private async setupConditionalFormatting(sheetId: string): Promise<void> {
         const requests = [
-            // Conditional formatting for Good habits - achieved target (green)
+            // Good habits - achieved target (green)
             {
                 addConditionalFormatRule: {
                     rule: {
@@ -396,13 +448,13 @@ export class DriveFileManager {
                             startRowIndex: 1,
                             endRowIndex: 1000,
                             startColumnIndex: 8, // Column I
-                            endColumnIndex: 39 // Column AI
+                            endColumnIndex: 39 // Column AM (31 daily columns)
                         }],
                         booleanRule: {
                             condition: {
                                 type: 'CUSTOM_FORMULA',
                                 values: [{
-                                    userEnteredValue: '=AND($D2="Good", I2>=$E2)'
+                                    userEnteredValue: '=AND($D2="good", I2>=$F2, I2<>"")'
                                 }]
                             },
                             format: {
@@ -417,7 +469,7 @@ export class DriveFileManager {
                     index: 0
                 }
             },
-            // Conditional formatting for Good habits - not achieved target (orange)
+            // Good habits - not achieved target (orange)
             {
                 addConditionalFormatRule: {
                     rule: {
@@ -432,7 +484,7 @@ export class DriveFileManager {
                             condition: {
                                 type: 'CUSTOM_FORMULA',
                                 values: [{
-                                    userEnteredValue: '=AND($D2="Good", I2<$E2, I2<>"")'
+                                    userEnteredValue: '=AND($D2="good", I2<$F2, I2<>"")'
                                 }]
                             },
                             format: {
@@ -447,7 +499,7 @@ export class DriveFileManager {
                     index: 1
                 }
             },
-            // Conditional formatting for Bad habits - controlled well (green)
+            // Bad habits - within limit (green)
             {
                 addConditionalFormatRule: {
                     rule: {
@@ -462,7 +514,7 @@ export class DriveFileManager {
                             condition: {
                                 type: 'CUSTOM_FORMULA',
                                 values: [{
-                                    userEnteredValue: '=AND($D2="Bad", I2<=$E2)'
+                                    userEnteredValue: '=AND($D2="bad", I2<=$G2, I2<>"")'
                                 }]
                             },
                             format: {
@@ -477,7 +529,7 @@ export class DriveFileManager {
                     index: 2
                 }
             },
-            // Conditional formatting for Bad habits - exceeded limit (red)
+            // Bad habits - exceeded limit (red)
             {
                 addConditionalFormatRule: {
                     rule: {
@@ -492,7 +544,7 @@ export class DriveFileManager {
                             condition: {
                                 type: 'CUSTOM_FORMULA',
                                 values: [{
-                                    userEnteredValue: '=AND($D2="Bad", I2>$E2)'
+                                    userEnteredValue: '=AND($D2="bad", I2>$G2, I2<>"")'
                                 }]
                             },
                             format: {
@@ -572,7 +624,6 @@ export class DriveFileManager {
 
         if (!response.ok) {
             if (response.status === 400) {
-                // Range doesn't exist, return empty array
                 return [];
             }
             const errorText = await response.text();
@@ -583,23 +634,62 @@ export class DriveFileManager {
         return data.values || [];
     }
 
-    // CRUD Operations for Habits - Updated for new comprehensive structure
+    // CRUD Operations for Habits with 52-column structure
 
     async readHabits(sheetId: string): Promise<Habit[]> {
         try {
-            // Read only the basic habit info columns (A-H) for now
-            const values = await this.readRange(sheetId, 'Habits!A2:H1000');
+            // Read all 52 columns
+            const values = await this.readRange(sheetId, 'HabitTracker!A2:AY1000');
 
-            return values.map(row => ({
-                id: row[0] || '',
-                name: row[1] || '',
-                description: row[2] || '',
-                frequency: (row[3] || 'daily') as 'daily' | 'weekly' | 'monthly',
-                targetCount: parseInt(row[4]) || 1,
-                currentCount: parseInt(row[5]) || 0,
-                createdAt: row[6] ? new Date(row[6]) : new Date(),
-                color: row[7] || '#3b82f6'
-            })).filter(habit => habit.id); // Filter out empty rows
+            return values.map(row => {
+                // Parse daily tracking array (columns I-AM, indices 8-38)
+                const dailyTracking: (number | null)[] = [];
+                for (let i = 8; i < 39; i++) {
+                    const value = row[i];
+                    dailyTracking.push(value && !isNaN(Number(value)) ? Number(value) : null);
+                }
+
+                // Parse JSON fields safely
+                const parseTags = (tagsStr: string): string[] => {
+                    try {
+                        return tagsStr ? JSON.parse(tagsStr) : [];
+                    } catch {
+                        return [];
+                    }
+                };
+
+                const parseSubtasks = (subtasksStr: string): string[] => {
+                    try {
+                        return subtasksStr ? JSON.parse(subtasksStr) : [];
+                    } catch {
+                        return [];
+                    }
+                };
+
+                return {
+                    id: row[0] || '',
+                    name: row[1] || '',
+                    description: row[2] || '',
+                    habitType: (row[3] || 'good') as HabitType,
+                    difficultyLevel: (parseInt(row[4]) || 1) as DifficultyLevel,
+                    goal: row[5] ? parseInt(row[5]) : undefined,
+                    limit: row[6] ? parseInt(row[6]) : undefined,
+                    currentStreak: parseInt(row[7]) || 0,
+                    dailyTracking,
+                    createdDate: row[39] ? new Date(row[39]) : new Date(),
+                    colorCode: row[40] || '#3b82f6',
+                    emoji: row[41] || '',
+                    longestStreak: parseInt(row[42]) || 0,
+                    category: (row[43] || 'other') as HabitCategory,
+                    tags: parseTags(row[44] || ''),
+                    isArchived: row[45] === 'TRUE',
+                    whyReason: row[46] || '',
+                    isQuantifiable: row[47] === 'TRUE',
+                    unit: row[48] || '',
+                    startTime: row[49] || '',
+                    subtasks: parseSubtasks(row[50] || '')
+                } as Habit;
+            }).filter(habit => habit.id); // Filter out empty rows
         } catch (error) {
             console.error('Error reading habits:', error);
             return [];
@@ -607,40 +697,40 @@ export class DriveFileManager {
     }
 
     async createHabit(sheetId: string, habit: Habit): Promise<void> {
-        // For the comprehensive structure, we need to fill more columns
+        // Create row with all 52 columns (A-AY)
         const row = [
-            habit.id, // A - ID
-            habit.name, // B - Tên Thói quen
-            habit.description || '', // C - Mô tả
-            'Good', // D - Loại Thói quen (default to Good, can be updated later)
-            habit.targetCount.toString(), // E - Mục tiêu (Mỗi ngày)
-            'lần', // F - Đơn vị tính (default unit)
-            '', // G - Cường độ/Khoảng lặp
-            'Trung bình', // H - Mức độ Ưu tiên (default priority)
+            habit.id,                                    // A - ID
+            habit.name,                                  // B - Tên Thói quen
+            habit.description || '',                     // C - Mô tả
+            habit.habitType,                            // D - Loại Thói quen
+            habit.difficultyLevel.toString(),           // E - Mức độ Khó
+            habit.goal?.toString() || '',               // F - Mục tiêu
+            habit.limit?.toString() || '',              // G - Giới hạn
+            habit.currentStreak.toString(),             // H - Chuỗi Hiện tại
 
-            // I-AI: Daily tracking columns (31 days) - initialize as empty
+            // Daily tracking (31 columns I-AM)
             ...Array(31).fill(''),
 
-            // AJ-AP: Summary columns - will be calculated by formulas
-            `=SUM(I2:AI2)`, // AJ - Tổng số lần (Tháng)
-            `=COUNTIFS(I2:AI2,">="&E2,I2:AI2,"<>"&"")`, // AK - Số ngày đạt mục tiêu (for Good habits, exclude empty)
-            `=COUNTIFS(I2:AI2,"<"&E2,I2:AI2,"<>"&"")`, // AL - Số ngày không đạt mục tiêu (exclude empty)
-            `=IFERROR(AK2/(AK2+AL2)*100,0)`, // AM - Tỷ lệ thành công (%)
-            `=IFERROR(AJ2/COUNTA(I2:AI2),0)`, // AN - Trung bình mỗi ngày
-            '', // AO - Đánh giá cảm tính
-            '' // AP - Ghi chú tháng
+            habit.createdDate.toISOString().split('T')[0], // AN - Ngày tạo
+            habit.colorCode,                            // AO - Mã màu
+            habit.emoji || '',                          // AP - Emoji
+            habit.longestStreak.toString(),             // AQ - Chuỗi Dài nhất
+            habit.category,                             // AR - Danh mục
+            JSON.stringify(habit.tags),                 // AS - Tags
+            habit.isArchived.toString().toUpperCase(),  // AT - Đã lưu trữ
+            habit.whyReason || '',                      // AU - Lý do/Động lực
+            habit.isQuantifiable.toString().toUpperCase(), // AV - Có thể đo lường
+            habit.unit || '',                           // AW - Đơn vị
+            habit.startTime || '',                      // AX - Thời gian bắt đầu
+            JSON.stringify(habit.subtasks)              // AY - Các bước con
         ];
 
-        console.log(`Row data count: ${row.length}`); // Debug log
-
-        // Use dynamic range based on actual row data count
-        const lastColumn = this.getColumnLetter(row.length);
-        await this.appendRange(sheetId, `Habits!A:${lastColumn}`, [row]);
+        await this.appendRange(sheetId, 'HabitTracker!A:AY', [row]);
     }
 
     async updateHabit(sheetId: string, habit: Habit): Promise<void> {
         // Find the row index for this habit
-        const values = await this.readRange(sheetId, 'Habits!A2:A1000');
+        const values = await this.readRange(sheetId, 'HabitTracker!A2:A1000');
         const rowIndex = values.findIndex(row => row[0] === habit.id);
 
         if (rowIndex === -1) {
@@ -649,24 +739,40 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2; // +2 because we start from A2 and arrays are 0-indexed
 
-        // Only update the basic habit info columns (A-H), preserve daily tracking and formulas
+        // Update entire row with all 52 columns
         const row = [
-            habit.id,
-            habit.name,
-            habit.description || '',
-            'Good', // Keep as Good for now
-            habit.targetCount.toString(),
-            'lần',
-            '',
-            'Trung bình'
+            habit.id,                                    // A
+            habit.name,                                  // B
+            habit.description || '',                     // C
+            habit.habitType,                            // D
+            habit.difficultyLevel.toString(),           // E
+            habit.goal?.toString() || '',               // F
+            habit.limit?.toString() || '',              // G
+            habit.currentStreak.toString(),             // H
+
+            // Daily tracking (preserve existing values or use new ones)
+            ...habit.dailyTracking.map(val => val?.toString() || ''),
+
+            habit.createdDate.toISOString().split('T')[0], // AN
+            habit.colorCode,                            // AO
+            habit.emoji || '',                          // AP
+            habit.longestStreak.toString(),             // AQ
+            habit.category,                             // AR
+            JSON.stringify(habit.tags),                 // AS
+            habit.isArchived.toString().toUpperCase(),  // AT
+            habit.whyReason || '',                      // AU
+            habit.isQuantifiable.toString().toUpperCase(), // AV
+            habit.unit || '',                           // AW
+            habit.startTime || '',                      // AX
+            JSON.stringify(habit.subtasks)              // AY
         ];
 
-        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:H${actualRowIndex}`, [row]);
+        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AY${actualRowIndex}`, [row]);
     }
 
     async deleteHabit(sheetId: string, habitId: string): Promise<void> {
         // Find the row index for this habit
-        const values = await this.readRange(sheetId, 'Habits!A2:A1000');
+        const values = await this.readRange(sheetId, 'HabitTracker!A2:A1000');
         const rowIndex = values.findIndex(row => row[0] === habitId);
 
         if (rowIndex === -1) {
@@ -675,23 +781,19 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2;
 
-        // Get the total number of columns from our header structure (46 columns A-AT)
-        const totalColumns = 8 + 31 + 6; // Basic info + Daily tracking + Summary
-        const lastColumn = this.getColumnLetter(totalColumns);
-
-        // Clear the entire row
-        const emptyRow = Array(totalColumns).fill('');
-        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:${lastColumn}${actualRowIndex}`, [emptyRow]);
+        // Clear the entire row (52 columns)
+        const emptyRow = Array(52).fill('');
+        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AY${actualRowIndex}`, [emptyRow]);
     }
 
-    // Method to update daily habit tracking
-    async updateDailyHabit(sheetId: string, habitId: string, day: number, count: number): Promise<void> {
+    // Method to update daily habit tracking for a specific day
+    async updateDailyHabit(sheetId: string, habitId: string, day: number, value: number): Promise<void> {
         if (day < 1 || day > 31) {
             throw new Error('Day must be between 1 and 31');
         }
 
         // Find the row index for this habit
-        const values = await this.readRange(sheetId, 'Habits!A2:A1000');
+        const values = await this.readRange(sheetId, 'HabitTracker!A2:A1000');
         const rowIndex = values.findIndex(row => row[0] === habitId);
 
         if (rowIndex === -1) {
@@ -703,94 +805,100 @@ export class DriveFileManager {
         const columnIndex = 8 + day - 1;
         const columnLetter = this.getColumnLetter(columnIndex + 1); // +1 because getColumnLetter expects 1-based
 
-        await this.updateRange(sheetId, `Habits!${columnLetter}${actualRowIndex}`, [[count.toString()]]);
+        await this.updateRange(sheetId, `HabitTracker!${columnLetter}${actualRowIndex}`, [[value.toString()]]);
+
+        // After updating daily value, recalculate and update streaks
+        await this.updateHabitStreaks(sheetId, habitId);
     }
 
-    // Get comprehensive habit data including daily tracking
-    async getHabitWithTracking(sheetId: string, habitId: string): Promise<any> {
-        const totalColumns = 8 + 31 + 6; // Basic info + Daily tracking + Summary
-        const lastColumn = this.getColumnLetter(totalColumns);
+    // Method to update habit streaks after daily tracking changes
+    private async updateHabitStreaks(sheetId: string, habitId: string): Promise<void> {
+        // Read the full habit data
+        const habits = await this.readHabits(sheetId);
+        const habit = habits.find(h => h.id === habitId);
 
-        const values = await this.readRange(sheetId, `Habits!A2:${lastColumn}1000`);
-        const habitRow = values.find(row => row[0] === habitId);
+        if (!habit) return;
 
-        if (!habitRow) {
+        // Calculate new streaks
+        const currentDate = new Date();
+        const currentDay = currentDate.getDate();
+
+        let currentStreak = 0;
+        let longestStreak = habit.longestStreak;
+        let tempStreak = 0;
+
+        // Calculate streaks by going through all days up to today
+        for (let day = 1; day <= currentDay; day++) {
+            const dayIndex = day - 1;
+            const value = habit.dailyTracking[dayIndex];
+
+            let isCompleted = false;
+            if (value !== null) {
+                if (habit.habitType === 'good') {
+                    isCompleted = habit.goal ? value >= habit.goal : value > 0;
+                } else {
+                    isCompleted = habit.limit ? value <= habit.limit : value === 0;
+                }
+            }
+
+            if (isCompleted) {
+                tempStreak++;
+                longestStreak = Math.max(longestStreak, tempStreak);
+            } else {
+                tempStreak = 0;
+            }
+        }
+
+        currentStreak = tempStreak;
+
+        // Update streaks in the sheet
+        const values = await this.readRange(sheetId, 'HabitTracker!A2:A1000');
+        const rowIndex = values.findIndex(row => row[0] === habitId);
+
+        if (rowIndex !== -1) {
+            const actualRowIndex = rowIndex + 2;
+
+            // Update current streak (column H) and longest streak (column AQ)
+            await this.updateRange(sheetId, `HabitTracker!H${actualRowIndex}`, [[currentStreak.toString()]]);
+            await this.updateRange(sheetId, `HabitTracker!AQ${actualRowIndex}`, [[longestStreak.toString()]]);
+        }
+    }
+
+    // Get habit with comprehensive tracking data
+    async getHabitWithTracking(sheetId: string, habitId: string): Promise<Habit | null> {
+        const habits = await this.readHabits(sheetId);
+        return habits.find(habit => habit.id === habitId) || null;
+    }
+
+    // Archive/Unarchive habit
+    async archiveHabit(sheetId: string, habitId: string, archive: boolean): Promise<void> {
+        const values = await this.readRange(sheetId, 'HabitTracker!A2:A1000');
+        const rowIndex = values.findIndex(row => row[0] === habitId);
+
+        if (rowIndex === -1) {
             throw new Error('Habit not found');
         }
 
-        return {
-            id: habitRow[0],
-            name: habitRow[1],
-            description: habitRow[2],
-            type: habitRow[3],
-            target: parseInt(habitRow[4]) || 1,
-            unit: habitRow[5],
-            intensity: habitRow[6],
-            priority: habitRow[7],
-            dailyTracking: habitRow.slice(8, 39), // Days 1-31
-            totalCount: habitRow[39],
-            daysAchieved: habitRow[40],
-            daysNotAchieved: habitRow[41],
-            successRate: habitRow[42],
-            dailyAverage: habitRow[43],
-            feeling: habitRow[44],
-            monthlyNote: habitRow[45]
-        };
+        const actualRowIndex = rowIndex + 2;
+        await this.updateRange(sheetId, `HabitTracker!AT${actualRowIndex}`, [[archive.toString().toUpperCase()]]);
     }
 
-    // CRUD Operations for Habit Logs - Keep original structure for compatibility
-
-    async readHabitLogs(sheetId: string): Promise<HabitLog[]> {
-        try {
-            const values = await this.readRange(sheetId, 'HabitLogs!A2:E10000');
-
-            return values.map(row => ({
-                date: row[0] || '',
-                habitId: row[1] || '',
-                completed: row[2] === 'TRUE' || row[2] === true,
-                note: row[3] || '',
-                timestamp: parseInt(row[4]) || 0
-            })).filter(log => log.date && log.habitId); // Filter out empty rows
-        } catch (error) {
-            console.error('Error reading habit logs:', error);
-            return [];
-        }
+    // Get habits by category
+    async getHabitsByCategory(sheetId: string, category: HabitCategory): Promise<Habit[]> {
+        const habits = await this.readHabits(sheetId);
+        return habits.filter(habit => habit.category === category);
     }
 
-    async logHabit(sheetId: string, log: HabitLog): Promise<void> {
-        // Check if log already exists for this date and habit
-        const existingLogs = await this.readHabitLogs(sheetId);
-        const existingLogIndex = existingLogs.findIndex(
-            l => l.date === log.date && l.habitId === log.habitId
-        );
+    // Get habits by type
+    async getHabitsByType(sheetId: string, habitType: HabitType): Promise<Habit[]> {
+        const habits = await this.readHabits(sheetId);
+        return habits.filter(habit => habit.habitType === habitType);
+    }
 
-        const row = [
-            log.date,
-            log.habitId,
-            log.completed.toString(),
-            log.note || '',
-            (log.timestamp || Date.now()).toString()
-        ];
-
-        if (existingLogIndex !== -1) {
-            // Update existing log
-            const actualRowIndex = existingLogIndex + 2; // +2 for header and 0-index
-            await this.updateRange(sheetId, `HabitLogs!A${actualRowIndex}:E${actualRowIndex}`, [row]);
-        } else {
-            // Create new log
-            await this.appendRange(sheetId, 'HabitLogs!A:E', [row]);
-        }
-
-        // Also update the daily tracking in the main Habits sheet
-        const date = new Date(log.date);
-        const day = date.getDate();
-        const count = log.completed ? 1 : 0;
-
-        try {
-            await this.updateDailyHabit(sheetId, log.habitId, day, count);
-        } catch (error) {
-            console.warn('Could not update daily tracking:', error);
-        }
+    // Get active (non-archived) habits
+    async getActiveHabits(sheetId: string): Promise<Habit[]> {
+        const habits = await this.readHabits(sheetId);
+        return habits.filter(habit => !habit.isArchived);
     }
 
     // Test drive permissions

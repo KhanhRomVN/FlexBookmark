@@ -4,25 +4,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { DriveFileManager } from "../../../../utils/driveFileManager";
 import ChromeAuthManager, { AuthState } from "../../../../utils/chromeAuth";
-
-export interface Habit {
-    id: string;
-    name: string;
-    description?: string;
-    frequency: "daily" | "weekly" | "monthly";
-    targetCount: number;
-    currentCount: number;
-    createdAt: Date;
-    color?: string;
-}
-
-export interface HabitLog {
-    date: string; // YYYY-MM-DD format
-    habitId: string;
-    completed: boolean;
-    note?: string;
-    timestamp?: number;
-}
+import type {
+    Habit,
+    HabitFormData,
+    HabitType,
+    HabitCategory,
+    DifficultyLevel,
+    calculateHabitStats,
+    HabitStats
+} from "../types/habit";
 
 export const useHabitData = () => {
     const authManager = ChromeAuthManager.getInstance();
@@ -36,7 +26,6 @@ export const useHabitData = () => {
     });
 
     const [habits, setHabits] = useState<Habit[]>([]);
-    const [habitLogs, setHabitLogs] = useState<HabitLog[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [needsReauth, setNeedsReauth] = useState<boolean>(false);
@@ -168,17 +157,13 @@ export const useHabitData = () => {
             const sheetId = await driveManager.autoInitialize();
             setCurrentSheetId(sheetId);
 
-            // Load habits and logs
-            const [habitsData, logsData] = await Promise.all([
-                driveManager.readHabits(sheetId),
-                driveManager.readHabitLogs(sheetId)
-            ]);
+            // Load habits
+            const habitsData = await driveManager.readHabits(sheetId);
 
             setHabits(habitsData);
-            setHabitLogs(logsData);
             setInitialized(true);
 
-            console.log(`Auto-initialization completed. Loaded ${habitsData.length} habits and ${logsData.length} logs`);
+            console.log(`Auto-initialization completed. Loaded ${habitsData.length} habits`);
 
         } catch (error) {
             console.error('Auto-initialization error:', error);
@@ -220,7 +205,6 @@ export const useHabitData = () => {
         try {
             await authManager.logout();
             setHabits([]);
-            setHabitLogs([]);
             setError(null);
             setNeedsReauth(false);
             setCurrentSheetId(null);
@@ -278,13 +262,8 @@ export const useHabitData = () => {
         setError(null);
 
         try {
-            const [habitsData, logsData] = await Promise.all([
-                driveManager.readHabits(currentSheetId),
-                driveManager.readHabitLogs(currentSheetId)
-            ]);
-
+            const habitsData = await driveManager.readHabits(currentSheetId);
             setHabits(habitsData);
-            setHabitLogs(logsData);
         } catch (error) {
             console.error('Error refreshing data:', error);
 
@@ -304,7 +283,7 @@ export const useHabitData = () => {
         }
     }, [driveManager, currentSheetId]);
 
-    const handleCreateHabit = useCallback(async (habitData: Omit<Habit, "id" | "currentCount" | "createdAt">) => {
+    const handleCreateHabit = useCallback(async (habitFormData: HabitFormData) => {
         if (!driveManager || !currentSheetId) {
             setError("Hệ thống chưa được khởi tạo");
             return;
@@ -315,14 +294,33 @@ export const useHabitData = () => {
 
         try {
             const newHabit: Habit = {
-                ...habitData,
                 id: Date.now().toString(),
-                currentCount: 0,
-                createdAt: new Date(),
+                name: habitFormData.name,
+                description: habitFormData.description,
+                habitType: habitFormData.habitType,
+                difficultyLevel: habitFormData.difficultyLevel,
+                goal: habitFormData.goal,
+                limit: habitFormData.limit,
+                currentStreak: 0,
+                dailyTracking: Array(31).fill(null),
+                createdDate: new Date(),
+                colorCode: habitFormData.colorCode,
+                emoji: habitFormData.emoji,
+                longestStreak: 0,
+                category: habitFormData.category,
+                tags: habitFormData.tags,
+                isArchived: false,
+                whyReason: habitFormData.whyReason,
+                isQuantifiable: habitFormData.isQuantifiable,
+                unit: habitFormData.unit,
+                startTime: habitFormData.startTime,
+                subtasks: habitFormData.subtasks
             };
 
             await driveManager.createHabit(currentSheetId, newHabit);
             setHabits(prev => [...prev, newHabit]);
+
+            return newHabit;
         } catch (error) {
             console.error("Error creating habit:", error);
 
@@ -377,7 +375,6 @@ export const useHabitData = () => {
         try {
             await driveManager.deleteHabit(currentSheetId, habitId);
             setHabits(prev => prev.filter(h => h.id !== habitId));
-            setHabitLogs(prev => prev.filter(log => log.habitId !== habitId));
         } catch (error) {
             console.error("Error deleting habit:", error);
 
@@ -393,7 +390,7 @@ export const useHabitData = () => {
         }
     }, [driveManager, currentSheetId]);
 
-    const handleLogHabit = useCallback(async (logData: Omit<HabitLog, "timestamp">) => {
+    const handleUpdateDailyHabit = useCallback(async (habitId: string, day: number, value: number) => {
         if (!driveManager || !currentSheetId) {
             setError("Hệ thống chưa được khởi tạo");
             return;
@@ -403,62 +400,140 @@ export const useHabitData = () => {
         setError(null);
 
         try {
-            const log: HabitLog = {
-                ...logData,
-                timestamp: Date.now(),
-            };
-
-            await driveManager.logHabit(currentSheetId, log);
+            await driveManager.updateDailyHabit(currentSheetId, habitId, day, value);
 
             // Update local state
-            setHabitLogs(prev => {
-                const filtered = prev.filter(l => !(l.date === log.date && l.habitId === log.habitId));
-                return [...filtered, log];
-            });
-
-            // Update habit current count
             setHabits(prev => prev.map(habit => {
-                if (habit.id === log.habitId) {
-                    const todayLogs = habitLogs.filter(l => l.date === log.date && l.habitId === habit.id);
-                    const completedCount = todayLogs.filter(l => l.completed).length + (log.completed ? 1 : 0);
-                    return { ...habit, currentCount: completedCount };
+                if (habit.id === habitId) {
+                    const updatedDailyTracking = [...habit.dailyTracking];
+                    updatedDailyTracking[day - 1] = value;
+                    return { ...habit, dailyTracking: updatedDailyTracking };
                 }
                 return habit;
             }));
+
+            // Refresh to get updated streaks
+            await handleRefresh();
         } catch (error) {
-            console.error("Error logging habit:", error);
+            console.error("Error updating daily habit:", error);
 
             if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
                 setNeedsReauth(true);
                 setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
             } else {
-                setError(error instanceof Error ? error.message : "Lỗi ghi nhận thói quen");
+                setError(error instanceof Error ? error.message : "Lỗi cập nhật thói quen hàng ngày");
             }
             throw error;
         } finally {
             setLoading(false);
         }
-    }, [driveManager, currentSheetId, habitLogs]);
+    }, [driveManager, currentSheetId, handleRefresh]);
+
+    const handleArchiveHabit = useCallback(async (habitId: string, archive: boolean) => {
+        if (!driveManager || !currentSheetId) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            await driveManager.archiveHabit(currentSheetId, habitId, archive);
+
+            // Update local state
+            setHabits(prev => prev.map(habit =>
+                habit.id === habitId ? { ...habit, isArchived: archive } : habit
+            ));
+        } catch (error) {
+            console.error("Error archiving habit:", error);
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi lưu trữ thói quen");
+            }
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [driveManager, currentSheetId]);
+
+    const getActiveHabits = useCallback(() => {
+        return habits.filter(habit => !habit.isArchived);
+    }, [habits]);
+
+    const getHabitsByCategory = useCallback((category: HabitCategory) => {
+        return habits.filter(habit => habit.category === category && !habit.isArchived);
+    }, [habits]);
+
+    const getHabitsByType = useCallback((habitType: HabitType) => {
+        return habits.filter(habit => habit.habitType === habitType && !habit.isArchived);
+    }, [habits]);
+
+    // Get today's completion stats
+    const getTodayStats = useCallback(() => {
+        const today = new Date().getDate();
+        const activeHabits = getActiveHabits();
+
+        let completed = 0;
+        let total = activeHabits.length;
+
+        activeHabits.forEach(habit => {
+            const dayIndex = today - 1;
+            const value = habit.dailyTracking[dayIndex];
+
+            if (value !== null) {
+                let isCompleted = false;
+                if (habit.habitType === 'good') {
+                    isCompleted = habit.goal ? value >= habit.goal : value > 0;
+                } else {
+                    isCompleted = habit.limit ? value <= habit.limit : value === 0;
+                }
+
+                if (isCompleted) {
+                    completed++;
+                }
+            }
+        });
+
+        return {
+            completed,
+            total,
+            remaining: total - completed,
+            completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+        };
+    }, [getActiveHabits]);
 
     return {
+        // State
         authState,
         driveManager,
         habits,
-        habitLogs,
         loading,
         error,
         currentSheetId,
         needsReauth,
         initialized,
         permissions,
+
+        // Actions
         handleLogin,
         handleLogout,
         handleCreateHabit,
         handleUpdateHabit,
         handleDeleteHabit,
-        handleLogHabit,
+        handleUpdateDailyHabit,
+        handleArchiveHabit,
         handleRefresh,
         handleForceReauth,
         checkPermissions,
+
+        // Computed data
+        getActiveHabits,
+        getHabitsByCategory,
+        getHabitsByType,
+        getTodayStats,
     };
 };

@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useHabitData } from "./hooks/useHabitData";
-import type { Habit } from "./hooks/useHabitData";
+import type {
+  Habit,
+  HabitFormData,
+  HabitType,
+  HabitCategory,
+  DifficultyLevel,
+  calculateHabitStats,
+} from "./types/habit";
 
 const HabitManager: React.FC = () => {
   const {
     authState,
     habits,
-    habitLogs,
     loading,
     error,
     needsReauth,
@@ -17,66 +23,160 @@ const HabitManager: React.FC = () => {
     handleCreateHabit,
     handleUpdateHabit,
     handleDeleteHabit,
-    handleLogHabit,
+    handleUpdateDailyHabit,
+    handleArchiveHabit,
     handleRefresh,
     handleForceReauth,
+    getTodayStats,
+    getActiveHabits,
   } = useHabitData();
 
   // Habit management states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [newHabit, setNewHabit] = useState<Partial<Habit>>({
+  const [selectedTab, setSelectedTab] = useState<"active" | "archived">(
+    "active"
+  );
+  const [filterCategory, setFilterCategory] = useState<HabitCategory | "all">(
+    "all"
+  );
+  const [filterType, setFilterType] = useState<HabitType | "all">("all");
+
+  const [newHabitForm, setNewHabitForm] = useState<HabitFormData>({
     name: "",
     description: "",
-    frequency: "daily",
-    targetCount: 1,
-    color: "#3b82f6",
+    habitType: "good",
+    difficultyLevel: 1,
+    goal: 1,
+    limit: undefined,
+    category: "other",
+    tags: [],
+    whyReason: "",
+    isQuantifiable: true,
+    unit: "",
+    startTime: "",
+    subtasks: [],
+    colorCode: "#3b82f6",
+    emoji: "",
   });
 
-  // Get current date stats
+  // Get current date and today's stats
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  const todayLogs = habitLogs.filter((log) => log.date === todayStr);
-  const completedToday = todayLogs.filter((log) => log.completed).length;
+  const currentDay = today.getDate();
+  const todayStats = getTodayStats();
+
+  // Filter habits based on current selections
+  const filteredHabits = habits.filter((habit) => {
+    const matchesTab =
+      selectedTab === "active" ? !habit.isArchived : habit.isArchived;
+    const matchesCategory =
+      filterCategory === "all" || habit.category === filterCategory;
+    const matchesType = filterType === "all" || habit.habitType === filterType;
+    return matchesTab && matchesCategory && matchesType;
+  });
+
+  const resetForm = () => {
+    setNewHabitForm({
+      name: "",
+      description: "",
+      habitType: "good",
+      difficultyLevel: 1,
+      goal: 1,
+      limit: undefined,
+      category: "other",
+      tags: [],
+      whyReason: "",
+      isQuantifiable: true,
+      unit: "",
+      startTime: "",
+      subtasks: [],
+      colorCode: "#3b82f6",
+      emoji: "",
+    });
+  };
 
   const handleCreateSubmit = async () => {
-    if (!newHabit.name?.trim()) return;
+    if (!newHabitForm.name?.trim()) return;
 
     try {
-      await handleCreateHabit({
-        name: newHabit.name,
-        description: newHabit.description,
-        frequency: newHabit.frequency as "daily" | "weekly" | "monthly",
-        targetCount: newHabit.targetCount || 1,
-        color: newHabit.color,
-      });
-
-      setNewHabit({
-        name: "",
-        description: "",
-        frequency: "daily",
-        targetCount: 1,
-        color: "#3b82f6",
-      });
+      await handleCreateHabit(newHabitForm);
+      resetForm();
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Error creating habit:", error);
     }
   };
 
-  const handleToggleHabit = async (habitId: string) => {
-    const existingLog = todayLogs.find((log) => log.habitId === habitId);
+  const handleUpdateSubmit = async (habit: Habit) => {
+    try {
+      await handleUpdateHabit(habit);
+      setEditingHabit(null);
+    } catch (error) {
+      console.error("Error updating habit:", error);
+    }
+  };
+
+  const handleToggleHabitToday = async (habitId: string) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const dayIndex = currentDay - 1;
+    const currentValue = habit.dailyTracking[dayIndex] || 0;
 
     try {
-      await handleLogHabit({
-        date: todayStr,
-        habitId,
-        completed: !existingLog?.completed,
-        note: "",
-      });
+      let newValue: number;
+
+      if (habit.habitType === "good") {
+        // For good habits, toggle between 0 and goal (or 1 if no goal)
+        newValue = currentValue === 0 ? habit.goal || 1 : 0;
+      } else {
+        // For bad habits, toggle between 0 and limit (or 1 if no limit)
+        newValue = currentValue === 0 ? habit.limit || 1 : 0;
+      }
+
+      await handleUpdateDailyHabit(habitId, currentDay, newValue);
     } catch (error) {
       console.error("Error toggling habit:", error);
     }
+  };
+
+  const isHabitCompletedToday = (habit: Habit): boolean => {
+    const dayIndex = currentDay - 1;
+    const value = habit.dailyTracking[dayIndex];
+
+    if (value === null || value === undefined) return false;
+
+    if (habit.habitType === "good") {
+      return habit.goal ? value >= habit.goal : value > 0;
+    } else {
+      return habit.limit ? value <= habit.limit : value === 0;
+    }
+  };
+
+  const getCategoryIcon = (category: HabitCategory) => {
+    const icons = {
+      health: "🏥",
+      fitness: "💪",
+      productivity: "⚡",
+      mindfulness: "🧘",
+      learning: "📚",
+      social: "👥",
+      finance: "💰",
+      creativity: "🎨",
+      other: "📌",
+    };
+    return icons[category] || icons.other;
+  };
+
+  const getDifficultyColor = (level: DifficultyLevel) => {
+    const colors = {
+      1: "text-green-600 bg-green-100",
+      2: "text-yellow-600 bg-yellow-100",
+      3: "text-orange-600 bg-orange-100",
+      4: "text-red-600 bg-red-100",
+      5: "text-purple-600 bg-purple-100",
+    };
+    return colors[level];
   };
 
   // Handle authentication states
@@ -190,7 +290,6 @@ const HabitManager: React.FC = () => {
             Ứng dụng cần các quyền sau để hoạt động:
           </p>
 
-          {/* Permission Status */}
           <div className="text-left mb-6 space-y-2">
             <div
               className={`flex items-center gap-2 text-sm ${
@@ -396,9 +495,11 @@ const HabitManager: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">
-                  {habits.length}
+                  {getActiveHabits().length}
                 </p>
-                <p className="text-sm text-slate-600">Tổng thói quen</p>
+                <p className="text-sm text-slate-600">
+                  Thói quen đang hoạt động
+                </p>
               </div>
             </div>
           </div>
@@ -420,7 +521,7 @@ const HabitManager: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">
-                  {completedToday}
+                  {todayStats.completed}
                 </p>
                 <p className="text-sm text-slate-600">Hoàn thành hôm nay</p>
               </div>
@@ -444,7 +545,7 @@ const HabitManager: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">
-                  {habits.length - completedToday}
+                  {todayStats.remaining}
                 </p>
                 <p className="text-sm text-slate-600">Còn lại hôm nay</p>
               </div>
@@ -468,10 +569,7 @@ const HabitManager: React.FC = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">
-                  {habits.length > 0
-                    ? Math.round((completedToday / habits.length) * 100)
-                    : 0}
-                  %
+                  {todayStats.completionRate}%
                 </p>
                 <p className="text-sm text-slate-600">Tỉ lệ hoàn thành</p>
               </div>
@@ -483,39 +581,90 @@ const HabitManager: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-6xl mx-auto">
-          {/* Action Bar */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Thói quen của bạn
-            </h2>
-            <button
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          {/* Tabs and Filters */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedTab("active")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedTab === "active"
+                    ? "bg-green-500 text-white"
+                    : "bg-white/60 text-slate-600 hover:bg-white/80"
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Thêm thói quen
-            </button>
+                Đang hoạt động ({getActiveHabits().length})
+              </button>
+              <button
+                onClick={() => setSelectedTab("archived")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedTab === "archived"
+                    ? "bg-slate-500 text-white"
+                    : "bg-white/60 text-slate-600 hover:bg-white/80"
+                }`}
+              >
+                Lưu trữ ({habits.filter((h) => h.isArchived).length})
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={filterCategory}
+                onChange={(e) =>
+                  setFilterCategory(e.target.value as HabitCategory | "all")
+                }
+                className="px-3 py-2 bg-white/60 border border-white/20 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="all">Tất cả danh mục</option>
+                <option value="health">Sức khỏe</option>
+                <option value="fitness">Thể dục</option>
+                <option value="productivity">Năng suất</option>
+                <option value="mindfulness">Thiền định</option>
+                <option value="learning">Học tập</option>
+                <option value="social">Xã hội</option>
+                <option value="finance">Tài chính</option>
+                <option value="creativity">Sáng tạo</option>
+                <option value="other">Khác</option>
+              </select>
+
+              <select
+                value={filterType}
+                onChange={(e) =>
+                  setFilterType(e.target.value as HabitType | "all")
+                }
+                className="px-3 py-2 bg-white/60 border border-white/20 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="all">Tất cả loại</option>
+                <option value="good">Thói quen tốt</option>
+                <option value="bad">Thói quen xấu</option>
+              </select>
+
+              <button
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Thêm thói quen
+              </button>
+            </div>
           </div>
 
           {/* Habits Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {habits.map((habit) => {
-              const todayLog = todayLogs.find(
-                (log) => log.habitId === habit.id
-              );
-              const isCompleted = todayLog?.completed || false;
+            {filteredHabits.map((habit) => {
+              const isCompletedToday = isHabitCompletedToday(habit);
+              const stats = calculateHabitStats(habit);
 
               return (
                 <div
@@ -524,13 +673,41 @@ const HabitManager: React.FC = () => {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: habit.color }}
-                      ></div>
-                      <h3 className="font-semibold text-slate-900">
-                        {habit.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: habit.colorCode }}
+                        ></div>
+                        {habit.emoji && (
+                          <span className="text-lg">{habit.emoji}</span>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900">
+                          {habit.name}
+                        </h3>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-slate-500">
+                            {getCategoryIcon(habit.category)}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${getDifficultyColor(
+                              habit.difficultyLevel
+                            )}`}
+                          >
+                            Mức {habit.difficultyLevel}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              habit.habitType === "good"
+                                ? "text-green-700 bg-green-100"
+                                : "text-red-700 bg-red-100"
+                            }`}
+                          >
+                            {habit.habitType === "good" ? "Tốt" : "Xấu"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -548,6 +725,27 @@ const HabitManager: React.FC = () => {
                             strokeLinejoin="round"
                             strokeWidth={2}
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleArchiveHabit(habit.id, !habit.isArchived)
+                        }
+                        className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors rounded-lg hover:bg-orange-50"
+                        title={habit.isArchived ? "Khôi phục" : "Lưu trữ"}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 8l4 4m0 0l4-4m-4 4V3"
                           />
                         </svg>
                       </button>
@@ -578,38 +776,56 @@ const HabitManager: React.FC = () => {
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-sm text-slate-500">
-                      <span className="capitalize">
-                        {habit.frequency === "daily"
-                          ? "Hàng ngày"
-                          : habit.frequency === "weekly"
-                          ? "Hàng tuần"
-                          : "Hàng tháng"}
+                  {/* Habit Progress Info */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">
+                        {habit.habitType === "good" ? "Mục tiêu" : "Giới hạn"}:
                       </span>
-                      {habit.targetCount > 1 && ` • ${habit.targetCount} lần`}
+                      <span className="font-medium">
+                        {habit.habitType === "good"
+                          ? habit.goal || 1
+                          : habit.limit || 0}
+                        {habit.unit && ` ${habit.unit}`}
+                      </span>
                     </div>
-                    <div className="text-sm font-medium text-slate-700">
-                      {habit.currentCount}/{habit.targetCount}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Chuỗi hiện tại:</span>
+                      <span className="font-bold text-green-600">
+                        {habit.currentStreak} ngày
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Tỉ lệ hoàn thành:</span>
+                      <span className="font-medium">
+                        {stats.completionRate.toFixed(0)}%
+                      </span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleToggleHabit(habit.id)}
-                    disabled={loading}
-                    className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 ${
-                      isCompleted
-                        ? "bg-green-500 hover:bg-green-600 text-white"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành"}
-                  </button>
+                  {/* Today's Action Button */}
+                  {selectedTab === "active" && (
+                    <button
+                      onClick={() => handleToggleHabitToday(habit.id)}
+                      disabled={loading}
+                      className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 ${
+                        isCompletedToday
+                          ? "bg-green-500 hover:bg-green-600 text-white"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {isCompletedToday
+                        ? "Đã hoàn thành hôm nay"
+                        : "Đánh dấu hoàn thành"}
+                    </button>
+                  )}
                 </div>
               );
             })}
 
-            {habits.length === 0 && !loading && (
+            {filteredHabits.length === 0 && !loading && (
               <div className="col-span-full text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
                   <svg
@@ -627,31 +843,36 @@ const HabitManager: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-medium text-slate-900 mb-2">
-                  Chưa có thói quen nào
+                  {selectedTab === "active"
+                    ? "Chưa có thói quen nào"
+                    : "Chưa có thói quen lưu trữ"}
                 </h3>
                 <p className="text-slate-600 mb-4">
-                  Hãy tạo thói quen đầu tiên để bắt đầu hành trình cải thiện bản
-                  thân
+                  {selectedTab === "active"
+                    ? "Hãy tạo thói quen đầu tiên để bắt đầu hành trình cải thiện bản thân"
+                    : "Các thói quen đã lưu trữ sẽ hiển thị ở đây"}
                 </p>
-                <button
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-medium transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                {selectedTab === "active" && (
+                  <button
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-medium transition-colors"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Tạo thói quen đầu tiên
-                </button>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Tạo thói quen đầu tiên
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -683,172 +904,400 @@ const HabitManager: React.FC = () => {
       {/* Create/Edit Habit Dialog */}
       {(isCreateDialogOpen || editingHabit) && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-slate-900 mb-6">
               {editingHabit ? "Chỉnh sửa thói quen" : "Tạo thói quen mới"}
             </h3>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Tên thói quen
-                </label>
-                <input
-                  type="text"
-                  value={editingHabit ? editingHabit.name : newHabit.name}
-                  onChange={(e) => {
-                    if (editingHabit) {
-                      setEditingHabit({
-                        ...editingHabit,
-                        name: e.target.value,
-                      });
-                    } else {
-                      setNewHabit({ ...newHabit, name: e.target.value });
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Nhập tên thói quen..."
-                />
-              </div>
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Tên thói quen *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingHabit ? editingHabit.name : newHabitForm.name}
+                    onChange={(e) => {
+                      if (editingHabit) {
+                        setEditingHabit({
+                          ...editingHabit,
+                          name: e.target.value,
+                        });
+                      } else {
+                        setNewHabitForm({
+                          ...newHabitForm,
+                          name: e.target.value,
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Vd: Uống 2 lít nước mỗi ngày"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Mô tả (tùy chọn)
-                </label>
-                <textarea
-                  value={
-                    editingHabit
-                      ? editingHabit.description
-                      : newHabit.description
-                  }
-                  onChange={(e) => {
-                    if (editingHabit) {
-                      setEditingHabit({
-                        ...editingHabit,
-                        description: e.target.value,
-                      });
-                    } else {
-                      setNewHabit({ ...newHabit, description: e.target.value });
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Mô tả (tùy chọn)
+                  </label>
+                  <textarea
+                    value={
+                      editingHabit
+                        ? editingHabit.description || ""
+                        : newHabitForm.description || ""
                     }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Mô tả chi tiết về thói quen..."
-                />
-              </div>
+                    onChange={(e) => {
+                      if (editingHabit) {
+                        setEditingHabit({
+                          ...editingHabit,
+                          description: e.target.value,
+                        });
+                      } else {
+                        setNewHabitForm({
+                          ...newHabitForm,
+                          description: e.target.value,
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Mô tả chi tiết về thói quen này..."
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Tần suất
+                    Loại thói quen
                   </label>
                   <select
                     value={
-                      editingHabit ? editingHabit.frequency : newHabit.frequency
+                      editingHabit
+                        ? editingHabit.habitType
+                        : newHabitForm.habitType
                     }
                     onChange={(e) => {
-                      const frequency = e.target.value as
-                        | "daily"
-                        | "weekly"
-                        | "monthly";
+                      const habitType = e.target.value as HabitType;
                       if (editingHabit) {
-                        setEditingHabit({ ...editingHabit, frequency });
+                        setEditingHabit({ ...editingHabit, habitType });
                       } else {
-                        setNewHabit({ ...newHabit, frequency });
+                        setNewHabitForm({ ...newHabitForm, habitType });
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
-                    <option value="daily">Hàng ngày</option>
-                    <option value="weekly">Hàng tuần</option>
-                    <option value="monthly">Hàng tháng</option>
+                    <option value="good">Thói quen tốt (muốn duy trì)</option>
+                    <option value="bad">Thói quen xấu (muốn hạn chế)</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Số lần mục tiêu
+                    Mức độ khó
+                  </label>
+                  <select
+                    value={
+                      editingHabit
+                        ? editingHabit.difficultyLevel
+                        : newHabitForm.difficultyLevel
+                    }
+                    onChange={(e) => {
+                      const difficultyLevel = parseInt(
+                        e.target.value
+                      ) as DifficultyLevel;
+                      if (editingHabit) {
+                        setEditingHabit({ ...editingHabit, difficultyLevel });
+                      } else {
+                        setNewHabitForm({ ...newHabitForm, difficultyLevel });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value={1}>Mức 1 - Rất dễ</option>
+                    <option value={2}>Mức 2 - Dễ</option>
+                    <option value={3}>Mức 3 - Trung bình</option>
+                    <option value={4}>Mức 4 - Khó</option>
+                    <option value={5}>Mức 5 - Rất khó</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Danh mục
+                  </label>
+                  <select
+                    value={
+                      editingHabit
+                        ? editingHabit.category
+                        : newHabitForm.category
+                    }
+                    onChange={(e) => {
+                      const category = e.target.value as HabitCategory;
+                      if (editingHabit) {
+                        setEditingHabit({ ...editingHabit, category });
+                      } else {
+                        setNewHabitForm({ ...newHabitForm, category });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="health">🏥 Sức khỏe</option>
+                    <option value="fitness">💪 Thể dục</option>
+                    <option value="productivity">⚡ Năng suất</option>
+                    <option value="mindfulness">🧘 Thiền định</option>
+                    <option value="learning">📚 Học tập</option>
+                    <option value="social">👥 Xã hội</option>
+                    <option value="finance">💰 Tài chính</option>
+                    <option value="creativity">🎨 Sáng tạo</option>
+                    <option value="other">📌 Khác</option>
+                  </select>
+                </div>
+
+                {/* Goal/Limit based on habit type */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {(editingHabit
+                      ? editingHabit.habitType
+                      : newHabitForm.habitType) === "good"
+                      ? "Mục tiêu hàng ngày"
+                      : "Giới hạn tối đa"}
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     value={
-                      editingHabit
-                        ? editingHabit.targetCount
-                        : newHabit.targetCount
+                      (editingHabit
+                        ? editingHabit.habitType
+                        : newHabitForm.habitType) === "good"
+                        ? editingHabit
+                          ? editingHabit.goal || ""
+                          : newHabitForm.goal || ""
+                        : editingHabit
+                        ? editingHabit.limit || ""
+                        : newHabitForm.limit || ""
                     }
                     onChange={(e) => {
-                      const targetCount = parseInt(e.target.value) || 1;
+                      const value = e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined;
+                      const currentType = editingHabit
+                        ? editingHabit.habitType
+                        : newHabitForm.habitType;
+
                       if (editingHabit) {
-                        setEditingHabit({ ...editingHabit, targetCount });
+                        if (currentType === "good") {
+                          setEditingHabit({ ...editingHabit, goal: value });
+                        } else {
+                          setEditingHabit({ ...editingHabit, limit: value });
+                        }
                       } else {
-                        setNewHabit({ ...newHabit, targetCount });
+                        if (currentType === "good") {
+                          setNewHabitForm({ ...newHabitForm, goal: value });
+                        } else {
+                          setNewHabitForm({ ...newHabitForm, limit: value });
+                        }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder={
+                      (editingHabit
+                        ? editingHabit.habitType
+                        : newHabitForm.habitType) === "good"
+                        ? "Vd: 2 (2 lít nước)"
+                        : "Vd: 1 (tối đa 1 ly cà phê)"
+                    }
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Màu sắc
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={editingHabit ? editingHabit.color : newHabit.color}
-                    onChange={(e) => {
-                      if (editingHabit) {
-                        setEditingHabit({
-                          ...editingHabit,
-                          color: e.target.value,
-                        });
-                      } else {
-                        setNewHabit({ ...newHabit, color: e.target.value });
+              {/* Additional Options */}
+              <div className="border-t pt-6">
+                <h4 className="text-md font-medium text-slate-900 mb-4">
+                  Tùy chọn nâng cao
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Đơn vị đo (tùy chọn)
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        editingHabit
+                          ? editingHabit.unit || ""
+                          : newHabitForm.unit || ""
                       }
-                    }}
-                    className="w-12 h-8 border border-slate-300 rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-slate-600">
-                    Chọn màu đại diện cho thói quen
-                  </span>
+                      onChange={(e) => {
+                        if (editingHabit) {
+                          setEditingHabit({
+                            ...editingHabit,
+                            unit: e.target.value,
+                          });
+                        } else {
+                          setNewHabitForm({
+                            ...newHabitForm,
+                            unit: e.target.value,
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Vd: ly, phút, trang..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Thời gian thực hiện (tùy chọn)
+                    </label>
+                    <input
+                      type="time"
+                      value={
+                        editingHabit
+                          ? editingHabit.startTime || ""
+                          : newHabitForm.startTime || ""
+                      }
+                      onChange={(e) => {
+                        if (editingHabit) {
+                          setEditingHabit({
+                            ...editingHabit,
+                            startTime: e.target.value,
+                          });
+                        } else {
+                          setNewHabitForm({
+                            ...newHabitForm,
+                            startTime: e.target.value,
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Lý do/Động lực (tùy chọn)
+                    </label>
+                    <textarea
+                      value={
+                        editingHabit
+                          ? editingHabit.whyReason || ""
+                          : newHabitForm.whyReason || ""
+                      }
+                      onChange={(e) => {
+                        if (editingHabit) {
+                          setEditingHabit({
+                            ...editingHabit,
+                            whyReason: e.target.value,
+                          });
+                        } else {
+                          setNewHabitForm({
+                            ...newHabitForm,
+                            whyReason: e.target.value,
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      rows={2}
+                      placeholder="Tại sao bạn muốn thay đổi thói quen này?"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Màu sắc
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={
+                          editingHabit
+                            ? editingHabit.colorCode
+                            : newHabitForm.colorCode
+                        }
+                        onChange={(e) => {
+                          if (editingHabit) {
+                            setEditingHabit({
+                              ...editingHabit,
+                              colorCode: e.target.value,
+                            });
+                          } else {
+                            setNewHabitForm({
+                              ...newHabitForm,
+                              colorCode: e.target.value,
+                            });
+                          }
+                        }}
+                        className="w-12 h-10 border border-slate-300 rounded cursor-pointer"
+                      />
+                      <span className="text-sm text-slate-600">
+                        Chọn màu đại diện
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Emoji (tùy chọn)
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={
+                        editingHabit
+                          ? editingHabit.emoji || ""
+                          : newHabitForm.emoji || ""
+                      }
+                      onChange={(e) => {
+                        if (editingHabit) {
+                          setEditingHabit({
+                            ...editingHabit,
+                            emoji: e.target.value,
+                          });
+                        } else {
+                          setNewHabitForm({
+                            ...newHabitForm,
+                            emoji: e.target.value,
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="💧"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
+            <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t">
               <button
                 onClick={() => {
                   setIsCreateDialogOpen(false);
                   setEditingHabit(null);
-                  setNewHabit({
-                    name: "",
-                    description: "",
-                    frequency: "daily",
-                    targetCount: 1,
-                    color: "#3b82f6",
-                  });
+                  resetForm();
                 }}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                className="px-6 py-2 text-slate-600 hover:text-slate-800 transition-colors rounded-lg hover:bg-slate-100"
               >
                 Hủy
               </button>
               <button
                 onClick={
                   editingHabit
-                    ? () => {
-                        handleUpdateHabit(editingHabit);
-                        setEditingHabit(null);
-                      }
+                    ? () => handleUpdateSubmit(editingHabit)
                     : handleCreateSubmit
                 }
                 disabled={
-                  !(editingHabit?.name?.trim() || newHabit.name?.trim())
+                  loading ||
+                  !(editingHabit?.name?.trim() || newHabitForm.name?.trim())
                 }
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
               >
-                {editingHabit ? "Cập nhật" : "Tạo thói quen"}
+                {loading
+                  ? "Đang xử lý..."
+                  : editingHabit
+                  ? "Cập nhật thói quen"
+                  : "Tạo thói quen"}
               </button>
             </div>
           </div>
