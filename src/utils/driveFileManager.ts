@@ -194,6 +194,17 @@ export class DriveFileManager {
         return sheetId;
     }
 
+    // Helper method to convert column number to Excel column letter
+    private getColumnLetter(columnNumber: number): string {
+        let result = '';
+        while (columnNumber > 0) {
+            columnNumber--; // Make it 0-indexed
+            result = String.fromCharCode(65 + (columnNumber % 26)) + result;
+            columnNumber = Math.floor(columnNumber / 26);
+        }
+        return result;
+    }
+
     // Initialize sheet with comprehensive structure
     private async initializeSheetStructure(sheetId: string): Promise<void> {
         const requests = [
@@ -257,7 +268,11 @@ export class DriveFileManager {
             'Ghi chú tháng' // AP
         ];
 
-        await this.updateRange(sheetId, 'Habits!A1:AP1', [habitsHeaders]);
+        console.log(`Headers count: ${habitsHeaders.length}`); // Debug log
+
+        // Use dynamic range based on actual header count
+        const lastColumn = this.getColumnLetter(habitsHeaders.length);
+        await this.updateRange(sheetId, `Habits!A1:${lastColumn}1`, [habitsHeaders]);
 
         // Add headers to HabitLogs sheet (keeping original structure for compatibility)
         const logsHeaders = [
@@ -608,15 +623,19 @@ export class DriveFileManager {
 
             // AJ-AP: Summary columns - will be calculated by formulas
             `=SUM(I2:AI2)`, // AJ - Tổng số lần (Tháng)
-            `=COUNTIFS(I2:AI2,">="&E2)`, // AK - Số ngày đạt mục tiêu (for Good habits)
-            `=COUNTIFS(I2:AI2,"<"&E2)`, // AL - Số ngày không đạt mục tiêu
+            `=COUNTIFS(I2:AI2,">="&E2,I2:AI2,"<>"&"")`, // AK - Số ngày đạt mục tiêu (for Good habits, exclude empty)
+            `=COUNTIFS(I2:AI2,"<"&E2,I2:AI2,"<>"&"")`, // AL - Số ngày không đạt mục tiêu (exclude empty)
             `=IFERROR(AK2/(AK2+AL2)*100,0)`, // AM - Tỷ lệ thành công (%)
             `=IFERROR(AJ2/COUNTA(I2:AI2),0)`, // AN - Trung bình mỗi ngày
             '', // AO - Đánh giá cảm tính
             '' // AP - Ghi chú tháng
         ];
 
-        await this.appendRange(sheetId, 'Habits!A:AP', [row]);
+        console.log(`Row data count: ${row.length}`); // Debug log
+
+        // Use dynamic range based on actual row data count
+        const lastColumn = this.getColumnLetter(row.length);
+        await this.appendRange(sheetId, `Habits!A:${lastColumn}`, [row]);
     }
 
     async updateHabit(sheetId: string, habit: Habit): Promise<void> {
@@ -656,9 +675,13 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2;
 
-        // Clear the entire row (all columns A-AP)
-        const emptyRow = Array(42).fill(''); // 42 columns total (A-AP)
-        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:AP${actualRowIndex}`, [emptyRow]);
+        // Get the total number of columns from our header structure (46 columns A-AT)
+        const totalColumns = 8 + 31 + 6; // Basic info + Daily tracking + Summary
+        const lastColumn = this.getColumnLetter(totalColumns);
+
+        // Clear the entire row
+        const emptyRow = Array(totalColumns).fill('');
+        await this.updateRange(sheetId, `Habits!A${actualRowIndex}:${lastColumn}${actualRowIndex}`, [emptyRow]);
     }
 
     // Method to update daily habit tracking
@@ -676,14 +699,19 @@ export class DriveFileManager {
         }
 
         const actualRowIndex = rowIndex + 2;
-        const columnIndex = String.fromCharCode(72 + day); // Column I = 73, J = 74, etc.
+        // Column I = index 8, so day 1 is column I (8+0), day 2 is column J (8+1), etc.
+        const columnIndex = 8 + day - 1;
+        const columnLetter = this.getColumnLetter(columnIndex + 1); // +1 because getColumnLetter expects 1-based
 
-        await this.updateRange(sheetId, `Habits!${columnIndex}${actualRowIndex}`, [[count.toString()]]);
+        await this.updateRange(sheetId, `Habits!${columnLetter}${actualRowIndex}`, [[count.toString()]]);
     }
 
     // Get comprehensive habit data including daily tracking
     async getHabitWithTracking(sheetId: string, habitId: string): Promise<any> {
-        const values = await this.readRange(sheetId, 'Habits!A2:AP1000');
+        const totalColumns = 8 + 31 + 6; // Basic info + Daily tracking + Summary
+        const lastColumn = this.getColumnLetter(totalColumns);
+
+        const values = await this.readRange(sheetId, `Habits!A2:${lastColumn}1000`);
         const habitRow = values.find(row => row[0] === habitId);
 
         if (!habitRow) {
