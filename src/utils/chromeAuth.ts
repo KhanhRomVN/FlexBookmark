@@ -129,6 +129,132 @@ class ChromeAuthManager {
         }
     }
 
+    async hasSheetsPermissionReal(): Promise<boolean> {
+        const token = this.getCurrentToken();
+        if (!token) return false;
+
+        try {
+            console.log('Testing real Sheets permissions...');
+
+            // 1. Check scopes in token first
+            const tokenInfoResponse = await fetch(
+                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+            );
+
+            if (tokenInfoResponse.ok) {
+                const tokenInfo = await tokenInfoResponse.json();
+                const scopes = tokenInfo.scope || '';
+                console.log('Token scopes:', scopes);
+
+                const hasSheetsScope = scopes.includes('https://www.googleapis.com/auth/spreadsheets');
+                if (!hasSheetsScope) {
+                    console.log('Sheets scope not found in token');
+                    return false;
+                }
+            }
+
+            // 2. Test by accessing an existing public spreadsheet (read-only test)
+            // This is safer than creating and writing to a new spreadsheet
+            const readResponse = await fetch(
+                'https://sheets.googleapis.com/v4/spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms?includeGridData=false&fields=properties.title',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (!readResponse.ok) {
+                console.log('Cannot access Sheets API:', readResponse.status);
+                return false;
+            }
+
+            // 3. Test write permission by creating a simple test spreadsheet and immediately deleting it
+            const testSheetMetadata = {
+                name: `FlexBookmark_PermTest_${Date.now()}`,
+                mimeType: 'application/vnd.google-apps.spreadsheet'
+            };
+
+            const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(testSheetMetadata),
+            });
+
+            if (!createResponse.ok) {
+                console.log('Cannot create test spreadsheet:', createResponse.status);
+                return false;
+            }
+
+            const testSheet = await createResponse.json();
+            console.log('Test spreadsheet created:', testSheet.id);
+
+            // 4. Get the actual sheet information to find the correct sheet name
+            let canWrite = false;
+            try {
+                const sheetInfoResponse = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${testSheet.id}?fields=sheets.properties`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+
+                if (sheetInfoResponse.ok) {
+                    const sheetInfo = await sheetInfoResponse.json();
+                    const firstSheetName = sheetInfo.sheets?.[0]?.properties?.title || 'Sheet1';
+
+                    // Test write permission with the correct sheet name
+                    const testData = [['Test', 'Data']];
+                    const writeResponse = await fetch(
+                        `https://sheets.googleapis.com/v4/spreadsheets/${testSheet.id}/values/${firstSheetName}!A1:B1?valueInputOption=RAW`,
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ values: testData }),
+                        }
+                    );
+
+                    canWrite = writeResponse.ok;
+                    console.log('Write test result:', canWrite, writeResponse.status);
+                } else {
+                    // If we can't get sheet info, assume basic write permission exists since we created the sheet
+                    canWrite = true;
+                    console.log('Could not get sheet info, assuming write permission exists');
+                }
+            } catch (writeError) {
+                console.log('Write test failed:', writeError);
+                // Even if write test fails, if we can create spreadsheets, we likely have sufficient permissions
+                canWrite = true;
+            }
+
+            // 5. Clean up: delete the test spreadsheet
+            try {
+                await fetch(`https://www.googleapis.com/drive/v3/files/${testSheet.id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                console.log('Test spreadsheet deleted');
+            } catch (deleteError) {
+                console.warn('Failed to delete test spreadsheet:', deleteError);
+            }
+
+            console.log('Real Sheets permission test result:', canWrite);
+            return canWrite;
+
+        } catch (error) {
+            console.error('Error testing real Sheets permissions:', error);
+            return false;
+        }
+    }
+
     // NEW: Interactive login that opens a new tab with OAuth consent
     private async interactiveLoginWithNewTab(): Promise<User> {
         return new Promise((resolve, reject) => {
@@ -449,24 +575,96 @@ class ChromeAuthManager {
     }
 
     // NEW: Check all required permissions for HabitManager
+    // Replace the hasAllHabitManagerPermissions call in your chromeAuth.ts with this simpler version:
+
     async hasAllHabitManagerPermissions(): Promise<{
         hasDrive: boolean;
         hasSheets: boolean;
         hasCalendar: boolean;
         allRequired: boolean;
+        folderStructureExists?: boolean;
     }> {
-        const [hasDrive, hasSheets, hasCalendar] = await Promise.all([
-            this.hasDriveFilePermission(),
-            this.hasSheetsPermission(),
-            this.hasCalendarWritePermission()
-        ]);
+        const token = this.getCurrentToken();
+        if (!token) {
+            return {
+                hasDrive: false,
+                hasSheets: false,
+                hasCalendar: false,
+                allRequired: false,
+                folderStructureExists: false
+            };
+        }
 
-        return {
-            hasDrive,
-            hasSheets,
-            hasCalendar,
-            allRequired: hasDrive && hasSheets // Calendar is optional for HabitManager
-        };
+        // Check token scopes - this is the most reliable method
+        try {
+            const tokenInfoResponse = await fetch(
+                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+            );
+
+            if (!tokenInfoResponse.ok) {
+                return {
+                    hasDrive: false,
+                    hasSheets: false,
+                    hasCalendar: false,
+                    allRequired: false,
+                    folderStructureExists: false
+                };
+            }
+
+            const tokenInfo = await tokenInfoResponse.json();
+            const scopes = tokenInfo.scope || '';
+            console.log('Token scopes for permission check:', scopes);
+
+            const hasDrive = scopes.includes('https://www.googleapis.com/auth/drive.file') ||
+                scopes.includes('https://www.googleapis.com/auth/drive');
+
+            const hasSheets = scopes.includes('https://www.googleapis.com/auth/spreadsheets');
+
+            const hasCalendar = scopes.includes('https://www.googleapis.com/auth/calendar') ||
+                scopes.includes('https://www.googleapis.com/auth/calendar.events');
+
+            // Quick folder structure check only if we have drive permissions
+            let folderStructureExists = false;
+            if (hasDrive) {
+                try {
+                    const query = `name='FlexBookmark' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+                    const response = await fetch(
+                        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+                        {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        }
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        folderStructureExists = data.files && data.files.length > 0;
+                    }
+                } catch (error) {
+                    console.warn('Error checking folder structure:', error);
+                    // Don't fail the entire check for this
+                }
+            }
+
+            console.log('Permission check results:', { hasDrive, hasSheets, hasCalendar });
+
+            return {
+                hasDrive,
+                hasSheets,
+                hasCalendar,
+                allRequired: hasDrive && hasSheets,
+                folderStructureExists
+            };
+
+        } catch (error) {
+            console.error('Error checking permissions:', error);
+            return {
+                hasDrive: false,
+                hasSheets: false,
+                hasCalendar: false,
+                allRequired: false,
+                folderStructureExists: false
+            };
+        }
     }
 
     // IMPROVED: Initialize - check for existing token

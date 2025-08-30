@@ -60,13 +60,11 @@ const HabitManager: React.FC = () => {
     limit: undefined,
     category: "other",
     tags: [],
-    whyReason: "",
     isQuantifiable: true,
     unit: "",
     startTime: "",
     subtasks: [],
     colorCode: "#3b82f6",
-    emoji: "",
   });
 
   // Progressive loading state management
@@ -121,13 +119,11 @@ const HabitManager: React.FC = () => {
       limit: undefined,
       category: "other",
       tags: [],
-      whyReason: "",
       isQuantifiable: true,
       unit: "",
       startTime: "",
       subtasks: [],
       colorCode: "#3b82f6",
-      emoji: "",
     });
   };
 
@@ -447,13 +443,11 @@ const HabitManager: React.FC = () => {
                 limit: editingHabit.limit,
                 category: editingHabit.category,
                 tags: editingHabit.tags,
-                whyReason: editingHabit.whyReason,
                 isQuantifiable: editingHabit.isQuantifiable,
                 unit: editingHabit.unit,
                 startTime: editingHabit.startTime,
                 subtasks: editingHabit.subtasks,
                 colorCode: editingHabit.colorCode,
-                emoji: editingHabit.emoji,
               }
             : habitFormData
         }

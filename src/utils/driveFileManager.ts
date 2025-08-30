@@ -1,6 +1,3 @@
-// src/utils/driveFileManager.ts
-// Enhanced DriveFileManager with 52-column single-sheet structure for comprehensive habit tracking
-
 import type { Habit, HabitType, DifficultyLevel, HabitCategory } from "../presentation/tab/HabitManager/types/habit";
 
 export interface DriveFolder {
@@ -33,50 +30,99 @@ export class DriveFileManager {
 
     // Auto-initialize: find or create FlexBookmark folder structure
     async autoInitialize(): Promise<string> {
-        console.log('Auto-initializing FlexBookmark folder structure...');
+        console.log('🚀 Starting comprehensive auto-initialization...');
 
-        // Step 1: Find or create FlexBookmark folder in root
-        let flexBookmarkFolder = await this.findFolder('FlexBookmark', 'root');
-        if (!flexBookmarkFolder) {
-            console.log('FlexBookmark folder not found, creating it...');
-            flexBookmarkFolder = await this.createFolder('FlexBookmark', 'root');
-        } else {
-            console.log('FlexBookmark folder found:', flexBookmarkFolder.id);
+        try {
+            // Step 1: Kiểm tra và tạo FlexBookmark folder
+            console.log('📁 Step 1: Checking FlexBookmark folder...');
+            let flexBookmarkFolder = await this.findFolder('FlexBookmark', 'root');
+
+            if (!flexBookmarkFolder) {
+                console.log('📁 FlexBookmark folder not found, creating...');
+                flexBookmarkFolder = await this.createFolder('FlexBookmark', 'root');
+                console.log('✅ FlexBookmark folder created:', flexBookmarkFolder.id);
+            } else {
+                console.log('✅ FlexBookmark folder exists:', flexBookmarkFolder.id);
+            }
+
+            this.flexBookmarkFolderId = flexBookmarkFolder.id;
+
+            // Step 2: Kiểm tra và tạo HabitManager subfolder
+            console.log('📁 Step 2: Checking HabitManager subfolder...');
+            let habitManagerFolder = await this.findFolder('HabitManager', flexBookmarkFolder.id);
+
+            if (!habitManagerFolder) {
+                console.log('📁 HabitManager folder not found, creating...');
+                habitManagerFolder = await this.createFolder('HabitManager', flexBookmarkFolder.id);
+                console.log('✅ HabitManager folder created:', habitManagerFolder.id);
+            } else {
+                console.log('✅ HabitManager folder exists:', habitManagerFolder.id);
+            }
+
+            // Step 3: Kiểm tra và tạo current year folder
+            console.log('📁 Step 3: Checking year folder...');
+            const currentYear = new Date().getFullYear().toString();
+            let yearFolder = await this.findFolder(currentYear, habitManagerFolder.id);
+
+            if (!yearFolder) {
+                console.log(`📁 ${currentYear} folder not found, creating...`);
+                yearFolder = await this.createFolder(currentYear, habitManagerFolder.id);
+                console.log(`✅ ${currentYear} folder created:`, yearFolder.id);
+            } else {
+                console.log(`✅ ${currentYear} folder exists:`, yearFolder.id);
+            }
+
+            // Step 4: Kiểm tra và tạo current month sheet
+            console.log('📊 Step 4: Checking monthly sheet...');
+            const currentDate = new Date();
+            const monthYear = `flex_bookmark_${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentYear}`;
+
+            let habitSheet = await this.findFile(monthYear, yearFolder.id);
+
+            if (!habitSheet) {
+                console.log(`📊 ${monthYear} sheet not found, creating...`);
+                const sheetId = await this.createHabitSheet(monthYear, yearFolder.id);
+                console.log(`✅ ${monthYear} sheet created:`, sheetId);
+
+                // Verify sheet is accessible
+                await this.testSheetAccess(sheetId);
+                return sheetId;
+            } else {
+                console.log(`✅ ${monthYear} sheet exists:`, habitSheet.id);
+
+                // Verify existing sheet is accessible
+                await this.testSheetAccess(habitSheet.id);
+                return habitSheet.id;
+            }
+
+        } catch (error) {
+            console.error('❌ Auto-initialization failed:', error);
+            throw new Error(`Auto-initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
 
-        this.flexBookmarkFolderId = flexBookmarkFolder.id;
+    private async testSheetAccess(sheetId: string): Promise<void> {
+        try {
+            console.log('🧪 Testing sheet access...');
 
-        // Step 2: Find or create HabitManager subfolder
-        let habitManagerFolder = await this.findFolder('HabitManager', flexBookmarkFolder.id);
-        if (!habitManagerFolder) {
-            console.log('HabitManager folder not found, creating it...');
-            habitManagerFolder = await this.createFolder('HabitManager', flexBookmarkFolder.id);
-        } else {
-            console.log('HabitManager folder found:', habitManagerFolder.id);
-        }
+            // Test read access
+            const response = await fetch(
+                `${this.sheetsApiUrl}/spreadsheets/${sheetId}?fields=properties.title`,
+                {
+                    headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                }
+            );
 
-        // Step 3: Find or create current year folder
-        const currentYear = new Date().getFullYear().toString();
-        let yearFolder = await this.findFolder(currentYear, habitManagerFolder.id);
-        if (!yearFolder) {
-            console.log(`${currentYear} folder not found, creating it...`);
-            yearFolder = await this.createFolder(currentYear, habitManagerFolder.id);
-        } else {
-            console.log(`${currentYear} folder found:`, yearFolder.id);
-        }
+            if (!response.ok) {
+                throw new Error(`Sheet access test failed: ${response.status}`);
+            }
 
-        // Step 4: Find or create current month sheet
-        const currentDate = new Date();
-        const monthYear = `flex_bookmark_${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentYear}`;
+            const data = await response.json();
+            console.log('✅ Sheet access verified:', data.properties?.title);
 
-        let habitSheet = await this.findFile(monthYear, yearFolder.id);
-        if (!habitSheet) {
-            console.log(`${monthYear} sheet not found, creating it...`);
-            const sheetId = await this.createHabitSheet(monthYear, yearFolder.id);
-            return sheetId;
-        } else {
-            console.log(`${monthYear} sheet found:`, habitSheet.id);
-            return habitSheet.id;
+        } catch (error) {
+            console.error('❌ Sheet access test failed:', error);
+            throw error;
         }
     }
 
@@ -162,7 +208,7 @@ export class DriveFileManager {
         }
     }
 
-    // Create a new habit tracking sheet with 52-column structure
+    // Create a new habit tracking sheet with 50-column structure
     private async createHabitSheet(name: string, parentId: string): Promise<string> {
         const sheetMetadata = {
             name: name,
@@ -206,7 +252,7 @@ export class DriveFileManager {
         return result;
     }
 
-    // Initialize sheet with comprehensive 52-column structure
+    // Initialize sheet with comprehensive 50-column structure
     private async initializeSheetStructure(sheetId: string): Promise<void> {
         const requests = [
             // Clear existing sheets and create our custom sheet
@@ -216,7 +262,7 @@ export class DriveFileManager {
                         title: 'HabitTracker',
                         gridProperties: {
                             rowCount: 1000,
-                            columnCount: 52 // Exactly 52 columns for our structure
+                            columnCount: 50 // Updated to 50 columns
                         }
                     }
                 }
@@ -233,40 +279,38 @@ export class DriveFileManager {
             body: JSON.stringify({ requests }),
         });
 
-        // Create comprehensive headers for 52-column structure
+        // Create comprehensive headers for 50-column structure
         const headers = [
             // Core Information (1-8)
-            'ID',                    // A
-            'Tên Thói quen',        // B
-            'Mô tả',                // C
-            'Loại Thói quen',       // D (good/bad)
-            'Mức độ Khó',          // E (1-5)
-            'Mục tiêu',            // F (for good habits)
-            'Giới hạn',            // G (for bad habits)
-            'Chuỗi Hiện tại',      // H
+            'id',                       // A
+            'name',                     // B
+            'description',              // C
+            'habitType',               // D (good/bad)
+            'difficultyLevel',         // E (1-5)
+            'goal',                    // F (for good habits)
+            'limit',                   // G (for bad habits)
+            'currentStreak',           // H
 
             // Daily Tracking (9-39) - 31 days
-            ...Array.from({ length: 31 }, (_, i) => `Ngày ${i + 1}`), // I-AM (31 columns)
+            ...Array.from({ length: 31 }, (_, i) => `${i + 1}`), // I-AM (31 columns: "1", "2", "3"...)
 
-            // Additional Properties (40-52)
-            'Ngày tạo',            // AN - createdDate
-            'Mã màu',              // AO - colorCode
-            'Emoji',               // AP - emoji
-            'Chuỗi Dài nhất',      // AQ - longestStreak
-            'Danh mục',            // AR - category
-            'Tags',                // AS - tags (JSON string)
-            'Đã lưu trữ',          // AT - isArchived
-            'Lý do/Động lực',      // AU - whyReason
-            'Có thể đo lường',     // AV - isQuantifiable
-            'Đơn vị',              // AW - unit
-            'Thời gian bắt đầu',   // AX - startTime
-            'Các bước con',        // AY - subtasks (JSON string)
+            // Additional Properties (40-50)
+            'createdDate',             // AN - createdDate
+            'colorCode',               // AO - colorCode
+            'longestStreak',           // AP - longestStreak
+            'category',                // AQ - category
+            'tags',                    // AR - tags (JSON string)
+            'isArchived',              // AS - isArchived
+            'isQuantifiable',          // AT - isQuantifiable
+            'unit',                    // AU - unit
+            'startTime',               // AV - startTime
+            'subtasks',                // AW - subtasks (JSON string)
         ];
 
-        console.log(`Headers count: ${headers.length}`); // Should be 52
+        console.log(`Headers count: ${headers.length}`); // Should be 50
 
         // Set headers
-        await this.updateRange(sheetId, 'HabitTracker!A1:AY1', [headers]);
+        await this.updateRange(sheetId, 'HabitTracker!A1:AW1', [headers]);
 
         // Set up data validation and conditional formatting
         await this.setupDataValidation(sheetId);
@@ -304,7 +348,7 @@ export class DriveFileManager {
     // Helper method to set up data validation
     private async setupDataValidation(sheetId: string): Promise<void> {
         const requests = [
-            // Data validation for "Loại Thói quen" column (D)
+            // Data validation for "habitType" column (D)
             {
                 setDataValidation: {
                     range: {
@@ -351,15 +395,15 @@ export class DriveFileManager {
                     }
                 }
             },
-            // Data validation for category (AR)
+            // Data validation for category (AQ)
             {
                 setDataValidation: {
                     range: {
                         sheetId: 0,
                         startRowIndex: 1,
                         endRowIndex: 1000,
-                        startColumnIndex: 43, // Column AR
-                        endColumnIndex: 44
+                        startColumnIndex: 42, // Column AQ
+                        endColumnIndex: 43
                     },
                     rule: {
                         condition: {
@@ -380,15 +424,15 @@ export class DriveFileManager {
                     }
                 }
             },
-            // Data validation for isArchived (AT)
+            // Data validation for isArchived (AS)
             {
                 setDataValidation: {
                     range: {
                         sheetId: 0,
                         startRowIndex: 1,
                         endRowIndex: 1000,
-                        startColumnIndex: 45, // Column AT
-                        endColumnIndex: 46
+                        startColumnIndex: 44, // Column AS
+                        endColumnIndex: 45
                     },
                     rule: {
                         condition: {
@@ -402,15 +446,15 @@ export class DriveFileManager {
                     }
                 }
             },
-            // Data validation for isQuantifiable (AV)
+            // Data validation for isQuantifiable (AT)
             {
                 setDataValidation: {
                     range: {
                         sheetId: 0,
                         startRowIndex: 1,
                         endRowIndex: 1000,
-                        startColumnIndex: 47, // Column AV
-                        endColumnIndex: 48
+                        startColumnIndex: 45, // Column AT
+                        endColumnIndex: 46
                     },
                     rule: {
                         condition: {
@@ -634,12 +678,12 @@ export class DriveFileManager {
         return data.values || [];
     }
 
-    // CRUD Operations for Habits with 52-column structure
+    // CRUD Operations for Habits with 50-column structure
 
     async readHabits(sheetId: string): Promise<Habit[]> {
         try {
-            // Read all 52 columns
-            const values = await this.readRange(sheetId, 'HabitTracker!A2:AY1000');
+            // Read all 50 columns
+            const values = await this.readRange(sheetId, 'HabitTracker!A2:AW1000');
 
             return values.map(row => {
                 // Parse daily tracking array (columns I-AM, indices 8-38)
@@ -678,16 +722,14 @@ export class DriveFileManager {
                     dailyTracking,
                     createdDate: row[39] ? new Date(row[39]) : new Date(),
                     colorCode: row[40] || '#3b82f6',
-                    emoji: row[41] || '',
-                    longestStreak: parseInt(row[42]) || 0,
-                    category: (row[43] || 'other') as HabitCategory,
-                    tags: parseTags(row[44] || ''),
-                    isArchived: row[45] === 'TRUE',
-                    whyReason: row[46] || '',
-                    isQuantifiable: row[47] === 'TRUE',
-                    unit: row[48] || '',
-                    startTime: row[49] || '',
-                    subtasks: parseSubtasks(row[50] || '')
+                    longestStreak: parseInt(row[41]) || 0,
+                    category: (row[42] || 'other') as HabitCategory,
+                    tags: parseTags(row[43] || ''),
+                    isArchived: row[44] === 'TRUE',
+                    isQuantifiable: row[45] === 'TRUE',
+                    unit: row[46] || '',
+                    startTime: row[47] || '',
+                    subtasks: parseSubtasks(row[48] || '')
                 } as Habit;
             }).filter(habit => habit.id); // Filter out empty rows
         } catch (error) {
@@ -697,35 +739,33 @@ export class DriveFileManager {
     }
 
     async createHabit(sheetId: string, habit: Habit): Promise<void> {
-        // Create row with all 52 columns (A-AY)
+        // Create row with all 50 columns (A-AW)
         const row = [
-            habit.id,                                    // A - ID
-            habit.name,                                  // B - Tên Thói quen
-            habit.description || '',                     // C - Mô tả
-            habit.habitType,                            // D - Loại Thói quen
-            habit.difficultyLevel.toString(),           // E - Mức độ Khó
-            habit.goal?.toString() || '',               // F - Mục tiêu
-            habit.limit?.toString() || '',              // G - Giới hạn
-            habit.currentStreak.toString(),             // H - Chuỗi Hiện tại
+            habit.id,                                    // A - id
+            habit.name,                                  // B - name
+            habit.description || '',                     // C - description
+            habit.habitType,                            // D - habitType
+            habit.difficultyLevel.toString(),           // E - difficultyLevel
+            habit.goal?.toString() || '',               // F - goal
+            habit.limit?.toString() || '',              // G - limit
+            habit.currentStreak.toString(),             // H - currentStreak
 
             // Daily tracking (31 columns I-AM)
             ...Array(31).fill(''),
 
-            habit.createdDate.toISOString().split('T')[0], // AN - Ngày tạo
-            habit.colorCode,                            // AO - Mã màu
-            habit.emoji || '',                          // AP - Emoji
-            habit.longestStreak.toString(),             // AQ - Chuỗi Dài nhất
-            habit.category,                             // AR - Danh mục
-            JSON.stringify(habit.tags),                 // AS - Tags
-            habit.isArchived.toString().toUpperCase(),  // AT - Đã lưu trữ
-            habit.whyReason || '',                      // AU - Lý do/Động lực
-            habit.isQuantifiable.toString().toUpperCase(), // AV - Có thể đo lường
-            habit.unit || '',                           // AW - Đơn vị
-            habit.startTime || '',                      // AX - Thời gian bắt đầu
-            JSON.stringify(habit.subtasks)              // AY - Các bước con
+            habit.createdDate.toISOString().split('T')[0], // AN - createdDate
+            habit.colorCode,                            // AO - colorCode
+            habit.longestStreak.toString(),             // AP - longestStreak
+            habit.category,                             // AQ - category
+            JSON.stringify(habit.tags),                 // AR - tags
+            habit.isArchived.toString().toUpperCase(),  // AS - isArchived
+            habit.isQuantifiable.toString().toUpperCase(), // AT - isQuantifiable
+            habit.unit || '',                           // AU - unit
+            habit.startTime || '',                      // AV - startTime
+            JSON.stringify(habit.subtasks)              // AW - subtasks
         ];
 
-        await this.appendRange(sheetId, 'HabitTracker!A:AY', [row]);
+        await this.appendRange(sheetId, 'HabitTracker!A:AW', [row]);
     }
 
     async updateHabit(sheetId: string, habit: Habit): Promise<void> {
@@ -739,7 +779,7 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2; // +2 because we start from A2 and arrays are 0-indexed
 
-        // Update entire row with all 52 columns
+        // Update entire row with all 50 columns
         const row = [
             habit.id,                                    // A
             habit.name,                                  // B
@@ -755,19 +795,17 @@ export class DriveFileManager {
 
             habit.createdDate.toISOString().split('T')[0], // AN
             habit.colorCode,                            // AO
-            habit.emoji || '',                          // AP
-            habit.longestStreak.toString(),             // AQ
-            habit.category,                             // AR
-            JSON.stringify(habit.tags),                 // AS
-            habit.isArchived.toString().toUpperCase(),  // AT
-            habit.whyReason || '',                      // AU
-            habit.isQuantifiable.toString().toUpperCase(), // AV
-            habit.unit || '',                           // AW
-            habit.startTime || '',                      // AX
-            JSON.stringify(habit.subtasks)              // AY
+            habit.longestStreak.toString(),             // AP
+            habit.category,                             // AQ
+            JSON.stringify(habit.tags),                 // AR
+            habit.isArchived.toString().toUpperCase(),  // AS
+            habit.isQuantifiable.toString().toUpperCase(), // AT
+            habit.unit || '',                           // AU
+            habit.startTime || '',                      // AV
+            JSON.stringify(habit.subtasks)              // AW
         ];
 
-        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AY${actualRowIndex}`, [row]);
+        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AW${actualRowIndex}`, [row]);
     }
 
     async deleteHabit(sheetId: string, habitId: string): Promise<void> {
@@ -781,9 +819,9 @@ export class DriveFileManager {
 
         const actualRowIndex = rowIndex + 2;
 
-        // Clear the entire row (52 columns)
-        const emptyRow = Array(52).fill('');
-        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AY${actualRowIndex}`, [emptyRow]);
+        // Clear the entire row (50 columns)
+        const emptyRow = Array(50).fill('');
+        await this.updateRange(sheetId, `HabitTracker!A${actualRowIndex}:AW${actualRowIndex}`, [emptyRow]);
     }
 
     // Method to update daily habit tracking for a specific day
@@ -858,9 +896,9 @@ export class DriveFileManager {
         if (rowIndex !== -1) {
             const actualRowIndex = rowIndex + 2;
 
-            // Update current streak (column H) and longest streak (column AQ)
+            // Update current streak (column H) and longest streak (column AP)
             await this.updateRange(sheetId, `HabitTracker!H${actualRowIndex}`, [[currentStreak.toString()]]);
-            await this.updateRange(sheetId, `HabitTracker!AQ${actualRowIndex}`, [[longestStreak.toString()]]);
+            await this.updateRange(sheetId, `HabitTracker!AP${actualRowIndex}`, [[longestStreak.toString()]]);
         }
     }
 
@@ -880,7 +918,7 @@ export class DriveFileManager {
         }
 
         const actualRowIndex = rowIndex + 2;
-        await this.updateRange(sheetId, `HabitTracker!AT${actualRowIndex}`, [[archive.toString().toUpperCase()]]);
+        await this.updateRange(sheetId, `HabitTracker!AS${actualRowIndex}`, [[archive.toString().toUpperCase()]]);
     }
 
     // Get habits by category

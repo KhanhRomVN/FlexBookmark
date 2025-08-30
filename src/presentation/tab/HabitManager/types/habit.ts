@@ -1,5 +1,3 @@
-// src/presentation/tab/HabitManager/types/habit.ts
-
 export type HabitType = 'good' | 'bad';
 export type DifficultyLevel = 1 | 2 | 3 | 4 | 5;
 export type HabitCategory = 'health' | 'fitness' | 'productivity' | 'mindfulness' | 'learning' | 'social' | 'finance' | 'creativity' | 'other';
@@ -18,19 +16,17 @@ export interface Habit {
     // Daily Tracking (Columns 9-39) - 31 days
     dailyTracking: (number | null)[];   // Columns I-AM - Daily values (max 31 entries)
 
-    // Additional Properties (Columns 40-52)
+    // Additional Properties (Columns 40-50) - removed emoji and whyReason
     createdDate: Date;                  // Column AN - Creation date
     colorCode: string;                  // Column AO - Hex color code
-    emoji?: string;                     // Column AP - Emoji representation
-    longestStreak: number;              // Column AQ - Longest streak achieved
-    category: HabitCategory;            // Column AR - Category
-    tags: string[];                     // Column AS - Tags array (JSON string in sheet)
-    isArchived: boolean;                // Column AT - Archive status
-    whyReason?: string;                 // Column AU - Motivation/reason
-    isQuantifiable: boolean;            // Column AV - Can be measured numerically
-    unit?: string;                      // Column AW - Measurement unit
-    startTime?: string;                 // Column AX - Daily start time (HH:MM format)
-    subtasks: string[];                 // Column AY - Subtasks array (JSON string in sheet)
+    longestStreak: number;              // Column AP - Longest streak achieved
+    category: HabitCategory;            // Column AQ - Category
+    tags: string[];                     // Column AR - Tags array (JSON string in sheet)
+    isArchived: boolean;                // Column AS - Archive status
+    isQuantifiable: boolean;            // Column AT - Can be measured numerically
+    unit?: string;                      // Column AU - Measurement unit
+    startTime?: string;                 // Column AV - Daily start time (HH:MM format)
+    subtasks: string[];                 // Column AW - Subtasks array (JSON string in sheet)
 }
 
 export interface HabitFormData {
@@ -42,13 +38,11 @@ export interface HabitFormData {
     limit?: number;
     category: HabitCategory;
     tags: string[];
-    whyReason?: string;
     isQuantifiable: boolean;
     unit?: string;
     startTime?: string;
     subtasks: string[];
     colorCode: string;
-    emoji?: string;
 }
 
 export interface DayProgress {

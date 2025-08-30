@@ -52,6 +52,7 @@ export const useHabitData = () => {
     const [needsReauth, setNeedsReauth] = useState<boolean>(false);
     const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
     const [initialized, setInitialized] = useState<boolean>(false);
+    const [loadingProgress, setLoadingProgress] = useState<number>(0); // ADD THIS LINE
 
     const [permissions, setPermissions] = useState<{
         hasDrive: boolean;
@@ -103,6 +104,67 @@ export const useHabitData = () => {
         });
     }, []);
 
+    const checkComprehensiveSetup = useCallback(async (): Promise<{
+        hasPermissions: boolean;
+        hasFolderStructure: boolean;
+        hasCurrentSheet: boolean;
+        needsFullSetup: boolean;
+    }> => {
+        try {
+            console.log('Checking comprehensive setup...');
+
+            // 1. Kiểm tra permissions đầy đủ
+            const permissionCheck = await authManager.hasAllHabitManagerPermissions();
+
+            if (!permissionCheck.allRequired) {
+                return {
+                    hasPermissions: false,
+                    hasFolderStructure: false,
+                    hasCurrentSheet: false,
+                    needsFullSetup: true
+                };
+            }
+
+            // 2. Kiểm tra folder structure
+            const hasFolderStructure = permissionCheck.folderStructureExists || false;
+
+            // 3. Kiểm tra current sheet (nếu có cached sheet ID)
+            let hasCurrentSheet = false;
+            const cachedSheetId = await getCache<string>(CACHE_KEYS.SHEET_ID);
+
+            if (cachedSheetId && driveManager) {
+                try {
+                    // Test xem sheet có accessible không
+                    await driveManager.readHabits(cachedSheetId);
+                    hasCurrentSheet = true;
+                    console.log('Current sheet is accessible:', cachedSheetId);
+                } catch (error) {
+                    console.log('Cached sheet not accessible:', error);
+                    // Clear invalid cache
+                    chrome.storage.local.remove([CACHE_KEYS.SHEET_ID]);
+                }
+            }
+
+            const needsFullSetup = !hasFolderStructure || !hasCurrentSheet;
+
+            return {
+                hasPermissions: true,
+                hasFolderStructure,
+                hasCurrentSheet,
+                needsFullSetup
+            };
+
+        } catch (error) {
+            console.error('Error checking comprehensive setup:', error);
+            return {
+                hasPermissions: false,
+                hasFolderStructure: false,
+                hasCurrentSheet: false,
+                needsFullSetup: true
+            };
+        }
+    }, [authManager, driveManager, getCache]);
+
     // Load cached data on startup
     const loadCachedData = useCallback(async () => {
         try {
@@ -133,56 +195,6 @@ export const useHabitData = () => {
             console.warn('Failed to load cached data:', error);
         }
     }, [getCache]);
-
-    // Progressive initialization - show cached data first, then sync
-    const progressiveInitialize = useCallback(async () => {
-        if (initializationPromise.current) {
-            return initializationPromise.current;
-        }
-
-        initializationPromise.current = (async () => {
-            try {
-                console.log('Starting progressive initialization...');
-
-                // Step 1: Load cached data immediately (0ms)
-                await loadCachedData();
-
-                // Step 2: Quick auth verification
-                if (authState.isAuthenticated && authState.user) {
-                    const cachedAuthCheck = await getCache<boolean>(CACHE_KEYS.AUTH_VERIFIED);
-
-                    if (!cachedAuthCheck) {
-                        // Verify auth in background
-                        const isValid = await authManager.hasAllHabitManagerPermissions();
-                        await setCache(CACHE_KEYS.AUTH_VERIFIED, true, CACHE_TTL.AUTH);
-
-                        if (!isValid.allRequired) {
-                            setNeedsReauth(true);
-                            return;
-                        }
-                    }
-                }
-
-                // Step 3: Background sync (if needed)
-                const lastSync = await getCache<number>(CACHE_KEYS.LAST_SYNC);
-                const shouldSync = !lastSync || (Date.now() - lastSync > CACHE_TTL.HABITS);
-
-                if (shouldSync && driveManager && currentSheetId) {
-                    console.log('Starting background sync...');
-                    syncInBackground();
-                }
-
-                setInitialized(true);
-                console.log('Progressive initialization completed');
-
-            } catch (error) {
-                console.error('Progressive initialization failed:', error);
-                setError('Initialization failed');
-            }
-        })();
-
-        return initializationPromise.current;
-    }, [authState.isAuthenticated, authState.user, driveManager, currentSheetId, loadCachedData, getCache, setCache]);
 
     // Background sync without blocking UI
     const syncInBackground = useCallback(async () => {
@@ -219,6 +231,78 @@ export const useHabitData = () => {
             syncInProgress.current = false;
         }
     }, [driveManager, currentSheetId, habits, setCache]);
+
+    // Progressive initialization - show cached data first, then sync
+    const progressiveInitialize = useCallback(async () => {
+        if (initializationPromise.current) {
+            return initializationPromise.current;
+        }
+
+        initializationPromise.current = (async () => {
+            try {
+                console.log('Starting comprehensive progressive initialization...');
+
+                // Step 1: Load cached data immediately
+                await loadCachedData();
+                setLoadingProgress(20);
+
+                // Step 2: Comprehensive setup check
+                const setupStatus = await checkComprehensiveSetup();
+                setLoadingProgress(40);
+
+                console.log('Setup status:', setupStatus);
+
+                if (!setupStatus.hasPermissions) {
+                    setNeedsReauth(true);
+                    setError('Cần cấp quyền truy cập Google Drive và Sheets');
+                    return;
+                }
+
+                if (setupStatus.needsFullSetup) {
+                    console.log('Need full setup - creating folder structure...');
+                    setLoadingProgress(60);
+
+                    // Thực hiện full setup
+                    if (driveManager) {
+                        const sheetId = await driveManager.autoInitialize();
+                        setCurrentSheetId(sheetId);
+                        await setCache(CACHE_KEYS.SHEET_ID, sheetId, CACHE_TTL.HABITS);
+
+                        // Load fresh data from new sheet
+                        const habitsData = await driveManager.readHabits(sheetId);
+                        setHabits(habitsData);
+                        await setCache(CACHE_KEYS.HABITS, habitsData, CACHE_TTL.HABITS);
+                    }
+                } else {
+                    console.log('Setup already exists, syncing in background...');
+                    // Folder structure exists, sync in background
+                    setTimeout(() => syncInBackground(), 100);
+                }
+
+                setLoadingProgress(100);
+                setInitialized(true);
+                await setCache(CACHE_KEYS.LAST_SYNC, Date.now(), CACHE_TTL.HABITS);
+
+                console.log('Comprehensive progressive initialization completed');
+
+            } catch (error) {
+                console.error('Progressive initialization failed:', error);
+
+                if (error instanceof Error) {
+                    if (error.message.includes('403') || error.message.includes('permission')) {
+                        setNeedsReauth(true);
+                        setError('Quyền truy cập hết hạn hoặc không đủ, vui lòng đăng nhập lại');
+                    } else {
+                        setError(`Lỗi khởi tạo: ${error.message}`);
+                    }
+                } else {
+                    setError('Lỗi khởi tạo hệ thống quản lý thói quen');
+                }
+            }
+        })();
+
+        return initializationPromise.current;
+    }, [authState.isAuthenticated, authState.user, driveManager, checkComprehensiveSetup, loadCachedData, syncInBackground, getCache, setCache]);
 
     // Auth state subscription with caching
     useEffect(() => {
@@ -413,12 +497,10 @@ export const useHabitData = () => {
                 dailyTracking: Array(31).fill(null),
                 createdDate: new Date(),
                 colorCode: habitFormData.colorCode,
-                emoji: habitFormData.emoji,
                 longestStreak: 0,
                 category: habitFormData.category,
                 tags: habitFormData.tags,
                 isArchived: false,
-                whyReason: habitFormData.whyReason,
                 isQuantifiable: habitFormData.isQuantifiable,
                 unit: habitFormData.unit,
                 startTime: habitFormData.startTime,
@@ -454,6 +536,171 @@ export const useHabitData = () => {
         }
     }, [driveManager, currentSheetId, habits, setCache]);
 
+    // Update habit with optimistic updates and caching
+    const handleUpdateHabit = useCallback(async (habit: Habit) => {
+        if (!driveManager || !currentSheetId) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Optimistic update
+            const updatedHabits = habits.map(h => h.id === habit.id ? habit : h);
+            setHabits(updatedHabits);
+
+            // Background save
+            await Promise.all([
+                driveManager.updateHabit(currentSheetId, habit),
+                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
+            ]);
+
+        } catch (error) {
+            console.error("Error updating habit:", error);
+
+            // Revert optimistic update
+            setHabits(habits);
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi cập nhật thói quen");
+            }
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [driveManager, currentSheetId, habits, setCache]);
+
+    // Delete habit with optimistic updates
+    const handleDeleteHabit = useCallback(async (habitId: string) => {
+        if (!driveManager || !currentSheetId) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Optimistic update
+            const updatedHabits = habits.filter(h => h.id !== habitId);
+            setHabits(updatedHabits);
+
+            // Background save
+            await Promise.all([
+                driveManager.deleteHabit(currentSheetId, habitId),
+                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
+            ]);
+
+        } catch (error) {
+            console.error("Error deleting habit:", error);
+
+            // Revert optimistic update
+            setHabits(habits);
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi xóa thói quen");
+            }
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [driveManager, currentSheetId, habits, setCache]);
+
+    // Archive habit with optimistic updates
+    const handleArchiveHabit = useCallback(async (habitId: string, archive: boolean) => {
+        if (!driveManager || !currentSheetId) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Optimistic update
+            const updatedHabits = habits.map(h =>
+                h.id === habitId ? { ...h, isArchived: archive } : h
+            );
+            setHabits(updatedHabits);
+
+            // Background save
+            await Promise.all([
+                driveManager.archiveHabit(currentSheetId, habitId, archive),
+                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
+            ]);
+
+        } catch (error) {
+            console.error("Error archiving habit:", error);
+
+            // Revert optimistic update
+            setHabits(habits);
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi lưu trữ thói quen");
+            }
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [driveManager, currentSheetId, habits, setCache]);
+
+    // Update daily habit tracking
+    const handleUpdateDailyHabit = useCallback(async (habitId: string, day: number, value: number) => {
+        if (!driveManager || !currentSheetId) {
+            setError("Hệ thống chưa được khởi tạo");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Optimistic update
+            const updatedHabits = habits.map(h => {
+                if (h.id === habitId) {
+                    const newTracking = [...h.dailyTracking];
+                    newTracking[day - 1] = value;
+                    return { ...h, dailyTracking: newTracking };
+                }
+                return h;
+            });
+            setHabits(updatedHabits);
+
+            // Background save
+            await Promise.all([
+                driveManager.updateDailyHabit(currentSheetId, habitId, day, value),
+                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
+            ]);
+
+        } catch (error) {
+            console.error("Error updating daily habit:", error);
+
+            // Revert optimistic update
+            setHabits(habits);
+
+            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
+                setNeedsReauth(true);
+                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
+            } else {
+                setError(error instanceof Error ? error.message : "Lỗi cập nhật theo dõi hàng ngày");
+            }
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }, [driveManager, currentSheetId, habits, setCache]);
+
     // Background refresh without blocking UI
     const handleRefresh = useCallback(async () => {
         if (!currentSheetId || !driveManager) {
@@ -482,7 +729,6 @@ export const useHabitData = () => {
         }
     }, [driveManager, currentSheetId, setCache]);
 
-    // Other handlers remain the same but add caching...
     const handleLogin = useCallback(async () => {
         try {
             setError(null);
@@ -520,6 +766,21 @@ export const useHabitData = () => {
         }
     }, [authManager]);
 
+    const handleForceReauth = useCallback(async () => {
+        try {
+            setError(null);
+            setLoading(true);
+            await authManager.forceReauth();
+            setPermissions(prev => ({ ...prev, checked: false }));
+            setNeedsReauth(false);
+        } catch (err) {
+            console.error("Force reauth error:", err);
+            setError("Cấp quyền thất bại. Vui lòng thử lại.");
+        } finally {
+            setLoading(false);
+        }
+    }, [authManager]);
+
     // Auto-sync every 5 minutes
     useEffect(() => {
         if (initialized && !syncInProgress.current) {
@@ -543,13 +804,18 @@ export const useHabitData = () => {
         needsReauth,
         initialized,
         permissions,
+        loadingProgress, // ADD THIS LINE
 
         // Actions
         handleLogin,
         handleLogout,
         handleCreateHabit,
-        // ... other handlers (implement with similar optimistic updates and caching)
+        handleUpdateHabit,
+        handleDeleteHabit,
+        handleArchiveHabit,
+        handleUpdateDailyHabit,
         handleRefresh,
+        handleForceReauth,
         checkPermissions,
 
         // New optimized actions
