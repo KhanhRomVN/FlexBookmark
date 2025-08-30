@@ -1,109 +1,99 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { DriveFileManager } from "../../../../utils/driveFileManager";
-import ChromeAuthManager, { AuthState } from "../../../../utils/chromeAuth";
-import type {
-    Habit,
-    HabitFormData,
-    HabitType,
-    HabitCategory,
-    DifficultyLevel,
-    calculateHabitStats,
-    HabitStats
-} from "../types/habit";
-
-// Cache keys for Chrome storage
-const CACHE_KEYS = {
-    HABITS: 'habits_cache',
-    PERMISSIONS: 'permissions_cache',
-    SHEET_ID: 'current_sheet_id',
-    LAST_SYNC: 'last_sync_timestamp',
-    AUTH_VERIFIED: 'auth_verified_timestamp'
-} as const;
-
-// Cache TTL (Time To Live) in milliseconds
-const CACHE_TTL = {
-    HABITS: 5 * 60 * 1000,        // 5 minutes for habits data
-    PERMISSIONS: 15 * 60 * 1000,   // 15 minutes for permissions
-    AUTH: 30 * 60 * 1000           // 30 minutes for auth verification
-} as const;
-
-interface CachedData<T> {
-    data: T;
-    timestamp: number;
-    ttl: number;
-}
+import { DriveFileManager } from "../utils/drive/DriveFileManager";
+import { useAuth } from "./core/useAuth";
+import { useCache } from "./core/useCache";
+import { usePermissions } from "./core/usePermissions";
+import { useHabits } from "./data/useHabits";
+import { useHabitCRUD } from "./data/useHabitCRUD";
+import { useSync } from "./sync/useSync";
+import { useBackgroundSync } from "./sync/useBackgroundSync";
+import { PerformanceMonitor } from "../utils/performance/PerformanceMonitor";
+import { CACHE_KEYS, CACHE_TTL } from "../utils/cache/CacheKeys";
 
 export const useHabitData = () => {
-    const authManager = ChromeAuthManager.getInstance();
+    // Core state
     const [driveManager, setDriveManager] = useState<DriveFileManager | null>(null);
-    const syncInProgress = useRef(false);
-    const initializationPromise = useRef<Promise<void> | null>(null);
-
-    const [authState, setAuthState] = useState<AuthState>({
-        isAuthenticated: false,
-        user: null,
-        loading: true,
-        error: null,
-    });
-
-    const [habits, setHabits] = useState<Habit[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [needsReauth, setNeedsReauth] = useState<boolean>(false);
     const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
     const [initialized, setInitialized] = useState<boolean>(false);
-    const [loadingProgress, setLoadingProgress] = useState<number>(0); // ADD THIS LINE
+    const [needsReauth, setNeedsReauth] = useState<boolean>(false);
+    const [loadingProgress, setLoadingProgress] = useState<number>(0);
 
-    const [permissions, setPermissions] = useState<{
-        hasDrive: boolean;
-        hasSheets: boolean;
-        hasCalendar: boolean;
-        allRequired: boolean;
-        checked: boolean;
-    }>({
-        hasDrive: false,
-        hasSheets: false,
-        hasCalendar: false,
-        allRequired: false,
-        checked: false
+    const performanceMonitor = PerformanceMonitor.getInstance();
+    const initializationPromise = useRef<Promise<void> | null>(null);
+    const hasInitialized = useRef<boolean>(false); // Track if we've already initialized
+
+    // Hook integrations
+    const { authState, authManager, handleLogin, handleLogout, handleForceReauth } = useAuth();
+    const { getCache, setCache, clearCache } = useCache();
+    const { permissions, checkPermissions } = usePermissions();
+
+    const {
+        habits,
+        loading,
+        error,
+        setLoading,
+        setError,
+        loadCachedHabits,
+        updateHabitsCache,
+        optimisticUpdate,
+        revertOptimisticUpdate,
+        getActiveHabits,
+        getTodayStats
+    } = useHabits();
+
+    const { syncData, refreshData, syncInProgress } = useSync({
+        driveManager,
+        currentSheetId,
+        habits,
+        updateHabitsCache,
+        setError
     });
 
-    // Cache utilities
-    const setCache = useCallback(async <T>(key: string, data: T, ttl: number): Promise<void> => {
-        const cacheData: CachedData<T> = {
-            data,
-            timestamp: Date.now(),
-            ttl
-        };
+    // Background sync setup
+    useBackgroundSync({
+        initialized,
+        syncData
+    });
 
-        return new Promise((resolve) => {
-            chrome.storage.local.set({ [key]: cacheData }, () => resolve());
+    // CRUD operations
+    const {
+        createHabit,
+        updateHabit,
+        deleteHabit,
+        archiveHabit,
+        updateDailyHabit
+    } = useHabitCRUD({
+        driveManager,
+        currentSheetId,
+        habits,
+        updateHabitsCache,
+        optimisticUpdate,
+        revertOptimisticUpdate,
+        setLoading,
+        setError
+    });
+
+    // Initialize DriveFileManager when authenticated
+    useEffect(() => {
+        console.log('DriveFileManager effect triggered:', {
+            isAuthenticated: authState.isAuthenticated,
+            hasAccessToken: !!authState.user?.accessToken,
+            currentDriveManager: !!driveManager
         });
-    }, []);
 
-    const getCache = useCallback(async <T>(key: string): Promise<T | null> => {
-        return new Promise((resolve) => {
-            chrome.storage.local.get([key], (result) => {
-                const cached = result[key] as CachedData<T> | undefined;
+        if (authState.isAuthenticated && authState.user?.accessToken) {
+            console.log('Creating DriveFileManager with access token');
+            const manager = new DriveFileManager(authState.user.accessToken);
+            setDriveManager(manager);
+        } else {
+            console.log('Clearing DriveFileManager - not authenticated');
+            setDriveManager(null);
+            setInitialized(false);
+            hasInitialized.current = false; // Reset initialization flag
+        }
+    }, [authState.isAuthenticated, authState.user?.accessToken]);
 
-                if (!cached) {
-                    resolve(null);
-                    return;
-                }
-
-                const isExpired = Date.now() - cached.timestamp > cached.ttl;
-                if (isExpired) {
-                    // Clean up expired cache
-                    chrome.storage.local.remove([key]);
-                    resolve(null);
-                    return;
-                }
-
-                resolve(cached.data);
-            });
-        });
-    }, []);
-
+    // Comprehensive setup check with timeout and better error handling
     const checkComprehensiveSetup = useCallback(async (): Promise<{
         hasPermissions: boolean;
         hasFolderStructure: boolean;
@@ -111,12 +101,14 @@ export const useHabitData = () => {
         needsFullSetup: boolean;
     }> => {
         try {
-            console.log('Checking comprehensive setup...');
+            performanceMonitor.startTiming('setup-check');
+            console.log('Starting comprehensive setup check...', {
+                allRequired: permissions.allRequired,
+                driveManager: !!driveManager
+            });
 
-            // 1. Kiểm tra permissions đầy đủ
-            const permissionCheck = await authManager.hasAllHabitManagerPermissions();
-
-            if (!permissionCheck.allRequired) {
+            if (!permissions.allRequired) {
+                console.log('Missing required permissions');
                 return {
                     hasPermissions: false,
                     hasFolderStructure: false,
@@ -125,674 +117,361 @@ export const useHabitData = () => {
                 };
             }
 
-            // 2. Kiểm tra folder structure
-            const hasFolderStructure = permissionCheck.folderStructureExists || false;
-
-            // 3. Kiểm tra current sheet (nếu có cached sheet ID)
+            // Check current sheet accessibility with timeout
             let hasCurrentSheet = false;
             const cachedSheetId = await getCache<string>(CACHE_KEYS.SHEET_ID);
+            console.log('Cached sheet ID check result:', cachedSheetId);
 
             if (cachedSheetId && driveManager) {
                 try {
-                    // Test xem sheet có accessible không
-                    await driveManager.readHabits(cachedSheetId);
+                    console.log('Testing cached sheet accessibility...');
+
+                    // Add timeout to prevent hanging
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error('Sheet access timeout')), 10000);
+                    });
+
+                    const accessPromise = driveManager.readHabits(cachedSheetId);
+                    console.log('Starting sheet access test...');
+
+                    await Promise.race([accessPromise, timeoutPromise]);
+
                     hasCurrentSheet = true;
-                    console.log('Current sheet is accessible:', cachedSheetId);
+                    setCurrentSheetId(cachedSheetId);
+                    console.log('Cached sheet is accessible, sheet ID set:', cachedSheetId);
                 } catch (error) {
                     console.log('Cached sheet not accessible:', error);
-                    // Clear invalid cache
-                    chrome.storage.local.remove([CACHE_KEYS.SHEET_ID]);
+                    // Clear invalid cached sheet ID
+                    await chrome.storage.local.remove([CACHE_KEYS.SHEET_ID]);
+                    console.log('Removed invalid cached sheet ID');
                 }
+            } else {
+                console.log('No cached sheet ID or no drive manager:', {
+                    cachedSheetId,
+                    hasDriveManager: !!driveManager
+                });
             }
 
-            const needsFullSetup = !hasFolderStructure || !hasCurrentSheet;
-
-            return {
+            const needsFullSetup = !hasCurrentSheet;
+            const result = {
                 hasPermissions: true,
-                hasFolderStructure,
+                hasFolderStructure: true,
                 hasCurrentSheet,
                 needsFullSetup
             };
 
+            console.log('Setup check completed with result:', result);
+            return result;
+
         } catch (error) {
-            console.error('Error checking comprehensive setup:', error);
+            console.error('Error in comprehensive setup check:', error);
             return {
                 hasPermissions: false,
                 hasFolderStructure: false,
                 hasCurrentSheet: false,
                 needsFullSetup: true
             };
-        }
-    }, [authManager, driveManager, getCache]);
-
-    // Load cached data on startup
-    const loadCachedData = useCallback(async () => {
-        try {
-            console.log('Loading cached data...');
-
-            // Load cached habits (instant UI population)
-            const cachedHabits = await getCache<Habit[]>(CACHE_KEYS.HABITS);
-            if (cachedHabits) {
-                console.log(`Loaded ${cachedHabits.length} habits from cache`);
-                setHabits(cachedHabits);
-            }
-
-            // Load cached permissions
-            const cachedPermissions = await getCache<typeof permissions>(CACHE_KEYS.PERMISSIONS);
-            if (cachedPermissions) {
-                console.log('Loaded permissions from cache');
-                setPermissions(cachedPermissions);
-            }
-
-            // Load cached sheet ID
-            const cachedSheetId = await getCache<string>(CACHE_KEYS.SHEET_ID);
-            if (cachedSheetId) {
-                console.log('Loaded sheet ID from cache');
-                setCurrentSheetId(cachedSheetId);
-            }
-
-        } catch (error) {
-            console.warn('Failed to load cached data:', error);
-        }
-    }, [getCache]);
-
-    // Background sync without blocking UI
-    const syncInBackground = useCallback(async () => {
-        if (syncInProgress.current || !driveManager || !currentSheetId) {
-            return;
-        }
-
-        syncInProgress.current = true;
-
-        try {
-            console.log('Background sync started...');
-
-            // Get fresh data from server
-            const freshHabits = await driveManager.readHabits(currentSheetId);
-
-            // Compare with current data
-            const hasChanges = JSON.stringify(freshHabits) !== JSON.stringify(habits);
-
-            if (hasChanges) {
-                console.log('Data changes detected, updating...');
-                setHabits(freshHabits);
-                await setCache(CACHE_KEYS.HABITS, freshHabits, CACHE_TTL.HABITS);
-            }
-
-            // Update sync timestamp
-            await setCache(CACHE_KEYS.LAST_SYNC, Date.now(), CACHE_TTL.HABITS);
-
-            console.log('Background sync completed');
-
-        } catch (error) {
-            console.warn('Background sync failed:', error);
-            // Don't show error to user for background sync failures
         } finally {
-            syncInProgress.current = false;
+            performanceMonitor.endTiming('setup-check');
         }
-    }, [driveManager, currentSheetId, habits, setCache]);
+    }, [permissions.allRequired, getCache, driveManager, performanceMonitor]);
 
-    // Progressive initialization - show cached data first, then sync
-    const progressiveInitialize = useCallback(async () => {
+    // Progressive initialization with better timeout and error handling
+    const progressiveInitialize = useCallback(async (): Promise<void> => {
         if (initializationPromise.current) {
+            console.log('Initialization already in progress, waiting for existing promise...');
             return initializationPromise.current;
         }
 
+        if (hasInitialized.current) {
+            console.log('Already initialized, skipping...');
+            return;
+        }
+
+        console.log('Starting progressive initialization...');
+
         initializationPromise.current = (async () => {
+            const initTimeout = setTimeout(() => {
+                console.error('INITIALIZATION TIMEOUT - forcing completion after 30 seconds');
+                setError('Initialization timeout. Please refresh the page.');
+                setInitialized(false);
+                setLoadingProgress(0);
+                initializationPromise.current = null;
+                hasInitialized.current = false;
+            }, 30000);
+
             try {
-                console.log('Starting comprehensive progressive initialization...');
+                performanceMonitor.startTiming('progressive-init');
+                setError(null);
+                console.log('Progressive initialization started, clearing any previous errors');
 
                 // Step 1: Load cached data immediately
-                await loadCachedData();
+                console.log('STEP 1: Loading cached habits...');
+                await loadCachedHabits();
                 setLoadingProgress(20);
+                console.log('STEP 1 COMPLETED: Cached habits loaded, progress: 20%');
 
                 // Step 2: Comprehensive setup check
+                console.log('STEP 2: Running comprehensive setup check...');
                 const setupStatus = await checkComprehensiveSetup();
                 setLoadingProgress(40);
-
-                console.log('Setup status:', setupStatus);
+                console.log('STEP 2 COMPLETED: Setup check finished, progress: 40%, result:', setupStatus);
 
                 if (!setupStatus.hasPermissions) {
+                    console.log('PERMISSIONS MISSING: Setting needsReauth flag');
                     setNeedsReauth(true);
-                    setError('Cần cấp quyền truy cập Google Drive và Sheets');
+                    setError('Need access permissions for Google Drive and Sheets');
+                    clearTimeout(initTimeout);
                     return;
                 }
 
                 if (setupStatus.needsFullSetup) {
-                    console.log('Need full setup - creating folder structure...');
+                    console.log('STEP 3A: Running full setup initialization...');
                     setLoadingProgress(60);
 
-                    // Thực hiện full setup
                     if (driveManager) {
-                        const sheetId = await driveManager.autoInitialize();
+                        console.log('DriveManager available, calling autoInitialize...');
+
+                        // Add timeout for autoInitialize
+                        const autoInitTimeout = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error('Auto-initialization timeout')), 20000);
+                        });
+
+                        const autoInitPromise = driveManager.autoInitialize();
+                        console.log('Auto-initialization promise created, racing with timeout...');
+
+                        const sheetId = await Promise.race([autoInitPromise, autoInitTimeout]);
+                        console.log('Auto-initialization completed successfully, sheet ID:', sheetId);
+
                         setCurrentSheetId(sheetId);
                         await setCache(CACHE_KEYS.SHEET_ID, sheetId, CACHE_TTL.HABITS);
+                        console.log('Sheet ID cached successfully');
 
-                        // Load fresh data from new sheet
-                        const habitsData = await driveManager.readHabits(sheetId);
-                        setHabits(habitsData);
-                        await setCache(CACHE_KEYS.HABITS, habitsData, CACHE_TTL.HABITS);
+                        // Load fresh data from new sheet with timeout
+                        console.log('Loading initial habits from new sheet...');
+                        const loadDataTimeout = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error('Data loading timeout')), 15000);
+                        });
+
+                        const loadDataPromise = driveManager.readHabits(sheetId);
+                        const habitsData = await Promise.race([loadDataPromise, loadDataTimeout]);
+
+                        console.log('Initial habits loaded successfully, count:', habitsData.length);
+                        await updateHabitsCache(habitsData);
+                        console.log('Habits cache updated with initial data');
+                    } else {
+                        console.error('CRITICAL ERROR: DriveManager not available for full setup');
+                        throw new Error('DriveManager not available');
                     }
                 } else {
-                    console.log('Setup already exists, syncing in background...');
-                    // Folder structure exists, sync in background
-                    setTimeout(() => syncInBackground(), 100);
+                    console.log('STEP 3B: Using existing setup, triggering background sync...');
+                    // Background sync for existing setup
+                    setTimeout(() => {
+                        console.log('Starting background sync...');
+                        syncData().catch(error => {
+                            console.warn('Background sync failed (non-critical):', error);
+                            // Don't fail initialization for background sync errors
+                        });
+                    }, 100);
                 }
 
                 setLoadingProgress(100);
+                console.log('INITIALIZATION SUCCESSFUL: All steps completed, setting initialized flag');
                 setInitialized(true);
+                hasInitialized.current = true; // Mark as initialized
                 await setCache(CACHE_KEYS.LAST_SYNC, Date.now(), CACHE_TTL.HABITS);
 
-                console.log('Comprehensive progressive initialization completed');
+                performanceMonitor.recordLoadTime({
+                    totalLoadTime: performanceMonitor.getCurrentTiming('progressive-init') || 0,
+                    authTime: 0,
+                    cacheLoadTime: 0,
+                    permissionsTime: 0,
+                    syncTime: 0,
+                    initializationTime: performanceMonitor.getCurrentTiming('progressive-init') || 0,
+                    timestamp: Date.now()
+                });
+
+                clearTimeout(initTimeout);
+                console.log('INITIALIZATION CLEANUP: Timeout cleared, initialization complete');
 
             } catch (error) {
-                console.error('Progressive initialization failed:', error);
+                console.error('INITIALIZATION FAILED:', error);
+                clearTimeout(initTimeout);
 
+                // Add detailed error logging
                 if (error instanceof Error) {
+                    console.error('Error details:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+
                     if (error.message.includes('403') || error.message.includes('permission')) {
+                        console.log('PERMISSION ERROR detected, setting needsReauth');
                         setNeedsReauth(true);
-                        setError('Quyền truy cập hết hạn hoặc không đủ, vui lòng đăng nhập lại');
+                        setError('Access expired or insufficient permissions, please login again');
+                    } else if (error.message.includes('timeout')) {
+                        console.log('TIMEOUT ERROR detected');
+                        setError('Operation timed out. Please check your internet connection and try refreshing.');
+                    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                        console.log('NETWORK ERROR detected');
+                        setError('Network error. Please check your internet connection.');
                     } else {
-                        setError(`Lỗi khởi tạo: ${error.message}`);
+                        console.log('GENERIC ERROR detected');
+                        setError(`Initialization error: ${error.message}`);
                     }
                 } else {
-                    setError('Lỗi khởi tạo hệ thống quản lý thói quen');
+                    console.log('UNKNOWN ERROR detected');
+                    setError('System initialization error');
                 }
+
+                // Reset states
+                setInitialized(false);
+                hasInitialized.current = false;
+                setLoadingProgress(0);
+                console.log('INITIALIZATION RESET: States reset due to error');
+            } finally {
+                performanceMonitor.endTiming('progressive-init');
+                initializationPromise.current = null;
+                console.log('INITIALIZATION FINALLY: Cleanup completed, promise cleared');
             }
         })();
 
         return initializationPromise.current;
-    }, [authState.isAuthenticated, authState.user, driveManager, checkComprehensiveSetup, loadCachedData, syncInBackground, getCache, setCache]);
+    }, [
+        loadCachedHabits, checkComprehensiveSetup, driveManager,
+        setCache, updateHabitsCache, syncData, performanceMonitor
+    ]);
 
-    // Auth state subscription with caching
+    // FIXED: Simplified auto-initialize effect that doesn't create loops
     useEffect(() => {
-        const unsubscribe = authManager.subscribe(async (newState) => {
-            setAuthState(newState);
+        // Skip if we've already initialized
+        if (hasInitialized.current) {
+            console.log('SKIP AUTO-INITIALIZE: Already initialized');
+            return;
+        }
 
-            // Cache auth state for faster future loads
-            if (newState.isAuthenticated && newState.user) {
-                await setCache(CACHE_KEYS.AUTH_VERIFIED, true, CACHE_TTL.AUTH);
+        const conditions = {
+            isAuthenticated: authState.isAuthenticated,
+            hasUser: !!authState.user,
+            hasDriveManager: !!driveManager,
+            permissionsChecked: permissions.checked,
+            allRequired: permissions.allRequired,
+            initialized,
+            needsReauth,
+            hasInitializedRef: hasInitialized.current
+        };
+
+        console.log('AUTO-INITIALIZE EFFECT TRIGGERED:', conditions);
+
+        // More specific condition check
+        const canInitialize =
+            authState.isAuthenticated &&
+            authState.user &&
+            driveManager &&
+            permissions.checked &&
+            permissions.allRequired &&
+            !initialized &&
+            !needsReauth &&
+            !hasInitialized.current;
+
+        console.log('CAN INITIALIZE CHECK:', {
+            canInitialize,
+            breakdown: {
+                authenticated: authState.isAuthenticated,
+                hasUser: !!authState.user,
+                hasDriveManager: !!driveManager,
+                permissionsChecked: permissions.checked,
+                allPermissions: permissions.allRequired,
+                notInitialized: !initialized,
+                noReauth: !needsReauth,
+                notAlreadyInitialized: !hasInitialized.current
             }
         });
 
-        authManager.initialize();
-        return unsubscribe;
-    }, [authManager, setCache]);
+        if (canInitialize) {
+            console.log('ALL CONDITIONS MET - STARTING INITIALIZATION');
 
-    // Initialize DriveFileManager when authenticated
-    useEffect(() => {
-        if (authState.isAuthenticated && authState.user?.accessToken) {
-            const manager = new DriveFileManager(authState.user.accessToken);
-            setDriveManager(manager);
+            progressiveInitialize()
+                .then(() => {
+                    console.log('INITIALIZATION PROMISE RESOLVED SUCCESSFULLY');
+                })
+                .catch((error) => {
+                    console.error('INITIALIZATION PROMISE REJECTED:', error);
+                    setError(`Initialization failed: ${error.message}`);
+                });
         } else {
-            setDriveManager(null);
-            setInitialized(false);
-            setPermissions({
-                hasDrive: false,
-                hasSheets: false,
-                hasCalendar: false,
-                allRequired: false,
-                checked: false
-            });
+            console.log('INITIALIZATION CONDITIONS NOT MET - WAITING');
         }
-    }, [authState.isAuthenticated, authState.user?.accessToken]);
+    }, [
+        authState.isAuthenticated,
+        authState.user?.accessToken, // This ensures we reinitialize if token changes
+        driveManager,
+        permissions.checked,
+        permissions.allRequired,
+        initialized,
+        needsReauth,
+        progressiveInitialize
+    ]);
 
-    // Fast permission check with caching
-    const checkPermissions = useCallback(async () => {
-        if (!authState.isAuthenticated || !authState.user) {
-            return;
-        }
-
-        // Check cache first
-        const cachedPermissions = await getCache<typeof permissions>(CACHE_KEYS.PERMISSIONS);
-        if (cachedPermissions && cachedPermissions.checked) {
-            console.log('Using cached permissions');
-            setPermissions(cachedPermissions);
-
-            if (cachedPermissions.allRequired) {
-                setNeedsReauth(false);
-                return;
-            }
-        }
-
-        setLoading(true);
-        setError(null);
-
+    // Enhanced logout with cleanup
+    const handleEnhancedLogout = useCallback(async () => {
         try {
-            console.log('Checking permissions...');
-            const permissionCheck = await authManager.hasAllHabitManagerPermissions();
+            console.log('Enhanced logout started...');
+            await handleLogout();
 
-            const newPermissions = {
-                ...permissionCheck,
-                checked: true
-            };
-
-            setPermissions(newPermissions);
-
-            // Cache permissions for faster future loads
-            await setCache(CACHE_KEYS.PERMISSIONS, newPermissions, CACHE_TTL.PERMISSIONS);
-
-            if (!permissionCheck.allRequired) {
-                setNeedsReauth(true);
-                setError(
-                    !permissionCheck.hasDrive
-                        ? "Thiếu quyền truy cập Google Drive"
-                        : "Thiếu quyền truy cập Google Sheets"
-                );
-            } else {
-                setNeedsReauth(false);
-                setError(null);
-            }
-
-        } catch (error) {
-            console.error('Permission check error:', error);
-            setError('Không thể kiểm tra quyền truy cập');
-            setNeedsReauth(true);
-        } finally {
-            setLoading(false);
-        }
-    }, [authState.isAuthenticated, authState.user, authManager, getCache, setCache]);
-
-    // Check permissions on auth (with caching)
-    useEffect(() => {
-        if (authState.isAuthenticated && authState.user && !permissions.checked) {
-            checkPermissions();
-        }
-    }, [authState.isAuthenticated, authState.user, permissions.checked, checkPermissions]);
-
-    // Auto-initialize when ready (progressive)
-    useEffect(() => {
-        if (authState.isAuthenticated && authState.user && driveManager &&
-            permissions.allRequired && !initialized && !needsReauth) {
-            progressiveInitialize();
-        }
-    }, [authState.isAuthenticated, authState.user, driveManager,
-    permissions.allRequired, initialized, needsReauth, progressiveInitialize]);
-
-    // Fast auto-initialize with cached data
-    const fastAutoInitialize = useCallback(async () => {
-        if (!driveManager) {
-            console.log('DriveManager not available');
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            console.log('Fast auto-initialization...');
-
-            // Check for cached sheet ID first
-            let sheetId = await getCache<string>(CACHE_KEYS.SHEET_ID);
-
-            if (!sheetId) {
-                // Only do full initialization if no cached sheet ID
-                console.log('No cached sheet ID, doing full initialization...');
-                sheetId = await driveManager.autoInitialize();
-                await setCache(CACHE_KEYS.SHEET_ID, sheetId, CACHE_TTL.HABITS);
-            } else {
-                console.log('Using cached sheet ID:', sheetId);
-            }
-
-            setCurrentSheetId(sheetId);
-
-            // Load from cache first, then sync in background
-            const cachedHabits = await getCache<Habit[]>(CACHE_KEYS.HABITS);
-            if (cachedHabits) {
-                setHabits(cachedHabits);
-                setInitialized(true);
-
-                // Sync in background without blocking UI
-                setTimeout(() => syncInBackground(), 100);
-            } else {
-                // No cache, load fresh data
-                const habitsData = await driveManager.readHabits(sheetId);
-                setHabits(habitsData);
-                setInitialized(true);
-
-                // Cache the fresh data
-                await setCache(CACHE_KEYS.HABITS, habitsData, CACHE_TTL.HABITS);
-            }
-
-            console.log('Fast auto-initialization completed');
-
-        } catch (error) {
-            console.error('Fast auto-initialization error:', error);
-
-            if (error instanceof Error) {
-                if (error.message.includes('403') || error.message.includes('permission')) {
-                    setNeedsReauth(true);
-                    setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-                } else {
-                    setError(`Lỗi khởi tạo: ${error.message}`);
-                }
-            } else {
-                setError("Lỗi khởi tạo hệ thống quản lý thói quen");
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, getCache, setCache, syncInBackground]);
-
-    // Optimized CRUD operations with caching
-    const handleCreateHabit = useCallback(async (habitFormData: HabitFormData) => {
-        if (!driveManager || !currentSheetId) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            const newHabit: Habit = {
-                id: Date.now().toString(),
-                name: habitFormData.name,
-                description: habitFormData.description,
-                habitType: habitFormData.habitType,
-                difficultyLevel: habitFormData.difficultyLevel,
-                goal: habitFormData.goal,
-                limit: habitFormData.limit,
-                currentStreak: 0,
-                dailyTracking: Array(31).fill(null),
-                createdDate: new Date(),
-                colorCode: habitFormData.colorCode,
-                longestStreak: 0,
-                category: habitFormData.category,
-                tags: habitFormData.tags,
-                isArchived: false,
-                isQuantifiable: habitFormData.isQuantifiable,
-                unit: habitFormData.unit,
-                startTime: habitFormData.startTime,
-                subtasks: habitFormData.subtasks
-            };
-
-            // Optimistic update for faster UI response
-            const newHabits = [...habits, newHabit];
-            setHabits(newHabits);
-
-            // Background save to server
-            await Promise.all([
-                driveManager.createHabit(currentSheetId, newHabit),
-                setCache(CACHE_KEYS.HABITS, newHabits, CACHE_TTL.HABITS)
-            ]);
-
-            return newHabit;
-        } catch (error) {
-            console.error("Error creating habit:", error);
-
-            // Revert optimistic update on error
-            setHabits(habits);
-
-            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
-                setNeedsReauth(true);
-                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-            } else {
-                setError(error instanceof Error ? error.message : "Lỗi tạo thói quen");
-            }
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, currentSheetId, habits, setCache]);
-
-    // Update habit with optimistic updates and caching
-    const handleUpdateHabit = useCallback(async (habit: Habit) => {
-        if (!driveManager || !currentSheetId) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Optimistic update
-            const updatedHabits = habits.map(h => h.id === habit.id ? habit : h);
-            setHabits(updatedHabits);
-
-            // Background save
-            await Promise.all([
-                driveManager.updateHabit(currentSheetId, habit),
-                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
-            ]);
-
-        } catch (error) {
-            console.error("Error updating habit:", error);
-
-            // Revert optimistic update
-            setHabits(habits);
-
-            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
-                setNeedsReauth(true);
-                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-            } else {
-                setError(error instanceof Error ? error.message : "Lỗi cập nhật thói quen");
-            }
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, currentSheetId, habits, setCache]);
-
-    // Delete habit with optimistic updates
-    const handleDeleteHabit = useCallback(async (habitId: string) => {
-        if (!driveManager || !currentSheetId) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Optimistic update
-            const updatedHabits = habits.filter(h => h.id !== habitId);
-            setHabits(updatedHabits);
-
-            // Background save
-            await Promise.all([
-                driveManager.deleteHabit(currentSheetId, habitId),
-                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
-            ]);
-
-        } catch (error) {
-            console.error("Error deleting habit:", error);
-
-            // Revert optimistic update
-            setHabits(habits);
-
-            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
-                setNeedsReauth(true);
-                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-            } else {
-                setError(error instanceof Error ? error.message : "Lỗi xóa thói quen");
-            }
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, currentSheetId, habits, setCache]);
-
-    // Archive habit with optimistic updates
-    const handleArchiveHabit = useCallback(async (habitId: string, archive: boolean) => {
-        if (!driveManager || !currentSheetId) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Optimistic update
-            const updatedHabits = habits.map(h =>
-                h.id === habitId ? { ...h, isArchived: archive } : h
-            );
-            setHabits(updatedHabits);
-
-            // Background save
-            await Promise.all([
-                driveManager.archiveHabit(currentSheetId, habitId, archive),
-                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
-            ]);
-
-        } catch (error) {
-            console.error("Error archiving habit:", error);
-
-            // Revert optimistic update
-            setHabits(habits);
-
-            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
-                setNeedsReauth(true);
-                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-            } else {
-                setError(error instanceof Error ? error.message : "Lỗi lưu trữ thói quen");
-            }
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, currentSheetId, habits, setCache]);
-
-    // Update daily habit tracking
-    const handleUpdateDailyHabit = useCallback(async (habitId: string, day: number, value: number) => {
-        if (!driveManager || !currentSheetId) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Optimistic update
-            const updatedHabits = habits.map(h => {
-                if (h.id === habitId) {
-                    const newTracking = [...h.dailyTracking];
-                    newTracking[day - 1] = value;
-                    return { ...h, dailyTracking: newTracking };
-                }
-                return h;
-            });
-            setHabits(updatedHabits);
-
-            // Background save
-            await Promise.all([
-                driveManager.updateDailyHabit(currentSheetId, habitId, day, value),
-                setCache(CACHE_KEYS.HABITS, updatedHabits, CACHE_TTL.HABITS)
-            ]);
-
-        } catch (error) {
-            console.error("Error updating daily habit:", error);
-
-            // Revert optimistic update
-            setHabits(habits);
-
-            if (error instanceof Error && (error.message.includes('403') || error.message.includes('permission'))) {
-                setNeedsReauth(true);
-                setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-            } else {
-                setError(error instanceof Error ? error.message : "Lỗi cập nhật theo dõi hàng ngày");
-            }
-            throw error;
-        } finally {
-            setLoading(false);
-        }
-    }, [driveManager, currentSheetId, habits, setCache]);
-
-    // Background refresh without blocking UI
-    const handleRefresh = useCallback(async () => {
-        if (!currentSheetId || !driveManager) {
-            setError("Hệ thống chưa được khởi tạo");
-            return;
-        }
-
-        // Don't show loading for refresh
-        try {
-            const habitsData = await driveManager.readHabits(currentSheetId);
-            setHabits(habitsData);
-            await setCache(CACHE_KEYS.HABITS, habitsData, CACHE_TTL.HABITS);
-        } catch (error) {
-            console.error('Error refreshing data:', error);
-
-            if (error instanceof Error) {
-                if (error.message.includes('403') || error.message.includes('permission')) {
-                    setNeedsReauth(true);
-                    setError("Quyền truy cập hết hạn, vui lòng đăng nhập lại");
-                } else {
-                    setError(`Lỗi làm mới dữ liệu: ${error.message}`);
-                }
-            } else {
-                setError("Lỗi làm mới dữ liệu");
-            }
-        }
-    }, [driveManager, currentSheetId, setCache]);
-
-    const handleLogin = useCallback(async () => {
-        try {
-            setError(null);
-            setLoading(true);
-            await authManager.login();
-            setPermissions(prev => ({ ...prev, checked: false }));
-        } catch (err) {
-            console.error("Login error:", err);
-            setError("Đăng nhập thất bại. Vui lòng thử lại.");
-        } finally {
-            setLoading(false);
-        }
-    }, [authManager]);
-
-    const handleLogout = useCallback(async () => {
-        try {
-            await authManager.logout();
-            setHabits([]);
-            setError(null);
-            setNeedsReauth(false);
             setCurrentSheetId(null);
             setInitialized(false);
-            setPermissions({
-                hasDrive: false,
-                hasSheets: false,
-                hasCalendar: false,
-                allRequired: false,
-                checked: false
-            });
+            hasInitialized.current = false; // Reset initialization flag
+            setNeedsReauth(false);
+            setError(null);
 
-            // Clear all caches
-            chrome.storage.local.clear();
+            await clearCache();
+            console.log('Enhanced logout completed');
         } catch (err) {
-            console.error("Logout error:", err);
+            console.error("Enhanced logout error:", err);
         }
-    }, [authManager]);
+    }, [handleLogout, clearCache]);
 
-    const handleForceReauth = useCallback(async () => {
+    // Enhanced force reauth
+    const handleEnhancedForceReauth = useCallback(async () => {
         try {
+            console.log('Enhanced force reauth started...');
             setError(null);
             setLoading(true);
-            await authManager.forceReauth();
-            setPermissions(prev => ({ ...prev, checked: false }));
+            await handleForceReauth();
             setNeedsReauth(false);
+            hasInitialized.current = false; // Allow reinitialization after reauth
+            console.log('Enhanced force reauth completed');
         } catch (err) {
-            console.error("Force reauth error:", err);
-            setError("Cấp quyền thất bại. Vui lòng thử lại.");
+            console.error("Enhanced force reauth error:", err);
+            setError("Permission grant failed. Please try again.");
         } finally {
             setLoading(false);
         }
-    }, [authManager]);
+    }, [handleForceReauth, setLoading, setError]);
 
-    // Auto-sync every 5 minutes
+    // Log state changes
     useEffect(() => {
-        if (initialized && !syncInProgress.current) {
-            const interval = setInterval(() => {
-                syncInBackground();
-            }, 5 * 60 * 1000); // 5 minutes
+        console.log('PERMISSIONS STATE CHANGED:', permissions);
+    }, [permissions]);
 
-            return () => clearInterval(interval);
-        }
-    }, [initialized, syncInBackground]);
+    useEffect(() => {
+        console.log('AUTH STATE CHANGED:', {
+            isAuthenticated: authState.isAuthenticated,
+            hasUser: !!authState.user,
+            loading: authState.loading
+        });
+    }, [authState]);
 
-    // Return all existing functions plus new optimizations
+    useEffect(() => {
+        console.log('DRIVE MANAGER CHANGED:', !!driveManager);
+    }, [driveManager]);
+
+    useEffect(() => {
+        console.log('INITIALIZED STATE CHANGED:', initialized);
+    }, [initialized]);
+
     return {
         // State
         authState,
@@ -804,57 +483,25 @@ export const useHabitData = () => {
         needsReauth,
         initialized,
         permissions,
-        loadingProgress, // ADD THIS LINE
+        loadingProgress,
 
         // Actions
         handleLogin,
-        handleLogout,
-        handleCreateHabit,
-        handleUpdateHabit,
-        handleDeleteHabit,
-        handleArchiveHabit,
-        handleUpdateDailyHabit,
-        handleRefresh,
-        handleForceReauth,
+        handleLogout: handleEnhancedLogout,
+        handleCreateHabit: createHabit,
+        handleUpdateHabit: updateHabit,
+        handleDeleteHabit: deleteHabit,
+        handleArchiveHabit: archiveHabit,
+        handleUpdateDailyHabit: updateDailyHabit,
+        handleRefresh: refreshData,
+        handleForceReauth: handleEnhancedForceReauth,
         checkPermissions,
 
-        // New optimized actions
-        fastAutoInitialize,
-        syncInBackground,
+        // Sync operations
+        syncInBackground: syncData,
 
         // Computed data
-        getActiveHabits: useCallback(() => habits.filter(habit => !habit.isArchived), [habits]),
-        getTodayStats: useCallback(() => {
-            const today = new Date().getDate();
-            const activeHabits = habits.filter(habit => !habit.isArchived);
-
-            let completed = 0;
-            let total = activeHabits.length;
-
-            activeHabits.forEach(habit => {
-                const dayIndex = today - 1;
-                const value = habit.dailyTracking[dayIndex];
-
-                if (value !== null) {
-                    let isCompleted = false;
-                    if (habit.habitType === 'good') {
-                        isCompleted = habit.goal ? value >= habit.goal : value > 0;
-                    } else {
-                        isCompleted = habit.limit ? value <= habit.limit : value === 0;
-                    }
-
-                    if (isCompleted) {
-                        completed++;
-                    }
-                }
-            });
-
-            return {
-                completed,
-                total,
-                remaining: total - completed,
-                completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
-            };
-        }, [habits])
+        getActiveHabits,
+        getTodayStats
     };
 };
