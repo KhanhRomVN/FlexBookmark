@@ -107,8 +107,8 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
     return (
       <div key={title} className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-          <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full font-medium">
+          <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+          <span className="px-2 py-1 bg-card-background text-text-secondary text-xs rounded-full font-medium">
             {sectionHabits.length}
           </span>
         </div>
@@ -133,9 +133,9 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white/30 backdrop-blur-xl rounded-2xl border border-white/20 mx-6 my-6">
+    <div className="flex-1 flex flex-col h-full bg-background p-6">
       {/* Header with tabs and filters */}
-      <div className="p-6 border-b border-slate-200/50">
+      <div className="pb-6 border-b border-default mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {/* Tabs */}
           <div className="flex items-center gap-2">
@@ -143,8 +143,8 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
               onClick={() => onTabChange("active")}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedTab === "active"
-                  ? "bg-green-500 text-white shadow-lg"
-                  : "bg-white/60 text-slate-600 hover:bg-white/80"
+                  ? "bg-button-bg text-button-bgText shadow-lg"
+                  : "bg-card-background text-text-primary hover:bg-button-second-bg"
               }`}
             >
               Active ({getActiveHabitsCount()})
@@ -154,7 +154,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedTab === "archived"
                   ? "bg-slate-500 text-white shadow-lg"
-                  : "bg-white/60 text-slate-600 hover:bg-white/80"
+                  : "bg-card-background text-text-primary hover:bg-button-second-bg"
               }`}
             >
               Archived ({getArchivedHabitsCount()})
@@ -168,7 +168,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
               onChange={(e) =>
                 onCategoryFilterChange(e.target.value as HabitCategory | "all")
               }
-              className="px-3 py-2 bg-white/60 border border-white/20 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="px-3 py-2 bg-input-background border border-default rounded-lg text-sm text-text-primary focus:ring-2 focus:ring-primary focus:border-border-focus"
             >
               <option value="all">All Categories</option>
               <option value="health">🏥 Health</option>
@@ -187,7 +187,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
               onChange={(e) =>
                 onTypeFilterChange(e.target.value as HabitType | "all")
               }
-              className="px-3 py-2 bg-white/60 border border-white/20 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="px-3 py-2 bg-input-background border border-default rounded-lg text-sm text-text-primary focus:ring-2 focus:ring-primary focus:border-border-focus"
             >
               <option value="all">All Types</option>
               <option value="good">Good Habits</option>
@@ -197,26 +197,25 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {/* Show selected date */}
-        <div className="mb-6 p-4 bg-white/50 rounded-xl border border-white/30">
-          <h2 className="text-lg font-semibold text-slate-800 mb-1">
-            Viewing habits for{" "}
-            {selectedDate.toLocaleDateString("vi-VN", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </h2>
-          <p className="text-sm text-slate-600">
-            Time filter:{" "}
-            <span className="font-medium text-green-600">{timeFilter}</span>
-          </p>
-        </div>
+      {/* Show selected date */}
+      <div className="mb-6 p-4 bg-card-background rounded-xl border border-default">
+        <h2 className="text-lg font-semibold text-text-primary mb-1">
+          Viewing habits for{" "}
+          {selectedDate.toLocaleDateString("vi-VN", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </h2>
+        <p className="text-sm text-text-secondary">
+          Time filter:{" "}
+          <span className="font-medium text-primary">{timeFilter}</span>
+        </p>
+      </div>
 
-        {/* Habits grouped by time */}
+      {/* Habits grouped by time */}
+      <div className="flex-1 overflow-auto">
         {timeFilter === "All habit" ? (
           <div>
             {renderHabitSection("Today", groupedHabits.Today)}
@@ -231,9 +230,9 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
         {/* Empty state */}
         {timeFilteredHabits.length === 0 && !loading && (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-card-background rounded-full flex items-center justify-center">
               <svg
-                className="w-8 h-8 text-slate-400"
+                className="w-8 h-8 text-text-secondary"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -246,12 +245,12 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">
+            <h3 className="text-lg font-medium text-text-primary mb-2">
               {selectedTab === "active"
                 ? "No active habits"
                 : "No archived habits"}
             </h3>
-            <p className="text-slate-600">
+            <p className="text-text-secondary">
               {selectedTab === "active"
                 ? timeFilter === "All habit"
                   ? "Start building good habits by creating your first one"
@@ -264,8 +263,8 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
         {/* Loading state */}
         {loading && (
           <div className="text-center py-12">
-            <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-600">Loading habits...</p>
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-text-secondary">Loading habits...</p>
           </div>
         )}
       </div>

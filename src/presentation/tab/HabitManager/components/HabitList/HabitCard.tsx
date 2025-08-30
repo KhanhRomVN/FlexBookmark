@@ -57,7 +57,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
   const stats = calculateHabitStats(habit);
 
   return (
-    <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:shadow-lg transition-all duration-200">
+    <div className="bg-card-background rounded-2xl p-6 border border-default hover:shadow-lg transition-all duration-200">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -68,9 +68,9 @@ const HabitCard: React.FC<HabitCardProps> = ({
             {habit.emoji && <span className="text-lg">{habit.emoji}</span>}
           </div>
           <div>
-            <h3 className="font-semibold text-slate-900">{habit.name}</h3>
+            <h3 className="font-semibold text-text-primary">{habit.name}</h3>
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-500">
+              <span className="text-text-secondary">
                 {getCategoryIcon(habit.category)}
               </span>
               <span
@@ -97,7 +97,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
           <div className="flex items-center gap-1">
             <button
               onClick={onEdit}
-              className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+              className="p-1.5 text-text-secondary hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
               title="Chỉnh sửa"
             >
               <svg
@@ -116,7 +116,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
             </button>
             <button
               onClick={onArchive}
-              className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors rounded-lg hover:bg-orange-50"
+              className="p-1.5 text-text-secondary hover:text-orange-600 transition-colors rounded-lg hover:bg-orange-50"
               title={habit.isArchived ? "Khôi phục" : "Lưu trữ"}
             >
               <svg
@@ -135,7 +135,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
             </button>
             <button
               onClick={onDelete}
-              className="p-1.5 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+              className="p-1.5 text-text-secondary hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
               title="Xóa"
             >
               <svg
@@ -157,31 +157,31 @@ const HabitCard: React.FC<HabitCardProps> = ({
       </div>
 
       {habit.description && (
-        <p className="text-sm text-slate-600 mb-4">{habit.description}</p>
+        <p className="text-sm text-text-secondary mb-4">{habit.description}</p>
       )}
 
       {/* Habit Progress Info */}
       <div className="space-y-3 mb-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">
+          <span className="text-text-secondary">
             {habit.habitType === "good" ? "Mục tiêu" : "Giới hạn"}:
           </span>
-          <span className="font-medium">
+          <span className="font-medium text-text-primary">
             {habit.habitType === "good" ? habit.goal || 1 : habit.limit || 0}
             {habit.unit && ` ${habit.unit}`}
           </span>
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">Chuỗi hiện tại:</span>
+          <span className="text-text-secondary">Chuỗi hiện tại:</span>
           <span className="font-bold text-green-600">
             {habit.currentStreak} ngày
           </span>
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">Tỉ lệ hoàn thành:</span>
-          <span className="font-medium">
+          <span className="text-text-secondary">Tỉ lệ hoàn thành:</span>
+          <span className="font-medium text-text-primary">
             {stats.completionRate.toFixed(0)}%
           </span>
         </div>
@@ -194,8 +194,8 @@ const HabitCard: React.FC<HabitCardProps> = ({
           disabled={loading}
           className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 ${
             isCompleted
-              ? "bg-green-500 hover:bg-green-600 text-white"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              ? "bg-button-bg hover:bg-button-bgHover text-button-bgText"
+              : "bg-button-second-bg hover:bg-button-second-bgHover text-text-primary"
           }`}
         >
           {isCompleted ? "Đã hoàn thành hôm nay" : "Đánh dấu hoàn thành"}

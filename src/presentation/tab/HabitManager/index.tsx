@@ -1,10 +1,10 @@
-// src/presentation/tab/HabitManager/index.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHabitData } from "./hooks/useHabitData";
 import CreateHabitDialog from "./components/CreateHabitDialog";
 import Sidebar from "./components/Sidebar";
 import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
+import ProgressiveLoadingScreen from "./components/ProgressiveLoadingScreen";
 import { Habit, HabitFormData, HabitType, HabitCategory } from "./types/habit";
 
 const HabitManager: React.FC = () => {
@@ -27,7 +27,14 @@ const HabitManager: React.FC = () => {
     handleForceReauth,
     getTodayStats,
     getActiveHabits,
+    syncInBackground,
   } = useHabitData();
+
+  // Loading stages for progressive UI
+  const [loadingStage, setLoadingStage] = useState<
+    "auth" | "cache" | "permissions" | "sync" | "complete"
+  >("auth");
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Component states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -61,6 +68,45 @@ const HabitManager: React.FC = () => {
     colorCode: "#3b82f6",
     emoji: "",
   });
+
+  // Progressive loading state management
+  useEffect(() => {
+    if (authState.loading) {
+      setLoadingStage("auth");
+      setLoadingProgress(10);
+    } else if (authState.isAuthenticated && !permissions.checked) {
+      setLoadingStage("cache");
+      setLoadingProgress(25);
+    } else if (permissions.checked && !permissions.allRequired) {
+      setLoadingStage("permissions");
+      setLoadingProgress(50);
+    } else if (permissions.allRequired && !initialized) {
+      setLoadingStage("sync");
+      setLoadingProgress(75);
+    } else if (initialized) {
+      setLoadingStage("complete");
+      setLoadingProgress(100);
+
+      // Auto-hide loading screen after brief delay
+      setTimeout(() => {
+        setLoadingStage("complete");
+      }, 500);
+    }
+  }, [
+    authState.loading,
+    authState.isAuthenticated,
+    permissions.checked,
+    permissions.allRequired,
+    initialized,
+  ]);
+
+  // Background sync trigger
+  useEffect(() => {
+    if (initialized && habits.length === 0) {
+      // If we have no cached data, trigger background sync immediately
+      setTimeout(() => syncInBackground(), 100);
+    }
+  }, [initialized, habits.length, syncInBackground]);
 
   // Get today's stats
   const todayStats = getTodayStats();
@@ -151,7 +197,7 @@ const HabitManager: React.FC = () => {
   const getArchivedHabitsCount = () =>
     habits.filter((h) => h.isArchived).length;
 
-  // Handle authentication states
+  // Show progressive loading screen for non-authenticated users
   if (!authState.isAuthenticated && !authState.loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
@@ -220,14 +266,18 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  if (authState.loading) {
+  // Show progressive loading screen during initialization
+  if (
+    loadingStage !== "complete" ||
+    authState.loading ||
+    (permissions.checked && permissions.allRequired && !initialized)
+  ) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
-        <div className="text-center p-8">
-          <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Authenticating...</p>
-        </div>
-      </div>
+      <ProgressiveLoadingScreen
+        stage={loadingStage}
+        progress={loadingProgress}
+        showDetails={true}
+      />
     );
   }
 
@@ -333,26 +383,6 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // Show loading while checking permissions or initializing
-  if (
-    authState.isAuthenticated &&
-    (!permissions.checked ||
-      (permissions.allRequired && !initialized && loading))
-  ) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
-        <div className="text-center p-8">
-          <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">
-            {!permissions.checked
-              ? "Checking access permissions..."
-              : "Initializing habit management system..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/30">
       {/* Sidebar */}
@@ -448,6 +478,16 @@ const HabitManager: React.FC = () => {
               </svg>
             </div>
             <p className="text-sm text-red-700 font-medium">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Background sync indicator */}
+      {loadingStage === "sync" && initialized && (
+        <div className="fixed top-4 right-4 p-2 bg-blue-50 border border-blue-200 rounded-lg shadow-sm z-40">
+          <div className="flex items-center gap-2 text-sm text-blue-700">
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            Syncing...
           </div>
         </div>
       )}
