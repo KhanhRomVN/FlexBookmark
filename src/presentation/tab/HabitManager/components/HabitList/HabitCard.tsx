@@ -5,7 +5,7 @@ import {
   HabitCategory,
   DifficultyLevel,
   calculateHabitStats,
-} from "../types/habit";
+} from "../../types/habit";
 
 interface HabitCardProps {
   habit: Habit;
