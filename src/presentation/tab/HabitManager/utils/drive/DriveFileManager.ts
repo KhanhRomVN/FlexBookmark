@@ -35,15 +35,12 @@ export class DriveFileManager {
         try {
             // Step 1: Create folder structure
             const { habitManagerFolderId } = await this.ensureFolderStructure();
-            console.log('✅ Folder structure ensured');
 
             // Step 2: Create monthly sheet
             const sheetId = await this.ensureMonthlySheet(habitManagerFolderId);
-            console.log('✅ Monthly sheet ensured');
 
             // Step 3: Test accessibility
             await this.testSheetAccess(sheetId);
-            console.log('✅ Sheet access verified');
 
             return sheetId;
 

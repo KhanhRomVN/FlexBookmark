@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useHabitData } from "./hooks/useHabitData";
-import CreateHabitDialog from "./components/CreateHabitDialog";
+import HabitDialog from "./components/HabitDialog";
 import Sidebar from "./components/Sidebar";
 import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
@@ -51,7 +51,8 @@ const HabitManager: React.FC = () => {
   const [collection, setCollection] = useState("Default");
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
-  const [habitFormData, setHabitFormData] = useState<HabitFormData>({
+  // Default form data template
+  const defaultFormData: HabitFormData = {
     name: "",
     description: "",
     habitType: "good",
@@ -65,7 +66,13 @@ const HabitManager: React.FC = () => {
     startTime: "",
     subtasks: [],
     colorCode: "#3b82f6",
-  });
+  };
+
+  // Separate form states for create and edit
+  const [habitFormData, setHabitFormData] =
+    useState<HabitFormData>(defaultFormData);
+  const [editFormData, setEditFormData] =
+    useState<HabitFormData>(defaultFormData);
 
   // Progressive loading state management
   useEffect(() => {
@@ -110,21 +117,11 @@ const HabitManager: React.FC = () => {
   const todayStats = getTodayStats();
 
   const resetForm = () => {
-    setHabitFormData({
-      name: "",
-      description: "",
-      habitType: "good",
-      difficultyLevel: 1,
-      goal: 1,
-      limit: undefined,
-      category: "other",
-      tags: [],
-      isQuantifiable: true,
-      unit: "",
-      startTime: "",
-      subtasks: [],
-      colorCode: "#3b82f6",
-    });
+    setHabitFormData({ ...defaultFormData });
+  };
+
+  const resetEditForm = () => {
+    setEditFormData({ ...defaultFormData });
   };
 
   const handleCreateSubmit = async (formData: HabitFormData) => {
@@ -133,9 +130,30 @@ const HabitManager: React.FC = () => {
     setIsCreateDialogOpen(false);
   };
 
-  const handleUpdateSubmit = async (habit: Habit) => {
-    await handleUpdateHabit(habit);
+  const handleEditSubmit = async (formData: HabitFormData) => {
+    if (!editingHabit) return;
+
+    const updatedHabit: Habit = {
+      ...editingHabit,
+      name: formData.name,
+      description: formData.description,
+      habitType: formData.habitType,
+      difficultyLevel: formData.difficultyLevel,
+      goal: formData.habitType === "good" ? formData.goal : undefined,
+      limit: formData.habitType === "bad" ? formData.limit : undefined,
+      category: formData.category,
+      tags: formData.tags,
+      isQuantifiable: formData.isQuantifiable,
+      unit: formData.unit,
+      startTime: formData.startTime,
+      subtasks: formData.subtasks,
+      colorCode: formData.colorCode,
+    };
+
+    await handleUpdateHabit(updatedHabit);
     setEditingHabit(null);
+    resetEditForm();
+    setIsCreateDialogOpen(false);
   };
 
   const handleToggleHabitForDate = async (habitId: string) => {
@@ -173,6 +191,22 @@ const HabitManager: React.FC = () => {
 
   const openEditDialog = (habit: Habit) => {
     setEditingHabit(habit);
+    // Set edit form data based on the habit being edited
+    setEditFormData({
+      name: habit.name,
+      description: habit.description || "",
+      habitType: habit.habitType,
+      difficultyLevel: habit.difficultyLevel,
+      goal: habit.goal,
+      limit: habit.limit,
+      category: habit.category,
+      tags: habit.tags,
+      isQuantifiable: habit.isQuantifiable,
+      unit: habit.unit || "",
+      startTime: habit.startTime || "",
+      subtasks: habit.subtasks,
+      colorCode: habit.colorCode,
+    });
     setIsCreateDialogOpen(true);
     setSelectedHabit(habit);
   };
@@ -181,12 +215,14 @@ const HabitManager: React.FC = () => {
     setIsCreateDialogOpen(false);
     setEditingHabit(null);
     resetForm();
+    resetEditForm();
   };
 
   const openNewHabitDialog = () => {
     setIsCreateDialogOpen(true);
     setEditingHabit(null);
     resetForm();
+    resetEditForm();
   };
 
   const getActiveHabitsCount = () => habits.filter((h) => !h.isArchived).length;
@@ -421,37 +457,15 @@ const HabitManager: React.FC = () => {
         />
       </div>
 
-      {/* Create/Edit Habit Dialog */}
-      <CreateHabitDialog
+      {/* Create/Edit Habit Dialog - FIXED VERSION */}
+      <HabitDialog
         isOpen={isCreateDialogOpen}
         onClose={closeDialog}
-        onSubmit={
-          editingHabit
-            ? () => handleUpdateSubmit(editingHabit)
-            : handleCreateSubmit
-        }
+        onSubmit={editingHabit ? handleEditSubmit : handleCreateSubmit}
         editingHabit={editingHabit}
         loading={loading}
-        formData={
-          editingHabit
-            ? {
-                name: editingHabit.name,
-                description: editingHabit.description,
-                habitType: editingHabit.habitType,
-                difficultyLevel: editingHabit.difficultyLevel,
-                goal: editingHabit.goal,
-                limit: editingHabit.limit,
-                category: editingHabit.category,
-                tags: editingHabit.tags,
-                isQuantifiable: editingHabit.isQuantifiable,
-                unit: editingHabit.unit,
-                startTime: editingHabit.startTime,
-                subtasks: editingHabit.subtasks,
-                colorCode: editingHabit.colorCode,
-              }
-            : habitFormData
-        }
-        onFormChange={editingHabit ? () => {} : setHabitFormData}
+        formData={editingHabit ? editFormData : habitFormData}
+        onFormChange={editingHabit ? setEditFormData : setHabitFormData}
       />
 
       {/* Error Display */}

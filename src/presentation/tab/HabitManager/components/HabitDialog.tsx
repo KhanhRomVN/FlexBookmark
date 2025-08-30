@@ -1,4 +1,3 @@
-// src/presentation/tab/HabitManager/components/CreateHabitDialog.tsx
 import React from "react";
 import type {
   Habit,
@@ -8,7 +7,7 @@ import type {
   DifficultyLevel,
 } from "../types/habit";
 
-interface CreateHabitDialogProps {
+interface HabitDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (habitFormData: HabitFormData) => Promise<void>;
@@ -18,7 +17,7 @@ interface CreateHabitDialogProps {
   onFormChange: (formData: HabitFormData) => void;
 }
 
-const CreateHabitDialog: React.FC<CreateHabitDialogProps> = ({
+const HabitDialog: React.FC<HabitDialogProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -394,4 +393,4 @@ const CreateHabitDialog: React.FC<CreateHabitDialogProps> = ({
   );
 };
 
-export default CreateHabitDialog;
+export default HabitDialog;

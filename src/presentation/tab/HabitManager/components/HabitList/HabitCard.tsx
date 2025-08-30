@@ -4,212 +4,196 @@ import { Habit } from "../../types/habit";
 interface HabitCardProps {
   habit: Habit;
   isCompleted: boolean;
+  completedCount?: number; // For habits with goal/limit > 1
   onToggleComplete: () => void;
+  onSkip?: () => void;
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
   loading?: boolean;
   showActions?: boolean;
+  subtaskCount?: number;
 }
 
 const HabitCard: React.FC<HabitCardProps> = ({
   habit,
   isCompleted,
+  completedCount = 0,
   onToggleComplete,
+  onSkip,
   onEdit,
   onArchive,
   onDelete,
   loading = false,
   showActions = true,
+  subtaskCount = 0,
 }) => {
-  const [showActions_, setShowActions_] = useState(false);
-
-  // Get category icon
-  const getCategoryIcon = (category: string): string => {
-    const icons: Record<string, string> = {
-      health: "🏥",
-      fitness: "💪",
-      productivity: "⚡",
-      mindfulness: "🧘",
-      learning: "📚",
-      social: "👥",
-      finance: "💰",
-      creativity: "🎨",
-      other: "📌",
-    };
-    return icons[category] || "📌";
-  };
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // Get difficulty stars
   const getDifficultyStars = (level: number): string => {
     return "⭐".repeat(level);
   };
 
-  // Get habit type badge style
-  const getTypeStyle = (habitType: string) => {
-    if (habitType === "good") {
-      return "bg-green-100 text-green-800 border-green-200";
-    }
-    return "bg-red-100 text-red-800 border-red-200";
+  // Get completion progress for habits with goal/limit > 1
+  const getCompletionProgress = () => {
+    const target = habit.habitType === "good" ? habit.goal : habit.limit;
+    if (!target || target === 1) return null;
+    return { completed: completedCount, target };
   };
 
-  // Get completion style
-  const getCompletionStyle = () => {
+  // Get completion button style based on progress
+  const getCompletionButtonStyle = () => {
+    const progress = getCompletionProgress();
+
     if (isCompleted) {
-      return habit.habitType === "good"
-        ? "bg-green-50 border-green-200"
-        : "bg-green-50 border-green-200";
+      return "bg-green-500 border-green-500 text-white";
     }
-    return "bg-white border-gray-200 hover:border-gray-300";
+
+    if (progress) {
+      const percentage = (progress.completed / progress.target) * 100;
+      const borderColor =
+        percentage > 0 ? "border-green-400" : "border-border-default";
+      return `border-2 ${borderColor} hover:border-green-400 text-gray-400 hover:text-green-500`;
+    }
+
+    return "border-2 border-border-default hover:border-green-400 text-gray-400 hover:text-green-500";
+  };
+
+  // Render completion button content
+  const renderCompletionButton = () => {
+    if (loading) {
+      return (
+        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      );
+    }
+
+    if (isCompleted) {
+      return (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={3}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      );
+    }
+
+    const progress = getCompletionProgress();
+    if (progress && progress.target > 1) {
+      return (
+        <span className="text-xs font-semibold">
+          {progress.completed}/{progress.target}
+        </span>
+      );
+    }
+
+    return <div className="w-3 h-3 rounded-full border-2 border-current" />;
+  };
+
+  // Render partial progress ring for habits with goal/limit > 1
+  const renderProgressRing = () => {
+    const progress = getCompletionProgress();
+    if (!progress || progress.target === 1) return null;
+
+    const percentage = (progress.completed / progress.target) * 100;
+    const circumference = 2 * Math.PI * 18; // radius = 18
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <svg
+        className="absolute inset-0 w-12 h-12 transform -rotate-90"
+        viewBox="0 0 40 40"
+      >
+        <circle
+          cx="20"
+          cy="20"
+          r="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-gray-200"
+        />
+        <circle
+          cx="20"
+          cy="20"
+          r="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          className="text-green-500 transition-all duration-300"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    });
   };
 
   return (
     <div
-      className={`relative p-4 rounded-xl border transition-all duration-200 ${getCompletionStyle()}`}
+      className="relative p-4 rounded-xl border bg-card-background border-border-default hover:border-border-hover transition-all duration-200"
       style={{ borderLeftColor: habit.colorCode, borderLeftWidth: "4px" }}
-      onMouseEnter={() => setShowActions_(true)}
-      onMouseLeave={() => setShowActions_(false)}
     >
-      {/* Main content */}
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          {/* Header with name and badges */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{getCategoryIcon(habit.category)}</span>
-              <h3 className="font-semibold text-gray-900 text-lg">
-                {habit.name}
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-2 py-1 text-xs font-medium rounded-full border ${getTypeStyle(
-                  habit.habitType
-                )}`}
-              >
-                {habit.habitType === "good" ? "Good" : "Bad"}
-              </span>
-
-              <span className="text-sm text-gray-600">
-                {getDifficultyStars(habit.difficultyLevel)}
-              </span>
-            </div>
-          </div>
-
-          {/* Description */}
-          {habit.description && (
-            <p className="text-sm text-gray-600 mb-2">{habit.description}</p>
-          )}
-
-          {/* Goal/Limit and Unit */}
-          <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-            {habit.habitType === "good" && habit.goal && (
-              <span className="flex items-center gap-1">
-                <svg
-                  className="w-4 h-4 text-green-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                  />
-                </svg>
-                Goal: {habit.goal} {habit.unit && habit.unit}
-              </span>
-            )}
-
-            {habit.habitType === "bad" && habit.limit && (
-              <span className="flex items-center gap-1">
-                <svg
-                  className="w-4 h-4 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                  />
-                </svg>
-                Limit: {habit.limit} {habit.unit && habit.unit}
-              </span>
-            )}
-
-            {habit.startTime && (
-              <span className="flex items-center gap-1">
-                <svg
-                  className="w-4 h-4 text-blue-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                {habit.startTime}
-              </span>
-            )}
-          </div>
-
-          {/* Streak info */}
-          <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-1 text-orange-600">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-              {habit.currentStreak} streak
-            </span>
-
-            <span className="text-gray-500">Best: {habit.longestStreak}</span>
-          </div>
-
-          {/* Tags */}
-          {habit.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {habit.tags.slice(0, 3).map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
-                >
-                  #{tag}
-                </span>
-              ))}
-              {habit.tags.length > 3 && (
-                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded-full">
-                  +{habit.tags.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
+      {/* Row 1: Title and Completion */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-sm text-text-secondary flex-shrink-0">
+            {getDifficultyStars(habit.difficultyLevel)}
+          </span>
+          <h3 className="font-semibold text-text-primary text-lg truncate">
+            {habit.name}
+          </h3>
         </div>
 
-        {/* Completion toggle */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onToggleComplete}
-            disabled={loading}
-            className={`w-12 h-12 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
-              isCompleted
-                ? "bg-green-500 border-green-500 text-white"
-                : "border-gray-300 hover:border-green-400 text-gray-400 hover:text-green-500"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : isCompleted ? (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Skip button for habits with goal/limit > 1 */}
+          {getCompletionProgress() && onSkip && (
+            <button
+              onClick={onSkip}
+              disabled={loading}
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-colors disabled:opacity-50"
+            >
+              Skip
+            </button>
+          )}
+
+          {/* Completion button */}
+          <div className="relative">
+            <button
+              onClick={onToggleComplete}
+              disabled={loading}
+              className={`relative w-12 h-12 rounded-full transition-all duration-200 flex items-center justify-center ${getCompletionButtonStyle()} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {renderProgressRing()}
+              <div className="relative z-10">{renderCompletionButton()}</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Info and Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 text-sm text-text-secondary flex-1 min-w-0">
+          {/* Start Date + Time */}
+          {(habit.startDate || habit.startTime) && (
+            <span className="flex items-center gap-1 flex-shrink-0">
               <svg
-                className="w-6 h-6"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -217,81 +201,138 @@ const HabitCard: React.FC<HabitCardProps> = ({
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={3}
-                  d="M5 13l4 4L19 7"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-            ) : (
-              <div className="w-3 h-3 rounded-full border-2 border-current" />
+              {habit.startDate && formatDate(habit.startDate)}
+              {habit.startTime && ` ${habit.startTime}`}
+            </span>
+          )}
+
+          {/* Subtasks */}
+          {subtaskCount > 0 && (
+            <span className="flex items-center gap-1 flex-shrink-0">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+              {subtaskCount}
+            </span>
+          )}
+
+          {/* Category */}
+          {habit.category && (
+            <span className="flex items-center gap-1 flex-shrink-0">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              {habit.category}
+            </span>
+          )}
+
+          {/* Tags count */}
+          {habit.tags.length > 0 && (
+            <span className="flex items-center gap-1 flex-shrink-0">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                />
+              </svg>
+              {habit.tags.length}
+            </span>
+          )}
+        </div>
+
+        {/* Actions dropdown */}
+        {showActions && (
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="p-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+            </button>
+
+            {showDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-border-default z-20">
+                  <button
+                    onClick={() => {
+                      onEdit();
+                      setShowDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-blue-50 hover:text-blue-600 first:rounded-t-lg transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      onArchive();
+                      setShowDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-yellow-50 hover:text-yellow-600 transition-colors"
+                  >
+                    {habit.isArchived ? "Unarchive" : "Archive"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDelete();
+                      setShowDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-red-50 hover:text-red-600 last:rounded-b-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
             )}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Action buttons */}
-      {showActions && (showActions_ || loading) && (
-        <div className="absolute top-2 right-2 flex items-center gap-1 bg-white rounded-lg shadow-lg border p-1">
-          <button
-            onClick={onEdit}
-            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-            title="Edit habit"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-          </button>
-
-          <button
-            onClick={onArchive}
-            className="p-2 text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
-            title={habit.isArchived ? "Unarchive habit" : "Archive habit"}
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 8l4 4m0 0l4-4m-4 4v8m-6-3a9 9 0 1118 0H8a9 9 0 01-8-8z"
-              />
-            </svg>
-          </button>
-
-          <button
-            onClick={onDelete}
-            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="Delete habit"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
     </div>
   );
 };
