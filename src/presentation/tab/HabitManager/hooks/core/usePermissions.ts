@@ -44,10 +44,8 @@ export const usePermissions = () => {
     // Check if specific scope is granted
     const checkScope = useCallback(async (scope: string): Promise<boolean> => {
         try {
-            console.log(`🔍 Checking scope: ${scope}`);
 
             if (!authState.isAuthenticated || !authState.user?.accessToken) {
-                console.log(`❌ Not authenticated for scope: ${scope}`);
                 return false;
             }
 
@@ -65,11 +63,9 @@ export const usePermissions = () => {
                     testUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary';
                     break;
                 default:
-                    console.log(`❌ Unknown scope: ${scope}`);
                     return false;
             }
 
-            console.log(`📡 Testing API endpoint: ${testUrl}`);
 
             const response = await fetch(testUrl, {
                 headers: {
@@ -78,7 +74,6 @@ export const usePermissions = () => {
             });
 
             const result = response.ok;
-            console.log(`${result ? '✅' : '❌'} Scope ${scope} check result: ${result} (status: ${response.status})`);
 
             return result;
         } catch (error) {
@@ -90,10 +85,8 @@ export const usePermissions = () => {
     // Comprehensive permission check
     const checkPermissions = useCallback(async (useCache: boolean = true): Promise<PermissionCheckResult> => {
         try {
-            console.log('🚀 Starting permission check...', { useCache, checking });
 
             if (checking) {
-                console.log('⏳ Permission check already in progress, returning current state...');
                 return {
                     hasDrive: permissions.hasDrive,
                     hasSheets: permissions.hasSheets,
@@ -109,7 +102,6 @@ export const usePermissions = () => {
             if (useCache) {
                 const cachedPermissions = await getCache<PermissionCheckResult>(CACHE_KEYS.PERMISSIONS);
                 if (cachedPermissions) {
-                    console.log('📋 Using cached permissions:', cachedPermissions);
 
                     // Update state immediately with cached permissions and mark as checked
                     setPermissions({
@@ -121,17 +113,13 @@ export const usePermissions = () => {
                 }
             }
 
-            console.log('🔍 Checking permissions from API...');
-
             // Check each required scope
-            console.log('📡 Starting API permission checks...');
             const [hasDrive, hasSheets, hasCalendar] = await Promise.all([
                 checkScope(REQUIRED_SCOPES.drive),
                 checkScope(REQUIRED_SCOPES.sheets),
                 checkScope(REQUIRED_SCOPES.calendar)
             ]);
 
-            console.log('📊 Individual permission results:', { hasDrive, hasSheets, hasCalendar });
 
             const result: PermissionCheckResult = {
                 hasDrive,
@@ -140,10 +128,8 @@ export const usePermissions = () => {
                 allRequired: hasDrive && hasSheets // Calendar is optional
             };
 
-            console.log('📋 Final permission check result:', result);
 
             // Cache the result
-            console.log('💾 Caching permission result...');
             await setCache(CACHE_KEYS.PERMISSIONS, result, CACHE_TTL.PERMISSIONS);
 
             // Update local state with checked: true
@@ -152,7 +138,6 @@ export const usePermissions = () => {
                 checked: true
             });
 
-            console.log('✅ Permission check completed successfully');
             return result;
 
         } catch (error) {
@@ -177,14 +162,12 @@ export const usePermissions = () => {
 
             return fallbackResult;
         } finally {
-            console.log('🏁 Permission check cleanup, setting checking to false');
             setChecking(false);
         }
     }, [getCache, setCache, checkScope, checking, permissions.hasDrive, permissions.hasSheets, permissions.hasCalendar, permissions.allRequired]);
 
     // Force refresh permissions (bypass cache)
     const refreshPermissions = useCallback(async (): Promise<PermissionCheckResult> => {
-        console.log('🔄 Force refreshing permissions...');
         return checkPermissions(false);
     }, [checkPermissions]);
 
@@ -194,7 +177,6 @@ export const usePermissions = () => {
             setChecking(true);
             setError(null);
 
-            console.log('📝 Requesting additional permissions:', scopes);
 
             // Use the auth manager to request additional scopes
             await authManager.requestAdditionalScopes(scopes);
@@ -256,13 +238,6 @@ export const usePermissions = () => {
         const runPermissionCheck = async () => {
             if (!mounted) return;
 
-            console.log('🔄 Permission check effect triggered:', {
-                isAuthenticated: authState.isAuthenticated,
-                hasUser: !!authState.user,
-                permissionsChecked: permissions.checked,
-                currentlyChecking: checking
-            });
-
             // Only trigger if authenticated, has user, not already checked, and not currently checking
             const shouldCheck = authState.isAuthenticated &&
                 authState.user &&
@@ -270,7 +245,6 @@ export const usePermissions = () => {
                 !checking;
 
             if (shouldCheck) {
-                console.log('✅ Conditions met, starting permission check...');
                 try {
                     await checkPermissions();
                 } catch (error) {
@@ -279,13 +253,6 @@ export const usePermissions = () => {
                         setPermissions(prev => ({ ...prev, checked: true }));
                     }
                 }
-            } else {
-                console.log('⏸️ Permission check conditions not met:', {
-                    notAuthenticated: !authState.isAuthenticated,
-                    noUser: !authState.user,
-                    alreadyChecked: permissions.checked,
-                    currentlyChecking: checking
-                });
             }
         };
 
@@ -298,16 +265,10 @@ export const usePermissions = () => {
 
     // Subscribe to auth state changes
     useEffect(() => {
-        console.log('🔗 Setting up auth state subscription...');
 
         const unsubscribe = authManager.subscribe((newAuthState) => {
-            console.log('🔔 Auth state changed:', {
-                isAuthenticated: newAuthState.isAuthenticated,
-                hasUser: !!newAuthState.user
-            });
 
             if (!newAuthState.isAuthenticated) {
-                console.log('🚪 User logged out, resetting permissions...');
                 // Reset permissions when user logs out
                 setPermissions({
                     hasDrive: false,
@@ -321,15 +282,9 @@ export const usePermissions = () => {
         });
 
         return () => {
-            console.log('🔌 Unsubscribing from auth state changes');
             unsubscribe();
         };
     }, [authManager]);
-
-    // Log whenever permissions state changes
-    useEffect(() => {
-        console.log('🔄 Permissions state changed:', permissions);
-    }, [permissions]);
 
     return {
         // State

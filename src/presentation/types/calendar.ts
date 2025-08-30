@@ -25,6 +25,9 @@ export interface Recurrence {
 }
 
 export interface CalendarEvent {
+    end: string | Date | undefined;
+    start: string | Date | undefined;
+    title: string;
     id: string;
     summary: string;
     description?: string;

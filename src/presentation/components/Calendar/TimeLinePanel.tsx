@@ -397,11 +397,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
             );
 
             heights[dayKey][actualStartHour] = newHeight;
-
-            // DEBUGGING: Log the calculation
-            console.log(
-              `Day: ${dayKey}, Hour: ${actualStartHour}, Events: ${taskEvent.events.length}, Required Height: ${requiredHeight}, Set Height: ${newHeight}`
-            );
           }
         }
       });
@@ -487,16 +482,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
 
         // Cap at 85% of available slot height
         finalHeight = Math.min(finalHeight, availableSlotHeight * 0.85);
-
-        console.log(
-          `SINGLE EVENT ${
-            taskEvent.events[0].title || taskEvent.events[0].summary
-          }:`
-        );
-        console.log(`  - availableSlotHeight: ${availableSlotHeight}`);
-        console.log(`  - originalDurationHeight: ${originalDurationHeight}`);
-        console.log(`  - expansionRatio: ${expansionRatio}`);
-        console.log(`  - finalHeight: ${finalHeight}`);
       } else {
         finalHeight = originalDurationHeight;
       }
@@ -506,10 +491,6 @@ const TimeLinePanel: React.FC<TimeLinePanelProps> = ({
       finalHeight = requiredHeight
         ? Math.min(requiredHeight, availableSlotHeight - 8)
         : Math.max(80, (durationInMinutes / 60) * availableSlotHeight);
-
-      console.log(`MULTI EVENT (${taskEvent.events.length} events):`);
-      console.log(`  - requiredHeight: ${requiredHeight}`);
-      console.log(`  - finalHeight: ${finalHeight}`);
     }
 
     return {

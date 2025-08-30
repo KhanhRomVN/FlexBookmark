@@ -161,19 +161,16 @@ const GanttChartPanel: React.FC<GanttChartPanelProps> = ({
 
   // Handle task date changes (optional - you can implement task updates here)
   const handleDateChange = (task: GanttTask) => {
-    console.log("Task date changed:", task);
     // Implement task update logic here
   };
 
   // Handle progress changes (optional)
   const handleProgressChange = (task: GanttTask) => {
-    console.log("Task progress changed:", task);
     // Implement progress update logic here
   };
 
   // Handle task deletion (optional)
   const handleDelete = (task: GanttTask) => {
-    console.log("Task deleted:", task);
     // Implement task deletion logic here
   };
 

@@ -75,18 +75,10 @@ export const useHabitData = () => {
 
     // Initialize DriveFileManager when authenticated
     useEffect(() => {
-        console.log('DriveFileManager effect triggered:', {
-            isAuthenticated: authState.isAuthenticated,
-            hasAccessToken: !!authState.user?.accessToken,
-            currentDriveManager: !!driveManager
-        });
-
         if (authState.isAuthenticated && authState.user?.accessToken) {
-            console.log('Creating DriveFileManager with access token');
             const manager = new DriveFileManager(authState.user.accessToken);
             setDriveManager(manager);
         } else {
-            console.log('Clearing DriveFileManager - not authenticated');
             setDriveManager(null);
             setInitialized(false);
             hasInitialized.current = false; // Reset initialization flag
@@ -102,13 +94,8 @@ export const useHabitData = () => {
     }> => {
         try {
             performanceMonitor.startTiming('setup-check');
-            console.log('Starting comprehensive setup check...', {
-                allRequired: permissions.allRequired,
-                driveManager: !!driveManager
-            });
 
             if (!permissions.allRequired) {
-                console.log('Missing required permissions');
                 return {
                     hasPermissions: false,
                     hasFolderStructure: false,
@@ -120,11 +107,9 @@ export const useHabitData = () => {
             // Check current sheet accessibility with timeout
             let hasCurrentSheet = false;
             const cachedSheetId = await getCache<string>(CACHE_KEYS.SHEET_ID);
-            console.log('Cached sheet ID check result:', cachedSheetId);
 
             if (cachedSheetId && driveManager) {
                 try {
-                    console.log('Testing cached sheet accessibility...');
 
                     // Add timeout to prevent hanging
                     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -132,24 +117,15 @@ export const useHabitData = () => {
                     });
 
                     const accessPromise = driveManager.readHabits(cachedSheetId);
-                    console.log('Starting sheet access test...');
 
                     await Promise.race([accessPromise, timeoutPromise]);
 
                     hasCurrentSheet = true;
                     setCurrentSheetId(cachedSheetId);
-                    console.log('Cached sheet is accessible, sheet ID set:', cachedSheetId);
                 } catch (error) {
-                    console.log('Cached sheet not accessible:', error);
                     // Clear invalid cached sheet ID
                     await chrome.storage.local.remove([CACHE_KEYS.SHEET_ID]);
-                    console.log('Removed invalid cached sheet ID');
                 }
-            } else {
-                console.log('No cached sheet ID or no drive manager:', {
-                    cachedSheetId,
-                    hasDriveManager: !!driveManager
-                });
             }
 
             const needsFullSetup = !hasCurrentSheet;
@@ -160,7 +136,6 @@ export const useHabitData = () => {
                 needsFullSetup
             };
 
-            console.log('Setup check completed with result:', result);
             return result;
 
         } catch (error) {
@@ -179,16 +154,13 @@ export const useHabitData = () => {
     // Progressive initialization with better timeout and error handling
     const progressiveInitialize = useCallback(async (): Promise<void> => {
         if (initializationPromise.current) {
-            console.log('Initialization already in progress, waiting for existing promise...');
             return initializationPromise.current;
         }
 
         if (hasInitialized.current) {
-            console.log('Already initialized, skipping...');
             return;
         }
 
-        console.log('Starting progressive initialization...');
 
         initializationPromise.current = (async () => {
             const initTimeout = setTimeout(() => {
@@ -203,22 +175,14 @@ export const useHabitData = () => {
             try {
                 performanceMonitor.startTiming('progressive-init');
                 setError(null);
-                console.log('Progressive initialization started, clearing any previous errors');
 
-                // Step 1: Load cached data immediately
-                console.log('STEP 1: Loading cached habits...');
                 await loadCachedHabits();
                 setLoadingProgress(20);
-                console.log('STEP 1 COMPLETED: Cached habits loaded, progress: 20%');
 
-                // Step 2: Comprehensive setup check
-                console.log('STEP 2: Running comprehensive setup check...');
                 const setupStatus = await checkComprehensiveSetup();
                 setLoadingProgress(40);
-                console.log('STEP 2 COMPLETED: Setup check finished, progress: 40%, result:', setupStatus);
 
                 if (!setupStatus.hasPermissions) {
-                    console.log('PERMISSIONS MISSING: Setting needsReauth flag');
                     setNeedsReauth(true);
                     setError('Need access permissions for Google Drive and Sheets');
                     clearTimeout(initTimeout);
@@ -226,11 +190,9 @@ export const useHabitData = () => {
                 }
 
                 if (setupStatus.needsFullSetup) {
-                    console.log('STEP 3A: Running full setup initialization...');
                     setLoadingProgress(60);
 
                     if (driveManager) {
-                        console.log('DriveManager available, calling autoInitialize...');
 
                         // Add timeout for autoInitialize
                         const autoInitTimeout = new Promise<never>((_, reject) => {
@@ -238,17 +200,13 @@ export const useHabitData = () => {
                         });
 
                         const autoInitPromise = driveManager.autoInitialize();
-                        console.log('Auto-initialization promise created, racing with timeout...');
 
                         const sheetId = await Promise.race([autoInitPromise, autoInitTimeout]);
-                        console.log('Auto-initialization completed successfully, sheet ID:', sheetId);
 
                         setCurrentSheetId(sheetId);
                         await setCache(CACHE_KEYS.SHEET_ID, sheetId, CACHE_TTL.HABITS);
-                        console.log('Sheet ID cached successfully');
 
                         // Load fresh data from new sheet with timeout
-                        console.log('Loading initial habits from new sheet...');
                         const loadDataTimeout = new Promise<never>((_, reject) => {
                             setTimeout(() => reject(new Error('Data loading timeout')), 15000);
                         });
@@ -256,18 +214,14 @@ export const useHabitData = () => {
                         const loadDataPromise = driveManager.readHabits(sheetId);
                         const habitsData = await Promise.race([loadDataPromise, loadDataTimeout]);
 
-                        console.log('Initial habits loaded successfully, count:', habitsData.length);
                         await updateHabitsCache(habitsData);
-                        console.log('Habits cache updated with initial data');
                     } else {
                         console.error('CRITICAL ERROR: DriveManager not available for full setup');
                         throw new Error('DriveManager not available');
                     }
                 } else {
-                    console.log('STEP 3B: Using existing setup, triggering background sync...');
                     // Background sync for existing setup
                     setTimeout(() => {
-                        console.log('Starting background sync...');
                         syncData().catch(error => {
                             console.warn('Background sync failed (non-critical):', error);
                             // Don't fail initialization for background sync errors
@@ -276,7 +230,6 @@ export const useHabitData = () => {
                 }
 
                 setLoadingProgress(100);
-                console.log('INITIALIZATION SUCCESSFUL: All steps completed, setting initialized flag');
                 setInitialized(true);
                 hasInitialized.current = true; // Mark as initialized
                 await setCache(CACHE_KEYS.LAST_SYNC, Date.now(), CACHE_TTL.HABITS);
@@ -292,7 +245,6 @@ export const useHabitData = () => {
                 });
 
                 clearTimeout(initTimeout);
-                console.log('INITIALIZATION CLEANUP: Timeout cleared, initialization complete');
 
             } catch (error) {
                 console.error('INITIALIZATION FAILED:', error);
@@ -307,21 +259,16 @@ export const useHabitData = () => {
                     });
 
                     if (error.message.includes('403') || error.message.includes('permission')) {
-                        console.log('PERMISSION ERROR detected, setting needsReauth');
                         setNeedsReauth(true);
                         setError('Access expired or insufficient permissions, please login again');
                     } else if (error.message.includes('timeout')) {
-                        console.log('TIMEOUT ERROR detected');
                         setError('Operation timed out. Please check your internet connection and try refreshing.');
                     } else if (error.message.includes('network') || error.message.includes('fetch')) {
-                        console.log('NETWORK ERROR detected');
                         setError('Network error. Please check your internet connection.');
                     } else {
-                        console.log('GENERIC ERROR detected');
                         setError(`Initialization error: ${error.message}`);
                     }
                 } else {
-                    console.log('UNKNOWN ERROR detected');
                     setError('System initialization error');
                 }
 
@@ -329,11 +276,9 @@ export const useHabitData = () => {
                 setInitialized(false);
                 hasInitialized.current = false;
                 setLoadingProgress(0);
-                console.log('INITIALIZATION RESET: States reset due to error');
             } finally {
                 performanceMonitor.endTiming('progressive-init');
                 initializationPromise.current = null;
-                console.log('INITIALIZATION FINALLY: Cleanup completed, promise cleared');
             }
         })();
 
@@ -347,7 +292,6 @@ export const useHabitData = () => {
     useEffect(() => {
         // Skip if we've already initialized
         if (hasInitialized.current) {
-            console.log('SKIP AUTO-INITIALIZE: Already initialized');
             return;
         }
 
@@ -362,7 +306,6 @@ export const useHabitData = () => {
             hasInitializedRef: hasInitialized.current
         };
 
-        console.log('AUTO-INITIALIZE EFFECT TRIGGERED:', conditions);
 
         // More specific condition check
         const canInitialize =
@@ -375,33 +318,15 @@ export const useHabitData = () => {
             !needsReauth &&
             !hasInitialized.current;
 
-        console.log('CAN INITIALIZE CHECK:', {
-            canInitialize,
-            breakdown: {
-                authenticated: authState.isAuthenticated,
-                hasUser: !!authState.user,
-                hasDriveManager: !!driveManager,
-                permissionsChecked: permissions.checked,
-                allPermissions: permissions.allRequired,
-                notInitialized: !initialized,
-                noReauth: !needsReauth,
-                notAlreadyInitialized: !hasInitialized.current
-            }
-        });
-
         if (canInitialize) {
-            console.log('ALL CONDITIONS MET - STARTING INITIALIZATION');
 
             progressiveInitialize()
                 .then(() => {
-                    console.log('INITIALIZATION PROMISE RESOLVED SUCCESSFULLY');
                 })
                 .catch((error) => {
                     console.error('INITIALIZATION PROMISE REJECTED:', error);
                     setError(`Initialization failed: ${error.message}`);
                 });
-        } else {
-            console.log('INITIALIZATION CONDITIONS NOT MET - WAITING');
         }
     }, [
         authState.isAuthenticated,
@@ -417,7 +342,6 @@ export const useHabitData = () => {
     // Enhanced logout with cleanup
     const handleEnhancedLogout = useCallback(async () => {
         try {
-            console.log('Enhanced logout started...');
             await handleLogout();
 
             setCurrentSheetId(null);
@@ -427,7 +351,6 @@ export const useHabitData = () => {
             setError(null);
 
             await clearCache();
-            console.log('Enhanced logout completed');
         } catch (err) {
             console.error("Enhanced logout error:", err);
         }
@@ -436,13 +359,11 @@ export const useHabitData = () => {
     // Enhanced force reauth
     const handleEnhancedForceReauth = useCallback(async () => {
         try {
-            console.log('Enhanced force reauth started...');
             setError(null);
             setLoading(true);
             await handleForceReauth();
             setNeedsReauth(false);
             hasInitialized.current = false; // Allow reinitialization after reauth
-            console.log('Enhanced force reauth completed');
         } catch (err) {
             console.error("Enhanced force reauth error:", err);
             setError("Permission grant failed. Please try again.");
@@ -450,27 +371,6 @@ export const useHabitData = () => {
             setLoading(false);
         }
     }, [handleForceReauth, setLoading, setError]);
-
-    // Log state changes
-    useEffect(() => {
-        console.log('PERMISSIONS STATE CHANGED:', permissions);
-    }, [permissions]);
-
-    useEffect(() => {
-        console.log('AUTH STATE CHANGED:', {
-            isAuthenticated: authState.isAuthenticated,
-            hasUser: !!authState.user,
-            loading: authState.loading
-        });
-    }, [authState]);
-
-    useEffect(() => {
-        console.log('DRIVE MANAGER CHANGED:', !!driveManager);
-    }, [driveManager]);
-
-    useEffect(() => {
-        console.log('INITIALIZED STATE CHANGED:', initialized);
-    }, [initialized]);
 
     return {
         // State

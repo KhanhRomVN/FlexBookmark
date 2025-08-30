@@ -106,21 +106,18 @@ export const useCalendarData = () => {
 
             if (isNewEvent) {
                 // Create new event
-                console.log('Creating new event:', event);
                 savedEvent = await createGoogleEvent(authState.user.accessToken, event);
 
                 // Add to local state
                 setEvents(prev => [...prev, savedEvent]);
             } else {
                 // Update existing event
-                console.log('Updating existing event:', event);
                 savedEvent = await updateGoogleEvent(authState.user.accessToken, event);
 
                 // Update local state
                 setEvents(prev => prev.map(e => e.id === event.id ? savedEvent : e));
             }
 
-            console.log('Event saved successfully:', savedEvent);
 
             // Refresh data to ensure sync
             setTimeout(() => {

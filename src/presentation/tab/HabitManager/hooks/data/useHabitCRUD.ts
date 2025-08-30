@@ -73,7 +73,6 @@ export const useHabitCRUD = ({
                 subtasks: formData.subtasks || []
             };
 
-            console.log('Creating new habit:', newHabit.name);
 
             // Optimistic update - add to local state immediately
             const updatedHabits = [...habits, newHabit];
@@ -82,7 +81,6 @@ export const useHabitCRUD = ({
             // Persist to Google Sheets
             await driveManager!.createHabit(currentSheetId!, newHabit);
 
-            console.log('✅ Habit created successfully:', newHabit.id);
             performanceMonitor.endTiming(operationId);
 
             return newHabit.id;

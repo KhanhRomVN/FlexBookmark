@@ -355,7 +355,6 @@ const EventDialog: React.FC<EventDialogProps> = ({
         finalEvent.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       }
 
-      console.log("Saving event:", finalEvent); // Debug log
       onSave(finalEvent);
     }
   };

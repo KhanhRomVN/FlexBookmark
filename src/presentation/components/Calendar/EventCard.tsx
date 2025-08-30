@@ -37,30 +37,10 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
   onSelectItem,
   availableSlotHeight,
 }) => {
-  // ENHANCED LOGGING: Log all input props for debugging
-  console.log("=== EventCard DEBUG START ===");
-  console.log("Event title:", event.title || event.summary);
-  console.log("Dimensions received:", {
-    top: dimensions.top,
-    height: dimensions.height,
-    startHour: dimensions.startHour,
-    startMinute: dimensions.startMinute,
-    endHour: dimensions.endHour,
-    endMinute: dimensions.endMinute,
-    duration: dimensions.duration,
-    availableSlotHeight: dimensions.availableSlotHeight,
-  });
-  console.log("Props availableSlotHeight:", availableSlotHeight);
-  console.log("Style props:", { widthPercent, left, zIndex });
-
   // FIXED: Use EXACTLY the same logic as MultiEventCard for single events
   const calculateOptimalHeight = () => {
-    console.log("EventCard calculateOptimalHeight called for SINGLE event");
     // For single events, use the dimension height - EXACTLY as MultiEventCard does
     const singleEventHeight = Math.max(dimensions.height, 40);
-    console.log("SINGLE EVENT HEIGHT CALCULATION:");
-    console.log("  - dimensions.height:", dimensions.height);
-    console.log("  - Math.max(dimensions.height, 40):", singleEventHeight);
     return singleEventHeight;
   };
 
@@ -76,17 +56,6 @@ const EventCard: React.FC<TimelineEventCardProps> = ({
     e.stopPropagation();
     onSelectItem(event);
   };
-
-  console.log("Final cardHeight:", cardHeight);
-  console.log("RENDERING EVENTCARD:");
-  console.log("  - Event title:", event.title || event.summary);
-  console.log("  - Final style.height:", `${cardHeight}px`);
-  console.log("  - Final style.top:", `${dimensions.top}px`);
-  console.log("  - Final style.width:", `${widthPercent}%`);
-  console.log("  - Final style.left:", `${left}%`);
-  console.log("  - Final style.zIndex:", zIndex);
-  console.log("  - minHeight:", "32px");
-  console.log("=== EventCard DEBUG END ===");
 
   // This is EXACTLY the same render structure as MultiEventCard for single events
   return (
