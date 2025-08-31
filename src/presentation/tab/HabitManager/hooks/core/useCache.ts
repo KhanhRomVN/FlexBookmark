@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { CacheManager } from '../../utils/cache/CacheManager';
 import { CacheUtils } from '../../utils/cache/CacheUtils';
 
@@ -29,12 +29,12 @@ export const useCache = () => {
         return cacheManager.clearAllCache();
     }, [cacheManager]);
 
-    return {
+    return useMemo(() => ({
         setCache,
         getCache,
         getCacheWithFallback,
         clearCache,
         setMultipleCache: CacheUtils.setMultipleCache,
         getMultipleCache: CacheUtils.getMultipleCache
-    };
+    }), [setCache, getCache, getCacheWithFallback, clearCache]);
 };

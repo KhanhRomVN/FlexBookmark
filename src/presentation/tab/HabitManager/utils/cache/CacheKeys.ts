@@ -1,6 +1,10 @@
 export const CACHE_KEYS = {
-    // Habit data
-    HABITS: 'habits_cache',
+    // Month-based habit storage
+    HABITS_CURRENT_MONTH: 'habits_current_month',
+    HABITS_PREVIOUS_MONTH: 'habits_previous_month',
+    CURRENT_MONTH_KEY: 'current_month_key',
+
+    // Metadata
     HABITS_METADATA: 'habits_metadata_cache',
 
     // Authentication & permissions
@@ -15,6 +19,8 @@ export const CACHE_KEYS = {
     // Sync management
     LAST_SYNC: 'last_sync_timestamp',
     SYNC_QUEUE: 'sync_queue_cache',
+    LAST_CLEANUP: 'last_cleanup_timestamp',
+    BACKGROUND_CHECK: 'background_check_status',
 
     // Performance data
     LOAD_TIMES: 'load_times_cache',
@@ -24,9 +30,11 @@ export const CACHE_KEYS = {
 // Cache TTL constants (in milliseconds)
 export const CACHE_TTL = {
     HABITS: 5 * 60 * 1000,          // 5 minutes
+    HABITS_LONG: 30 * 60 * 1000,    // 30 minutes for monthly data
     PERMISSIONS: 15 * 60 * 1000,     // 15 minutes
     AUTH: 30 * 60 * 1000,            // 30 minutes
     FOLDER_STRUCTURE: 60 * 60 * 1000, // 1 hour
     USER_PROFILE: 24 * 60 * 60 * 1000, // 24 hours
-    ERROR_LOG: 7 * 24 * 60 * 60 * 1000 // 7 days
+    ERROR_LOG: 7 * 24 * 60 * 60 * 1000, // 7 days
+    BACKGROUND_CHECK: 5 * 60 * 1000  // 5 minutes
 } as const;
