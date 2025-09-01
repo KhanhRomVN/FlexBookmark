@@ -1,10 +1,11 @@
+// src/presentation/tab/HabitManager/index.tsx
+
 import React, { useState, useEffect } from "react";
 import { useHabitData } from "./hooks/useHabitData";
 import HabitDialog from "./components/HabitDialog";
 import Sidebar from "./components/Sidebar";
 import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
-import ProgressiveLoadingScreen from "./components/ProgressiveLoadingScreen";
 import { Habit, HabitFormData, HabitType, HabitCategory } from "./types/habit";
 
 const HabitManager: React.FC = () => {
@@ -16,6 +17,9 @@ const HabitManager: React.FC = () => {
     needsReauth,
     permissions,
     initialized,
+    systemStatus,
+    initStages,
+    isAuthReady,
     handleLogin,
     handleLogout,
     handleCreateHabit,
@@ -23,18 +27,12 @@ const HabitManager: React.FC = () => {
     handleDeleteHabit,
     handleUpdateDailyHabit,
     handleArchiveHabit,
-    handleRefresh,
     handleForceReauth,
+    handleValidateAuth,
     getTodayStats,
-    getActiveHabits,
     syncInBackground,
+    getAuthStatus,
   } = useHabitData();
-
-  // Loading stages for progressive UI
-  const [loadingStage, setLoadingStage] = useState<
-    "auth" | "cache" | "permissions" | "sync" | "complete"
-  >("auth");
-  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Component states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -48,7 +46,7 @@ const HabitManager: React.FC = () => {
   const [filterType, setFilterType] = useState<HabitType | "all">("all");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [timeFilter, setTimeFilter] = useState("All habit");
-  const [collection, setCollection] = useState("Default");
+  const [, setCollection] = useState("Default");
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   // Default form data template
@@ -74,44 +72,66 @@ const HabitManager: React.FC = () => {
   const [editFormData, setEditFormData] =
     useState<HabitFormData>(defaultFormData);
 
-  // Progressive loading state management
+  // Background validation check every 5 minutes
   useEffect(() => {
-    if (authState.loading) {
-      setLoadingStage("auth");
-      setLoadingProgress(10);
-    } else if (authState.isAuthenticated && !permissions.checked) {
-      setLoadingStage("cache");
-      setLoadingProgress(25);
-    } else if (permissions.checked && !permissions.allRequired) {
-      setLoadingStage("permissions");
-      setLoadingProgress(50);
-    } else if (permissions.allRequired && !initialized) {
-      setLoadingStage("sync");
-      setLoadingProgress(75);
-    } else if (initialized) {
-      setLoadingStage("complete");
-      setLoadingProgress(100);
+    if (!isAuthReady) return;
 
-      // Auto-hide loading screen after brief delay
-      setTimeout(() => {
-        setLoadingStage("complete");
-      }, 500);
+    const validationInterval = setInterval(async () => {
+      try {
+        console.log("Periodic auth validation check...");
+        const isValid = await handleValidateAuth();
+        if (!isValid) {
+          console.warn("Periodic validation failed - auth may be invalid");
+        }
+      } catch (error) {
+        console.error("Periodic validation error:", error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(validationInterval);
+  }, [isAuthReady, handleValidateAuth]);
+
+  // Enhanced error handling based on auth status
+  useEffect(() => {
+    if (error && (error.includes("403") || error.includes("permission"))) {
+      console.warn(
+        "Detected permission-related error, triggering reauth check"
+      );
+      handleValidateAuth().then((isValid) => {
+        if (!isValid) {
+          console.warn(
+            "Auth validation failed, system will handle reauth in useHabitData"
+          );
+        }
+      });
     }
-  }, [
-    authState.loading,
-    authState.isAuthenticated,
-    permissions.checked,
-    permissions.allRequired,
-    initialized,
-  ]);
+  }, [error, handleValidateAuth]);
 
-  // Background sync trigger
+  // Get current loading stage based on initialization progress
+  const getCurrentLoadingStage = ():
+    | "auth"
+    | "cache"
+    | "permissions"
+    | "sync"
+    | "complete" => {
+    if (!authState.isAuthenticated || authState.loading) return "auth";
+    if (!authState.validationStatus.isValid || authState.isValidating)
+      return "auth";
+    if (!permissions.checked) return "cache";
+    if (!permissions.allRequired) return "permissions";
+    if (!initialized) return "sync";
+    return "complete";
+  };
+
+  const loadingStage = getCurrentLoadingStage();
+
+  // Background sync trigger - only when fully initialized
   useEffect(() => {
-    if (initialized && habits.length === 0) {
-      // If we have no cached data, trigger background sync immediately
+    if (initialized && isAuthReady && habits.length === 0) {
+      // If we have no cached data and auth is ready, trigger background sync immediately
       setTimeout(() => syncInBackground(), 100);
     }
-  }, [initialized, habits.length, syncInBackground]);
+  }, [initialized, isAuthReady, habits.length, syncInBackground]);
 
   // Get today's stats
   const todayStats = getTodayStats();
@@ -157,7 +177,7 @@ const HabitManager: React.FC = () => {
   };
 
   const handleToggleHabitForDate = async (habitId: string) => {
-    const habit = habits.find((h) => h.id === habitId);
+    const habit = habits.find((h: { id: string }) => h.id === habitId);
     if (!habit) return;
 
     const day = selectedDate.getDate();
@@ -191,7 +211,6 @@ const HabitManager: React.FC = () => {
 
   const openEditDialog = (habit: Habit) => {
     setEditingHabit(habit);
-    // Set edit form data based on the habit being edited
     setEditFormData({
       name: habit.name,
       description: habit.description || "",
@@ -225,11 +244,12 @@ const HabitManager: React.FC = () => {
     resetEditForm();
   };
 
-  const getActiveHabitsCount = () => habits.filter((h) => !h.isArchived).length;
+  const getActiveHabitsCount = () =>
+    habits.filter((h: { isArchived: any }) => !h.isArchived).length;
   const getArchivedHabitsCount = () =>
-    habits.filter((h) => h.isArchived).length;
+    habits.filter((h: { isArchived: any }) => h.isArchived).length;
 
-  // Show progressive loading screen for non-authenticated users
+  // Show authentication required screen
   if (!authState.isAuthenticated && !authState.loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
@@ -298,30 +318,39 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // Show progressive loading screen during initialization
-  if (
-    loadingStage !== "complete" ||
-    authState.loading ||
-    (permissions.checked && permissions.allRequired && !initialized)
-  ) {
+  // Show enhanced loading screen with validation stages
+  if (loadingStage !== "complete" || authState.loading) {
     return (
-      <ProgressiveLoadingScreen
-        stage={loadingStage}
-        progress={loadingProgress}
-        showDetails={true}
-      />
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
+        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-lg mx-4">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h3 className="text-2xl font-bold text-slate-900 mb-2">
+            {authState.isValidating ? "Validating..." : "Loading Habit Manager"}
+          </h3>
+          <p className="text-slate-600 mb-4">
+            {authState.isValidating
+              ? "Checking authentication status..."
+              : "Initializing your habit tracker..."}
+          </p>
+        </div>
+      </div>
     );
   }
 
-  // Show permission requirements if not all required permissions are granted
+  // Show permission requirements if auth validation failed
   if (
     authState.isAuthenticated &&
-    permissions.checked &&
-    (needsReauth || !permissions.allRequired)
+    (needsReauth ||
+      !authState.validationStatus.isValid ||
+      systemStatus.needsReauth)
   ) {
+    const authStatus = getAuthStatus();
+
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
-        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-md mx-4">
+        <div className="text-center p-8 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 max-w-lg mx-4">
           <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
             <svg
               className="w-8 h-8 text-white"
@@ -337,84 +366,126 @@ const HabitManager: React.FC = () => {
               />
             </svg>
           </div>
+
           <h3 className="text-xl font-semibold text-slate-900 mb-2">
-            Additional permissions needed
+            Authentication Issue Detected
           </h3>
+
           <p className="text-slate-600 mb-4">
-            The app needs the following permissions to function:
+            Your authentication needs to be refreshed or additional permissions
+            are required.
           </p>
-          <div className="text-left mb-6 space-y-2">
-            <div
-              className={`flex items-center gap-2 text-sm ${
-                permissions.hasDrive ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              <svg
-                className={`w-4 h-4 ${
-                  permissions.hasDrive ? "text-green-500" : "text-red-500"
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                {permissions.hasDrive ? (
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                ) : (
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                )}
-              </svg>
-              Google Drive {permissions.hasDrive ? "✓" : "✗"}
+
+          {/* Detailed validation status */}
+          <div className="text-left mb-6 space-y-3">
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <div className="text-sm font-medium text-slate-700 mb-2">
+                Current Status:
+              </div>
+              <div className="space-y-1 text-xs">
+                <div
+                  className={`flex items-center gap-2 ${
+                    authStatus.hasValidToken ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  <svg
+                    className={`w-4 h-4 ${
+                      authStatus.hasValidToken
+                        ? "text-green-500"
+                        : "text-red-500"
+                    }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    {authStatus.hasValidToken ? (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    ) : (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    )}
+                  </svg>
+                  Access Token{" "}
+                  {authStatus.hasValidToken ? "Valid" : "Invalid/Expired"}
+                </div>
+                <div
+                  className={`flex items-center gap-2 ${
+                    authStatus.hasRequiredScopes
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  <svg
+                    className={`w-4 h-4 ${
+                      authStatus.hasRequiredScopes
+                        ? "text-green-500"
+                        : "text-red-500"
+                    }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    {authStatus.hasRequiredScopes ? (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    ) : (
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    )}
+                  </svg>
+                  Required Permissions{" "}
+                  {authStatus.hasRequiredScopes ? "Granted" : "Missing"}
+                </div>
+              </div>
             </div>
-            <div
-              className={`flex items-center gap-2 text-sm ${
-                permissions.hasSheets ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              <svg
-                className={`w-4 h-4 ${
-                  permissions.hasSheets ? "text-green-500" : "text-red-500"
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                {permissions.hasSheets ? (
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                ) : (
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                )}
-              </svg>
-              Google Sheets {permissions.hasSheets ? "✓" : "✗"}
-            </div>
+
+            {authStatus.validationErrors.length > 0 && (
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="text-sm font-medium text-red-700 mb-1">
+                  Issues Found:
+                </div>
+                <div className="text-xs text-red-600 space-y-1">
+                  {authStatus.validationErrors.map((error, index) => (
+                    <div key={index}>• {error}</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleForceReauth}
-            disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-400 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:cursor-not-allowed"
-          >
-            {loading
-              ? "Granting permissions..."
-              : "Grant additional permissions"}
-          </button>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleForceReauth}
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-400 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:cursor-not-allowed"
+            >
+              {loading ? "Refreshing permissions..." : "Refresh Authentication"}
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="w-full bg-slate-500 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Sign Out & Start Over
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Main application interface
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/30">
       {/* Sidebar */}
@@ -457,7 +528,7 @@ const HabitManager: React.FC = () => {
         />
       </div>
 
-      {/* Create/Edit Habit Dialog - FIXED VERSION */}
+      {/* Create/Edit Habit Dialog */}
       <HabitDialog
         isOpen={isCreateDialogOpen}
         onClose={closeDialog}
@@ -468,10 +539,10 @@ const HabitManager: React.FC = () => {
         onFormChange={editingHabit ? setEditFormData : setHabitFormData}
       />
 
-      {/* Error Display */}
+      {/* Enhanced Error Display with Auth Status */}
       {error && (
         <div className="fixed bottom-4 right-4 max-w-md p-4 bg-red-50 border border-red-200 rounded-xl shadow-lg z-50">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
               <svg
                 className="w-4 h-4 text-red-600"
@@ -485,20 +556,32 @@ const HabitManager: React.FC = () => {
                 />
               </svg>
             </div>
-            <p className="text-sm text-red-700 font-medium">{error}</p>
+            <div className="flex-1">
+              <p className="text-sm text-red-700 font-medium">{error}</p>
+              {(error.includes("403") || error.includes("permission")) && (
+                <button
+                  onClick={handleValidateAuth}
+                  className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+                >
+                  Check Authentication Status
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Background sync indicator */}
-      {loadingStage === "sync" && initialized && (
-        <div className="fixed top-4 right-4 p-2 bg-blue-50 border border-blue-200 rounded-lg shadow-sm z-40">
-          <div className="flex items-center gap-2 text-sm text-blue-700">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            Syncing...
+      {/* Auth Status Indicator - Top Right */}
+      <div className="fixed top-4 right-4 z-30">
+        {authState.isValidating && (
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-blue-700">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              Validating auth...
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

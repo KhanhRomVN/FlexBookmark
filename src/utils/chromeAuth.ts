@@ -1,6 +1,4 @@
-// src/utils/chromeAuth.ts - Fixed version with proper re-authentication
-
-// Chrome Identity API authentication - Pure Chrome Extension approach
+// src/utils/chromeAuth.ts
 
 export interface User {
     id: string;
@@ -17,6 +15,22 @@ export interface AuthState {
     error: string | null;
 }
 
+export interface PermissionCheckResult {
+    hasDrive: boolean;
+    hasSheets: boolean;
+    hasCalendar: boolean;
+    allRequired: boolean;
+    folderStructureExists?: boolean;
+}
+
+export interface TokenValidationResult {
+    isValid: boolean;
+    isExpired: boolean;
+    expiresAt: number | null;
+    hasRequiredScopes: boolean;
+    errors: string[];
+}
+
 class ChromeAuthManager {
     private static instance: ChromeAuthManager;
     private authState: AuthState = {
@@ -26,6 +40,20 @@ class ChromeAuthManager {
         error: null
     };
     private listeners: ((state: AuthState) => void)[] = [];
+    private tokenValidationCache = new Map<string, { result: TokenValidationResult; timestamp: number }>();
+    private readonly CACHE_TTL = 60000; // 1 minute
+
+    // Required scopes for the application
+    private readonly REQUIRED_SCOPES = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/spreadsheets'
+    ];
+
+    private readonly OPTIONAL_SCOPES = [
+        'https://www.googleapis.com/auth/calendar'
+    ];
 
     static getInstance(): ChromeAuthManager {
         if (!ChromeAuthManager.instance) {
@@ -34,13 +62,12 @@ class ChromeAuthManager {
         return ChromeAuthManager.instance;
     }
 
-    // Subscribe to auth state changes
+    // ========== SUBSCRIPTION MANAGEMENT ==========
+
     subscribe(listener: (state: AuthState) => void): () => void {
         this.listeners.push(listener);
-        // Immediately call with current state
         listener(this.authState);
 
-        // Return unsubscribe function
         return () => {
             const index = this.listeners.indexOf(listener);
             if (index > -1) {
@@ -58,27 +85,195 @@ class ChromeAuthManager {
         this.notifyListeners();
     }
 
-    // Get current auth state
+    // ========== STATE GETTERS ==========
+
     getCurrentState(): AuthState {
-        return this.authState;
+        return { ...this.authState };
     }
 
-    // IMPROVED: Force re-authentication with full scopes
+    get isAuthenticated(): boolean {
+        return this.authState.isAuthenticated;
+    }
+
+    getCurrentUser(): User | null {
+        return this.authState.user;
+    }
+
+    getCurrentToken(): string | null {
+        return this.authState.user?.accessToken || null;
+    }
+
+    // ========== INITIALIZATION ==========
+
+    async initialize(): Promise<void> {
+        this.updateState({ loading: true, error: null });
+
+        try {
+            console.log('Initializing ChromeAuthManager...');
+
+            // Try to get cached user data
+            const cachedUser = await this.getCachedUser();
+            if (cachedUser) {
+                console.log('Found cached user, verifying token...');
+
+                const validation = await this.validateToken(cachedUser.accessToken);
+                if (validation.isValid) {
+                    console.log('Token is valid, user authenticated');
+                    this.updateState({
+                        isAuthenticated: true,
+                        user: cachedUser,
+                        loading: false
+                    });
+                    return;
+                } else {
+                    console.log('Cached token invalid, clearing cache...');
+                    await this.clearCachedUser();
+                }
+            }
+
+            console.log('Attempting silent authentication...');
+            await this.silentLogin();
+
+        } catch (error) {
+            console.error('Auth initialization error:', error);
+            this.updateState({
+                isAuthenticated: false,
+                user: null,
+                loading: false,
+                error: 'Failed to initialize authentication'
+            });
+        }
+    }
+
+    // ========== AUTHENTICATION METHODS ==========
+
+    private async silentLogin(): Promise<void> {
+        return new Promise((resolve) => {
+            chrome.identity.getAuthToken(
+                { interactive: false, scopes: this.REQUIRED_SCOPES },
+                async (result: any) => {
+                    if (chrome.runtime.lastError) {
+                        console.log('Silent login failed:', chrome.runtime.lastError.message);
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false
+                        });
+                        resolve();
+                        return;
+                    }
+
+                    const token = typeof result === 'string' ? result : result?.token;
+                    if (!token) {
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false
+                        });
+                        resolve();
+                        return;
+                    }
+
+                    try {
+                        const user = await this.getUserInfo(token);
+                        await this.cacheUser(user);
+                        this.updateState({
+                            isAuthenticated: true,
+                            user,
+                            loading: false
+                        });
+                        console.log('Silent login successful');
+                    } catch (error) {
+                        console.error('Silent login error:', error);
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false
+                        });
+                    }
+                    resolve();
+                }
+            );
+        });
+    }
+
+    async login(): Promise<User> {
+        this.updateState({ loading: true, error: null });
+
+        return new Promise((resolve, reject) => {
+            chrome.identity.getAuthToken(
+                {
+                    interactive: true,
+                    scopes: [...this.REQUIRED_SCOPES, ...this.OPTIONAL_SCOPES]
+                },
+                async (result: any) => {
+                    if (chrome.runtime.lastError) {
+                        const error = chrome.runtime.lastError.message || 'Failed to get auth token';
+                        console.error('Interactive login error:', error);
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false,
+                            error
+                        });
+                        reject(new Error(error));
+                        return;
+                    }
+
+                    const token = typeof result === 'string' ? result : result?.token;
+                    if (!token) {
+                        const error = 'No auth token received';
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false,
+                            error
+                        });
+                        reject(new Error(error));
+                        return;
+                    }
+
+                    try {
+                        const user = await this.getUserInfo(token);
+                        await this.cacheUser(user);
+                        this.updateState({
+                            isAuthenticated: true,
+                            user,
+                            loading: false,
+                            error: null
+                        });
+                        console.log('Interactive login successful');
+                        resolve(user);
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Login failed';
+                        this.updateState({
+                            isAuthenticated: false,
+                            user: null,
+                            loading: false,
+                            error: errorMessage
+                        });
+                        reject(error);
+                    }
+                }
+            );
+        });
+    }
+
     async forceReauth(): Promise<User> {
         this.updateState({ loading: true, error: null });
 
         try {
             console.log('Starting force re-authentication...');
 
-            // Step 1: Clear all cached tokens first
+            // Clear all cached tokens
             await new Promise<void>((resolve) => {
                 chrome.identity.clearAllCachedAuthTokens(() => resolve());
             });
 
-            // Step 2: Clear cached user data
+            // Clear cached user data
             await this.clearCachedUser();
 
-            // Step 3: Reset auth state
+            // Reset auth state
             this.updateState({
                 isAuthenticated: false,
                 user: null,
@@ -86,37 +281,30 @@ class ChromeAuthManager {
                 error: null
             });
 
-            // Step 4: Force revoke current token to ensure fresh consent
+            // Revoke current token if exists
             const currentToken = this.getCurrentToken();
             if (currentToken) {
                 try {
-                    await fetch(`https://oauth2.googleapis.com/revoke?token=${currentToken}`, {
-                        method: 'POST'
-                    });
-                    console.log('Token revoked successfully');
-                } catch (revokeError) {
-                    console.log('Token revoke failed (may be expected):', revokeError);
+                    await this.revokeToken(currentToken);
+                } catch (error) {
+                    console.warn('Token revocation failed:', error);
                 }
             }
 
-            // Step 5: Create a Chrome tab for OAuth consent
-            // This is the key fix - we need to open the OAuth URL manually
-            const user = await this.interactiveLoginWithNewTab();
+            // Clear validation cache
+            this.tokenValidationCache.clear();
 
-            // Step 6: Verify all required permissions after login
-            const [hasDrive, hasSheets, hasCalendar] = await Promise.all([
-                this.hasDriveFilePermission(),
-                this.hasSheetsPermission(),
-                this.hasCalendarWritePermission()
-            ]);
+            // Force interactive login with consent prompt
+            const user = await this.interactiveLoginWithConsent();
 
-            console.log('Post-reauth permissions:', { hasDrive, hasSheets, hasCalendar });
-
-            if (!hasDrive || !hasSheets) {
-                throw new Error('Failed to obtain required permissions (Drive & Sheets) after re-authentication');
+            // Verify permissions after re-auth
+            const permissions = await this.checkAllPermissions();
+            if (!permissions.allRequired) {
+                throw new Error('Required permissions not granted after re-authentication');
             }
 
             return user;
+
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Re-authentication failed';
             this.updateState({
@@ -129,213 +317,14 @@ class ChromeAuthManager {
         }
     }
 
-    async hasSheetsPermissionReal(): Promise<boolean> {
-        const token = this.getCurrentToken();
-        if (!token) return false;
-
-        try {
-            console.log('Testing real Sheets permissions...');
-
-            // 1. Check scopes in token first
-            const tokenInfoResponse = await fetch(
-                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
-            );
-
-            if (tokenInfoResponse.ok) {
-                const tokenInfo = await tokenInfoResponse.json();
-                const scopes = tokenInfo.scope || '';
-                console.log('Token scopes:', scopes);
-
-                const hasSheetsScope = scopes.includes('https://www.googleapis.com/auth/spreadsheets');
-                if (!hasSheetsScope) {
-                    console.log('Sheets scope not found in token');
-                    return false;
-                }
-            }
-
-            // 2. Test by accessing an existing public spreadsheet (read-only test)
-            // This is safer than creating and writing to a new spreadsheet
-            const readResponse = await fetch(
-                'https://sheets.googleapis.com/v4/spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms?includeGridData=false&fields=properties.title',
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-
-            if (!readResponse.ok) {
-                console.log('Cannot access Sheets API:', readResponse.status);
-                return false;
-            }
-
-            // 3. Test write permission by creating a simple test spreadsheet and immediately deleting it
-            const testSheetMetadata = {
-                name: `FlexBookmark_PermTest_${Date.now()}`,
-                mimeType: 'application/vnd.google-apps.spreadsheet'
-            };
-
-            const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(testSheetMetadata),
-            });
-
-            if (!createResponse.ok) {
-                console.log('Cannot create test spreadsheet:', createResponse.status);
-                return false;
-            }
-
-            const testSheet = await createResponse.json();
-            console.log('Test spreadsheet created:', testSheet.id);
-
-            // 4. Get the actual sheet information to find the correct sheet name
-            let canWrite = false;
-            try {
-                const sheetInfoResponse = await fetch(
-                    `https://sheets.googleapis.com/v4/spreadsheets/${testSheet.id}?fields=sheets.properties`,
-                    {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }
-                );
-
-                if (sheetInfoResponse.ok) {
-                    const sheetInfo = await sheetInfoResponse.json();
-                    const firstSheetName = sheetInfo.sheets?.[0]?.properties?.title || 'Sheet1';
-
-                    // Test write permission with the correct sheet name
-                    const testData = [['Test', 'Data']];
-                    const writeResponse = await fetch(
-                        `https://sheets.googleapis.com/v4/spreadsheets/${testSheet.id}/values/${firstSheetName}!A1:B1?valueInputOption=RAW`,
-                        {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ values: testData }),
-                        }
-                    );
-
-                    canWrite = writeResponse.ok;
-                    console.log('Write test result:', canWrite, writeResponse.status);
-                } else {
-                    // If we can't get sheet info, assume basic write permission exists since we created the sheet
-                    canWrite = true;
-                    console.log('Could not get sheet info, assuming write permission exists');
-                }
-            } catch (writeError) {
-                console.log('Write test failed:', writeError);
-                // Even if write test fails, if we can create spreadsheets, we likely have sufficient permissions
-                canWrite = true;
-            }
-
-            // 5. Clean up: delete the test spreadsheet
-            try {
-                await fetch(`https://www.googleapis.com/drive/v3/files/${testSheet.id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                console.log('Test spreadsheet deleted');
-            } catch (deleteError) {
-                console.warn('Failed to delete test spreadsheet:', deleteError);
-            }
-
-            console.log('Real Sheets permission test result:', canWrite);
-            return canWrite;
-
-        } catch (error) {
-            console.error('Error testing real Sheets permissions:', error);
-            return false;
-        }
-    }
-
-    // NEW: Interactive login that opens a new tab with OAuth consent
-    private async interactiveLoginWithNewTab(): Promise<User> {
-        return new Promise((resolve, reject) => {
-            // First try the standard interactive login
-            chrome.identity.getAuthToken(
-                {
-                    interactive: true,
-                    scopes: [
-                        'https://www.googleapis.com/auth/userinfo.email',
-                        'https://www.googleapis.com/auth/userinfo.profile',
-                        'https://www.googleapis.com/auth/drive.file',
-                        'https://www.googleapis.com/auth/spreadsheets',
-                        'https://www.googleapis.com/auth/calendar'
-                    ]
-                },
-                async (result: any) => {
-                    if (chrome.runtime.lastError) {
-                        console.log('Standard interactive login failed, trying launchWebAuthFlow...');
-
-                        // Fallback to manual OAuth flow
-                        try {
-                            const user = await this.launchWebAuthFlow();
-                            resolve(user);
-                        } catch (webAuthError) {
-                            reject(webAuthError);
-                        }
-                        return;
-                    }
-
-                    // Handle both possible return formats
-                    const token = typeof result === 'string' ? result : result?.token;
-
-                    if (!token) {
-                        reject(new Error('No auth token received'));
-                        return;
-                    }
-
-                    try {
-                        console.log('Got token from interactive login, getting user info...');
-                        const user = await this.getUserInfo(token);
-                        await this.cacheUser(user);
-
-                        this.updateState({
-                            isAuthenticated: true,
-                            user,
-                            loading: false,
-                            error: null
-                        });
-
-                        console.log('Interactive login successful');
-                        resolve(user);
-                    } catch (error) {
-                        reject(error);
-                    }
-                }
-            );
-        });
-    }
-
-    // NEW: Manual OAuth flow using launchWebAuthFlow
-    private async launchWebAuthFlow(): Promise<User> {
+    private async interactiveLoginWithConsent(): Promise<User> {
         const clientId = chrome.runtime.getManifest().oauth2?.client_id;
         if (!clientId) {
             throw new Error('OAuth2 client ID not found in manifest');
         }
 
-        const scopes = [
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/drive.file',
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/calendar'
-        ].join(' ');
-
-        const authUrl = `https://accounts.google.com/oauth/authorize?` +
-            `client_id=${clientId}&` +
-            `response_type=code&` +
-            `redirect_uri=${chrome.identity.getRedirectURL()}&` +
-            `scope=${encodeURIComponent(scopes)}&` +
-            `access_type=offline&` +
-            `prompt=consent`; // Force consent screen
+        const allScopes = [...this.REQUIRED_SCOPES, ...this.OPTIONAL_SCOPES];
+        const authUrl = this.buildOAuthUrl(clientId, allScopes, { prompt: 'consent' });
 
         return new Promise((resolve, reject) => {
             chrome.identity.launchWebAuthFlow(
@@ -355,22 +344,11 @@ class ChromeAuthManager {
                     }
 
                     try {
-                        // Extract authorization code from response URL
-                        const url = new URL(responseUrl);
-                        const code = url.searchParams.get('code');
-
-                        if (!code) {
-                            reject(new Error('No authorization code in response'));
-                            return;
-                        }
-
-                        // Exchange code for token
+                        const code = this.extractAuthCode(responseUrl);
                         const token = await this.exchangeCodeForToken(code, clientId);
-
-                        // Get user info
                         const user = await this.getUserInfo(token);
-                        await this.cacheUser(user);
 
+                        await this.cacheUser(user);
                         this.updateState({
                             isAuthenticated: true,
                             user,
@@ -387,203 +365,181 @@ class ChromeAuthManager {
         });
     }
 
-    // NEW: Exchange authorization code for access token
-    private async exchangeCodeForToken(code: string, clientId: string): Promise<string> {
-        const response = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                code,
-                client_id: clientId,
-                redirect_uri: chrome.identity.getRedirectURL(),
-                grant_type: 'authorization_code'
-            }).toString()
-        });
+    async logout(): Promise<void> {
+        this.updateState({ loading: true, error: null });
 
-        if (!response.ok) {
-            throw new Error('Failed to exchange code for token');
+        try {
+            const currentUser = this.authState.user;
+            if (currentUser?.accessToken) {
+                // Revoke token
+                await this.revokeToken(currentUser.accessToken);
+
+                // Remove cached token
+                await new Promise<void>((resolve) => {
+                    chrome.identity.removeCachedAuthToken(
+                        { token: currentUser.accessToken },
+                        () => resolve()
+                    );
+                });
+            }
+
+            // Clear all cached tokens
+            await new Promise<void>((resolve) => {
+                chrome.identity.clearAllCachedAuthTokens(() => resolve());
+            });
+
+            // Clear cached user data and validation cache
+            await this.clearCachedUser();
+            this.tokenValidationCache.clear();
+
+            this.updateState({
+                isAuthenticated: false,
+                user: null,
+                loading: false,
+                error: null
+            });
+
+            console.log('Logout completed successfully');
+        } catch (error) {
+            console.error('Logout error:', error);
+            this.updateState({
+                loading: false,
+                error: 'Failed to logout'
+            });
+            throw error;
         }
-
-        const data = await response.json();
-        return data.access_token;
     }
 
-    // NEW: Check if current token has spreadsheets permissions
-    async hasSheetsPermission(): Promise<boolean> {
-        const token = this.getCurrentToken();
-        if (!token) {
-            console.log('No token available for Sheets permission check');
-            return false;
+    // ========== TOKEN MANAGEMENT ==========
+
+    async validateToken(accessToken: string, useCache: boolean = true): Promise<TokenValidationResult> {
+        if (!accessToken) {
+            return {
+                isValid: false,
+                isExpired: true,
+                expiresAt: null,
+                hasRequiredScopes: false,
+                errors: ['No access token provided']
+            };
+        }
+
+        // Check cache
+        const cacheKey = accessToken.substring(0, 20);
+        if (useCache && this.tokenValidationCache.has(cacheKey)) {
+            const cached = this.tokenValidationCache.get(cacheKey)!;
+            if (Date.now() - cached.timestamp < this.CACHE_TTL) {
+                return cached.result;
+            }
         }
 
         try {
-            console.log('Checking Sheets permissions...');
-
-            // First, check token info for scopes
             const tokenInfoResponse = await fetch(
-                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
+                { headers: { 'Accept': 'application/json' } }
             );
 
-            if (tokenInfoResponse.ok) {
-                const tokenInfo = await tokenInfoResponse.json();
-                const scopes = tokenInfo.scope || '';
-                console.log('Token scopes:', scopes);
+            if (!tokenInfoResponse.ok) {
+                const result: TokenValidationResult = {
+                    isValid: false,
+                    isExpired: tokenInfoResponse.status === 400,
+                    expiresAt: null,
+                    hasRequiredScopes: false,
+                    errors: [`Token validation failed: ${tokenInfoResponse.status}`]
+                };
 
-                // Check if we have spreadsheets scope
-                const hasSheetsScope = scopes.includes('https://www.googleapis.com/auth/spreadsheets') ||
-                    scopes.includes('https://www.googleapis.com/auth/drive');
-
-                if (!hasSheetsScope) {
-                    console.log('Sheets scope not found in token');
-                    return false;
+                if (useCache) {
+                    this.tokenValidationCache.set(cacheKey, { result, timestamp: Date.now() });
                 }
-            } else {
-                console.log('Failed to get token info:', tokenInfoResponse.status);
-                return false;
+
+                return result;
             }
 
-            // Test actual Sheets API access - get spreadsheet metadata (lightweight call)
-            const sheetsResponse = await fetch(
-                'https://sheets.googleapis.com/v4/spreadsheets/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms?includeGridData=false&fields=properties.title',
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
+            const tokenInfo = await tokenInfoResponse.json();
+            const expiresIn = parseInt(tokenInfo.expires_in || '0');
+            const expiresAt = Date.now() + (expiresIn * 1000);
+            const isExpired = expiresIn <= 60; // Consider expired if less than 1 minute
+
+            const grantedScopes = (tokenInfo.scope || '').split(' ').filter(Boolean);
+            const hasRequiredScopes = this.REQUIRED_SCOPES.every(scope =>
+                grantedScopes.includes(scope)
             );
 
-            const hasAccess = sheetsResponse.ok || sheetsResponse.status === 403; // 403 means permission denied but API is accessible
-            console.log('Sheets API test result:', hasAccess, sheetsResponse.status);
+            const errors: string[] = [];
+            if (isExpired) errors.push('Token expired or expiring soon');
+            if (!hasRequiredScopes) errors.push('Missing required scopes');
 
-            if (!hasAccess && sheetsResponse.status !== 403) {
-                const errorText = await sheetsResponse.text();
-                console.log('Sheets API error:', errorText);
+            const result: TokenValidationResult = {
+                isValid: !isExpired && hasRequiredScopes,
+                isExpired,
+                expiresAt: isExpired ? null : expiresAt,
+                hasRequiredScopes,
+                errors
+            };
+
+            if (useCache) {
+                this.tokenValidationCache.set(cacheKey, { result, timestamp: Date.now() });
             }
 
-            return hasAccess;
+            return result;
 
         } catch (error) {
-            console.error('Error checking Sheets permissions:', error);
-            return false;
+            const result: TokenValidationResult = {
+                isValid: false,
+                isExpired: true,
+                expiresAt: null,
+                hasRequiredScopes: false,
+                errors: [error instanceof Error ? error.message : 'Token validation failed']
+            };
+
+            if (useCache) {
+                this.tokenValidationCache.set(cacheKey, { result, timestamp: Date.now() });
+            }
+
+            return result;
         }
     }
 
-    // IMPROVED: Check if current token has drive.file permissions
-    async hasDriveFilePermission(): Promise<boolean> {
-        const token = this.getCurrentToken();
-        if (!token) {
-            console.log('No token available for permission check');
-            return false;
+    async refreshToken(): Promise<string> {
+        if (!this.authState.isAuthenticated) {
+            throw new Error('Not authenticated');
         }
 
+        const currentToken = this.getCurrentToken();
+        if (currentToken) {
+            await new Promise<void>((resolve) => {
+                chrome.identity.removeCachedAuthToken({ token: currentToken }, () => resolve());
+            });
+        }
+
+        const user = await this.login();
+        return user.accessToken;
+    }
+
+    async updateToken(newToken: string): Promise<void> {
+        if (!this.authState.user) {
+            throw new Error('No authenticated user to update token for');
+        }
+
+        const updatedUser = { ...this.authState.user, accessToken: newToken };
+        await this.cacheUser(updatedUser);
+        this.updateState({ user: updatedUser });
+    }
+
+    private async revokeToken(token: string): Promise<boolean> {
         try {
-            console.log('Checking Drive permissions...');
-
-            // First, check token info for scopes
-            const tokenInfoResponse = await fetch(
-                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
-            );
-
-            if (tokenInfoResponse.ok) {
-                const tokenInfo = await tokenInfoResponse.json();
-                const scopes = tokenInfo.scope || '';
-                console.log('Token scopes:', scopes);
-
-                // Check if we have drive.file scope
-                const hasDriveScope = scopes.includes('https://www.googleapis.com/auth/drive.file') ||
-                    scopes.includes('https://www.googleapis.com/auth/drive');
-
-                if (!hasDriveScope) {
-                    console.log('Drive scope not found in token');
-                    return false;
-                }
-            } else {
-                console.log('Failed to get token info:', tokenInfoResponse.status);
-                return false;
-            }
-
-            // Test actual Drive API access
-            const driveResponse = await fetch(
-                'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id,name)',
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-
-            const hasAccess = driveResponse.ok;
-            console.log('Drive API test result:', hasAccess, driveResponse.status);
-
-            if (!hasAccess) {
-                const errorText = await driveResponse.text();
-                console.log('Drive API error:', errorText);
-            }
-
-            return hasAccess;
-
+            const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+                method: 'POST'
+            });
+            return response.ok;
         } catch (error) {
-            console.error('Error checking drive permissions:', error);
+            console.error('Token revocation failed:', error);
             return false;
         }
     }
 
-    // Check if current token has calendar write permissions
-    async hasCalendarWritePermission(): Promise<boolean> {
-        const token = this.getCurrentToken();
-        if (!token) return false;
+    // ========== PERMISSION CHECKING ==========
 
-        try {
-            // Test calendar write permission by making a minimal API call
-            const response = await fetch(
-                'https://www.googleapis.com/calendar/v3/users/me/calendarList',
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) return false;
-
-            // Check token info for scopes
-            const tokenInfoResponse = await fetch(
-                `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
-            );
-
-            if (tokenInfoResponse.ok) {
-                const tokenInfo = await tokenInfoResponse.json();
-                const scopes = tokenInfo.scope || '';
-
-                // Check if we have calendar write scope
-                return scopes.includes('https://www.googleapis.com/auth/calendar') ||
-                    scopes.includes('https://www.googleapis.com/auth/calendar.events');
-            }
-
-            return false;
-        } catch (error) {
-            console.error('Error checking calendar permissions:', error);
-            return false;
-        }
-    }
-
-    // NEW: Check all required permissions for HabitManager
-    // Replace the hasAllHabitManagerPermissions call in your chromeAuth.ts with this simpler version:
-
-    async hasAllHabitManagerPermissions(): Promise<{
-        hasDrive: boolean;
-        hasSheets: boolean;
-        hasCalendar: boolean;
-        allRequired: boolean;
-        folderStructureExists?: boolean;
-    }> {
+    async checkAllPermissions(): Promise<PermissionCheckResult> {
         const token = this.getCurrentToken();
         if (!token) {
             return {
@@ -595,8 +551,8 @@ class ChromeAuthManager {
             };
         }
 
-        // Check token scopes - this is the most reliable method
         try {
+            // Check token scopes
             const tokenInfoResponse = await fetch(
                 `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
             );
@@ -613,45 +569,29 @@ class ChromeAuthManager {
 
             const tokenInfo = await tokenInfoResponse.json();
             const scopes = tokenInfo.scope || '';
-            console.log('Token scopes for permission check:', scopes);
 
             const hasDrive = scopes.includes('https://www.googleapis.com/auth/drive.file') ||
                 scopes.includes('https://www.googleapis.com/auth/drive');
-
             const hasSheets = scopes.includes('https://www.googleapis.com/auth/spreadsheets');
+            const hasCalendar = scopes.includes('https://www.googleapis.com/auth/calendar');
 
-            const hasCalendar = scopes.includes('https://www.googleapis.com/auth/calendar') ||
-                scopes.includes('https://www.googleapis.com/auth/calendar.events');
+            // Test API access
+            const [driveAccess, sheetsAccess] = await Promise.all([
+                this.testDriveAccess(token),
+                this.testSheetsAccess(token)
+            ]);
 
-            // Quick folder structure check only if we have drive permissions
+            // Check folder structure if we have drive access
             let folderStructureExists = false;
-            if (hasDrive) {
-                try {
-                    const query = `name='FlexBookmark' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-                    const response = await fetch(
-                        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
-                        {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        }
-                    );
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        folderStructureExists = data.files && data.files.length > 0;
-                    }
-                } catch (error) {
-                    console.warn('Error checking folder structure:', error);
-                    // Don't fail the entire check for this
-                }
+            if (hasDrive && driveAccess) {
+                folderStructureExists = await this.checkFolderStructure(token);
             }
 
-            console.log('Permission check results:', { hasDrive, hasSheets, hasCalendar });
-
             return {
-                hasDrive,
-                hasSheets,
+                hasDrive: hasDrive && driveAccess,
+                hasSheets: hasSheets && sheetsAccess,
                 hasCalendar,
-                allRequired: hasDrive && hasSheets,
+                allRequired: hasDrive && driveAccess && hasSheets && sheetsAccess,
                 folderStructureExists
             };
 
@@ -667,234 +607,62 @@ class ChromeAuthManager {
         }
     }
 
-    // IMPROVED: Initialize - check for existing token
-    async initialize(): Promise<void> {
-        this.updateState({ loading: true, error: null });
-
+    private async testDriveAccess(token: string): Promise<boolean> {
         try {
-            console.log('Initializing auth...');
-
-            // Try to get cached user data
-            const cachedUser = await this.getCachedUser();
-            if (cachedUser) {
-                console.log('Found cached user, verifying token...');
-
-                // Verify token is still valid
-                const isValid = await this.verifyToken(cachedUser.accessToken);
-                if (isValid) {
-                    console.log('Token is valid, checking permissions...');
-
-                    this.updateState({
-                        isAuthenticated: true,
-                        user: cachedUser,
-                        loading: false
-                    });
-
-                    // Check permissions in background
-                    const permissions = await this.hasAllHabitManagerPermissions();
-                    console.log('Permissions check:', permissions);
-
-                    if (!permissions.allRequired) {
-                        console.warn('Current token lacks required permissions for HabitManager. Re-authentication may be needed.');
-                    }
-
-                    return;
-                } else {
-                    console.log('Token expired, clearing cache...');
-                    // Token expired, clear cache
-                    await this.clearCachedUser();
+            const response = await fetch(
+                'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)',
+                {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }
-            }
-
-            console.log('No valid cached token, attempting silent login...');
-            // Try silent authentication
-            await this.silentLogin();
-        } catch (error) {
-            console.error('Auth initialization error:', error);
-            this.updateState({
-                isAuthenticated: false,
-                user: null,
-                loading: false,
-                error: 'Failed to initialize authentication'
-            });
+            );
+            return response.ok;
+        } catch {
+            return false;
         }
     }
 
-    // Silent login (non-interactive)   
-    private async silentLogin(): Promise<void> {
-        return new Promise((resolve) => {
-            chrome.identity.getAuthToken(
-                { interactive: false },
-                async (result: any) => {
-
-                    if (chrome.runtime.lastError) {
-                        console.log('Silent login failed:', chrome.runtime.lastError.message);
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false
-                        });
-                        resolve();
-                        return;
-                    }
-
-                    // Handle both possible return formats
-                    const token = typeof result === 'string' ? result : result?.token;
-
-                    if (!token) {
-                        console.log('No token from silent login');
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false
-                        });
-                        resolve();
-                        return;
-                    }
-
-                    try {
-                        console.log('Got token from silent login, getting user info...');
-                        const user = await this.getUserInfo(token);
-                        await this.cacheUser(user);
-
-                        this.updateState({
-                            isAuthenticated: true,
-                            user,
-                            loading: false
-                        });
-
-                        console.log('Silent login successful');
-                        resolve();
-                    } catch (error) {
-                        console.error('Silent login error:', error);
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false
-                        });
-                        resolve();
-                    }
-                }
-            );
-        });
-    }
-
-    // Interactive login
-    async login(): Promise<User> {
-        this.updateState({ loading: true, error: null });
-
-        return new Promise((resolve, reject) => {
-            chrome.identity.getAuthToken(
-                { interactive: true },
-                async (result: any) => {
-
-                    if (chrome.runtime.lastError) {
-                        const error = chrome.runtime.lastError.message || 'Failed to get auth token';
-                        console.error('Interactive login error:', error);
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false,
-                            error
-                        });
-                        reject(new Error(error));
-                        return;
-                    }
-
-                    // Handle both possible return formats
-                    const token = typeof result === 'string' ? result : result?.token;
-
-                    if (!token) {
-                        const error = 'No auth token received';
-                        console.error('Interactive login error:', error);
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false,
-                            error
-                        });
-                        reject(new Error(error));
-                        return;
-                    }
-
-                    try {
-                        console.log('Got token from interactive login, getting user info...');
-                        const user = await this.getUserInfo(token);
-                        await this.cacheUser(user);
-                        this.updateState({
-                            isAuthenticated: true,
-                            user,
-                            loading: false,
-                            error: null
-                        });
-                        console.log('Interactive login successful');
-                        resolve(user);
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Login failed';
-                        console.error('Interactive login error:', errorMessage);
-                        this.updateState({
-                            isAuthenticated: false,
-                            user: null,
-                            loading: false,
-                            error: errorMessage
-                        });
-                        reject(error);
-                    }
-                }
-            );
-        });
-    }
-
-    // Logout
-    async logout(): Promise<void> {
-        this.updateState({ loading: true, error: null });
-
+    private async testSheetsAccess(token: string): Promise<boolean> {
         try {
-            const currentUser = this.authState.user;
-            if (currentUser?.accessToken) {
-                // Remove cached token
-                await new Promise<void>((resolve) => {
-                    chrome.identity.removeCachedAuthToken(
-                        { token: currentUser.accessToken },
-                        () => resolve()
-                    );
-                });
-            }
-
-            // Clear all cached tokens
-            await new Promise<void>((resolve) => {
-                chrome.identity.clearAllCachedAuthTokens(() => resolve());
-            });
-
-            // Clear cached user data
-            await this.clearCachedUser();
-
-            this.updateState({
-                isAuthenticated: false,
-                user: null,
-                loading: false,
-                error: null
-            });
-        } catch (error) {
-            console.error('Logout error:', error);
-            this.updateState({
-                loading: false,
-                error: 'Failed to logout'
-            });
-            throw error;
+            const response = await fetch(
+                'https://sheets.googleapis.com/v4/spreadsheets?pageSize=1',
+                {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }
+            );
+            return response.ok || response.status === 400; // 400 is expected for invalid spreadsheet ID
+        } catch {
+            return false;
         }
     }
 
-    // Get user info from Google API
+    private async checkFolderStructure(token: string): Promise<boolean> {
+        try {
+            const query = `name='FlexBookmark' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+            const response = await fetch(
+                `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+                {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }
+            );
+
+            if (!response.ok) return false;
+
+            const data = await response.json();
+            return data.files && data.files.length > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    // ========== UTILITY METHODS ==========
+
     private async getUserInfo(token: string): Promise<User> {
         const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!response.ok) {
-            throw new Error('Failed to get user info');
+            throw new Error(`Failed to get user info: ${response.status}`);
         }
 
         const data = await response.json();
@@ -907,22 +675,50 @@ class ChromeAuthManager {
         };
     }
 
-    // Verify token is still valid
-    private async verifyToken(token: string): Promise<boolean> {
-        try {
-            const response = await fetch('https://www.googleapis.com/oauth2/v2/tokeninfo', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            return response.ok;
-        } catch {
-            return false;
-        }
+    private buildOAuthUrl(clientId: string, scopes: string[], options: { prompt?: string } = {}): string {
+        const params = new URLSearchParams({
+            client_id: clientId,
+            response_type: 'code',
+            redirect_uri: chrome.identity.getRedirectURL(),
+            scope: scopes.join(' '),
+            access_type: 'offline',
+            prompt: options.prompt || 'select_account'
+        });
+
+        return `https://accounts.google.com/oauth/authorize?${params.toString()}`;
     }
 
-    // Cache user data
+    private extractAuthCode(responseUrl: string): string {
+        const url = new URL(responseUrl);
+        const code = url.searchParams.get('code');
+        if (!code) {
+            throw new Error('No authorization code in response');
+        }
+        return code;
+    }
+
+    private async exchangeCodeForToken(code: string, clientId: string): Promise<string> {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code,
+                client_id: clientId,
+                redirect_uri: chrome.identity.getRedirectURL(),
+                grant_type: 'authorization_code'
+            }).toString()
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to exchange code for token: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.access_token;
+    }
+
+    // ========== CACHING METHODS ==========
+
     private async cacheUser(user: User): Promise<void> {
         return new Promise((resolve) => {
             chrome.storage.local.set({
@@ -932,14 +728,12 @@ class ChromeAuthManager {
         });
     }
 
-    // Get cached user data
     private async getCachedUser(): Promise<User | null> {
         return new Promise((resolve) => {
             chrome.storage.local.get(['flexbookmark_user', 'flexbookmark_auth_timestamp'], (result) => {
                 if (result.flexbookmark_user && result.flexbookmark_auth_timestamp) {
-                    // Check if cache is not too old (24 hours)
                     const cacheAge = Date.now() - result.flexbookmark_auth_timestamp;
-                    if (cacheAge < 24 * 60 * 60 * 1000) {
+                    if (cacheAge < 24 * 60 * 60 * 1000) { // 24 hours
                         resolve(result.flexbookmark_user);
                         return;
                     }
@@ -949,35 +743,26 @@ class ChromeAuthManager {
         });
     }
 
-    // Clear cached user data
     private async clearCachedUser(): Promise<void> {
         return new Promise((resolve) => {
             chrome.storage.local.remove(['flexbookmark_user', 'flexbookmark_auth_timestamp'], () => resolve());
         });
     }
 
-    // Get current access token
-    getCurrentToken(): string | null {
-        return this.authState.user?.accessToken || null;
+    // ========== DEBUG METHODS ==========
+
+    getDebugInfo(): any {
+        return {
+            authState: this.authState,
+            cacheSize: this.tokenValidationCache.size,
+            requiredScopes: this.REQUIRED_SCOPES,
+            optionalScopes: this.OPTIONAL_SCOPES
+        };
     }
 
-    // Refresh token
-    async refreshToken(): Promise<string> {
-        if (!this.authState.isAuthenticated) {
-            throw new Error('Not authenticated');
-        }
-
-        const currentToken = this.getCurrentToken();
-        if (currentToken) {
-            // Remove old token
-            await new Promise<void>((resolve) => {
-                chrome.identity.removeCachedAuthToken({ token: currentToken }, () => resolve());
-            });
-        }
-
-        // Get new token
-        const user = await this.login();
-        return user.accessToken;
+    clearAllCaches(): void {
+        this.tokenValidationCache.clear();
+        console.log('All caches cleared');
     }
 }
 

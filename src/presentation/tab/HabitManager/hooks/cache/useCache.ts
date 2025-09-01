@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { CacheManager } from '../../utils/cache/CacheManager';
-import { CacheUtils } from '../../utils/cache/CacheUtils';
+import { HabitCacheUtils } from '../../utils/cache/HabitCacheUtils';
 
 export const useCache = () => {
     const cacheManager = CacheManager.getInstance();
@@ -22,7 +22,7 @@ export const useCache = () => {
         fallbackFn: () => Promise<T>,
         ttl: number
     ): Promise<T> => {
-        return CacheUtils.getCacheWithFallback(key, fallbackFn, ttl);
+        return HabitCacheUtils.getCacheWithFallback(key, fallbackFn, ttl);
     }, []);
 
     const clearCache = useCallback(async (): Promise<void> => {
@@ -34,7 +34,7 @@ export const useCache = () => {
         getCache,
         getCacheWithFallback,
         clearCache,
-        setMultipleCache: CacheUtils.setMultipleCache,
-        getMultipleCache: CacheUtils.getMultipleCache
+        setMultipleCache: HabitCacheUtils.setMultipleCache,
+        getMultipleCache: HabitCacheUtils.getMultipleCache
     }), [setCache, getCache, getCacheWithFallback, clearCache]);
 };
