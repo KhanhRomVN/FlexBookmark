@@ -1,20 +1,18 @@
 // src/presentation/tab/HabitManager/hooks/auth/useAuth.ts
-// Fixed version with proper state synchronization
+// Fixed version with proper validation logic
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import ChromeAuthManager, { AuthState, PermissionCheckResult } from '../../../../../utils/chromeAuth';
-import { AuthErrorUtils } from '../../utils/auth/AuthErrorUtils';
 
 // ========== TYPE DEFINITIONS ==========
 
 export interface EnhancedAuthState extends AuthState {
     validationStatus: ValidationStatus;
     permissionStatus: PermissionCheckResult;
-    isValidating: boolean;
     canProceed: boolean;
-    tokenRefreshInProgress: boolean;
-    lastTokenRefresh: number | null;
     lastValidation: number | null;
+    isValidating: boolean;
+    tokenRefreshInProgress: boolean;
 }
 
 export interface ValidationStatus {
@@ -24,8 +22,8 @@ export interface ValidationStatus {
     needsReauth: boolean;
     expiresAt: number | null;
     errors: string[];
-    validationInProgress: boolean;
     lastCheck: number | null;
+    validationInProgress: boolean;
 }
 
 export interface AuthOperationResult {
@@ -35,27 +33,16 @@ export interface AuthOperationResult {
     needsPermissions?: boolean;
 }
 
-// ========== CONSTANTS ==========
-
-const VALIDATION_INTERVALS = {
-    PERIODIC: 5 * 60 * 1000, // 5 minutes
-    TOKEN_EXPIRY_BUFFER: 10 * 60 * 1000, // 10 minutes
-    PERMISSION_CHECK: 15 * 60 * 1000, // 15 minutes
-} as const;
-
 // ========== MAIN HOOK ==========
 
 export const useAuth = () => {
     const authManager = ChromeAuthManager.getInstance();
-    const initializationRef = useRef<Promise<void> | null>(null);
+    const initPromiseRef = useRef<Promise<void> | null>(null);
     const hasInitialized = useRef<boolean>(false);
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const periodicValidationRef = useRef<NodeJS.Timeout | null>(null);
-    const permissionCheckRef = useRef<NodeJS.Timeout | null>(null);
 
-    // ========== STATE MANAGEMENT ==========
-
-    const [enhancedAuthState, setEnhancedAuthState] = useState<EnhancedAuthState>({
+    // ========== ENHANCED STATE ==========
+    const [authState, setAuthState] = useState<EnhancedAuthState>({
         isAuthenticated: false,
         user: null,
         loading: true,
@@ -67,8 +54,8 @@ export const useAuth = () => {
             needsReauth: false,
             expiresAt: null,
             errors: [],
-            validationInProgress: false,
-            lastCheck: null
+            lastCheck: null,
+            validationInProgress: false
         },
         permissionStatus: {
             hasDrive: false,
@@ -76,467 +63,155 @@ export const useAuth = () => {
             hasCalendar: false,
             allRequired: false
         },
-        isValidating: false,
         canProceed: false,
-        tokenRefreshInProgress: false,
-        lastTokenRefresh: null,
-        lastValidation: null
+        lastValidation: null,
+        isValidating: false,
+        tokenRefreshInProgress: false
     });
 
-    // ========== UPDATE HELPERS ==========
-
-    const updateState = useCallback((updates: Partial<EnhancedAuthState>) => {
-        setEnhancedAuthState(prev => {
+    // ========== UPDATE FUNCTIONS ==========
+    const updateAuthState = useCallback((updates: Partial<EnhancedAuthState>) => {
+        setAuthState(prev => {
             const newState = { ...prev, ...updates };
-            console.log('🔄 Auth state update:', {
-                updates, newState: {
-                    isAuthenticated: newState.isAuthenticated,
-                    hasUser: !!newState.user,
-                    hasToken: !!newState.user?.accessToken,
-                    validationValid: newState.validationStatus.isValid
-                }
+            console.log('Auth state updated:', {
+                isAuthenticated: newState.isAuthenticated,
+                hasUser: !!newState.user,
+                hasToken: !!newState.user?.accessToken,
+                tokenLength: newState.user?.accessToken?.length,
+                canProceed: newState.canProceed,
+                isValidating: newState.isValidating
             });
             return newState;
         });
     }, []);
 
     const updateValidationStatus = useCallback((updates: Partial<ValidationStatus>) => {
-        setEnhancedAuthState(prev => ({
+        setAuthState(prev => ({
             ...prev,
             validationStatus: { ...prev.validationStatus, ...updates }
         }));
     }, []);
 
-    const updatePermissionStatus = useCallback((updates: Partial<PermissionCheckResult>) => {
-        setEnhancedAuthState(prev => ({
-            ...prev,
-            permissionStatus: { ...prev.permissionStatus, ...updates }
-        }));
-    }, []);
-
-    // ========== VALIDATION FUNCTIONS ==========
-
-    const validateAuthentication = useCallback(async (forceValidation: boolean = false): Promise<ValidationStatus> => {
-        console.log('🔍 validateAuthentication: Starting...', {
-            forceValidation,
-            validationInProgress: enhancedAuthState.validationStatus.validationInProgress,
-            isAuthenticated: enhancedAuthState.isAuthenticated,
-            hasUser: !!enhancedAuthState.user,
-            hasAccessToken: !!enhancedAuthState.user?.accessToken,
-            lastValidation: enhancedAuthState.validationStatus.lastCheck
+    // ========== FIXED VALIDATION FUNCTION ==========
+    const validateAuthentication = useCallback(async (forceValidation: boolean = false): Promise<boolean> => {
+        console.log('🔍 Starting validation check...', {
+            forceValidation
         });
 
-        if (enhancedAuthState.validationStatus.validationInProgress && !forceValidation) {
-            console.log('🔄 validateAuthentication: Already in progress, returning existing status');
-            return enhancedAuthState.validationStatus;
+        // Lấy dữ liệu mới nhất từ authManager
+        const currentUser = authManager.getCurrentUser();
+        const currentToken = currentUser?.accessToken;
+        const isAuthenticated = authManager.isAuthenticated;
+        const now = Date.now();
+
+        // Kiểm tra điều kiện cơ bản
+        if (!isAuthenticated || !currentUser || !currentToken || currentToken.length < 10) {
+            console.log('❌ Authentication requirements not met');
+            updateValidationStatus({
+                isValid: false,
+                hasValidToken: false,
+                hasRequiredScopes: false,
+                needsReauth: !isAuthenticated,
+                errors: ['User not authenticated or no valid access token'],
+                lastCheck: now,
+                validationInProgress: false
+            });
+            updateAuthState({ canProceed: false, isValidating: false });
+            return false;
         }
 
-        const lastValidation = enhancedAuthState.validationStatus.lastCheck;
-        if (!forceValidation && lastValidation && (Date.now() - lastValidation < 60000)) {
-            console.log('⏳ validateAuthentication: Recent validation exists, skipping');
-            return enhancedAuthState.validationStatus;
-        }
-
-        console.log('🏁 validateAuthentication: Starting comprehensive validation...');
-
+        // Bắt đầu validation nâng cao
         updateValidationStatus({ validationInProgress: true });
-        updateState({ isValidating: true });
+        updateAuthState({ isValidating: true });
 
         try {
-            // CRITICAL FIX: Get fresh auth state from manager
-            const currentAuthState = {
-                isAuthenticated: authManager.isAuthenticated,
-                user: authManager.getCurrentUser()
-            };
+            // Step 1: Validate token
+            console.log('🔍 Step 1: Validating token...');
+            const tokenValidation = await authManager.validateToken(currentToken);
+            console.log('🔍 Token validation result:', tokenValidation);
 
-            console.log('🔍 validateAuthentication: Fresh auth state from manager:', currentAuthState);
-
-            // Update state with fresh values if different
-            if (currentAuthState.isAuthenticated !== enhancedAuthState.isAuthenticated ||
-                currentAuthState.user?.accessToken !== enhancedAuthState.user?.accessToken) {
-                console.log('🔄 validateAuthentication: Syncing state with auth manager');
-                updateState({
-                    isAuthenticated: currentAuthState.isAuthenticated,
-                    user: currentAuthState.user
-                });
-            }
-
-            if (!currentAuthState.isAuthenticated || !currentAuthState.user?.accessToken) {
-                console.log('❌ validateAuthentication: No auth or token');
-                const status: ValidationStatus = {
+            if (!tokenValidation.isValid) {
+                console.log('❌ Token validation failed');
+                updateValidationStatus({
                     isValid: false,
                     hasValidToken: false,
                     hasRequiredScopes: false,
-                    needsReauth: !currentAuthState.isAuthenticated,
+                    needsReauth: true,
                     expiresAt: null,
-                    errors: ['User not authenticated or no access token'],
-                    validationInProgress: false,
-                    lastCheck: Date.now()
-                };
-
-                updateValidationStatus(status);
-                updateState({ isValidating: false, canProceed: false });
-                console.log('❌ validateAuthentication: Completed with no auth', status);
-                return status;
+                    errors: tokenValidation.errors,
+                    lastCheck: now,
+                    validationInProgress: false
+                });
+                updateAuthState({
+                    canProceed: false,
+                    isValidating: false,
+                    permissionStatus: {
+                        hasDrive: false,
+                        hasSheets: false,
+                        hasCalendar: false,
+                        allRequired: false
+                    }
+                });
+                return false;
             }
 
-            console.log('🔐 validateAuthentication: Validating token...');
-            // Validate token
-            const tokenValidation = await authManager.validateToken(currentAuthState.user.accessToken);
-            console.log('🔍 validateAuthentication: Token validation result', tokenValidation);
+            // Step 2: Check permissions
+            console.log('🔍 Step 2: Checking permissions...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // optional delay
+            const permissions = await authManager.checkAllPermissions(currentToken);
+            console.log('🔍 Permission check result:', permissions);
 
-            console.log('🔑 validateAuthentication: Checking permissions...');
-            // Check permissions
-            const permissions = await authManager.checkAllPermissions();
-            console.log('🔍 validateAuthentication: Permission check result', permissions);
-            updatePermissionStatus(permissions);
+            const isValid = tokenValidation.isValid && permissions.allRequired;
 
-            const status: ValidationStatus = {
-                isValid: tokenValidation.isValid && permissions.allRequired,
+            const status = {
+                isValid,
                 hasValidToken: tokenValidation.isValid,
-                hasRequiredScopes: tokenValidation.hasRequiredScopes && permissions.allRequired,
-                needsReauth: tokenValidation.isExpired || !permissions.allRequired,
+                hasRequiredScopes: permissions.allRequired,
+                needsReauth: !isValid,
                 expiresAt: tokenValidation.expiresAt,
-                errors: tokenValidation.errors,
-                validationInProgress: false,
-                lastCheck: Date.now()
+                errors: isValid ? [] : [
+                    ...tokenValidation.errors,
+                    ...(permissions.allRequired ? [] : ['Missing required permissions'])
+                ],
+                lastCheck: now,
+                validationInProgress: false
             };
 
-            console.log('📊 validateAuthentication: Final status', status);
-
             updateValidationStatus(status);
-            updateState({
+            updateAuthState({
                 isValidating: false,
-                canProceed: status.isValid && permissions.allRequired,
-                lastValidation: Date.now()
+                canProceed: isValid,
+                permissionStatus: permissions,
+                lastValidation: now
             });
 
-            if (status.expiresAt) {
-                console.log('⏰ validateAuthentication: Scheduling token validation');
-                scheduleTokenValidation(status.expiresAt);
-            }
+            console.log(`🎯 Validation completed: ${isValid ? 'SUCCESS' : 'FAILED'}`, {
+                hasValidToken: status.hasValidToken,
+                hasRequiredScopes: status.hasRequiredScopes,
+                canProceed: isValid,
+                permissions
+            });
 
-            console.log('✅ validateAuthentication: Completed successfully');
-            return status;
+            return isValid;
 
         } catch (error) {
-            console.error('❌ validateAuthentication: Failed with error:', error);
+            console.error('💥 Validation failed with error:', error);
 
-            const status: ValidationStatus = {
+            const status = {
                 isValid: false,
                 hasValidToken: false,
                 hasRequiredScopes: false,
                 needsReauth: true,
                 expiresAt: null,
                 errors: [error instanceof Error ? error.message : 'Validation failed'],
-                validationInProgress: false,
-                lastCheck: Date.now()
+                lastCheck: now,
+                validationInProgress: false
             };
 
             updateValidationStatus(status);
-            updateState({ isValidating: false, canProceed: false });
-            console.log('❌ validateAuthentication: Completed with error', status);
-            return status;
-        }
-    }, [
-        enhancedAuthState.isAuthenticated,
-        enhancedAuthState.user?.accessToken,
-        enhancedAuthState.validationStatus,
-        authManager,
-        updateValidationStatus,
-        updateState,
-        updatePermissionStatus
-    ]);
-
-    // ========== TOKEN MANAGEMENT ==========
-
-    const refreshAccessToken = useCallback(async (): Promise<AuthOperationResult> => {
-        if (enhancedAuthState.tokenRefreshInProgress) {
-            return { success: false, error: 'Token refresh already in progress' };
-        }
-
-        console.log('Starting access token refresh...');
-        updateState({ tokenRefreshInProgress: true });
-
-        try {
-            // Use auth manager to refresh token
-            const success = await authManager.refreshToken();
-
-            if (success) {
-                // Get fresh auth state after refresh
-                const freshAuthState = {
-                    isAuthenticated: authManager.isAuthenticated,
-                    user: authManager.getCurrentUser()
-                };
-
-                updateState({
-                    ...freshAuthState,
-                    tokenRefreshInProgress: false,
-                    lastTokenRefresh: Date.now()
-                });
-
-                // Re-validate after refresh
-                await validateAuthentication(true);
-
-                return { success: true };
-            } else {
-                throw new Error('Token refresh failed');
-            }
-
-        } catch (error) {
-            console.error('Token refresh failed:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Token refresh failed';
-
-            updateState({ tokenRefreshInProgress: false });
-
-            return {
-                success: false,
-                error: errorMessage,
-                needsReauth: AuthErrorUtils.isAuthError(error)
-            };
-        }
-    }, [enhancedAuthState.tokenRefreshInProgress, authManager, updateState, validateAuthentication]);
-
-    const shouldRefreshToken = useCallback((): boolean => {
-        const { expiresAt } = enhancedAuthState.validationStatus;
-        if (!expiresAt) return false;
-
-        const timeUntilExpiry = expiresAt - Date.now();
-        return timeUntilExpiry <= VALIDATION_INTERVALS.TOKEN_EXPIRY_BUFFER;
-    }, [enhancedAuthState.validationStatus.expiresAt]);
-
-    // ========== SCHEDULING ==========
-
-    const scheduleTokenValidation = useCallback((expiresAt: number) => {
-        if (validationTimeoutRef.current) {
-            clearTimeout(validationTimeoutRef.current);
-        }
-
-        const timeUntilExpiry = expiresAt - Date.now();
-        const validationDelay = Math.max(60000, timeUntilExpiry - VALIDATION_INTERVALS.TOKEN_EXPIRY_BUFFER);
-
-        validationTimeoutRef.current = setTimeout(() => {
-            if (enhancedAuthState.isAuthenticated) {
-                console.log('Scheduled token validation triggered');
-                validateAuthentication(true);
-            }
-        }, validationDelay);
-
-        console.log(`Scheduled token validation in ${Math.round(validationDelay / 1000)} seconds`);
-    }, [enhancedAuthState.isAuthenticated, validateAuthentication]);
-
-    const startPeriodicValidation = useCallback(() => {
-        if (periodicValidationRef.current) {
-            clearTimeout(periodicValidationRef.current);
-        }
-
-        periodicValidationRef.current = setTimeout(() => {
-            if (enhancedAuthState.isAuthenticated) {
-                console.log('Periodic validation triggered');
-                validateAuthentication(false);
-                startPeriodicValidation(); // Reschedule
-            }
-        }, VALIDATION_INTERVALS.PERIODIC);
-
-        console.log('Started periodic auth validation');
-    }, [enhancedAuthState.isAuthenticated, validateAuthentication]);
-
-    const startPeriodicPermissionCheck = useCallback(() => {
-        if (permissionCheckRef.current) {
-            clearTimeout(permissionCheckRef.current);
-        }
-
-        permissionCheckRef.current = setTimeout(async () => {
-            if (enhancedAuthState.isAuthenticated) {
-                console.log('Periodic permission check triggered');
-                const permissions = await authManager.checkAllPermissions();
-                updatePermissionStatus(permissions);
-                startPeriodicPermissionCheck(); // Reschedule
-            }
-        }, VALIDATION_INTERVALS.PERMISSION_CHECK);
-    }, [enhancedAuthState.isAuthenticated, authManager, updatePermissionStatus]);
-
-    const clearAllTimers = useCallback(() => {
-        if (validationTimeoutRef.current) {
-            clearTimeout(validationTimeoutRef.current);
-            validationTimeoutRef.current = null;
-        }
-        if (periodicValidationRef.current) {
-            clearTimeout(periodicValidationRef.current);
-            periodicValidationRef.current = null;
-        }
-        if (permissionCheckRef.current) {
-            clearTimeout(permissionCheckRef.current);
-            permissionCheckRef.current = null;
-        }
-        console.log('All auth timers cleared');
-    }, []);
-
-    // ========== INITIALIZATION ==========
-
-    const initializeAuth = useCallback(async (): Promise<void> => {
-        if (initializationRef.current) {
-            return initializationRef.current;
-        }
-
-        if (hasInitialized.current) {
-            return;
-        }
-
-        console.log('Initializing enhanced auth system...');
-
-        initializationRef.current = (async () => {
-            try {
-                updateState({ loading: true, error: null });
-
-                await authManager.initialize();
-
-                // Get fresh auth state immediately after initialization
-                const freshAuthState = {
-                    isAuthenticated: authManager.isAuthenticated,
-                    user: authManager.getCurrentUser()
-                };
-
-                console.log('🔄 Auth initialization - fresh state:', freshAuthState);
-
-                updateState({
-                    ...freshAuthState,
-                    loading: false,
-                    error: null
-                });
-
-                if (freshAuthState.isAuthenticated && freshAuthState.user?.accessToken) {
-                    console.log('User authenticated, starting validation...');
-                    await validateAuthentication(true);
-
-                    // Start periodic checks only if authenticated
-                    startPeriodicValidation();
-                    startPeriodicPermissionCheck();
-
-                    hasInitialized.current = true;
-                } else {
-                    console.log('User not authenticated');
-                    updateValidationStatus({
-                        isValid: false,
-                        hasValidToken: false,
-                        hasRequiredScopes: false,
-                        needsReauth: false,
-                        expiresAt: null,
-                        errors: ['User not authenticated'],
-                        validationInProgress: false,
-                        lastCheck: Date.now()
-                    });
-                    updateState({ canProceed: false });
-                }
-
-            } catch (error) {
-                console.error('Auth initialization failed:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Auth initialization failed';
-
-                updateState({
-                    loading: false,
-                    error: errorMessage,
-                    canProceed: false
-                });
-            } finally {
-                initializationRef.current = null;
-            }
-        })();
-
-        return initializationRef.current;
-    }, [authManager, updateState, updateValidationStatus, validateAuthentication, startPeriodicValidation, startPeriodicPermissionCheck]);
-
-    // ========== AUTHENTICATION ACTIONS ==========
-
-    const handleLogin = useCallback(async (): Promise<AuthOperationResult> => {
-        try {
-            updateState({ loading: true, error: null });
-
-            console.log('Starting login process...');
-            const success = await authManager.login();
-
-            if (success) {
-                // Get fresh auth state after login
-                const freshAuthState = {
-                    isAuthenticated: authManager.isAuthenticated,
-                    user: authManager.getCurrentUser()
-                };
-
-                console.log('Login successful, fresh state:', freshAuthState);
-
-                updateState({
-                    ...freshAuthState,
-                    loading: false
-                });
-
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Brief delay for state sync
-
-                const validationResult = await validateAuthentication(true);
-
-                if (!validationResult.isValid) {
-                    return {
-                        success: false,
-                        error: `Login validation failed: ${validationResult.errors.join(', ')}`,
-                        needsReauth: validationResult.needsReauth
-                    };
-                }
-
-                startPeriodicValidation();
-                startPeriodicPermissionCheck();
-
-                console.log('Login completed successfully');
-                return { success: true };
-            } else {
-                throw new Error('Login failed');
-            }
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Login failed';
-            console.error('Login failed:', errorMessage);
-            updateState({ error: errorMessage, loading: false });
-
-            return {
-                success: false,
-                error: errorMessage,
-                needsReauth: AuthErrorUtils.isAuthError(error)
-            };
-        }
-    }, [authManager, validateAuthentication, updateState, startPeriodicValidation, startPeriodicPermissionCheck]);
-
-    const handleLogout = useCallback(async (): Promise<AuthOperationResult> => {
-        try {
-            updateState({ loading: true, error: null });
-            console.log('Starting logout process...');
-
-            clearAllTimers();
-            await authManager.logout();
-
-            console.log('Logout completed successfully');
-            return { success: true };
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Logout failed';
-            console.error('Logout failed:', errorMessage);
-            updateState({ error: errorMessage });
-            return { success: false, error: errorMessage };
-        } finally {
-            updateState({
-                loading: false,
-                isAuthenticated: false,
-                user: null,
+            updateAuthState({
+                isValidating: false,
                 canProceed: false,
-                tokenRefreshInProgress: false,
-                lastTokenRefresh: null,
-                validationStatus: {
-                    isValid: false,
-                    hasValidToken: false,
-                    hasRequiredScopes: false,
-                    needsReauth: false,
-                    expiresAt: null,
-                    errors: [],
-                    validationInProgress: false,
-                    lastCheck: null
-                },
                 permissionStatus: {
                     hasDrive: false,
                     hasSheets: false,
@@ -545,224 +220,381 @@ export const useAuth = () => {
                 }
             });
 
-            hasInitialized.current = false;
+            return false;
         }
-    }, [authManager, clearAllTimers, updateState]);
+    }, [authManager, updateValidationStatus, updateAuthState]);
+
+
+    // ========== INITIALIZATION ==========
+    const initializeAuth = useCallback(async (): Promise<void> => {
+        if (hasInitialized.current || initPromiseRef.current) {
+            return initPromiseRef.current || Promise.resolve();
+        }
+
+        console.log('🚀 Initializing auth system...');
+        hasInitialized.current = true;
+
+        initPromiseRef.current = (async () => {
+            try {
+                updateAuthState({ loading: true, error: null });
+
+                // Initialize auth manager
+                await authManager.initialize();
+
+                // Get initial state
+                const isAuthenticated = authManager.isAuthenticated;
+                const user = authManager.getCurrentUser();
+
+                console.log('📊 Initial auth state:', {
+                    isAuthenticated,
+                    hasUser: !!user,
+                    hasToken: !!user?.accessToken,
+                    tokenLength: user?.accessToken?.length
+                });
+
+                updateAuthState({
+                    isAuthenticated,
+                    user,
+                    loading: false
+                });
+
+                // Validate if authenticated - with longer delay
+                if (isAuthenticated && user?.accessToken) {
+                    console.log('⏰ Scheduling validation in 3 seconds...');
+                    setTimeout(() => {
+                        console.log('🔄 Executing scheduled validation...');
+                        validateAuthentication(true);
+                    }, 3000); // Increased delay
+                }
+
+            } catch (error) {
+                console.error('💥 Auth initialization failed:', error);
+                updateAuthState({
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Initialization failed'
+                });
+            }
+        })();
+
+        return initPromiseRef.current;
+    }, [authManager, updateAuthState, validateAuthentication]);
+
+    // ========== AUTH ACTIONS ==========
+    const handleLogin = useCallback(async (): Promise<AuthOperationResult> => {
+        try {
+            updateAuthState({ loading: true, error: null });
+
+            const success = await authManager.login();
+
+            if (success) {
+                const user = authManager.getCurrentUser();
+
+                // Wait a bit for permissions to propagate
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Validate permissions
+                const permissions = await authManager.checkAllPermissions();
+
+                if (!permissions.allRequired) {
+                    console.warn('Missing required permissions after login:', permissions);
+                    return {
+                        success: false,
+                        error: 'Required permissions not granted. Please ensure you grant Drive and Sheets access.',
+                        needsPermissions: true
+                    };
+                }
+
+                updateAuthState({
+                    isAuthenticated: true,
+                    user,
+                    loading: false,
+                    error: null
+                });
+
+                return { success: true };
+            } else {
+                throw new Error('Login failed');
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Login failed';
+            console.error('💥 Login error:', error);
+            updateAuthState({
+                loading: false,
+                error: errorMessage,
+                isAuthenticated: false,
+                user: null
+            });
+
+            return {
+                success: false,
+                error: errorMessage
+            };
+        }
+    }, [authManager, updateAuthState]);
+
+    const handleLogout = useCallback(async (): Promise<AuthOperationResult> => {
+        try {
+            updateAuthState({ loading: true });
+
+            await authManager.logout();
+
+            // Reset state completely
+            setAuthState({
+                isAuthenticated: false,
+                user: null,
+                loading: false,
+                error: null,
+                validationStatus: {
+                    isValid: false,
+                    hasValidToken: false,
+                    hasRequiredScopes: false,
+                    needsReauth: false,
+                    expiresAt: null,
+                    errors: [],
+                    lastCheck: null,
+                    validationInProgress: false
+                },
+                permissionStatus: {
+                    hasDrive: false,
+                    hasSheets: false,
+                    hasCalendar: false,
+                    allRequired: false
+                },
+                canProceed: false,
+                lastValidation: null,
+                isValidating: false,
+                tokenRefreshInProgress: false
+            });
+
+            // Clear timeouts
+            if (validationTimeoutRef.current) {
+                clearTimeout(validationTimeoutRef.current);
+                validationTimeoutRef.current = null;
+            }
+
+            hasInitialized.current = false;
+            initPromiseRef.current = null;
+
+            return { success: true };
+
+        } catch (error) {
+            updateAuthState({ loading: false });
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Logout failed'
+            };
+        }
+    }, [authManager]);
 
     const handleForceReauth = useCallback(async (): Promise<AuthOperationResult> => {
         try {
-            updateState({ loading: true, error: null });
-            console.log('Starting force reauth process...');
-
-            clearAllTimers();
+            updateAuthState({ loading: true, error: null });
 
             const success = await authManager.forceReauth();
 
             if (success) {
-                // Get fresh auth state after reauth
-                const freshAuthState = {
-                    isAuthenticated: authManager.isAuthenticated,
-                    user: authManager.getCurrentUser()
-                };
+                const user = authManager.getCurrentUser();
+                console.log('✅ Force reauth successful, updating state...');
 
-                console.log('Force reauth successful, fresh state:', freshAuthState);
-
-                updateState({
-                    ...freshAuthState,
-                    loading: false
+                updateAuthState({
+                    isAuthenticated: true,
+                    user,
+                    loading: false,
+                    error: null
                 });
 
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Allow time for state sync
+                // Validate with delay
+                setTimeout(async () => {
+                    console.log('🔄 Starting post-reauth validation...');
+                    const isValid = await validateAuthentication(true);
 
-                const validationResult = await validateAuthentication(true);
-
-                if (!validationResult.isValid) {
                     return {
-                        success: false,
-                        error: `Reauth validation failed: ${validationResult.errors.join(', ')}`,
-                        needsPermissions: !enhancedAuthState.permissionStatus.allRequired
+                        success: isValid,
+                        needsPermissions: !authState.permissionStatus.allRequired
                     };
-                }
+                }, 3000); // Increased delay
 
-                startPeriodicValidation();
-                startPeriodicPermissionCheck();
-
-                console.log('Force reauth completed successfully');
                 return { success: true };
             } else {
-                throw new Error('Force reauth failed');
+                throw new Error('Reauth failed');
             }
 
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Re-authentication failed';
-            console.error('Force reauth failed:', errorMessage);
-            updateState({ error: errorMessage, loading: false });
+            const errorMessage = error instanceof Error ? error.message : 'Reauth failed';
+            console.error('💥 Reauth error:', error);
+            updateAuthState({
+                loading: false,
+                error: errorMessage
+            });
 
             return {
                 success: false,
-                error: errorMessage,
-                needsPermissions: errorMessage.includes('permission')
+                error: errorMessage
             };
         }
-    }, [authManager, validateAuthentication, updateState, clearAllTimers, startPeriodicValidation, startPeriodicPermissionCheck, enhancedAuthState.permissionStatus.allRequired]);
-
-    const triggerValidation = useCallback(async (): Promise<boolean> => {
-        const result = await validateAuthentication(true);
-        return result.isValid;
-    }, [validateAuthentication]);
+    }, [authManager, updateAuthState, validateAuthentication, authState.permissionStatus.allRequired]);
 
     // ========== STATUS FUNCTIONS ==========
-
     const isAuthReady = useCallback((): boolean => {
-        return enhancedAuthState.isAuthenticated &&
-            enhancedAuthState.canProceed &&
-            !enhancedAuthState.loading &&
-            !enhancedAuthState.isValidating &&
-            !enhancedAuthState.tokenRefreshInProgress &&
-            enhancedAuthState.permissionStatus.allRequired &&
-            enhancedAuthState.validationStatus.isValid;
-    }, [enhancedAuthState]);
+        const ready = authState.isAuthenticated &&
+            authState.canProceed &&
+            !authState.loading &&
+            !authState.isValidating &&
+            authState.validationStatus.isValid &&
+            authState.permissionStatus.allRequired;
+
+        console.log('🎯 Auth ready check:', {
+            isAuthenticated: authState.isAuthenticated,
+            canProceed: authState.canProceed,
+            loading: authState.loading,
+            isValidating: authState.isValidating,
+            validationValid: authState.validationStatus.isValid,
+            allPermissions: authState.permissionStatus.allRequired,
+            hasToken: !!authState.user?.accessToken,
+            ready
+        });
+
+        return ready;
+    }, [authState]);
 
     const getAuthStatus = useCallback(() => {
         return {
-            // Core state
-            isAuthenticated: enhancedAuthState.isAuthenticated,
-            hasUser: !!enhancedAuthState.user,
-            hasToken: !!enhancedAuthState.user?.accessToken,
-            loading: enhancedAuthState.loading,
-            error: enhancedAuthState.error,
-            user: enhancedAuthState.user,
-
-            // Validation status
-            isValid: enhancedAuthState.validationStatus.isValid,
-            hasValidToken: enhancedAuthState.validationStatus.hasValidToken,
-            hasRequiredScopes: enhancedAuthState.validationStatus.hasRequiredScopes,
-            needsReauth: enhancedAuthState.validationStatus.needsReauth,
-            lastValidation: enhancedAuthState.validationStatus.lastCheck,
-            expiresAt: enhancedAuthState.validationStatus.expiresAt,
-            validationErrors: enhancedAuthState.validationStatus.errors,
-            isValidating: enhancedAuthState.isValidating,
-
-            // Permission status
-            permissions: enhancedAuthState.permissionStatus,
-
-            // Operation status
-            canProceed: enhancedAuthState.canProceed,
+            isAuthenticated: authState.isAuthenticated,
+            hasUser: !!authState.user,
+            hasToken: !!authState.user?.accessToken,
+            loading: authState.loading,
+            error: authState.error,
+            user: authState.user,
+            isValid: authState.validationStatus.isValid,
+            hasValidToken: authState.validationStatus.hasValidToken,
+            hasRequiredScopes: authState.validationStatus.hasRequiredScopes,
+            needsReauth: authState.validationStatus.needsReauth,
+            permissions: authState.permissionStatus,
+            canProceed: authState.canProceed,
             isReady: isAuthReady(),
-            tokenRefreshInProgress: enhancedAuthState.tokenRefreshInProgress,
-            lastTokenRefresh: enhancedAuthState.lastTokenRefresh,
-            shouldRefreshToken: shouldRefreshToken()
+            isValidating: authState.isValidating,
+            validationErrors: authState.validationStatus.errors
         };
-    }, [enhancedAuthState, isAuthReady, shouldRefreshToken]);
+    }, [authState, isAuthReady]);
 
     const diagnoseAuthIssues = useCallback(async (error?: any) => {
-        return AuthErrorUtils.diagnoseAuthError(
-            error,
-            enhancedAuthState,
-            enhancedAuthState.permissionStatus
-        );
-    }, [enhancedAuthState]);
+        const issues = [];
+        const recommendations = [];
 
-    // ========== AUTO RECOVERY ==========
+        console.log('🔍 Diagnosing auth issues with state:', {
+            isAuthenticated: authState.isAuthenticated,
+            hasUser: !!authState.user,
+            hasToken: !!authState.user?.accessToken,
+            tokenValid: authState.validationStatus.hasValidToken,
+            hasScopes: authState.validationStatus.hasRequiredScopes,
+            canProceed: authState.canProceed
+        });
 
-    const attemptAutoRecovery = useCallback(async (diagnostic: any): Promise<boolean> => {
-        if (!diagnostic.issues.some((issue: any) => issue.canAutoRecover)) {
-            return false;
+        if (!authState.isAuthenticated) {
+            issues.push({ type: 'no_auth', severity: 'critical', message: 'User not authenticated' });
+            recommendations.push('Please sign in with Google');
+        } else if (!authState.validationStatus.hasValidToken) {
+            issues.push({ type: 'invalid_token', severity: 'critical', message: 'Invalid access token' });
+            recommendations.push('Please refresh authentication');
+        } else if (!authState.validationStatus.hasRequiredScopes) {
+            issues.push({ type: 'insufficient_scope', severity: 'critical', message: 'Missing required permissions' });
+            recommendations.push('Please grant Drive and Sheets permissions');
         }
 
+        if (authState.isValidating) {
+            issues.push({ type: 'validation_in_progress', severity: 'info', message: 'Validation in progress' });
+        }
+
+        return {
+            isHealthy: issues.filter(i => i.severity === 'critical').length === 0,
+            issues,
+            recommendations,
+            needsUserAction: issues.some(i => i.severity === 'critical')
+        };
+    }, [authState]);
+
+    const attemptAutoRecovery = useCallback(async (): Promise<boolean> => {
         try {
-            console.log('Attempting auto-recovery...');
-
-            // Try token refresh first
-            if (shouldRefreshToken()) {
-                const refreshResult = await refreshAccessToken();
-                if (refreshResult.success) {
-                    return true;
-                }
-            }
-
-            // If token refresh fails, try force reauth
-            const reauthResult = await handleForceReauth();
-            return reauthResult.success;
-
+            console.log('🔧 Attempting auto-recovery...');
+            const result = await handleForceReauth();
+            return result.success;
         } catch (error) {
-            console.error('Auto-recovery failed:', error);
+            console.error('💥 Auto-recovery failed:', error);
             return false;
         }
-    }, [shouldRefreshToken, refreshAccessToken, handleForceReauth]);
+    }, [handleForceReauth]);
 
     // ========== EFFECTS ==========
 
+    // Single initialization effect
     useEffect(() => {
-        const unsubscribe = authManager.subscribe(async (newAuthState) => {
-            console.log('🔔 Auth manager state change:', newAuthState);
-
-            // Sync with auth manager state
-            updateState(prev => ({
-                ...prev,
-                ...newAuthState
-            }));
-
-            if (!newAuthState.isAuthenticated) {
-                clearAllTimers();
-                updateState(prev => ({
-                    ...prev,
-                    validationStatus: {
-                        ...prev.validationStatus,
-                        isValid: false,
-                        hasValidToken: false,
-                        hasRequiredScopes: false,
-                        needsReauth: false,
-                        errors: [],
-                        validationInProgress: false,
-                        lastCheck: Date.now()
-                    },
-                    permissionStatus: {
-                        hasDrive: false,
-                        hasSheets: false,
-                        hasCalendar: false,
-                        allRequired: false
-                    },
-                    canProceed: false
-                }));
-            }
-        });
-
-        // Initialize auth only once
         if (!hasInitialized.current) {
             initializeAuth();
         }
+    }, [initializeAuth]);
 
-        return () => {
-            unsubscribe();
-            clearAllTimers();
-            if (initializationRef.current) {
-                initializationRef.current = null;
+    // FIXED: Better auth manager subscription
+    useEffect(() => {
+        const unsubscribe = authManager.subscribe((newState) => {
+            console.log('📡 Auth manager state changed:', {
+                isAuthenticated: newState.isAuthenticated,
+                hasUser: !!newState.user,
+                hasToken: !!newState.user?.accessToken,
+                tokenLength: newState.user?.accessToken?.length,
+                loading: newState.loading,
+                error: newState.error
+            });
+
+            // Only update if there are meaningful changes
+            if (newState.isAuthenticated !== authState.isAuthenticated ||
+                newState.user?.accessToken !== authState.user?.accessToken ||
+                newState.loading !== authState.loading ||
+                newState.error !== authState.error) {
+
+                updateAuthState({
+                    isAuthenticated: newState.isAuthenticated,
+                    user: newState.user,
+                    loading: newState.loading,
+                    error: newState.error
+                });
+
+                // Trigger validation for newly authenticated users
+                if (newState.isAuthenticated &&
+                    newState.user?.accessToken &&
+                    (!authState.isAuthenticated || newState.user.accessToken !== authState.user?.accessToken)) {
+
+                    console.log('🔄 New authentication detected, scheduling validation...');
+
+                    if (validationTimeoutRef.current) {
+                        clearTimeout(validationTimeoutRef.current);
+                    }
+
+                    validationTimeoutRef.current = setTimeout(() => {
+                        console.log('⚡ Executing scheduled validation...');
+                        validateAuthentication(true);
+                    }, 4000); // Increased delay for better reliability
+                }
             }
-        };
-    }, [authManager, updateState, clearAllTimers, initializeAuth]);
+        });
 
-    useEffect(() => {
-        if (enhancedAuthState.validationStatus.expiresAt && enhancedAuthState.isAuthenticated) {
-            scheduleTokenValidation(enhancedAuthState.validationStatus.expiresAt);
-        }
-    }, [enhancedAuthState.validationStatus.expiresAt, enhancedAuthState.isAuthenticated, scheduleTokenValidation]);
+        return unsubscribe;
+    }, [authManager, authState.isAuthenticated, authState.user?.accessToken, authState.loading, authState.error, updateAuthState, validateAuthentication]);
 
+    // Cleanup effect
     useEffect(() => {
         return () => {
-            clearAllTimers();
-            if (initializationRef.current) {
-                initializationRef.current = null;
+            if (validationTimeoutRef.current) {
+                clearTimeout(validationTimeoutRef.current);
             }
             hasInitialized.current = false;
+            initPromiseRef.current = null;
         };
-    }, [clearAllTimers]);
+    }, []);
 
     // ========== RETURN INTERFACE ==========
-
     return {
         // State
-        authState: enhancedAuthState,
+        authState,
         authManager,
 
         // Status functions
@@ -774,23 +606,12 @@ export const useAuth = () => {
         handleLogin,
         handleLogout,
         handleForceReauth,
-        handleValidateAuth: triggerValidation,
+        handleValidateAuth: validateAuthentication,
         initializeAuth,
-        refreshAccessToken,
         attemptAutoRecovery,
 
-        // Utilities
-        shouldRefreshToken,
-        validateAuthentication,
-        triggerValidation,
-        clearAllTimers,
-
         // Computed values
-        permissions: enhancedAuthState.permissionStatus,
-        isCheckingPermissions: enhancedAuthState.isValidating,
-
-        // Constants
-        VALIDATION_INTERVALS
+        permissions: authState.permissionStatus
     };
 };
 
