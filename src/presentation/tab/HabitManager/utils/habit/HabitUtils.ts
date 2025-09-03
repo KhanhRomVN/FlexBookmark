@@ -1,19 +1,60 @@
+/**
+ * 🎯 HABIT MANAGEMENT UTILITIES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 📋 TỔNG QUAN CHỨC NĂNG:
+ * ├── 🔄 Orchestration layer giữa Drive và Sheets operations
+ * ├── 📊 Quản lý toàn bộ vòng đời thói quen
+ * ├── 🎯 Đồng bộ dữ liệu giữa memory và Google Sheets
+ * ├── 📈 Xử lý logic nghiệp vụ (streaks, tracking)
+ * └── 🔧 Cung cấp API thống nhất cho UI layer
+ * 
+ * 🏗️ CẤU TRÚC CHÍNH:
+ * ├── Folder Delegation     → Ủy quyền thao tác thư mục cho DriveUtils
+ * ├── Sheet Delegation      → Ủy quyền thao tác file cho DriveUtils  
+ * ├── Content Operations    → Ủy quyền thao tác nội dung cho SheetsUtils
+ * ├── Business Logic       → Xử lý logic nghiệp vụ đặc thù
+ * └── Token Management     → Quản lý đồng bộ access token
+ * 
+ * 🔧 CÁC CHỨC NĂNG CHÍNH:
+ * ├── ensureFolderExists()  → Đảm bảo thư mục tồn tại
+ * ├── ensureSheetExists()   → Đảm bảo file tồn tại
+ * ├── readAllHabits()       → Đọc tất cả thói quen
+ * ├── writeHabit()          → Ghi thói quen (create/update)
+ * ├── deleteHabit()         → Xóa thói quen
+ * ├── updateDailyHabit()    → Cập nhật tracking hàng ngày
+ * └── batchUpdateHabits()   → Batch update nhiều thói quen
+ */
+
 import type { Habit } from '../../types/habit';
 import { DriveUtils } from './DriveUtils';
 import { SheetsUtils } from './SheetsUtils';
 import type { DriveFolder, DriveFile, BatchOperation } from '../../types/drive';
 
 export class HabitUtils {
+    // 🔐 PRIVATE PROPERTIES
+    // ────────────────────────────────────────────────────────────────────────────
     private driveUtils: DriveUtils;
     private sheetsUtils: SheetsUtils;
 
+    // 🏗️ CONSTRUCTOR
+    // ════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🏗️ Khởi tạo HabitUtils với access token
+     * @param accessToken - Google OAuth2 access token
+     */
     constructor(accessToken: string) {
         this.driveUtils = new DriveUtils(accessToken);
         this.sheetsUtils = new SheetsUtils(accessToken);
     }
 
+    // 🔄 TOKEN MANAGEMENT
+    // ════════════════════════════════════════════════════════════════════════════════
+
     /**
-     * Update access token for all utilities
+     * 🔄 Cập nhật access token cho tất cả utilities
+     * @param accessToken - Token mới
      */
     updateToken(accessToken: string): void {
         this.driveUtils.updateToken(accessToken);
@@ -23,28 +64,32 @@ export class HabitUtils {
     // ========== FOLDER OPERATIONS (Delegated to DriveUtils) ==========
 
     /**
-     * Check if HabitTracker folder exists
+     * 🔍 Kiểm tra thư mục HabitTracker có tồn tại
+     * @returns {Promise<DriveFolder | null>} Thư mục hoặc null
      */
     async checkFolderExists(): Promise<DriveFolder | null> {
         return this.driveUtils.checkFolderExists();
     }
 
     /**
-     * Create HabitTracker folder
+     * 📂 Tạo thư mục HabitTracker mới
+     * @returns {Promise<DriveFolder>} Thông tin thư mục đã tạo
      */
     async createFolder(): Promise<DriveFolder> {
         return this.driveUtils.createFolder();
     }
 
     /**
-     * Get or create HabitTracker folder
+     * ✅ Đảm bảo thư mục HabitTracker tồn tại
+     * @returns {Promise<DriveFolder>} Thư mục đảm bảo tồn tại
      */
     async ensureFolderExists(): Promise<DriveFolder> {
         return this.driveUtils.ensureFolderExists();
     }
 
     /**
-     * Delete HabitTracker folder and all contents
+     * 🗑️ Xóa thư mục HabitTracker và tất cả nội dung
+     * @returns {Promise<void>}
      */
     async deleteFolder(): Promise<void> {
         return this.driveUtils.deleteFolder();
@@ -53,33 +98,40 @@ export class HabitUtils {
     // ========== SHEET FILE OPERATIONS (Delegated to DriveUtils) ==========
 
     /**
-     * Check if habit sheet exists in folder
+     * 🔍 Kiểm tra file spreadsheet tồn tại trong thư mục
+     * @param folderId - ID thư mục cha
+     * @returns {Promise<DriveFile | null>} File hoặc null
      */
     async checkSheetExists(folderId: string): Promise<DriveFile | null> {
         return this.driveUtils.checkSheetExists(folderId);
     }
 
     /**
-     * Create new habit tracking spreadsheet
+     * 📊 Tạo spreadsheet theo dõi thói quen mới
+     * @param folderId - ID thư mục cha
+     * @returns {Promise<DriveFile>} Thông tin file đã tạo
      */
     async createSheet(folderId: string): Promise<DriveFile> {
         const sheetFile = await this.driveUtils.createSheet(folderId);
 
-        // Initialize with headers after creation
+        // 🏗️ Khởi tạo headers sau khi tạo
         await this.sheetsUtils.initializeSheetHeaders(sheetFile.id);
 
         return sheetFile;
     }
 
     /**
-     * Get or create habit tracking sheet
+     * ✅ Đảm bảo file spreadsheet tồn tại
+     * @returns {Promise<DriveFile>} File đảm bảo tồn tại
      */
     async ensureSheetExists(): Promise<DriveFile> {
         return this.driveUtils.ensureSheetExists();
     }
 
     /**
-     * Delete habit tracking sheet
+     * 🗑️ Xóa file spreadsheet
+     * @param sheetId - ID file cần xóa
+     * @returns {Promise<void>}
      */
     async deleteSheet(sheetId: string): Promise<void> {
         return this.driveUtils.deleteSheet(sheetId);
@@ -88,35 +140,51 @@ export class HabitUtils {
     // ========== SHEET CONTENT OPERATIONS (Delegated to SheetsUtils) ==========
 
     /**
-     * Initialize sheet with headers
+     * 🏗️ Khởi tạo sheet với headers
+     * @param sheetId - ID sheet cần khởi tạo
+     * @returns {Promise<void>}
      */
     async initializeSheetHeaders(sheetId: string): Promise<void> {
         return this.sheetsUtils.initializeSheetHeaders(sheetId);
     }
 
     /**
-     * Read all habits from sheet
+     * 📖 Đọc tất cả thói quen từ sheet
+     * @param sheetId - ID sheet cần đọc
+     * @returns {Promise<Habit[]>} Danh sách thói quen
      */
     async readAllHabits(sheetId: string): Promise<Habit[]> {
         return this.sheetsUtils.readAllHabits(sheetId);
     }
 
     /**
-     * Write habit to sheet (create or update)
+     * 📝 Ghi thói quen vào sheet (create hoặc update)
+     * @param sheetId - ID sheet đích
+     * @param habit - Thói quen cần ghi
+     * @param rowIndex - Index hàng (optional cho update)
+     * @returns {Promise<void>}
      */
     async writeHabit(sheetId: string, habit: Habit, rowIndex?: number): Promise<void> {
         return this.sheetsUtils.writeHabit(sheetId, habit, rowIndex);
     }
 
     /**
-     * Delete habit from sheet
+     * 🗑️ Xóa thói quen từ sheet
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen cần xóa
+     * @returns {Promise<void>}
      */
     async deleteHabit(sheetId: string, habitId: string): Promise<void> {
         return this.sheetsUtils.deleteHabit(sheetId, habitId);
     }
 
     /**
-     * Update specific cell value (for daily tracking)
+     * 🔄 Cập nhật giá trị cell cụ thể (cho daily tracking)
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen
+     * @param columnName - Tên cột
+     * @param value - Giá trị mới
+     * @returns {Promise<void>}
      */
     async updateCellValue(
         sheetId: string,
@@ -128,14 +196,22 @@ export class HabitUtils {
     }
 
     /**
-     * Update daily habit value and recalculate streaks
+     * 📅 Cập nhật giá trị thói quen hàng ngày và tính lại streaks
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen
+     * @param day - Ngày trong tháng (1-31)
+     * @param value - Giá trị tracking
+     * @returns {Promise<Habit | null>} Thói quen đã cập nhật hoặc null
      */
     async updateDailyHabit(sheetId: string, habitId: string, day: number, value: number): Promise<Habit | null> {
         return this.sheetsUtils.updateDailyHabit(sheetId, habitId, day, value);
     }
 
     /**
-     * Batch update multiple habits
+     * 📦 Batch update nhiều thói quen
+     * @param sheetId - ID sheet
+     * @param operations - Danh sách operations
+     * @returns {Promise<void>}
      */
     async batchUpdateHabits(sheetId: string, operations: BatchOperation[]): Promise<void> {
         return this.sheetsUtils.batchUpdateHabits(sheetId, operations);

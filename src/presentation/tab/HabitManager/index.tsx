@@ -1,5 +1,45 @@
 // src/presentation/tab/HabitManager/index.tsx
-// Fixed version to handle authentication flow properly
+// ════════════════════════════════════════════════════════════════════════════════
+//
+// 🎯 HABIT MANAGER MAIN COMPONENT
+// ════════════════════════════════════════════════════════════════════════════════
+//
+// 📋 TỔNG QUAN CHỨC NĂNG:
+// ├── 👤 Quản lý authentication flow với Google OAuth
+// ├── 📊 Hiển thị và quản lý danh sách thói quen
+// ├── 📅 Theo dõi thói quen theo ngày
+// ├── 🎯 Tạo, chỉnh sửa, xóa thói quen
+// ├── 📊 Thống kê và báo cáo
+// └── 🔍 Xử lý lỗi và trạng thái loading
+//
+// 🏗️ CẤU TRÚC CHÍNH:
+// ├── Authentication States     → Trạng thái xác thực
+// ├── UI States                → Trạng thái giao diện
+// ├── Data Management          → Quản lý dữ liệu thói quen
+// ├── Event Handlers           → Xử lý sự kiện
+// ├── Render Logic             → Logic hiển thị
+// └── Error Handling           → Xử lý lỗi
+//
+// 🔧 CÁC CHỨC NĂNG CHÍNH:
+// ├── Xác thực Google OAuth
+// ├── Hiển thị trạng thái loading/error
+// ├── Quản lý dialog tạo/chỉnh sửa thói quen
+// ├── Lọc và phân loại thói quen
+// ├── Theo dõi thói quen hàng ngày
+// └── Xử lý archive/delete thói quen
+//
+// 🎨 UI COMPONENTS:
+// ├── Sidebar                  → Thanh bên chứa bộ lọc
+// ├── HabitListPanel           → Danh sách thói quen
+// ├── HabitDetailPanel         → Chi tiết thói quen
+// └── HabitDialog              → Dialog tạo/chỉnh sửa
+//
+// 📦 DEPENDENCIES:
+// ├── React Hooks              → useState, useEffect, useCallback
+// ├── Custom Hooks             → useHabitData
+// ├── Types                    → Habit, HabitFormData, etc.
+// └── Components               → Sidebar, HabitListPanel, etc.
+//
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useHabitData } from "./hooks/useHabitData";
@@ -10,6 +50,8 @@ import HabitDetailPanel from "./components/HabitDetailPanel";
 import { Habit, HabitFormData, HabitType, HabitCategory } from "./types/habit";
 
 const HabitManager: React.FC = () => {
+  // 📊 DATA HOOK - Quản lý dữ liệu và authentication
+  // ────────────────────────────────────────────────────────────────────────────
   const {
     authState,
     habits,
@@ -34,7 +76,8 @@ const HabitManager: React.FC = () => {
     diagnoseAuthIssues,
   } = useHabitData();
 
-  // Component states
+  // 🎯 COMPONENT STATES - Quản lý trạng thái giao diện
+  // ────────────────────────────────────────────────────────────────────────────
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">(
@@ -49,10 +92,12 @@ const HabitManager: React.FC = () => {
   const [, setCollection] = useState("Default");
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
-  // Auth status tracking
+  // 🔍 AUTH DIAGNOSTICS - Theo dõi trạng thái xác thực
+  // ────────────────────────────────────────────────────────────────────────────
   const [authDiagnostics, setAuthDiagnostics] = useState<any>(null);
 
-  // Default form data template
+  // 📝 FORM TEMPLATES - Dữ liệu mẫu cho form
+  // ────────────────────────────────────────────────────────────────────────────
   const defaultFormData: HabitFormData = {
     name: "",
     description: "",
@@ -74,18 +119,19 @@ const HabitManager: React.FC = () => {
   const [editFormData, setEditFormData] =
     useState<HabitFormData>(defaultFormData);
 
-  // ========== DIAGNOSTICS EFFECT ==========
+  // 🔄 DIAGNOSTICS EFFECT - Cập nhật diagnostics khi auth state thay đổi
+  // ────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const updateDiagnostics = async () => {
       try {
         const diagnostics = await diagnoseAuthIssues();
         setAuthDiagnostics(diagnostics);
       } catch (error) {
-        console.error("Failed to get diagnostics:", error);
+        console.error("❌ Failed to get diagnostics:", error);
       }
     };
 
-    // Update diagnostics when auth state changes
+    // 📊 Update diagnostics khi auth state thay đổi
     if (authState.isAuthenticated || authState.error) {
       updateDiagnostics();
     }
@@ -98,29 +144,42 @@ const HabitManager: React.FC = () => {
     diagnoseAuthIssues,
   ]);
 
-  // ========== BACKGROUND VALIDATION ==========
+  // ⏰ BACKGROUND VALIDATION - Kiểm tra auth định kỳ
+  // ────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthReady) return;
 
     const validationInterval = setInterval(() => {
-      console.log("Periodic auth validation check...");
+      console.log("🔄 Periodic auth validation check...");
       handleValidateAuth().catch((error) => {
-        console.error("Periodic validation error:", error);
+        console.error("❌ Periodic validation error:", error);
       });
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // ⏰ 5 phút
 
     return () => clearInterval(validationInterval);
   }, [isAuthReady, handleValidateAuth]);
 
-  // ========== HELPER FUNCTIONS ==========
+  // 🛠️ HELPER FUNCTIONS - Các hàm tiện ích
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * 🔄 Reset form tạo thói quen
+   */
   const resetForm = useCallback(() => {
     setHabitFormData({ ...defaultFormData });
   }, [defaultFormData]);
 
+  /**
+   * 🔄 Reset form chỉnh sửa thói quen
+   */
   const resetEditForm = useCallback(() => {
     setEditFormData({ ...defaultFormData });
   }, [defaultFormData]);
 
+  /**
+   * 📤 Xử lý submit tạo thói quen mới
+   * @param formData - Dữ liệu form
+   */
   const handleCreateSubmit = useCallback(
     async (formData: HabitFormData) => {
       const result = await handleCreateHabit(formData);
@@ -132,6 +191,10 @@ const HabitManager: React.FC = () => {
     [handleCreateHabit, resetForm]
   );
 
+  /**
+   * 📝 Xử lý submit chỉnh sửa thói quen
+   * @param formData - Dữ liệu form
+   */
   const handleEditSubmit = useCallback(
     async (formData: HabitFormData) => {
       if (!editingHabit) return;
@@ -163,6 +226,10 @@ const HabitManager: React.FC = () => {
     [editingHabit, handleUpdateHabit, resetEditForm]
   );
 
+  /**
+   * ✅ Toggle trạng thái hoàn thành thói quen cho ngày được chọn
+   * @param habitId - ID của thói quen
+   */
   const handleToggleHabitForDate = useCallback(
     async (habitId: string) => {
       const habit = habits.find((h: { id: string }) => h.id === habitId);
@@ -184,6 +251,12 @@ const HabitManager: React.FC = () => {
     [habits, selectedDate, handleUpdateDailyHabit]
   );
 
+  /**
+   * 🔍 Kiểm tra thói quen đã hoàn thành cho ngày cụ thể
+   * @param habit - Thói quen cần kiểm tra
+   * @param date - Ngày cần kiểm tra
+   * @returns {boolean} True nếu đã hoàn thành
+   */
   const isHabitCompletedForDate = useCallback(
     (habit: Habit, date: Date): boolean => {
       const day = date.getDate();
@@ -201,6 +274,10 @@ const HabitManager: React.FC = () => {
     []
   );
 
+  /**
+   * 📖 Mở dialog chỉnh sửa thói quen
+   * @param habit - Thói quen cần chỉnh sửa
+   */
   const openEditDialog = useCallback((habit: Habit) => {
     setEditingHabit(habit);
     setEditFormData({
@@ -222,6 +299,9 @@ const HabitManager: React.FC = () => {
     setSelectedHabit(habit);
   }, []);
 
+  /**
+   * ❌ Đóng dialog
+   */
   const closeDialog = useCallback(() => {
     setIsCreateDialogOpen(false);
     setEditingHabit(null);
@@ -229,6 +309,9 @@ const HabitManager: React.FC = () => {
     resetEditForm();
   }, [resetForm, resetEditForm]);
 
+  /**
+   * ➕ Mở dialog tạo thói quen mới
+   */
   const openNewHabitDialog = useCallback(() => {
     setIsCreateDialogOpen(true);
     setEditingHabit(null);
@@ -236,21 +319,32 @@ const HabitManager: React.FC = () => {
     resetEditForm();
   }, [resetForm, resetEditForm]);
 
+  /**
+   * 📊 Đếm số thói quen đang active
+   * @returns {number} Số lượng thói quen active
+   */
   const getActiveHabitsCount = useCallback(
     () => habits.filter((h: { isArchived: any }) => !h.isArchived).length,
     [habits]
   );
 
+  /**
+   * 📊 Đếm số thói quen đã archived
+   * @returns {number} Số lượng thói quen archived
+   */
   const getArchivedHabitsCount = useCallback(
     () => habits.filter((h: { isArchived: any }) => h.isArchived).length,
     [habits]
   );
 
-  // ========== DETERMINE CURRENT STATE ==========
+  // 🎯 RENDER LOGIC - Xác định trạng thái hiển thị
+  // ────────────────────────────────────────────────────────────────────────────
 
+  // 👤 Hiển thị màn hình yêu cầu xác thực
   const shouldShowAuthRequired =
     !authState.isAuthenticated && !authState.loading;
 
+  // 🔄 Hiển thị màn hình yêu cầu xác thực lại
   const shouldShowReauth =
     authState.isAuthenticated &&
     (needsReauth ||
@@ -262,12 +356,13 @@ const HabitManager: React.FC = () => {
         !authState.loading &&
         !authState.isValidating));
 
+  // ⏳ Hiển thị màn hình loading
   const shouldShowLoading =
     (authState.loading || systemStatus.isInitializing || !initialized) &&
     !shouldShowReauth &&
     !shouldShowAuthRequired;
 
-  console.log("Render decision:", {
+  console.log("🔍 Render decision:", {
     shouldShowAuthRequired,
     shouldShowReauth,
     shouldShowLoading,
@@ -283,7 +378,8 @@ const HabitManager: React.FC = () => {
     initialized,
   });
 
-  // ========== RENDER AUTHENTICATION REQUIRED ==========
+  // 👤 RENDER AUTHENTICATION REQUIRED SCREEN
+  // ════════════════════════════════════════════════════════════════════════════════
   if (shouldShowAuthRequired) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
@@ -352,7 +448,8 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // ========== RENDER LOADING STATE ==========
+  // ⏳ RENDER LOADING STATE SCREEN
+  // ════════════════════════════════════════════════════════════════════════════════
   if (shouldShowLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100">
@@ -385,7 +482,8 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // ========== RENDER REAUTH REQUIRED ==========
+  // 🔄 RENDER REAUTHENTICATION REQUIRED SCREEN
+  // ════════════════════════════════════════════════════════════════════════════════
   if (shouldShowReauth) {
     const authStatus = getAuthStatus();
 
@@ -557,7 +655,8 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // ========== MAIN APPLICATION INTERFACE ==========
+  // 🎯 RENDER MAIN APPLICATION INTERFACE
+  // ════════════════════════════════════════════════════════════════════════════════
   const todayStats = getTodayStats();
 
   return (

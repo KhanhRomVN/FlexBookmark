@@ -1,15 +1,56 @@
+/**
+ * 📊 GOOGLE SHEETS UTILITIES MANAGER
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 📋 TỔNG QUAN CHỨC NĂNG:
+ * ├── 📝 Quản lý nội dung và format của Google Sheets
+ * ├── 🔄 Xử lý CRUD operations với dữ liệu thói quen
+ * ├── 📈 Tính toán streaks và business logic
+ * ├── 🎨 Formatting và styling sheets
+ * └── 🔧 Xử lý transformation giữa objects và sheet rows
+ * 
+ * 🏗️ CẤU TRÚC CHÍNH:
+ * ├── Sheet Initialization → Khởi tạo headers và formatting
+ * ├── Content Operations   → Đọc/ghi dữ liệu thói quen
+ * ├── Business Logic      → Tính streaks, validation
+ * ├── Formatting          → Styling và formatting sheets
+ * └── Helper Methods      → Utilities chuyển đổi dữ liệu
+ * 
+ * 🔧 CÁC CHỨC NĂNG CHÍNH:
+ * ├── initializeSheetHeaders() → Khởi tạo headers
+ * ├── readAllHabits()         → Đọc tất cả thói quen
+ * ├── writeHabit()           → Ghi thói quen (create/update)
+ * ├── deleteHabit()          → Xóa thói quen
+ * ├── updateDailyHabit()     → Cập nhật tracking hàng ngày
+ * ├── calculateStreaks()     → Tính toán streaks
+ * └── convertHabitToRow()    → Chuyển habit object thành sheet row
+ */
+
 import type { Habit } from '../../types/habit';
 import { HabitConstants, type BatchOperation } from '../../types/drive';
 
 export class SheetsUtils {
+    // 🔐 PRIVATE PROPERTIES
+    // ────────────────────────────────────────────────────────────────────────────
     private accessToken: string;
 
+    // 🏗️ CONSTRUCTOR
+    // ════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * 🏗️ Khởi tạo SheetsUtils với access token
+     * @param accessToken - Google OAuth2 access token
+     */
     constructor(accessToken: string) {
         this.accessToken = accessToken;
     }
 
+    // 🔄 TOKEN MANAGEMENT
+    // ════════════════════════════════════════════════════════════════════════════════
+
     /**
-     * Update access token
+     * 🔄 Cập nhật access token mới
+     * @param accessToken - Token mới
      */
     updateToken(accessToken: string): void {
         this.accessToken = accessToken;
@@ -18,10 +59,13 @@ export class SheetsUtils {
     // ========== SHEET INITIALIZATION ==========
 
     /**
-     * Initialize sheet with headers
+     * 🏗️ Khởi tạo sheet với headers
+     * @param sheetId - ID sheet cần khởi tạo
+     * @returns {Promise<void>}
      */
     async initializeSheetHeaders(sheetId: string): Promise<void> {
         try {
+            console.log('🏗️ Initializing sheet headers...');
             const range = 'Habits!A1:AW1'; // Headers across all columns
 
             const response = await fetch(
@@ -42,18 +86,23 @@ export class SheetsUtils {
                 throw new Error(`Failed to initialize headers: ${response.status}`);
             }
 
-            // Format header row
+            // 🎨 Format header row
             await this.formatHeaderRow(sheetId);
+            console.log('✅ Sheet headers initialized successfully');
+
         } catch (error) {
-            console.error('Failed to initialize sheet headers:', error);
+            console.error('❌ Failed to initialize sheet headers:', error);
             throw error;
         }
     }
 
     /**
-     * Format header row with styling
+     * 🎨 Format header row với styling
+     * @private
+     * @param sheetId - ID sheet cần format
+     * @returns {Promise<void>}
      */
-    async formatHeaderRow(sheetId: string): Promise<void> {
+    private async formatHeaderRow(sheetId: string): Promise<void> {
         try {
             const requests = [{
                 repeatCell: {
@@ -90,20 +139,26 @@ export class SheetsUtils {
             );
 
             if (!response.ok) {
-                console.warn('Failed to format header row:', response.status);
+                console.warn('⚠️ Failed to format header row:', response.status);
+            } else {
+                console.log('✅ Header row formatted successfully');
             }
+
         } catch (error) {
-            console.warn('Failed to format header row:', error);
+            console.warn('⚠️ Failed to format header row:', error);
         }
     }
 
     // ========== SHEET CONTENT OPERATIONS ==========
 
     /**
-     * Read all habits from sheet
+     * 📖 Đọc tất cả thói quen từ sheet
+     * @param sheetId - ID sheet cần đọc
+     * @returns {Promise<Habit[]>} Danh sách thói quen
      */
     async readAllHabits(sheetId: string): Promise<Habit[]> {
         try {
+            console.log(`📖 Reading all habits from sheet: ${sheetId}`);
             const range = 'Habits!A2:AW'; // Skip header row
 
             const response = await fetch(
@@ -121,29 +176,39 @@ export class SheetsUtils {
 
             const data = await response.json();
             const rows = data.values || [];
+            const habits = rows.map((row: any[]) => this.parseHabitFromRow(row)).filter(Boolean) as Habit[];
 
-            return rows.map((row: any[]) => this.parseHabitFromRow(row)).filter(Boolean);
+            console.log(`📊 Read ${habits.length} habits from sheet`);
+            return habits;
+
         } catch (error) {
-            console.error('Failed to read habits from sheet:', error);
+            console.error('❌ Failed to read habits from sheet:', error);
             throw error;
         }
     }
 
     /**
-     * Write habit to sheet (create or update)
+     * 📝 Ghi thói quen vào sheet (create hoặc update)
+     * @param sheetId - ID sheet đích
+     * @param habit - Thói quen cần ghi
+     * @param rowIndex - Index hàng (optional cho update)
+     * @returns {Promise<void>}
      */
     async writeHabit(sheetId: string, habit: Habit, rowIndex?: number): Promise<void> {
         try {
+            console.log(`📝 Writing habit: ${habit.name} (${habit.id})`);
             const habitRow = this.convertHabitToRow(habit);
 
             let range: string;
             if (rowIndex !== undefined) {
-                // Update existing row
+                // 🔄 Update existing row
                 range = `Habits!A${rowIndex + 2}:AW${rowIndex + 2}`; // +2 because of 1-based indexing and header
+                console.log(`🔄 Updating existing row: ${rowIndex}`);
             } else {
-                // Find next empty row or append
+                // ➕ Find next empty row or append
                 const nextRow = await this.findNextEmptyRow(sheetId);
                 range = `Habits!A${nextRow}:AW${nextRow}`;
+                console.log(`➕ Appending to new row: ${nextRow}`);
             }
 
             const response = await fetch(
@@ -163,26 +228,33 @@ export class SheetsUtils {
             if (!response.ok) {
                 throw new Error(`Failed to write habit: ${response.status}`);
             }
+
+            console.log('✅ Habit written successfully');
+
         } catch (error) {
-            console.error('Failed to write habit to sheet:', error);
+            console.error('❌ Failed to write habit to sheet:', error);
             throw error;
         }
     }
 
     /**
-     * Delete habit from sheet
+     * 🗑️ Xóa thói quen từ sheet
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen cần xóa
+     * @returns {Promise<void>}
      */
     async deleteHabit(sheetId: string, habitId: string): Promise<void> {
         try {
+            console.log(`🗑️ Deleting habit: ${habitId}`);
             const habits = await this.readAllHabits(sheetId);
             const habitIndex = habits.findIndex(h => h.id === habitId);
 
             if (habitIndex === -1) {
-                console.warn(`Habit ${habitId} not found for deletion`);
+                console.warn(`⚠️ Habit ${habitId} not found for deletion`);
                 return;
             }
 
-            // Clear the row
+            // 🧹 Clear the row
             const rowNumber = habitIndex + 2; // +2 for header and 1-based indexing
             const range = `Habits!A${rowNumber}:AW${rowNumber}`;
 
@@ -200,14 +272,22 @@ export class SheetsUtils {
             if (!response.ok) {
                 throw new Error(`Failed to delete habit: ${response.status}`);
             }
+
+            console.log('✅ Habit deleted successfully');
+
         } catch (error) {
-            console.error('Failed to delete habit from sheet:', error);
+            console.error('❌ Failed to delete habit from sheet:', error);
             throw error;
         }
     }
 
     /**
-     * Update specific cell value (for daily tracking)
+     * 🔄 Cập nhật giá trị cell cụ thể
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen
+     * @param columnName - Tên cột
+     * @param value - Giá trị mới
+     * @returns {Promise<void>}
      */
     async updateCellValue(
         sheetId: string,
@@ -216,6 +296,7 @@ export class SheetsUtils {
         value: any
     ): Promise<void> {
         try {
+            console.log(`🔄 Updating cell for habit ${habitId}, column ${columnName}`);
             const habits = await this.readAllHabits(sheetId);
             const habitIndex = habits.findIndex(h => h.id === habitId);
 
@@ -249,17 +330,27 @@ export class SheetsUtils {
             if (!response.ok) {
                 throw new Error(`Failed to update cell: ${response.status}`);
             }
+
+            console.log('✅ Cell updated successfully');
+
         } catch (error) {
-            console.error('Failed to update cell value:', error);
+            console.error('❌ Failed to update cell value:', error);
             throw error;
         }
     }
 
     /**
-     * Update daily habit value and recalculate streaks
+     * 📅 Cập nhật giá trị thói quen hàng ngày và tính lại streaks
+     * @param sheetId - ID sheet
+     * @param habitId - ID thói quen
+     * @param day - Ngày trong tháng (1-31)
+     * @param value - Giá trị tracking
+     * @returns {Promise<Habit | null>} Thói quen đã cập nhật hoặc null
      */
     async updateDailyHabit(sheetId: string, habitId: string, day: number, value: number): Promise<Habit | null> {
         try {
+            console.log(`📅 Updating daily habit ${habitId}, day ${day}, value ${value}`);
+
             if (day < 1 || day > 31) {
                 throw new Error('Day must be between 1 and 31');
             }
@@ -271,11 +362,11 @@ export class SheetsUtils {
                 throw new Error(`Habit ${habitId} not found`);
             }
 
-            // Update daily tracking
+            // 🔄 Update daily tracking
             const updatedDailyTracking = [...habit.dailyTracking];
             updatedDailyTracking[day - 1] = value;
 
-            // Recalculate streaks
+            // 📈 Recalculate streaks
             const { currentStreak, longestStreak } = this.calculateStreaks(
                 { ...habit, dailyTracking: updatedDailyTracking }
             );
@@ -287,27 +378,34 @@ export class SheetsUtils {
                 longestStreak: Math.max(longestStreak, habit.longestStreak)
             };
 
-            // Write back to sheet
+            // 📝 Write back to sheet
             const habitIndex = habits.findIndex(h => h.id === habitId);
             await this.writeHabit(sheetId, updatedHabit, habitIndex);
 
+            console.log('✅ Daily habit updated successfully');
             return updatedHabit;
+
         } catch (error) {
-            console.error('Failed to update daily habit:', error);
+            console.error('❌ Failed to update daily habit:', error);
             throw error;
         }
     }
 
     /**
-     * Batch update multiple habits
+     * 📦 Batch update nhiều thói quen
+     * @param sheetId - ID sheet
+     * @param operations - Danh sách operations
+     * @returns {Promise<void>}
      */
     async batchUpdateHabits(sheetId: string, operations: BatchOperation[]): Promise<void> {
         try {
+            console.log(`📦 Processing batch update with ${operations.length} operations`);
+
             for (const operation of operations) {
                 switch (operation.operation) {
                     case 'create':
                     case 'update':
-                        // These require individual API calls due to complexity
+                        // 📝 These require individual API calls due to complexity
                         if (operation.data) {
                             await this.writeHabit(sheetId, operation.data);
                         }
@@ -317,8 +415,11 @@ export class SheetsUtils {
                         break;
                 }
             }
+
+            console.log('✅ Batch update completed successfully');
+
         } catch (error) {
-            console.error('Failed to batch update habits:', error);
+            console.error('❌ Failed to batch update habits:', error);
             throw error;
         }
     }
@@ -326,7 +427,10 @@ export class SheetsUtils {
     // ========== HELPER METHODS ==========
 
     /**
-     * Find next empty row in sheet
+     * 🔍 Tìm hàng trống tiếp theo trong sheet
+     * @private
+     * @param sheetId - ID sheet
+     * @returns {Promise<number>} Số hàng tiếp theo
      */
     private async findNextEmptyRow(sheetId: string): Promise<number> {
         try {
@@ -346,19 +450,23 @@ export class SheetsUtils {
             const data = await response.json();
             const values = data.values || [];
             return values.length + 1;
+
         } catch (error) {
-            console.warn('Failed to find next empty row:', error);
+            console.warn('⚠️ Failed to find next empty row:', error);
             return 2;
         }
     }
 
     /**
-     * Convert habit object to sheet row array
+     * 🔄 Chuyển habit object thành sheet row array
+     * @private
+     * @param habit - Habit object cần chuyển đổi
+     * @returns {any[]} Mảng giá trị cho sheet row
      */
     private convertHabitToRow(habit: Habit): any[] {
         const row = new Array(HabitConstants.SHEET_HEADERS.length).fill('');
 
-        // Core properties
+        // 🎯 Core properties
         row[0] = habit.id;
         row[1] = habit.name;
         row[2] = habit.description || '';
@@ -368,12 +476,12 @@ export class SheetsUtils {
         row[6] = habit.limit || '';
         row[7] = habit.currentStreak;
 
-        // Daily tracking (columns 8-38)
+        // 📅 Daily tracking (columns 8-38)
         for (let i = 0; i < 31; i++) {
             row[8 + i] = habit.dailyTracking[i] ?? '';
         }
 
-        // Additional properties (columns 39+)
+        // 📊 Additional properties (columns 39+)
         row[39] = habit.createdDate.toISOString();
         row[40] = habit.colorCode;
         row[41] = habit.longestStreak;
@@ -389,7 +497,10 @@ export class SheetsUtils {
     }
 
     /**
-     * Parse habit object from sheet row array
+     * 🔄 Parse habit object từ sheet row array
+     * @private
+     * @param row - Mảng giá trị từ sheet
+     * @returns {Habit | null} Habit object hoặc null nếu lỗi
      */
     private parseHabitFromRow(row: any[]): Habit | null {
         try {
@@ -425,13 +536,16 @@ export class SheetsUtils {
                 subtasks: this.safeJsonParse(row[48], [])
             };
         } catch (error) {
-            console.error('Failed to parse habit from row:', error);
+            console.error('❌ Failed to parse habit from row:', error);
             return null;
         }
     }
 
     /**
-     * Calculate current and longest streaks for a habit
+     * 📈 Tính toán current và longest streaks cho habit
+     * @private
+     * @param habit - Habit object cần tính streaks
+     * @returns {{ currentStreak: number; longestStreak: number }} Kết quả streaks
      */
     private calculateStreaks(habit: Habit): { currentStreak: number; longestStreak: number } {
         const currentDate = new Date();
@@ -441,7 +555,7 @@ export class SheetsUtils {
         let longestStreak = habit.longestStreak;
         let tempStreak = 0;
 
-        // Calculate streaks by going through all days up to today
+        // 📆 Calculate streaks by going through all days up to today
         for (let day = 1; day <= currentDay; day++) {
             const isCompleted = this.isHabitCompletedForDay(habit, day);
 
@@ -459,7 +573,11 @@ export class SheetsUtils {
     }
 
     /**
-     * Check if habit is completed for a specific day
+     * ✅ Kiểm tra habit hoàn thành cho ngày cụ thể
+     * @private
+     * @param habit - Habit object
+     * @param day - Ngày cần kiểm tra
+     * @returns {boolean} True nếu hoàn thành
      */
     private isHabitCompletedForDay(habit: Habit, day: number): boolean {
         const dayIndex = day - 1;
@@ -476,7 +594,10 @@ export class SheetsUtils {
     }
 
     /**
-     * Convert column index to letter (A, B, C, ..., AA, AB, ...)
+     * 🔤 Convert column index thành letter (A, B, C, ..., AA, AB, ...)
+     * @private
+     * @param index - Index cột
+     * @returns {string} Chữ cái đại diện
      */
     private getColumnLetter(index: number): string {
         let letter = '';
@@ -488,7 +609,11 @@ export class SheetsUtils {
     }
 
     /**
-     * Safe JSON parse with fallback
+     * 🛡️ Safe JSON parse với fallback
+     * @private
+     * @param value - Giá trị cần parse
+     * @param fallback - Fallback value nếu lỗi
+     * @returns {any} Kết quả parse hoặc fallback
      */
     private safeJsonParse(value: any, fallback: any): any {
         if (!value || typeof value !== 'string') return fallback;

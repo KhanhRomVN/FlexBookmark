@@ -1,8 +1,43 @@
-// src/presentation/tab/HabitManager/hooks/habit/HabitOperations.ts
+/**
+ * 🎯 HABIT OPERATIONS MANAGER
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 📋 TỔNG QUAN CHỨC NĂNG:
+ * ├── 🏗️ Quản lý các thao tác CRUD cho thói quen
+ * ├── 🔄 Xử lý đồng bộ hóa với Google Sheets
+ * ├── 🎯 Quản lý tracking hàng ngày và streaks
+ * ├── 🗂️ Batch operations (archive/delete nhiều habits)
+ * ├── 🛡️ Error handling và auto-recovery
+ * └── 📊 State management với optimistic updates
+ * 
+ * 🏗️ CẤU TRÚC CHÍNH:
+ * ├── CRUD Operations     → Create, Read, Update, Delete habits
+ * ├── Daily Tracking      → Cập nhật tracking hàng ngày
+ * ├── Batch Operations    → Xử lý nhiều habits cùng lúc
+ * ├── Error Handling      → Xử lý lỗi và retry logic
+ * ├── State Management    → Quản lý state với optimistic updates
+ * └── Auth Integration    → Tích hợp với authentication system
+ * 
+ * 🔧 CÁC CHỨC NĂNG CHÍNH:
+ * ├── createHabit()       → Tạo habit mới
+ * ├── updateHabit()       → Cập nhật habit
+ * ├── deleteHabit()       → Xóa habit
+ * ├── updateDailyHabit()  → Cập nhật tracking hàng ngày
+ * ├── archiveHabit()      → Archive/unarchive habit
+ * ├── batchArchiveHabits()→ Archive nhiều habits
+ * ├── batchDeleteHabits() → Xóa nhiều habits
+ * └── handleError()       → Xử lý lỗi thống nhất
+ */
+
+// 📚 IMPORTS & TYPES
+// ════════════════════════════════════════════════════════════════════════════════
 
 import type { Habit, HabitFormData } from '../../types/habit';
 import { HabitUtils } from '../../utils/habit/HabitUtils';
 import type { HabitOperationResult, BatchOperationResult } from '../../types/drive';
+
+// 📋 INTERFACE DEFINITIONS
+// ════════════════════════════════════════════════════════════════════════════════
 
 interface HabitOperationsParams {
     habitUtils: HabitUtils | null;
@@ -17,6 +52,9 @@ interface HabitOperationsParams {
     attemptAutoRecovery: (diagnostic: any) => Promise<boolean>;
 }
 
+// 🏭 MAIN OPERATIONS FACTORY
+// ════════════════════════════════════════════════════════════════════════════════
+
 export const HabitOperations = (params: HabitOperationsParams) => {
     const {
         habitUtils,
@@ -29,16 +67,28 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         attemptAutoRecovery
     } = params;
 
-    // ========== UTILITIES ==========
+    // ========== 🛠️ UTILITIES ==========
+
+    /**
+     * 🆔 Tạo ID duy nhất cho habit mới
+     * @private
+     * @returns {string} Unique habit ID
+     */
     const generateHabitId = (): string => {
         return `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     };
 
-    // Enhanced error handler with auth diagnosis
+    /**
+     * 🛡️ Xử lý lỗi thống nhất với auth diagnosis
+     * @private
+     * @param error - Error object
+     * @param operation - Tên operation gây lỗi
+     * @returns {Promise<boolean>} True nếu cần retry
+     */
     const handleError = async (error: any, operation: string): Promise<boolean> => {
-        console.error(`Error in ${operation}:`, error);
+        console.error(`❌ Error in ${operation}:`, error);
 
-        // Check if it's an auth-related error
+        // 🔍 Check auth-related errors
         const isAuthError = error?.message?.includes('401') ||
             error?.message?.includes('403') ||
             error?.message?.includes('invalid_grant') ||
@@ -46,14 +96,14 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             error?.status === 403;
 
         if (isAuthError) {
-            // Diagnose auth error
+            // 🩺 Diagnose auth error
             const diagnostic = await diagnoseAuthError(error);
 
             if (!diagnostic.isHealthy) {
                 const criticalIssues = diagnostic.issues.filter((i: { severity: string; }) => i.severity === 'critical');
 
                 if (criticalIssues.length > 0) {
-                    // Try auto-recovery for recoverable issues
+                    // 🔄 Try auto-recovery
                     const autoRecovered = await attemptAutoRecovery(diagnostic);
 
                     if (!autoRecovered) {
@@ -62,21 +112,28 @@ export const HabitOperations = (params: HabitOperationsParams) => {
                         return false;
                     }
 
-                    // If auto-recovered, return true to indicate caller should retry
+                    // ✅ Auto-recovered, indicate retry
                     return true;
                 }
             }
         }
 
-        // Not auth-related error or non-critical
+        // ⚠️ Not auth-related or non-critical error
         const errorMessage = error instanceof Error ? error.message : `${operation} failed`;
         setError(errorMessage);
         return false;
     };
 
-    // ========== CRUD OPERATIONS ==========
+    // ========== 🏗️ CRUD OPERATIONS ==========
 
-    // Create new habit
+    /**
+     * 🆕 Tạo habit mới
+     * - Optimistic update local state
+     * - Ghi vào Google Sheets
+     * - Rollback nếu có lỗi
+     * @param formData - Dữ liệu habit form
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const createHabit = async (formData: HabitFormData): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -86,7 +143,7 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             };
         }
 
-        // Generate new habit
+        // 🏗️ Generate new habit object
         const newHabit: Habit = {
             id: generateHabitId(),
             name: formData.name,
@@ -113,13 +170,13 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             setLoading(true);
             setError(null);
 
-            // Optimistic update to local state
+            // ⚡ Optimistic update to local state
             setHabits(prev => [...prev, newHabit]);
 
-            // Save to Google Sheets
+            // 💾 Save to Google Sheets
             await habitUtils.writeHabit(currentSheetId, newHabit);
 
-            console.log('Habit created successfully:', newHabit.id);
+            console.log('✅ Habit created successfully:', newHabit.id);
 
             return {
                 success: true,
@@ -127,9 +184,9 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             };
 
         } catch (error) {
-            console.error('Create habit failed:', error);
+            console.error('❌ Create habit failed:', error);
 
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.filter(h => h.id !== newHabit.id));
 
             const shouldRetry = await handleError(error, 'Create Habit');
@@ -143,7 +200,14 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
     };
 
-    // Update existing habit
+    /**
+     * ✏️ Cập nhật habit hiện có
+     * - Optimistic update local state
+     * - Cập nhật Google Sheets
+     * - Rollback nếu có lỗi
+     * @param updatedHabit - Habit đã cập nhật
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const updateHabit = async (updatedHabit: Habit): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -165,14 +229,14 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => prev.map(h => h.id === updatedHabit.id ? updatedHabit : h));
 
-            // Find habit index and update in Google Sheets
+            // 💾 Find habit index and update in Google Sheets
             const habitIndex = habits.findIndex(h => h.id === updatedHabit.id);
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
-            console.log('Habit updated successfully:', updatedHabit.id);
+            console.log('✅ Habit updated successfully:', updatedHabit.id);
 
             return {
                 success: true,
@@ -180,9 +244,9 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             };
 
         } catch (error) {
-            console.error('Update habit failed:', error);
+            console.error('❌ Update habit failed:', error);
 
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.map(h => h.id === updatedHabit.id ? originalHabit : h));
 
             const shouldRetry = await handleError(error, 'Update Habit');
@@ -196,7 +260,14 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
     };
 
-    // Delete habit
+    /**
+     * 🗑️ Xóa habit
+     * - Optimistic update local state
+     * - Xóa từ Google Sheets
+     * - Rollback nếu có lỗi
+     * @param habitId - ID habit cần xóa
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const deleteHabit = async (habitId: string): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -218,22 +289,22 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => prev.filter(h => h.id !== habitId));
 
-            // Delete from Google Sheets
+            // 🗑️ Delete from Google Sheets
             await habitUtils.deleteHabit(currentSheetId, habitId);
 
-            console.log('Habit deleted successfully:', habitId);
+            console.log('✅ Habit deleted successfully:', habitId);
 
             return {
                 success: true
             };
 
         } catch (error) {
-            console.error('Delete habit failed:', error);
+            console.error('❌ Delete habit failed:', error);
 
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => [...prev, habitToDelete]);
 
             const shouldRetry = await handleError(error, 'Delete Habit');
@@ -247,7 +318,16 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
     };
 
-    // Update daily habit tracking
+    /**
+     * 📅 Cập nhật daily habit tracking
+     * - Cập nhật tracking value cho ngày cụ thể
+     * - Recalculate streaks
+     * - Cập nhật cả local state và Google Sheets
+     * @param habitId - ID habit
+     * @param day - Ngày trong tháng (1-31)
+     * @param value - Giá trị tracking
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const updateDailyHabit = async (
         habitId: string,
         day: number,
@@ -279,15 +359,15 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         try {
             setError(null);
 
-            // Update in Google Sheets and get back updated habit with recalculated streaks
+            // 📊 Update in Google Sheets and get back updated habit with recalculated streaks
             const updatedHabit = await habitUtils.updateDailyHabit(currentSheetId, habitId, day, value);
 
             if (updatedHabit) {
-                // Update local state with the updated habit
+                // 🔄 Update local state with the updated habit
                 setHabits(prev => prev.map(h => h.id === habitId ? updatedHabit : h));
             }
 
-            console.log('Daily habit tracking updated successfully');
+            console.log('✅ Daily habit tracking updated successfully');
 
             return {
                 success: true,
@@ -295,7 +375,7 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             };
 
         } catch (error) {
-            console.error('Update daily habit failed:', error);
+            console.error('❌ Update daily habit failed:', error);
 
             const shouldRetry = await handleError(error, 'Update Daily Habit');
             return {
@@ -306,7 +386,15 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
     };
 
-    // Archive/Unarchive habit
+    /**
+     * 📦 Archive/Unarchive habit
+     * - Optimistic update local state
+     * - Cập nhật Google Sheets
+     * - Rollback nếu có lỗi
+     * @param habitId - ID habit
+     * @param archive - True để archive, false để unarchive
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const archiveHabit = async (habitId: string, archive: boolean): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -328,15 +416,15 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             const updatedHabit = { ...originalHabit, isArchived: archive };
             setHabits(prev => prev.map(h => h.id === habitId ? updatedHabit : h));
 
-            // Update in Google Sheets
+            // 💾 Update in Google Sheets
             const habitIndex = habits.findIndex(h => h.id === habitId);
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
-            console.log(`Habit ${archive ? 'archived' : 'unarchived'} successfully:`, habitId);
+            console.log(`✅ Habit ${archive ? 'archived' : 'unarchived'} successfully:`, habitId);
 
             return {
                 success: true,
@@ -344,9 +432,9 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             };
 
         } catch (error) {
-            console.error(`${archive ? 'Archive' : 'Unarchive'} habit failed:`, error);
+            console.error(`❌ ${archive ? 'Archive' : 'Unarchive'} habit failed:`, error);
 
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.map(h => h.id === habitId ? originalHabit : h));
 
             const shouldRetry = await handleError(error, `${archive ? 'Archive' : 'Unarchive'} Habit`);
@@ -360,9 +448,16 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
     };
 
-    // ========== BATCH OPERATIONS ==========
+    // ========== 📦 BATCH OPERATIONS ==========
 
-    // Batch archive habits
+    /**
+     * 📦 Archive/Unarchive nhiều habits cùng lúc
+     * - Xử lý parallel với Promise.allSettled
+     * - Tổng hợp kết quả thành công/thất bại
+     * @param habitIds - Mảng ID habits
+     * @param archive - True để archive, false để unarchive
+     * @returns {Promise<BatchOperationResult>} Kết quả batch operation
+     */
     const batchArchiveHabits = async (
         habitIds: string[],
         archive: boolean
@@ -395,7 +490,13 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         return { successful, failed, errors, needsAuth };
     };
 
-    // Batch delete habits  
+    /**
+     * 🗑️ Xóa nhiều habits cùng lúc
+     * - Xử lý parallel với Promise.allSettled
+     * - Tổng hợp kết quả thành công/thất bại
+     * @param habitIds - Mảng ID habits
+     * @returns {Promise<BatchOperationResult>} Kết quả batch operation
+     */
     const batchDeleteHabits = async (habitIds: string[]): Promise<BatchOperationResult> => {
         const results = await Promise.allSettled(
             habitIds.map(id => deleteHabit(id))
@@ -425,7 +526,7 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         return { successful, failed, errors, needsAuth };
     };
 
-    // ========== RETURN OPERATIONS ==========
+    // ========== 🎯 RETURN OPERATIONS ==========
 
     return {
         createHabit,

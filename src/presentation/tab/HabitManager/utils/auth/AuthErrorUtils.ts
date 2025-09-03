@@ -1,8 +1,36 @@
 // src/presentation/tab/HabitManager/utils/auth/AuthErrorUtils.ts
 
+/**
+ * 🔐 AUTHENTICATION ERROR UTILITIES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 📋 TỔNG QUAN CHỨC NĂNG:
+ * ├── 🔍 Phân tích và phân loại lỗi authentication
+ * ├── 🩺 Chẩn đoán toàn diện vấn đề auth
+ * ├── 📊 Tạo báo cáo diagnostic chi tiết
+ * ├── 🔄 Tự động phục hồi và refresh token
+ * ├── 📝 Đề xuất giải pháp khắc phục
+ * └── 📈 Giám sát tình trạng auth liên tục
+ * 
+ * 🏗️ CẤU TRÚC CHÍNH:
+ * ├── Error Detection     → Phát hiện và phân loại lỗi
+ * ├── Error Parsing       → Phân tích chi tiết lỗi
+ * ├── Diagnostics         → Chẩn đoán hệ thống
+ * ├── Recovery Planning   → Lập kế hoạch phục hồi
+ * ├── Token Refresh       → Quản lý refresh token
+ * ├── Monitoring          → Giám sát tình trạng
+ * └── Reporting           → Tạo báo cáo
+ */
+
 import { AuthUtils } from './AuthUtils';
 import type { AuthError } from './AuthUtils';
 
+// 📚 INTERFACES & TYPES
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * 📊 Kết quả chẩn đoán authentication
+ */
 export interface AuthDiagnosticResult {
     isHealthy: boolean;
     severity: 'healthy' | 'warning' | 'critical' | 'fatal';
@@ -14,6 +42,9 @@ export interface AuthDiagnosticResult {
     recoveryPlan?: RecoveryPlan;
 }
 
+/**
+ * 🐛 Thông tin issue authentication
+ */
 export interface AuthIssue {
     type: AuthError;
     message: string;
@@ -24,6 +55,9 @@ export interface AuthIssue {
     technicalDetails?: string;
 }
 
+/**
+ * 🖥️ Trạng thái sức khỏe hệ thống
+ */
 export interface SystemHealthStatus {
     tokenValid: boolean;
     scopesValid: boolean;
@@ -34,6 +68,9 @@ export interface SystemHealthStatus {
     cacheOperational: boolean;
 }
 
+/**
+ * 📋 Kế hoạch phục hồi
+ */
 export interface RecoveryPlan {
     steps: RecoveryStep[];
     estimatedTime: string;
@@ -41,13 +78,19 @@ export interface RecoveryPlan {
     requiresUserInteraction: boolean;
 }
 
+/**
+ * 🚶‍♂️ Bước phục hồi
+ */
 export interface RecoveryStep {
     action: string;
     description: string;
     automated: boolean;
-    estimatedDuration: number; // in milliseconds
+    estimatedDuration: number; // milliseconds
 }
 
+/**
+ * ⚙️ Cấu hình refresh token
+ */
 export interface TokenRefreshConfig {
     interactive: boolean;
     timeout: number;
@@ -56,6 +99,9 @@ export interface TokenRefreshConfig {
     includeOptionalScopes: boolean;
 }
 
+/**
+ * ✅ Kết quả consent OAuth
+ */
 export interface OAuthConsentResult {
     success: boolean;
     grantedScopes: string[];
@@ -64,8 +110,16 @@ export interface OAuthConsentResult {
     error?: string;
 }
 
+// 🏭 MAIN CLASS
+// ════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🛠️ Utility class để xử lý lỗi authentication
+ */
 export class AuthErrorUtils {
 
+    // 🎯 ERROR PATTERNS
+    // ────────────────────────────────────────────────────────────────────────────
     private static readonly ERROR_PATTERNS = {
         NETWORK_ERRORS: ['network', 'timeout', 'fetch', 'connection', 'offline'],
         TOKEN_ERRORS: ['401', 'unauthorized', 'unauthenticated', 'invalid_token', 'token_expired'],
@@ -76,16 +130,21 @@ export class AuthErrorUtils {
 
     // ========== ERROR DETECTION ==========
 
+    /**
+     * 🔍 Kiểm tra có phải lỗi authentication không
+     * @param error - Lỗi cần kiểm tra
+     * @returns {boolean} True nếu là lỗi auth
+     */
     static isAuthError(error: any): boolean {
         if (!error) return false;
 
         const errorStr = this.errorToString(error).toLowerCase();
         const statusCode = this.extractStatusCode(error);
 
-        // Check HTTP status codes
+        // ✅ Check HTTP status codes
         if ([401, 403, 429].includes(statusCode)) return true;
 
-        // Check error patterns
+        // ✅ Check error patterns
         const allPatterns = [
             ...this.ERROR_PATTERNS.TOKEN_ERRORS,
             ...this.ERROR_PATTERNS.SCOPE_ERRORS,
@@ -95,6 +154,11 @@ export class AuthErrorUtils {
         return allPatterns.some(pattern => errorStr.includes(pattern));
     }
 
+    /**
+     * 🏷️ Phân loại lỗi thành categories
+     * @param error - Lỗi cần phân loại
+     * @returns {object} Category và confidence level
+     */
     static classifyError(error: any): {
         category: 'network' | 'auth' | 'scope' | 'consent' | 'rate_limit' | 'unknown';
         confidence: number;
@@ -102,27 +166,27 @@ export class AuthErrorUtils {
         const errorStr = this.errorToString(error).toLowerCase();
         const statusCode = this.extractStatusCode(error);
 
-        // Network errors
+        // 🌐 Network errors
         if (this.ERROR_PATTERNS.NETWORK_ERRORS.some(pattern => errorStr.includes(pattern))) {
             return { category: 'network', confidence: 0.9 };
         }
 
-        // Rate limiting
+        // ⏱️ Rate limiting
         if (statusCode === 429 || this.ERROR_PATTERNS.RATE_LIMIT_ERRORS.some(pattern => errorStr.includes(pattern))) {
             return { category: 'rate_limit', confidence: 0.95 };
         }
 
-        // Authentication errors
+        // 🔑 Authentication errors
         if (statusCode === 401 || this.ERROR_PATTERNS.TOKEN_ERRORS.some(pattern => errorStr.includes(pattern))) {
             return { category: 'auth', confidence: 0.9 };
         }
 
-        // Authorization/scope errors
+        // 🚫 Authorization/scope errors
         if (statusCode === 403 || this.ERROR_PATTERNS.SCOPE_ERRORS.some(pattern => errorStr.includes(pattern))) {
             return { category: 'scope', confidence: 0.85 };
         }
 
-        // Consent errors
+        // ✅ Consent errors
         if (this.ERROR_PATTERNS.CONSENT_ERRORS.some(pattern => errorStr.includes(pattern))) {
             return { category: 'consent', confidence: 0.8 };
         }
@@ -132,6 +196,11 @@ export class AuthErrorUtils {
 
     // ========== ERROR PARSING ==========
 
+    /**
+     * 📝 Parse lỗi thành AuthIssue chi tiết
+     * @param error - Lỗi cần parse
+     * @returns {AuthIssue} Thông tin issue chi tiết
+     */
     static parseAuthError(error: any): AuthIssue {
         if (!error) {
             return {
@@ -220,7 +289,7 @@ export class AuthErrorUtils {
                 };
         }
 
-        // Default case
+        // 🔧 Default case
         return {
             type: 'unknown_error',
             message: error instanceof Error ? error.message : 'Unknown authentication error',
@@ -234,12 +303,19 @@ export class AuthErrorUtils {
 
     // ========== COMPREHENSIVE DIAGNOSTICS ==========
 
+    /**
+     * 🩺 Chẩn đoán toàn diện lỗi authentication
+     * @param error - Lỗi cần chẩn đoán
+     * @param authState - Trạng thái auth hiện tại
+     * @param permissions - Quyền hiện có
+     * @returns {Promise<AuthDiagnosticResult>} Kết quả chẩn đoán chi tiết
+     */
     static async diagnoseAuthError(
         error: any,
         authState: any,
         permissions: any
     ): Promise<AuthDiagnosticResult> {
-        console.log('Starting comprehensive authentication diagnosis...', { error, authState, permissions });
+        console.log('🩺 Starting comprehensive authentication diagnosis...', { error, authState, permissions });
 
         const issues: AuthIssue[] = [];
         const recommendations: string[] = [];
@@ -247,10 +323,10 @@ export class AuthErrorUtils {
         let canAutoRecover = false;
 
         try {
-            // System health check
+            // 🖥️ System health check
             const systemStatus = await this.checkSystemHealth(authState);
 
-            // Parse the primary error if provided
+            // 📝 Parse the primary error if provided
             if (error) {
                 const primaryIssue = this.parseAuthError(error);
                 issues.push(primaryIssue);
@@ -263,16 +339,16 @@ export class AuthErrorUtils {
                 }
             }
 
-            // Authentication state analysis
+            // 🔍 Authentication state analysis
             await this.analyzeAuthState(authState, issues, recommendations);
 
-            // Permission analysis
+            // 🔐 Permission analysis
             await this.analyzePermissions(permissions, issues, recommendations);
 
-            // System health issues
+            // 🖥️ System health issues
             this.analyzeSystemHealth(systemStatus, issues, recommendations);
 
-            // Network connectivity
+            // 🌐 Network connectivity
             if (!systemStatus.networkReachable) {
                 issues.push({
                     type: 'network_error',
@@ -285,28 +361,28 @@ export class AuthErrorUtils {
                 recommendations.push('Verify internet connectivity');
             }
 
-            // Update flags based on all issues
+            // 🏷️ Update flags based on all issues
             needsUserAction = needsUserAction || issues.some(issue => issue.requiresUserAction);
             canAutoRecover = issues.some(issue => issue.canAutoRecover);
 
-            // Determine overall severity
+            // 📊 Determine overall severity
             const severity = this.determineSeverity(issues);
 
-            // Generate recovery plan
+            // 📋 Generate recovery plan
             const recoveryPlan = this.generateRecoveryPlan(issues, systemStatus);
 
             const result: AuthDiagnosticResult = {
                 isHealthy: issues.filter(i => i.severity === 'critical').length === 0,
                 severity,
                 issues,
-                recommendations: [...new Set(recommendations)], // Remove duplicates
+                recommendations: [...new Set(recommendations)], // 🧹 Remove duplicates
                 needsUserAction,
                 canAutoRecover,
                 systemStatus,
                 recoveryPlan
             };
 
-            console.log('Authentication diagnosis completed:', {
+            console.log('✅ Authentication diagnosis completed:', {
                 isHealthy: result.isHealthy,
                 severity: result.severity,
                 issuesCount: result.issues.length,
@@ -316,7 +392,7 @@ export class AuthErrorUtils {
             return result;
 
         } catch (diagnosisError) {
-            console.error('Error during authentication diagnosis:', diagnosisError);
+            console.error('❌ Error during authentication diagnosis:', diagnosisError);
 
             return {
                 isHealthy: false,
@@ -346,6 +422,12 @@ export class AuthErrorUtils {
         }
     }
 
+    /**
+     * 🖥️ Kiểm tra sức khỏe hệ thống
+     * @private
+     * @param authState - Trạng thái auth
+     * @returns {Promise<SystemHealthStatus>} Trạng thái hệ thống
+     */
     private static async checkSystemHealth(authState: any): Promise<SystemHealthStatus> {
         const status: SystemHealthStatus = {
             tokenValid: false,
@@ -358,27 +440,34 @@ export class AuthErrorUtils {
         };
 
         try {
-            // Check auth manager health
+            // ✅ Check auth manager health
             status.authManagerHealthy = typeof authState === 'object' && authState !== null;
 
-            // Check token validity
+            // ✅ Check token validity
             if (authState.user?.accessToken) {
                 const validation = await AuthUtils.validateToken(authState.user.accessToken, false);
                 status.tokenValid = validation.isValid;
                 status.scopesValid = validation.hasRequiredScopes;
             }
 
-            // Test network connectivity
+            // 🌐 Test network connectivity
             status.networkReachable = await AuthUtils.testNetworkConnectivity();
 
         } catch (error) {
-            console.warn('System health check failed:', error);
+            console.warn('⚠️ System health check failed:', error);
             status.cacheOperational = false;
         }
 
         return status;
     }
 
+    /**
+     * 🔍 Phân tích trạng thái authentication
+     * @private
+     * @param authState - Trạng thái auth
+     * @param issues - Mảng issues để thêm vào
+     * @param recommendations - Mảng recommendations để thêm vào
+     */
     private static async analyzeAuthState(authState: any, issues: AuthIssue[], recommendations: string[]): Promise<void> {
         if (!authState.isAuthenticated) {
             issues.push({
@@ -406,7 +495,7 @@ export class AuthErrorUtils {
             return;
         }
 
-        // Check token validation status
+        // ✅ Check token validation status
         if (authState.validationStatus) {
             const validation = authState.validationStatus;
 
@@ -444,7 +533,7 @@ export class AuthErrorUtils {
                 }
             }
 
-            // Check token expiry warning
+            // ⏰ Check token expiry warning
             if (validation.expiresAt) {
                 const timeUntilExpiry = validation.expiresAt - Date.now();
                 const minutesUntilExpiry = Math.floor(timeUntilExpiry / 60000);
@@ -463,7 +552,7 @@ export class AuthErrorUtils {
             }
         }
 
-        // Check for ongoing operations
+        // 🔄 Check for ongoing operations
         if (authState.tokenRefreshInProgress) {
             issues.push({
                 type: 'token_expired',
@@ -487,6 +576,13 @@ export class AuthErrorUtils {
         }
     }
 
+    /**
+     * 🔐 Phân tích quyền truy cập
+     * @private
+     * @param permissions - Quyền hiện có
+     * @param issues - Mảng issues để thêm vào
+     * @param recommendations - Mảng recommendations để thêm vào
+     */
     private static async analyzePermissions(permissions: any, issues: AuthIssue[], recommendations: string[]): Promise<void> {
         if (!permissions) return;
 
@@ -513,7 +609,7 @@ export class AuthErrorUtils {
             recommendations.push(`Grant ${missingRequired.join(' and ')} permissions`);
         }
 
-        // Check optional permissions
+        // 📋 Check optional permissions
         const missingOptional: string[] = [];
 
         if (!permissions.hasCalendar) {
@@ -534,6 +630,13 @@ export class AuthErrorUtils {
         }
     }
 
+    /**
+     * 🖥️ Phân tích sức khỏe hệ thống
+     * @private
+     * @param systemStatus - Trạng thái hệ thống
+     * @param issues - Mảng issues để thêm vào
+     * @param recommendations - Mảng recommendations để thêm vào
+     */
     private static analyzeSystemHealth(systemStatus: SystemHealthStatus, issues: AuthIssue[], recommendations: string[]): void {
         if (!systemStatus.chromeIdentityAvailable) {
             issues.push({
@@ -584,6 +687,12 @@ export class AuthErrorUtils {
         }
     }
 
+    /**
+     * 📊 Xác định mức độ nghiêm trọng tổng thể
+     * @private
+     * @param issues - Mảng issues
+     * @returns {string} Mức độ nghiêm trọng
+     */
     private static determineSeverity(issues: AuthIssue[]): 'healthy' | 'warning' | 'critical' | 'fatal' {
         const criticalCount = issues.filter(issue => issue.severity === 'critical').length;
         const warningCount = issues.filter(issue => issue.severity === 'warning').length;
@@ -594,13 +703,20 @@ export class AuthErrorUtils {
         return 'healthy';
     }
 
+    /**
+     * 📋 Tạo kế hoạch phục hồi
+     * @private
+     * @param issues - Mảng issues
+     * @param _systemStatus - Trạng thái hệ thống
+     * @returns {RecoveryPlan} Kế hoạch phục hồi
+     */
     private static generateRecoveryPlan(issues: AuthIssue[], _systemStatus: SystemHealthStatus): RecoveryPlan {
         const steps: RecoveryStep[] = [];
         let estimatedTime = 0;
         let requiresUserInteraction = false;
         let successProbability: 'high' | 'medium' | 'low' = 'high';
 
-        // Sort issues by priority (critical first, then by auto-recovery capability)
+        // 📊 Sort issues by priority (critical first, then by auto-recovery capability)
         const sortedIssues = [...issues].sort((a, b) => {
             if (a.severity === 'critical' && b.severity !== 'critical') return -1;
             if (a.severity !== 'critical' && b.severity === 'critical') return 1;
@@ -670,7 +786,7 @@ export class AuthErrorUtils {
                         break;
                 }
             } else if (issue.severity === 'critical') {
-                // Non-recoverable critical issues
+                // 🚨 Non-recoverable critical issues
                 steps.push({
                     action: 'manual_intervention',
                     description: `Manual intervention required: ${issue.suggestedAction}`,
@@ -682,7 +798,7 @@ export class AuthErrorUtils {
             }
         }
 
-        // Add validation step at the end
+        // ✅ Add validation step at the end
         if (steps.length > 0) {
             steps.push({
                 action: 'validate_recovery',
@@ -693,7 +809,7 @@ export class AuthErrorUtils {
             estimatedTime += 5000;
         }
 
-        // Format estimated time
+        // ⏰ Format estimated time
         const minutes = Math.ceil(estimatedTime / 60000);
         const formattedTime = minutes <= 1 ? 'Less than 1 minute' : `${minutes} minute${minutes !== 1 ? 's' : ''}`;
 
@@ -707,6 +823,11 @@ export class AuthErrorUtils {
 
     // ========== TOKEN REFRESH UTILITIES ==========
 
+    /**
+     * 🔄 Thử refresh token
+     * @param config - Cấu hình refresh
+     * @returns {Promise<OAuthConsentResult>} Kết quả refresh
+     */
     static async attemptTokenRefresh(config: TokenRefreshConfig = {
         interactive: false,
         timeout: 30000,
@@ -721,13 +842,13 @@ export class AuthErrorUtils {
         };
 
         try {
-            console.log('Attempting token refresh with config:', config);
+            console.log('🔄 Attempting token refresh with config:', config);
 
             const requiredScopes = AuthUtils.getRequiredScopes();
             const optionalScopes = config.includeOptionalScopes ? AuthUtils.getOptionalScopes() : [];
             const allScopes = [...requiredScopes, ...optionalScopes];
 
-            // Try refresh with retry logic
+            // 🔁 Try refresh with retry logic
             for (let attempt = 1; attempt <= config.retryCount; attempt++) {
                 try {
                     const refreshResult = await this.performTokenRefresh(allScopes, config);
@@ -737,22 +858,22 @@ export class AuthErrorUtils {
                         result.newToken = refreshResult.newToken;
                         result.grantedScopes = refreshResult.grantedScopes;
 
-                        // Identify any denied scopes
+                        // 🚫 Identify any denied scopes
                         result.deniedScopes = allScopes.filter(scope =>
                             !refreshResult.grantedScopes.includes(scope)
                         );
 
-                        console.log(`Token refresh successful on attempt ${attempt}`);
+                        console.log(`✅ Token refresh successful on attempt ${attempt}`);
                         return result;
                     }
                 } catch (attemptError) {
-                    console.warn(`Token refresh attempt ${attempt} failed:`, attemptError);
+                    console.warn(`❌ Token refresh attempt ${attempt} failed:`, attemptError);
 
                     if (attempt === config.retryCount) {
                         result.error = attemptError instanceof Error ? attemptError.message : 'Token refresh failed';
                     }
 
-                    // Wait before retry (exponential backoff)
+                    // ⏳ Wait before retry (exponential backoff)
                     if (attempt < config.retryCount) {
                         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
                         await new Promise(resolve => setTimeout(resolve, delay));
@@ -763,12 +884,19 @@ export class AuthErrorUtils {
             return result;
 
         } catch (error) {
-            console.error('Token refresh failed:', error);
+            console.error('❌ Token refresh failed:', error);
             result.error = error instanceof Error ? error.message : 'Token refresh failed';
             return result;
         }
     }
 
+    /**
+     * 🎯 Thực hiện refresh token
+     * @private
+     * @param scopes - Scopes cần request
+     * @param config - Cấu hình refresh
+     * @returns {Promise<object>} Kết quả refresh
+     */
     private static async performTokenRefresh(scopes: string[], config: TokenRefreshConfig): Promise<{
         success: boolean;
         newToken?: string;
@@ -798,7 +926,7 @@ export class AuthErrorUtils {
                     }
 
                     try {
-                        // Validate the new token
+                        // ✅ Validate the new token
                         const validation = await AuthUtils.validateToken(token);
 
                         if (!validation.isValid) {
@@ -806,7 +934,7 @@ export class AuthErrorUtils {
                             return;
                         }
 
-                        // Get granted scopes
+                        // 📋 Get granted scopes
                         const grantedScopes = validation.scopeDetails?.grantedScopes || [];
 
                         resolve({
@@ -825,6 +953,12 @@ export class AuthErrorUtils {
 
     // ========== UTILITY METHODS ==========
 
+    /**
+     * 📝 Convert error thành string
+     * @private
+     * @param error - Error object
+     * @returns {string} Error string
+     */
     private static errorToString(error: any): string {
         if (typeof error === 'string') return error;
         if (error instanceof Error) return error.message;
@@ -833,6 +967,12 @@ export class AuthErrorUtils {
         return JSON.stringify(error) || 'Unknown error';
     }
 
+    /**
+     * 🔢 Extract status code từ error
+     * @private
+     * @param error - Error object
+     * @returns {number} Status code
+     */
     private static extractStatusCode(error: any): number {
         if (typeof error === 'number') return error;
         if (error?.status) return error.status;
@@ -846,6 +986,12 @@ export class AuthErrorUtils {
 
     // ========== DEBUG AND MONITORING ==========
 
+    /**
+     * 🔬 Lấy diagnostics chi tiết
+     * @param authState - Trạng thái auth
+     * @param permissions - Quyền hiện có
+     * @returns {Promise<object>} Diagnostics chi tiết
+     */
     static async getDetailedDiagnostics(authState?: any, permissions?: any): Promise<{
         systemInfo: SystemHealthStatus;
         authAnalysis: any;
@@ -872,11 +1018,11 @@ export class AuthErrorUtils {
         };
 
         try {
-            // System health check
+            // 🖥️ System health check
             diagnostics.systemInfo = await this.checkSystemHealth(authState);
             diagnostics.networkStatus = diagnostics.systemInfo.networkReachable;
 
-            // Auth state analysis
+            // 🔍 Auth state analysis
             if (authState) {
                 diagnostics.authAnalysis = {
                     isAuthenticated: authState.isAuthenticated,
@@ -890,7 +1036,7 @@ export class AuthErrorUtils {
                     canProceed: authState.canProceed
                 };
 
-                // Add recommendations based on auth state
+                // 📝 Add recommendations based on auth state
                 if (!authState.isAuthenticated) {
                     diagnostics.recommendations.push('User authentication required');
                 }
@@ -902,7 +1048,7 @@ export class AuthErrorUtils {
                 }
             }
 
-            // Permission analysis
+            // 🔐 Permission analysis
             if (permissions) {
                 diagnostics.permissionAnalysis = {
                     hasDrive: permissions.hasDrive,
@@ -912,7 +1058,7 @@ export class AuthErrorUtils {
                     folderStructureExists: permissions.folderStructureExists
                 };
 
-                // Add permission-based recommendations
+                // 📝 Add permission-based recommendations
                 const missingRequired = [];
                 if (!permissions.hasDrive) missingRequired.push('Google Drive');
                 if (!permissions.hasSheets) missingRequired.push('Google Sheets');
@@ -926,10 +1072,10 @@ export class AuthErrorUtils {
                 }
             }
 
-            // Cache status
+            // 💾 Cache status
             diagnostics.cacheStatus = AuthUtils.getCacheStats();
 
-            // System-level recommendations
+            // 🖥️ System-level recommendations
             if (!diagnostics.systemInfo.chromeIdentityAvailable) {
                 diagnostics.recommendations.push('Chrome Identity API not available - check extension environment');
             }
@@ -941,13 +1087,18 @@ export class AuthErrorUtils {
             }
 
         } catch (error) {
-            console.error('Failed to generate detailed diagnostics:', error);
+            console.error('❌ Failed to generate detailed diagnostics:', error);
             diagnostics.recommendations.push('Diagnostic analysis failed - try refreshing and sign in again');
         }
 
         return diagnostics;
     }
 
+    /**
+     * 📄 Format báo cáo diagnostic
+     * @param diagnostic - Kết quả diagnostic
+     * @returns {string} Báo cáo formatted
+     */
     static formatDiagnosticReport(diagnostic: AuthDiagnosticResult): string {
         const lines: string[] = [];
 
@@ -958,7 +1109,7 @@ export class AuthErrorUtils {
         lines.push(`Auto-Recovery Possible: ${diagnostic.canAutoRecover ? 'YES' : 'NO'}`);
         lines.push('');
 
-        // System status
+        // 🖥️ System status
         lines.push('--- SYSTEM STATUS ---');
         lines.push(`Token Valid: ${diagnostic.systemStatus.tokenValid ? 'YES' : 'NO'}`);
         lines.push(`Scopes Valid: ${diagnostic.systemStatus.scopesValid ? 'YES' : 'NO'}`);
@@ -967,7 +1118,7 @@ export class AuthErrorUtils {
         lines.push(`Manifest Config: ${diagnostic.systemStatus.manifestConfigValid ? 'VALID' : 'INVALID'}`);
         lines.push('');
 
-        // Issues
+        // 🐛 Issues
         if (diagnostic.issues.length > 0) {
             lines.push('--- ISSUES DETECTED ---');
             diagnostic.issues.forEach((issue, index) => {
@@ -982,7 +1133,7 @@ export class AuthErrorUtils {
             });
         }
 
-        // Recommendations
+        // 💡 Recommendations
         if (diagnostic.recommendations.length > 0) {
             lines.push('--- RECOMMENDATIONS ---');
             diagnostic.recommendations.forEach((rec, index) => {
@@ -991,7 +1142,7 @@ export class AuthErrorUtils {
             lines.push('');
         }
 
-        // Recovery plan
+        // 📋 Recovery plan
         if (diagnostic.recoveryPlan && diagnostic.recoveryPlan.steps.length > 0) {
             lines.push('--- RECOVERY PLAN ---');
             lines.push(`Estimated Time: ${diagnostic.recoveryPlan.estimatedTime}`);
@@ -1014,12 +1165,20 @@ export class AuthErrorUtils {
 
     // ========== CACHE MANAGEMENT ==========
 
+    /**
+     * 💾 Cache cho diagnostic results
+     */
     private static diagnosticCache = new Map<string, {
         result: AuthDiagnosticResult;
         timestamp: number;
     }>();
-    private static readonly DIAGNOSTIC_CACHE_TTL = 30000; // 30 seconds
+    private static readonly DIAGNOSTIC_CACHE_TTL = 30000; // ⏰ 30 seconds
 
+    /**
+     * 📦 Lấy cached diagnostic
+     * @param cacheKey - Key để lấy cache
+     * @returns {Promise<AuthDiagnosticResult | null>} Cached result hoặc null
+     */
     static async getCachedDiagnostic(cacheKey: string): Promise<AuthDiagnosticResult | null> {
         const cached = this.diagnosticCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < this.DIAGNOSTIC_CACHE_TTL) {
@@ -1028,16 +1187,24 @@ export class AuthErrorUtils {
         return null;
     }
 
+    /**
+     * 💾 Lưu diagnostic vào cache
+     * @param cacheKey - Key để lưu cache
+     * @param result - Kết quả diagnostic
+     */
     static cacheDiagnostic(cacheKey: string, result: AuthDiagnosticResult): void {
         this.diagnosticCache.set(cacheKey, {
             result,
             timestamp: Date.now()
         });
 
-        // Clean up old entries
+        // 🧹 Clean up old entries
         this.cleanupDiagnosticCache();
     }
 
+    /**
+     * 🧹 Dọn dẹp cache cũ
+     */
     static cleanupDiagnosticCache(): void {
         const now = Date.now();
         for (const [key, cached] of this.diagnosticCache.entries()) {
@@ -1047,12 +1214,23 @@ export class AuthErrorUtils {
         }
     }
 
+    /**
+     * 🗑️ Xóa toàn bộ diagnostic cache
+     */
     static clearDiagnosticCache(): void {
         this.diagnosticCache.clear();
     }
 
     // ========== MONITORING UTILITIES ==========
 
+    /**
+     * 📈 Giám sát tình trạng auth liên tục
+     * @param authState - Trạng thái auth
+     * @param permissions - Quyền hiện có
+     * @param onHealthChange - Callback khi health thay đổi
+     * @param intervalMs - Khoảng thời gian giám sát
+     * @returns {Promise<Function>} Function để dừng giám sát
+     */
     static async monitorAuthHealth(
         authState: any,
         permissions: any,
@@ -1079,17 +1257,17 @@ export class AuthErrorUtils {
                     setTimeout(checkHealth, intervalMs);
                 }
             } catch (error) {
-                console.warn('Auth health monitoring failed:', error);
+                console.warn('⚠️ Auth health monitoring failed:', error);
                 if (isRunning) {
                     setTimeout(checkHealth, intervalMs);
                 }
             }
         };
 
-        // Start monitoring
+        // 🚀 Start monitoring
         checkHealth();
 
-        // Return cleanup function
+        // 🔄 Return cleanup function
         return () => {
             isRunning = false;
         };
@@ -1097,16 +1275,21 @@ export class AuthErrorUtils {
 
     // ========== EXPORT UTILITIES ==========
 
+    /**
+     * 📤 Export diagnostic data (loại bỏ thông tin nhạy cảm)
+     * @param diagnostic - Kết quả diagnostic
+     * @returns {string} JSON string
+     */
     static exportDiagnosticData(diagnostic: AuthDiagnosticResult): string {
         const exportData = {
             timestamp: new Date().toISOString(),
             version: '1.0',
             diagnostic: {
                 ...diagnostic,
-                // Remove potentially sensitive information
+                // 🚫 Remove potentially sensitive information
                 systemStatus: {
                     ...diagnostic.systemStatus,
-                    // Keep only boolean flags, remove any tokens or sensitive data
+                    // 📊 Keep only boolean flags, remove any tokens or sensitive data
                 }
             }
         };
@@ -1114,6 +1297,13 @@ export class AuthErrorUtils {
         return JSON.stringify(exportData, null, 2);
     }
 
+    /**
+     * 📋 Tạo báo cáo hỗ trợ
+     * @param authState - Trạng thái auth
+     * @param permissions - Quyền hiện có
+     * @param error - Lỗi (nếu có)
+     * @returns {Promise<string>} JSON string của báo cáo
+     */
     static async generateSupportReport(
         authState?: any,
         permissions?: any,

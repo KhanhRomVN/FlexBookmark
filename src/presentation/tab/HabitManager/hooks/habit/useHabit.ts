@@ -1,5 +1,39 @@
-// src/presentation/tab/HabitManager/hooks/habit/useHabit.ts
-// Simplified version to prevent circular dependencies and infinite loops
+/**
+ * 🎯 USE HABIT HOOK
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 📋 TỔNG QUAN CHỨC NĂNG:
+ * ├── 🏗️ React hook quản lý state và operations cho habits
+ * ├── 🔄 Đồng bộ hóa với Google Sheets
+ * ├── 🎯 CRUD operations với optimistic updates
+ * ├── 🗂️ Batch operations và error handling
+ * ├── 📊 State management và computed properties
+ * └── 🔐 Auth integration và initialization
+ * 
+ * 🏗️ CẤU TRÚC CHÍNH:
+ * ├── State Management      → Quản lý habits, loading, error states
+ * ├── Initialization        → Khởi tạo HabitUtils và drive structure
+ * ├── Sync Operations       → Đồng bộ hóa với Google Sheets
+ * ├── CRUD Operations       → Create, Read, Update, Delete habits
+ * ├── Batch Operations      → Xử lý nhiều habits cùng lúc
+ * ├── Error Handling        → Xử lý lỗi thống nhất
+ * └── Computed Properties   → Derived state từ habits
+ * 
+ * 🔧 CÁC CHỨC NĂNG CHÍNH:
+ * ├── initializeHabitUtils()→ Khởi tạo HabitUtils instance
+ * ├── setupDriveStructure() → Thiết lập drive structure
+ * ├── syncHabits()          → Đồng bộ habits với Google Sheets
+ * ├── createHabit()         → Tạo habit mới
+ * ├── updateHabit()         → Cập nhật habit
+ * ├── deleteHabit()         → Xóa habit
+ * ├── updateDailyHabit()    → Cập nhật daily tracking
+ * ├── archiveHabit()        → Archive/unarchive habit
+ * ├── batchArchiveHabits()  → Archive nhiều habits
+ * └── batchDeleteHabits()   → Xóa nhiều habits
+ */
+
+// 📚 IMPORTS & TYPES
+// ════════════════════════════════════════════════════════════════════════════════
 
 import { useState, useCallback, useRef } from 'react';
 import { HabitUtils } from '../../utils/habit/HabitUtils';
@@ -11,13 +45,20 @@ import type {
     BatchOperationResult
 } from '../../types/drive';
 
+// 📋 INTERFACE DEFINITIONS
+// ════════════════════════════════════════════════════════════════════════════════
+
 export interface UseHabitDependencies {
     isAuthReady: () => boolean;
     getAuthStatus: () => any;
 }
 
+// 🎯 MAIN HOOK IMPLEMENTATION
+// ════════════════════════════════════════════════════════════════════════════════
+
 export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) => {
-    // ========== STATE ==========
+    // ========== 🏗️ STATE MANAGEMENT ==========
+
     const [habitUtils, setHabitUtils] = useState<HabitUtils | null>(null);
     const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
     const [habits, setHabits] = useState<Habit[]>([]);
@@ -25,23 +66,42 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
     const [error, setError] = useState<string | null>(null);
     const [syncInProgress, setSyncInProgress] = useState(false);
 
-    // Refs to prevent duplicate operations
+    // 🔄 Refs to prevent duplicate operations
     const setupPromiseRef = useRef<Promise<DriveSetupResult> | null>(null);
     const syncPromiseRef = useRef<Promise<SyncResult> | null>(null);
 
-    // ========== UTILITY FUNCTIONS ==========
+    // ========== 🛠️ UTILITY FUNCTIONS ==========
+
+    /**
+     * 🆔 Tạo ID duy nhất cho habit mới
+     * @private
+     * @returns {string} Unique habit ID
+     */
     const generateHabitId = (): string => {
         return `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     };
 
+    /**
+     * 🛡️ Xử lý lỗi thống nhất
+     * @private
+     * @param error - Error object
+     * @param operation - Tên operation gây lỗi
+     * @returns {boolean} Always returns false
+     */
     const handleError = useCallback((error: any, operation: string) => {
-        console.error(`Error in ${operation}:`, error);
+        console.error(`❌ Error in ${operation}:`, error);
         const errorMessage = error instanceof Error ? error.message : `${operation} failed`;
         setError(errorMessage);
         return false;
     }, []);
 
-    // ========== INITIALIZATION ==========
+    // ========== 🚀 INITIALIZATION ==========
+
+    /**
+     * 🏗️ Khởi tạo HabitUtils instance
+     * @private
+     * @returns {Promise<HabitUtils | null>} HabitUtils instance hoặc null
+     */
     const initializeHabitUtils = useCallback(async (): Promise<HabitUtils | null> => {
         try {
             const authStatus = getAuthStatus();
@@ -49,7 +109,7 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
                 return null;
             }
 
-            console.log('Initializing HabitUtils...');
+            console.log('🚀 Initializing HabitUtils...');
             const utils = new HabitUtils(authStatus.user.accessToken);
             setHabitUtils(utils);
             return utils;
@@ -59,7 +119,15 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [getAuthStatus, handleError]);
 
-    // ========== DRIVE SETUP ==========
+    // ========== 🏗️ DRIVE SETUP ==========
+
+    /**
+     * 📁 Thiết lập drive structure
+     * - Đảm bảo Google Sheets tồn tại
+     * - Tạo mới nếu chưa có
+     * - Cache promise để tránh duplicate calls
+     * @returns {Promise<DriveSetupResult>} Kết quả setup
+     */
     const setupDriveStructure = useCallback(async (): Promise<DriveSetupResult> => {
         if (setupPromiseRef.current) {
             return setupPromiseRef.current;
@@ -87,7 +155,7 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
                     }
                 }
 
-                console.log('Setting up drive structure...');
+                console.log('📁 Setting up drive structure...');
                 const sheetFile = await utils.ensureSheetExists();
                 setCurrentSheetId(sheetFile.id);
 
@@ -114,7 +182,17 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         return setupPromiseRef.current;
     }, [isAuthReady, habitUtils, initializeHabitUtils, handleError]);
 
-    // ========== SYNC FUNCTIONS ==========
+    // ========== 🔄 SYNC FUNCTIONS ==========
+
+    /**
+     * 🔄 Đồng bộ habits với Google Sheets
+     * - Đọc tất cả habits từ Google Sheets
+     * - Tính toán changes (added, updated, deleted)
+     * - Cập nhật local state
+     * - Cache promise để tránh duplicate calls
+     * @param forceRefresh - Bỏ qua cache và force refresh
+     * @returns {Promise<SyncResult>} Kết quả sync
+     */
     const syncHabits = useCallback(async (forceRefresh: boolean = false): Promise<SyncResult> => {
         if (syncPromiseRef.current && !forceRefresh) {
             return syncPromiseRef.current;
@@ -139,10 +217,10 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
                 setSyncInProgress(true);
                 setError(null);
 
-                console.log('Starting habit sync...');
+                console.log('🔄 Starting habit sync...');
                 const sheetHabits = await habitUtils!.readAllHabits(currentSheetId!);
 
-                // Calculate changes
+                // 📊 Calculate changes
                 const currentHabitIds = new Set(habits.map(h => h.id));
                 const sheetHabitIds = new Set(sheetHabits.map(h => h.id));
 
@@ -162,7 +240,7 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
                     changes: { added, updated, deleted }
                 };
 
-                console.log('Habit sync completed:', result);
+                console.log('✅ Habit sync completed:', result);
                 return result;
 
             } catch (error) {
@@ -184,7 +262,16 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         return syncPromiseRef.current;
     }, [habitUtils, currentSheetId, habits, setupDriveStructure, handleError]);
 
-    // ========== CRUD OPERATIONS ==========
+    // ========== 🏗️ CRUD OPERATIONS ==========
+
+    /**
+     * 🆕 Tạo habit mới
+     * - Optimistic update local state
+     * - Ghi vào Google Sheets
+     * - Rollback nếu có lỗi
+     * @param formData - Dữ liệu habit form
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const createHabit = useCallback(async (formData: HabitFormData): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -220,17 +307,17 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => [...prev, newHabit]);
 
-            // Save to Google Sheets
+            // 💾 Save to Google Sheets
             await habitUtils.writeHabit(currentSheetId, newHabit);
 
-            console.log('Habit created successfully:', newHabit.id);
+            console.log('✅ Habit created successfully:', newHabit.id);
             return { success: true, data: newHabit };
 
         } catch (error) {
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.filter(h => h.id !== newHabit.id));
 
             handleError(error, 'Create Habit');
@@ -244,6 +331,14 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [habitUtils, currentSheetId, handleError]);
 
+    /**
+     * ✏️ Cập nhật habit hiện có
+     * - Optimistic update local state
+     * - Cập nhật Google Sheets
+     * - Rollback nếu có lỗi
+     * @param updatedHabit - Habit đã cập nhật
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const updateHabit = useCallback(async (updatedHabit: Habit): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -265,18 +360,18 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => prev.map(h => h.id === updatedHabit.id ? updatedHabit : h));
 
-            // Update in Google Sheets
+            // 💾 Update in Google Sheets
             const habitIndex = habits.findIndex(h => h.id === updatedHabit.id);
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
-            console.log('Habit updated successfully:', updatedHabit.id);
+            console.log('✅ Habit updated successfully:', updatedHabit.id);
             return { success: true, data: updatedHabit };
 
         } catch (error) {
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.map(h => h.id === updatedHabit.id ? originalHabit : h));
 
             handleError(error, 'Update Habit');
@@ -290,6 +385,14 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [habitUtils, currentSheetId, habits, handleError]);
 
+    /**
+     * 🗑️ Xóa habit
+     * - Optimistic update local state
+     * - Xóa từ Google Sheets
+     * - Rollback nếu có lỗi
+     * @param habitId - ID habit cần xóa
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const deleteHabit = useCallback(async (habitId: string): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -311,17 +414,17 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
             setLoading(true);
             setError(null);
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => prev.filter(h => h.id !== habitId));
 
-            // Delete from Google Sheets
+            // 🗑️ Delete from Google Sheets
             await habitUtils.deleteHabit(currentSheetId, habitId);
 
-            console.log('Habit deleted successfully:', habitId);
+            console.log('✅ Habit deleted successfully:', habitId);
             return { success: true };
 
         } catch (error) {
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => [...prev, habitToDelete]);
 
             handleError(error, 'Delete Habit');
@@ -335,6 +438,16 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [habitUtils, currentSheetId, habits, handleError]);
 
+    /**
+     * 📅 Cập nhật daily habit tracking
+     * - Cập nhật tracking value cho ngày cụ thể
+     * - Recalculate streaks
+     * - Cập nhật cả local state và Google Sheets
+     * @param habitId - ID habit
+     * @param day - Ngày trong tháng (1-31)
+     * @param value - Giá trị tracking
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const updateDailyHabit = useCallback(async (
         habitId: string,
         day: number,
@@ -364,7 +477,7 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
                 setHabits(prev => prev.map(h => h.id === habitId ? updatedHabit : h));
             }
 
-            console.log('Daily habit tracking updated successfully');
+            console.log('✅ Daily habit tracking updated successfully');
             return { success: true, data: updatedHabit };
 
         } catch (error) {
@@ -377,6 +490,15 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [habitUtils, currentSheetId, handleError]);
 
+    /**
+     * 📦 Archive/Unarchive habit
+     * - Optimistic update local state
+     * - Cập nhật Google Sheets
+     * - Rollback nếu có lỗi
+     * @param habitId - ID habit
+     * @param archive - True để archive, false để unarchive
+     * @returns {Promise<HabitOperationResult>} Kết quả operation
+     */
     const archiveHabit = useCallback(async (habitId: string, archive: boolean): Promise<HabitOperationResult> => {
         if (!habitUtils || !currentSheetId) {
             return {
@@ -400,18 +522,18 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
 
             const updatedHabit = { ...originalHabit, isArchived: archive };
 
-            // Optimistic update
+            // ⚡ Optimistic update
             setHabits(prev => prev.map(h => h.id === habitId ? updatedHabit : h));
 
-            // Update in Google Sheets
+            // 💾 Update in Google Sheets
             const habitIndex = habits.findIndex(h => h.id === habitId);
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
-            console.log(`Habit ${archive ? 'archived' : 'unarchived'} successfully:`, habitId);
+            console.log(`✅ Habit ${archive ? 'archived' : 'unarchived'} successfully:`, habitId);
             return { success: true, data: updatedHabit };
 
         } catch (error) {
-            // Revert optimistic update
+            // ↩️ Revert optimistic update
             setHabits(prev => prev.map(h => h.id === habitId ? originalHabit : h));
 
             handleError(error, `${archive ? 'Archive' : 'Unarchive'} Habit`);
@@ -425,7 +547,16 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         }
     }, [habitUtils, currentSheetId, habits, handleError]);
 
-    // ========== BATCH OPERATIONS ==========
+    // ========== 📦 BATCH OPERATIONS ==========
+
+    /**
+     * 📦 Archive/Unarchive nhiều habits cùng lúc
+     * - Xử lý parallel với Promise.allSettled
+     * - Tổng hợp kết quả thành công/thất bại
+     * @param habitIds - Mảng ID habits
+     * @param archive - True để archive, false để unarchive
+     * @returns {Promise<BatchOperationResult>} Kết quả batch operation
+     */
     const batchArchiveHabits = useCallback(async (
         habitIds: string[],
         archive: boolean
@@ -458,6 +589,13 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         return { successful, failed, errors, needsAuth };
     }, [archiveHabit]);
 
+    /**
+     * 🗑️ Xóa nhiều habits cùng lúc
+     * - Xử lý parallel với Promise.allSettled
+     * - Tổng hợp kết quả thành công/thất bại
+     * @param habitIds - Mảng ID habits
+     * @returns {Promise<BatchOperationResult>} Kết quả batch operation
+     */
     const batchDeleteHabits = useCallback(async (habitIds: string[]): Promise<BatchOperationResult> => {
         const results = await Promise.allSettled(
             habitIds.map(id => deleteHabit(id))
@@ -487,9 +625,10 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         return { successful, failed, errors, needsAuth };
     }, [deleteHabit]);
 
-    // ========== RETURN INTERFACE ==========
+    // ========== 🎯 RETURN INTERFACE ==========
+
     return {
-        // State
+        // 📊 State
         habitUtils,
         currentSheetId,
         habits,
@@ -497,30 +636,30 @@ export const useHabit = ({ isAuthReady, getAuthStatus }: UseHabitDependencies) =
         error,
         syncInProgress,
 
-        // Setup
+        // 🏗️ Setup
         initializeHabitUtils,
         setupDriveStructure,
 
-        // CRUD operations
+        // 🏗️ CRUD operations
         createHabit,
         updateHabit,
         deleteHabit,
         archiveHabit,
         updateDailyHabit,
 
-        // Sync operations
+        // 🔄 Sync operations
         syncHabits,
 
-        // Batch operations
+        // 📦 Batch operations
         batchArchiveHabits,
         batchDeleteHabits,
 
-        // Utilities
+        // 🛠️ Utilities
         setError,
         setLoading,
         setHabits,
 
-        // Computed
+        // 📈 Computed
         isReady: !!habitUtils && !!currentSheetId && !loading,
         habitCount: habits.length,
         activeHabits: habits.filter(h => !h.isArchived),
