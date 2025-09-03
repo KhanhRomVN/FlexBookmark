@@ -1,5 +1,3 @@
-// src/presentation/tab/HabitManager/utils/auth/AuthErrorUtils.ts
-
 /**
  * 🔐 AUTHENTICATION ERROR UTILITIES
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -11,19 +9,9 @@
  * ├── 🔄 Tự động phục hồi và refresh token
  * ├── 📝 Đề xuất giải pháp khắc phục
  * └── 📈 Giám sát tình trạng auth liên tục
- * 
- * 🏗️ CẤU TRÚC CHÍNH:
- * ├── Error Detection     → Phát hiện và phân loại lỗi
- * ├── Error Parsing       → Phân tích chi tiết lỗi
- * ├── Diagnostics         → Chẩn đoán hệ thống
- * ├── Recovery Planning   → Lập kế hoạch phục hồi
- * ├── Token Refresh       → Quản lý refresh token
- * ├── Monitoring          → Giám sát tình trạng
- * └── Reporting           → Tạo báo cáo
  */
 
 import { AuthUtils } from './AuthUtils';
-import type { AuthError } from './AuthUtils';
 
 // 📚 INTERFACES & TYPES
 // ════════════════════════════════════════════════════════════════════════════════
@@ -46,7 +34,7 @@ export interface AuthDiagnosticResult {
  * 🐛 Thông tin issue authentication
  */
 export interface AuthIssue {
-    type: AuthError;
+    type: AuthUtils.AuthError;
     message: string;
     severity: 'critical' | 'warning' | 'info';
     canAutoRecover: boolean;
@@ -445,7 +433,7 @@ export class AuthErrorUtils {
 
             // ✅ Check token validity
             if (authState.user?.accessToken) {
-                const validation = await AuthUtils.validateToken(authState.user.accessToken, false);
+                const validation = await AuthUtils.validateToken(authState.user.accessToken);
                 status.tokenValid = validation.isValid;
                 status.scopesValid = validation.hasRequiredScopes;
             }

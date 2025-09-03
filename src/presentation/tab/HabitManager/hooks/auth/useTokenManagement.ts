@@ -1,33 +1,6 @@
-// 🔐 TOKEN MANAGEMENT HOOK
-// ═══════════════════════════════════════════════════════════════════════════════
-// 
-// 📋 TỔNG QUAN CHỨC NĂNG:
-// ├── 🔄 Quản lý refresh token tự động và thủ công
-// ├── ⏰ Theo dõi thời gian hết hạn token
-// ├── 🔍 Kiểm tra tính hợp lệ của token
-// ├── 🚫 Xử lý revoke token
-// └── 🔄 Tự động refresh token khi sắp hết hạn
-// 
-// 🏗️ CẤU TRÚC CHÍNH:
-// ├── Token Refresh Logic     → Xử lý refresh token
-// ├── Expiry Management       → Quản lý thời gian hết hạn
-// ├── Validation Helpers      → Helper kiểm tra token
-// ├── Auto-Refresh Logic      → Tự động refresh khi cần
-// └── Utility Functions       → Các hàm tiện ích
-// 
-// 🔧 CÁC CHỨC NĂNG CHÍNH:
-// ├── refreshAccessToken()    → Refresh token với retry logic
-// ├── shouldRefreshToken()    → Kiểm tra có cần refresh không
-// ├── getTokenExpiryInfo()    → Lấy thông tin thời gian hết hạn
-// ├── forceTokenRefresh()     → Buộc refresh token
-// ├── revokeToken()           → Revoke token hiện tại
-// ├── isTokenValid()          → Kiểm tra token hợp lệ
-// ├── needsTokenRefresh()     → Kiểm tra cần refresh
-// └── autoRefreshIfNeeded()   → Tự động refresh nếu cần
-
 import { useState, useCallback, useRef } from 'react';
 import { AuthUtils } from '../../utils/auth/AuthUtils';
-import type { EnhancedAuthState, ValidationStatus } from './useAuth';
+import type { EnhancedAuthState, ValidationStatus } from '../../contexts/types';
 
 export interface TokenRefreshResult {
     success: boolean;
@@ -43,12 +16,9 @@ interface UseTokenManagementProps {
     updateValidationStatus: (updates: Partial<ValidationStatus>) => void;
 }
 
-// ⚙️ CONFIGURATION CONSTANTS
-// ════════════════════════════════════════════════════════════════════════════════
-
 const MAX_RETRY_ATTEMPTS = 3;
-const TOKEN_REFRESH_TIMEOUT = 30000; // ⏱️ 30 giây timeout
-const TOKEN_EXPIRY_BUFFER = 10 * 60 * 1000; // ⏰ 10 phút buffer trước khi hết hạn
+const TOKEN_REFRESH_TIMEOUT = 30000;
+const TOKEN_EXPIRY_BUFFER = 10 * 60 * 1000;
 
 export const useTokenManagement = ({
     authState,
@@ -56,29 +26,15 @@ export const useTokenManagement = ({
     updateAuthState,
     updateValidationStatus
 }: UseTokenManagementProps) => {
-
-    // 📊 STATE MANAGEMENT
-    // ────────────────────────────────────────────────────────────────────────────
     const [tokenRefreshAttempts, setTokenRefreshAttempts] = useState(0);
     const tokenRefreshPromiseRef = useRef<Promise<TokenRefreshResult> | null>(null);
     const retryCountRef = useRef<number>(0);
 
-    // ========== TOKEN REFRESH ==========
-
-    /**
-     * 🔄 Refresh access token với retry logic và timeout protection
-     * - Ngăn chặn multiple simultaneous refresh attempts
-     * - Xử lý timeout và validation errors
-     * - Cập nhật auth state và validation status
-     * @returns {Promise<TokenRefreshResult>} Kết quả refresh
-     */
     const refreshAccessToken = useCallback(async (): Promise<TokenRefreshResult> => {
-        // 🚫 Prevent multiple simultaneous refresh attempts
         if (tokenRefreshPromiseRef.current) {
             return tokenRefreshPromiseRef.current;
         }
 
-        // 🚨 Check maximum retry attempts
         if (tokenRefreshAttempts >= MAX_RETRY_ATTEMPTS) {
             return {
                 success: false,
@@ -93,7 +49,6 @@ export const useTokenManagement = ({
                 updateAuthState({ tokenRefreshInProgress: true });
                 setTokenRefreshAttempts(prev => prev + 1);
 
-                // 🎫 Use Chrome Identity API để lấy token mới
                 const timeoutPromise = new Promise<never>((_, reject) => {
                     setTimeout(() => reject(new Error('Token refresh timeout')), TOKEN_REFRESH_TIMEOUT);
                 });
@@ -113,15 +68,12 @@ export const useTokenManagement = ({
                 });
 
                 const newToken = await Promise.race([refreshPromise, timeoutPromise]);
-
-                // ✅ Validate token mới
                 const validation = await AuthUtils.validateToken(newToken);
 
                 if (!validation.isValid) {
                     throw new Error(`Token validation failed: ${validation.errors.join(', ')}`);
                 }
 
-                // 🔄 Update auth manager và state
                 await authManager.updateToken(newToken);
 
                 updateAuthState({
@@ -132,10 +84,10 @@ export const useTokenManagement = ({
                 updateValidationStatus({
                     isValid: true,
                     hasValidToken: true,
-                    expiresAt: validation.expiresAt,
+                    expiresAt: validation.expiresAt || null,
                     lastValidation: Date.now(),
                     errors: []
-                });
+                } as Partial<ValidationStatus>);
 
                 setTokenRefreshAttempts(0);
                 retryCountRef.current = 0;
@@ -168,12 +120,6 @@ export const useTokenManagement = ({
         return refreshPromise;
     }, [authManager, tokenRefreshAttempts, updateAuthState, updateValidationStatus]);
 
-    // ========== TOKEN VALIDATION HELPERS ==========
-
-    /**
-     * 🔍 Kiểm tra có cần refresh token không dựa trên thời gian hết hạn
-     * @returns {boolean} True nếu cần refresh
-     */
     const shouldRefreshToken = useCallback((): boolean => {
         const { expiresAt } = authState.validationStatus;
         if (!expiresAt) return false;
@@ -184,10 +130,6 @@ export const useTokenManagement = ({
         return timeUntilExpiry <= TOKEN_EXPIRY_BUFFER;
     }, [authState.validationStatus.expiresAt]);
 
-    /**
-     * 📊 Lấy thông tin chi tiết về thời gian hết hạn token
-     * @returns {Object | null} Thông tin expiry hoặc null
-     */
     const getTokenExpiryInfo = useCallback(() => {
         const { expiresAt } = authState.validationStatus;
         if (!expiresAt) return null;
@@ -205,17 +147,10 @@ export const useTokenManagement = ({
         };
     }, [authState.validationStatus.expiresAt]);
 
-    // ========== TOKEN MANAGEMENT UTILITIES ==========
-
-    /**
-     * ⚡ Buộc refresh token (bỏ qua các điều kiện thông thường)
-     * @returns {Promise<boolean>} True nếu thành công
-     */
     const forceTokenRefresh = useCallback(async (): Promise<boolean> => {
         try {
             console.log('⚡ Forcing token refresh...');
 
-            // 🔄 Reset retry counter cho forced refresh
             setTokenRefreshAttempts(0);
             retryCountRef.current = 0;
 
@@ -228,10 +163,6 @@ export const useTokenManagement = ({
         }
     }, [refreshAccessToken]);
 
-    /**
-     * 🚫 Revoke token hiện tại
-     * @returns {Promise<boolean>} True nếu thành công
-     */
     const revokeToken = useCallback(async (): Promise<boolean> => {
         try {
             if (!authState.user?.accessToken) return false;
@@ -267,40 +198,24 @@ export const useTokenManagement = ({
         }
     }, [authState.user?.accessToken, updateAuthState, updateValidationStatus]);
 
-    // ========== TOKEN STATUS CHECKS ==========
-
-    /**
-     * ✅ Kiểm tra token có hợp lệ không
-     * @returns {boolean} True nếu token hợp lệ
-     */
     const isTokenValid = useCallback((): boolean => {
         return authState.validationStatus.isValid &&
             authState.validationStatus.hasValidToken &&
             !authState.validationStatus.needsReauth;
     }, [authState.validationStatus]);
 
-    /**
-     * 🔍 Kiểm tra có cần refresh token không
-     * @returns {boolean} True nếu cần refresh
-     */
     const needsTokenRefresh = useCallback((): boolean => {
         const expiryInfo = getTokenExpiryInfo();
         return expiryInfo?.isExpiringSoon || false;
     }, [getTokenExpiryInfo]);
 
-    // ========== AUTO-REFRESH LOGIC ==========
-
-    /**
-     * 🤖 Tự động refresh token nếu cần thiết
-     * @returns {Promise<boolean>} True nếu refresh thành công hoặc không cần
-     */
     const autoRefreshIfNeeded = useCallback(async (): Promise<boolean> => {
         if (!shouldRefreshToken()) {
-            return true; // ✅ No refresh needed
+            return true;
         }
 
         if (authState.tokenRefreshInProgress) {
-            return false; // 🔄 Already refreshing
+            return false;
         }
 
         console.log('🤖 Auto-refreshing token due to expiry...');
@@ -308,9 +223,6 @@ export const useTokenManagement = ({
 
         return result.success;
     }, [shouldRefreshToken, authState.tokenRefreshInProgress, refreshAccessToken]);
-
-    // 🎯 RETURN ALL FUNCTIONS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     return {
         refreshAccessToken,

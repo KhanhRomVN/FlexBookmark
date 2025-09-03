@@ -1,5 +1,3 @@
-// src/presentation/tab/HabitManager/utils/auth/AuthUtils.ts
-
 // 🔐 AUTHENTICATION UTILITIES FOR HABIT MANAGER
 // ═══════════════════════════════════════════════════════════════════════════════
 // 
@@ -9,13 +7,7 @@
 // ├── 💾 Caching và performance optimization  
 // ├── 📊 Scope management và analysis
 // └── 🛠️ Utility methods cho authentication
-// 
-// 🏗️ CẤU TRÚC CHÍNH:
-// ├── Token Validation     → Validate Google OAuth tokens
-// ├── Scope Testing        → Test API access permissions
-// ├── Cache Management     → Performance optimization
-// ├── Scope Analysis       → Permission verification
-// └── Utility Methods      → Helper functions
+//
 
 // 📚 INTERFACES & TYPES
 // ════════════════════════════════════════════════════════════════════════════════
@@ -54,7 +46,7 @@ export interface PermissionScope {
     testEndpoint: string;
     description: string;
     category: 'storage' | 'calendar' | 'other';
-    fallbackTest?: string; // Alternative endpoint for testing
+    fallbackTest?: string;
 }
 
 export interface ScopeTestResult {

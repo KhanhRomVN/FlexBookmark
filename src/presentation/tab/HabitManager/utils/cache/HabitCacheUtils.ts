@@ -1,5 +1,3 @@
-// src/presentation/tab/HabitManager/utils/cache/HabitCacheUtils.ts
-
 /**
  * 🗂️ HABIT CACHE UTILITIES
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -11,40 +9,10 @@
  * ├── 📊 Cache statistics và cleanup
  * ├── 🧪 Fallback mechanisms và error handling
  * └── 🔍 Advanced query và filtering
- * 
- * 🏗️ CẤU TRÚC CHÍNH:
- * ├── Habit Storage      → Store/retrieve individual habits
- * ├── Batch Operations   → Process multiple habits efficiently
- * ├── Temporal Queries   → Query habits by month/year
- * ├── Cache Maintenance  → Cleanup và statistics
- * ├── Fallback Logic     → Cache-with-fallback pattern
- * └── Error Recovery     → Graceful degradation
- * 
- * 📅 TEMPORAL ORGANIZATION:
- * ├── Habits được tổ chức theo tháng/năm
- * ├── Auto-cleanup expired entries
- * ├── Cross-month queries support
- * └── Metadata tracking cho mỗi entry
- * 
- * 🔧 CÁC CHỨC NĂNG CHÍNH:
- * ├── storeHabit()           → Lưu habit với metadata
- * ├── getHabit()             → Lấy habit từ cache
- * ├── storeHabits()          → Batch store multiple habits
- * ├── getHabitsForMonth()    → Lấy habits theo tháng
- * ├── getAllHabits()         → Lấy tất cả cached habits
- * ├── removeHabit()          → Xóa habit khỏi cache
- * ├── updateHabit()          → Update habit mà giữ metadata
- * ├── getCacheStats()        → Lấy cache statistics
- * ├── cleanupExpired()       → Cleanup expired entries
- * ├── getCacheWithFallback() → Cache với fallback function
- * └── isCacheFull()          → Kiểm tra cache size limit
  */
 
-// 📚 IMPORTS & TYPES
-// ════════════════════════════════════════════════════════════════════════════════
-
-import type { Habit } from '../../types/habit';
-import { CacheConstants, type CachedHabit, type CacheStats } from '../../types/cache';
+import type { Habit } from '../../types';
+import { CacheConstants, type CachedHabit, type CacheStats } from '../../types';
 import { CacheManager } from './CacheManager';
 
 // 🏭 MAIN CLASS
@@ -52,17 +20,14 @@ import { CacheManager } from './CacheManager';
 
 export class HabitCacheUtils {
     // 🔧 DEPENDENCY INJECTION
-    // ────────────────────────────────────────────────────────────────────────────
     private static cacheManager = CacheManager.getInstance();
 
     // 📊 CACHE STATISTICS
-    // ────────────────────────────────────────────────────────────────────────────
     private static cleanupCount = 0;
     private static lastCleanup = 0;
     private static readonly CLEANUP_INTERVAL = 30 * 60 * 1000; // ⏰ 30 phút
 
     // 🎯 HABIT-SPECIFIC METHODS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 💾 Lưu habit vào cache với metadata
@@ -157,7 +122,6 @@ export class HabitCacheUtils {
     }
 
     // 📅 TEMPORAL QUERIES
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 📅 Lấy tất cả habits cho specific month/year
@@ -241,7 +205,6 @@ export class HabitCacheUtils {
     }
 
     // 🗑️ REMOVAL OPERATIONS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 🗑️ Xóa habit khỏi cache
@@ -295,7 +258,6 @@ export class HabitCacheUtils {
     }
 
     // 🔄 UPDATE OPERATIONS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 🔄 Update habit mà giữ nguyên cache metadata
@@ -330,7 +292,6 @@ export class HabitCacheUtils {
     }
 
     // 📊 CACHE MAINTENANCE
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 📊 Lấy cache statistics
@@ -439,7 +400,6 @@ export class HabitCacheUtils {
     }
 
     // 🔄 ADVANCED CACHE PATTERNS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 📦 Set multiple cache entries
@@ -496,7 +456,6 @@ export class HabitCacheUtils {
     }
 
     // 🔧 UTILITY METHODS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 📊 Lấy cleanup statistics
@@ -538,8 +497,5 @@ export class HabitCacheUtils {
         }
     }
 }
-
-// 🎯 EXPORT
-// ════════════════════════════════════════════════════════════════════════════════
 
 export { CachedHabit, CacheStats };

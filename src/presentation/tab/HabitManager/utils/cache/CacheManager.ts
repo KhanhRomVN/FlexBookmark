@@ -9,33 +9,7 @@
  * ├── 🧹 Tự động cleanup expired entries
  * ├── 📊 Theo dõi cache metadata và statistics
  * └── 🔧 Xử lý lỗi và retry logic
- * 
- * 🏗️ CẤU TRÚC CHÍNH:
- * ├── Key Generation      → Tạo keys với pattern nhất quán
- * ├── Storage Operations  → Set/get/remove từ chrome.storage
- * ├── TTL Management      → Quản lý expiration và auto-cleanup
- * ├── Metadata Tracking   → Theo dõi cache metadata
- * └── Error Handling      → Xử lý lỗi storage
- * 
- * 🔑 KEY FORMAT:
- * ├── Habit Keys: habit_MM_YYYY_{habitId}
- * ├── Pattern: {prefix}_{month}_{year}_{identifier}
- * └── Metadata Keys: __cache_metadata__
- * 
- * 🔧 CÁC CHỨC NĂNG CHÍNH:
- * ├── generateHabitKey()      → Tạo key cho habit cache
- * ├── parseHabitKey()         → Parse key để extract metadata
- * ├── setCache()              → Lưu data với TTL
- * ├── getCache()              → Lấy data và check expiration
- * ├── removeCache()           → Xóa cache entry
- * ├── clearAllCache()         → Xóa toàn bộ cache
- * ├── isExpired()             → Kiểm tra expiration
- * ├── updateCacheMetadata()   → Cập nhật metadata tracking
- * └── removeCacheMetadata()   → Xóa metadata tracking
  */
-
-// 📚 INTERFACES & TYPES
-// ════════════════════════════════════════════════════════════════════════════════
 
 import { CacheConstants, type CacheMetadata } from '../../types/cache';
 
@@ -44,18 +18,16 @@ import { CacheConstants, type CacheMetadata } from '../../types/cache';
 
 export class CacheManager {
     // 🔧 SINGLETON PATTERN
-    // ────────────────────────────────────────────────────────────────────────────
     private static instance: CacheManager;
 
     // 📊 CACHE STATISTICS
-    // ────────────────────────────────────────────────────────────────────────────
     private cacheHits = 0;
     private cacheMisses = 0;
     private cacheErrors = 0;
     private readonly MAX_RETRIES = 2;
 
     // 🏗️ SINGLETON CONSTRUCTOR
-    // ════════════════════════════════════════════════════════════════════════════════
+    private constructor() { }
 
     /**
      * 🏭 Lấy instance duy nhất của CacheManager
@@ -68,14 +40,7 @@ export class CacheManager {
         return CacheManager.instance;
     }
 
-    /**
-     * 🔒 Private constructor để enforce singleton
-     * @private
-     */
-    private constructor() { }
-
     // 🔑 KEY MANAGEMENT METHODS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 🔑 Tạo cache key cho habit
@@ -111,7 +76,6 @@ export class CacheManager {
     }
 
     // 💾 STORAGE OPERATIONS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 💾 Lưu data vào cache với TTL
@@ -222,7 +186,6 @@ export class CacheManager {
     }
 
     // ⏰ EXPIRATION MANAGEMENT
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * ⏰ Kiểm tra cache metadata có expired không
@@ -234,7 +197,6 @@ export class CacheManager {
     }
 
     // 📊 METADATA TRACKING
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 📊 Cập nhật cache metadata tracking
@@ -274,7 +236,6 @@ export class CacheManager {
     }
 
     // 🔧 UTILITY METHODS
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * ⏳ Delay helper cho retry logic

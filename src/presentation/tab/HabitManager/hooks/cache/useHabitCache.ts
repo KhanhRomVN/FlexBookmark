@@ -1,6 +1,8 @@
+// src/presentation/tab/HabitManager/hooks/cache/useHabitCache.ts
+
 import { useCallback, useMemo } from 'react';
 import { HabitCacheUtils } from '../../utils/cache/HabitCacheUtils';
-import type { Habit } from '../../types/habit';
+import type { Habit } from '../../types';
 import type { CachedHabit, CacheStats } from '../../utils/cache/HabitCacheUtils';
 
 export const useHabitCache = () => {

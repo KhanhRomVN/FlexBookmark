@@ -1,3 +1,5 @@
+// src/presentation/tab/HabitManager/contexts/AuthContext.tsx
+
 /**
  * 🔐 AUTHENTICATION CONTEXT
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -20,17 +22,15 @@ import React, {
 import ChromeAuthManager from "../../../../utils/chromeAuth";
 import { useAuthValidation } from "../hooks/auth/useAuthValidation";
 import { useTokenManagement } from "../hooks/auth/useTokenManagement";
-import type {
+import {
   AuthContextValue,
   EnhancedAuthState,
   ValidationStatus,
   PermissionStatus,
   AuthOperationResult,
-  TokenRefreshResult,
   AuthStatus,
   AuthDiagnosticResult,
-} from "../types/auth";
-import { DEFAULT_AUTH_CONFIG } from "../constant/AuthConstant";
+} from "./types";
 
 // 📚 INTERFACES & TYPES
 // ════════════════════════════════════════════════════════════════════════════════
@@ -39,6 +39,7 @@ interface AuthState extends EnhancedAuthState {
   validationStatus: ValidationStatus;
   permissions: PermissionStatus;
   isCheckingPermissions: boolean;
+  permissionStatus?: PermissionStatus;
 }
 
 type AuthAction =
@@ -84,6 +85,16 @@ const initialState: AuthState = {
     checkInProgress: false,
   },
   isCheckingPermissions: false,
+  permissionStatus: {
+    hasDrive: false,
+    hasSheets: false,
+    hasCalendar: false,
+    allRequired: false,
+    folderStructureExists: false,
+    checked: false,
+    lastChecked: null,
+    checkInProgress: false,
+  },
 };
 
 // 🏭 CONTEXT CREATION
@@ -112,6 +123,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return {
         ...state,
         permissions: { ...state.permissions, ...action.payload },
+        permissionStatus: { ...state.permissions, ...action.payload },
       };
 
     case "SET_ERROR":
@@ -139,7 +151,11 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({
   children,
-  config = DEFAULT_AUTH_CONFIG,
+  config = {
+    requiredScopes: [],
+    autoValidate: true,
+    validationDelay: 3000,
+  },
 }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const authManager = ChromeAuthManager.getInstance();
@@ -189,14 +205,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     permissions: state.permissions,
     setPermissions,
     setIsCheckingPermissions,
-    updateAuthState,
+    updateAuthState: updateAuthState as (
+      updates: Partial<EnhancedAuthState>
+    ) => void,
     updateValidationStatus,
   });
 
   const tokenHook = useTokenManagement({
     authState: state,
     authManager,
-    updateAuthState,
+    updateAuthState: updateAuthState as (
+      updates: Partial<EnhancedAuthState>
+    ) => void,
     updateValidationStatus,
   });
 
@@ -344,14 +364,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       hasDriveAccess: state.permissions.hasDrive,
       hasSheetsAccess: state.permissions.hasSheets,
       hasCalendarAccess: state.permissions.hasCalendar,
-      grantedScopes: state.validationStatus.scopeDetails?.grantedScopes || [],
+      grantedScopes: [],
       validationErrors: state.validationStatus.errors,
       scopeDetails: [],
     };
   }, [state]);
 
   const diagnoseAuthIssues = useCallback((): AuthDiagnosticResult => {
-    // 🩺 Simplified diagnostic implementation
     const issues = [];
     const recommendations = [];
 

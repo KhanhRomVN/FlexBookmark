@@ -1,40 +1,7 @@
 // src/presentation/tab/HabitManager/hooks/auth/useAuth.ts
-// 🔐 CORE AUTHENTICATION HOOK
-// ═══════════════════════════════════════════════════════════════════════════════
-// 
-// 📋 TỔNG QUAN CHỨC NĂNG:
-// ├── 🎯 Quản lý authentication state cho React components
-// ├── 🔄 Đồng bộ state với ChromeAuthManager
-// ├── 🧪 Validate token và permissions tự động
-// ├── 🩺 Diagnostic và error handling
-// ├── 🔄 Auto-recovery và reauthentication
-// └── 📊 Cung cấp status và utility functions
-// 
-// 🏗️ CẤU TRÚC CHÍNH:
-// ├── State Management      → Quản lý auth state và validation status
-// ├── Auth Actions         → Login, logout, forceReauth
-// ├── Validation           → Token và permission validation
-// ├── Diagnostics          → Phát hiện và phân tích lỗi
-// ├── Auto-recovery        → Tự động khôi phục authentication
-// └── Utility Functions    → Helper functions và status getters
-// 
-// 🔧 CÁC CHỨC NĂNG CHÍNH:
-// ├── useAuth()            → Main hook với config options
-// ├── initializeAuth()     → Khởi tạo authentication
-// ├── validateAuth()       → Validate token và permissions
-// ├── login()              → Đăng nhập interactive
-// ├── logout()             → Đăng xuất
-// ├── forceReauth()        → Buộc đăng nhập lại
-// ├── getAuthStatus()      → Lấy comprehensive auth status
-// ├── diagnoseAuthIssues() → Phân tích vấn đề authentication
-// └── attemptAutoRecovery()→ Tự động khôi phục khi có thể
-//
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import ChromeAuthManager, { AuthState, PermissionCheckResult, TokenValidationResult, SERVICE_SCOPES } from '../../../../../utils/chromeAuth';
-
-// 📚 INTERFACES & TYPES
-// ════════════════════════════════════════════════════════════════════════════════
 
 export interface CoreAuthState extends AuthState {
     validationStatus: TokenValidationResult | null;
@@ -57,9 +24,6 @@ export interface AuthHookConfig {
     validationDelay?: number;
 }
 
-// ⚙️ DEFAULT CONFIGURATION
-// ════════════════════════════════════════════════════════════════════════════════
-
 const DEFAULT_CONFIG: Required<AuthHookConfig> = {
     requiredScopes: [
         ...SERVICE_SCOPES.CORE,
@@ -70,9 +34,6 @@ const DEFAULT_CONFIG: Required<AuthHookConfig> = {
     validationDelay: 3000
 };
 
-// 🎯 MAIN HOOK IMPLEMENTATION
-// ════════════════════════════════════════════════════════════════════════════════
-
 export const useAuth = (config?: AuthHookConfig) => {
     const finalConfig = { ...DEFAULT_CONFIG, ...config };
     const authManager = ChromeAuthManager.getInstance();
@@ -80,8 +41,6 @@ export const useAuth = (config?: AuthHookConfig) => {
     const hasInitialized = useRef<boolean>(false);
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // 📊 STATE MANAGEMENT
-    // ────────────────────────────────────────────────────────────────────────────
     const [authState, setAuthState] = useState<CoreAuthState>({
         isAuthenticated: false,
         user: null,
@@ -94,19 +53,9 @@ export const useAuth = (config?: AuthHookConfig) => {
         lastValidation: null
     });
 
-    // 🔄 STATE UPDATER FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🔄 Cập nhật auth state và tự động tính toán isReady
-     * @private
-     * @param updates - Phần state cần cập nhật
-     */
     const updateAuthState = useCallback((updates: Partial<CoreAuthState>) => {
         setAuthState(prev => {
             const newState = { ...prev, ...updates };
-
-            // 🎯 Auto-calculate isReady based on multiple conditions
             newState.isReady = Boolean(
                 newState.isAuthenticated &&
                 newState.user?.accessToken &&
@@ -131,14 +80,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         });
     }, []);
 
-    // 🧪 VALIDATION FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🔍 Validate authentication state (token + permissions)
-     * @param force - Có force validation không (bỏ qua cache)
-     * @returns {Promise<boolean>} True nếu validation thành công
-     */
     const validateAuthentication = useCallback(async (force: boolean = false): Promise<boolean> => {
         const currentUser = authManager.getCurrentUser();
         const currentToken = currentUser?.accessToken;
@@ -165,7 +106,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         updateAuthState({ isValidating: true });
 
         try {
-            // 📊 Step 1: Validate token
             const tokenValidation = await authManager.validateToken(currentToken);
             console.log('✅ Token validation result:', tokenValidation);
 
@@ -179,7 +119,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                 return false;
             }
 
-            // 📋 Step 2: Check permissions
             const permissions = await authManager.checkPermissions(currentToken, finalConfig.requiredScopes);
             console.log('✅ Permission check result:', permissions);
 
@@ -216,13 +155,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         }
     }, [authManager, finalConfig.requiredScopes, updateAuthState]);
 
-    // 🚀 INITIALIZATION FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🚀 Khởi tạo authentication system
-     * @returns {Promise<void>}
-     */
     const initializeAuth = useCallback(async (): Promise<void> => {
         if (hasInitialized.current || initPromiseRef.current) {
             return initPromiseRef.current || Promise.resolve();
@@ -234,11 +166,8 @@ export const useAuth = (config?: AuthHookConfig) => {
         initPromiseRef.current = (async () => {
             try {
                 updateAuthState({ loading: true, error: null });
-
-                // 🔧 Initialize auth manager
                 await authManager.initialize();
 
-                // 📊 Get initial state
                 const isAuthenticated = authManager.isAuthenticated;
                 const user = authManager.getCurrentUser();
 
@@ -251,7 +180,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                     error: null
                 });
 
-                // 🔄 Auto-validate if enabled and authenticated
                 if (finalConfig.autoValidate && isAuthenticated && user?.accessToken) {
                     console.log(`⏰ Scheduling validation in ${finalConfig.validationDelay}ms...`);
 
@@ -273,13 +201,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         return initPromiseRef.current;
     }, [authManager, finalConfig.autoValidate, finalConfig.validationDelay, updateAuthState, validateAuthentication]);
 
-    // 🔐 AUTH ACTION FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🔐 Đăng nhập interactive
-     * @returns {Promise<AuthOperationResult>} Kết quả operation
-     */
     const login = useCallback(async (): Promise<AuthOperationResult> => {
         try {
             console.log('🔐 Starting login...');
@@ -304,7 +225,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                 error: null
             });
 
-            // 🔄 Validate with delay
             if (finalConfig.autoValidate) {
                 setTimeout(() => {
                     validateAuthentication(true);
@@ -333,10 +253,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         }
     }, [authManager, finalConfig.autoValidate, finalConfig.validationDelay, updateAuthState, validateAuthentication]);
 
-    /**
-     * 🚪 Đăng xuất
-     * @returns {Promise<AuthOperationResult>} Kết quả operation
-     */
     const logout = useCallback(async (): Promise<AuthOperationResult> => {
         try {
             console.log('🚪 Starting logout...');
@@ -344,7 +260,6 @@ export const useAuth = (config?: AuthHookConfig) => {
 
             await authManager.logout();
 
-            // 🔄 Reset all state
             setAuthState({
                 isAuthenticated: false,
                 user: null,
@@ -357,7 +272,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                 lastValidation: null
             });
 
-            // 🧹 Clear timeouts and refs
             if (validationTimeoutRef.current) {
                 clearTimeout(validationTimeoutRef.current);
                 validationTimeoutRef.current = null;
@@ -378,10 +292,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         }
     }, [authManager, updateAuthState]);
 
-    /**
-     * 🔄 Buộc đăng nhập lại (force reauthentication)
-     * @returns {Promise<AuthOperationResult>} Kết quả operation
-     */
     const forceReauth = useCallback(async (): Promise<AuthOperationResult> => {
         try {
             console.log('🔄 Starting force reauth...');
@@ -405,7 +315,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                 permissionStatus: null
             });
 
-            // 🔄 Re-validate after reauth
             if (finalConfig.autoValidate) {
                 setTimeout(() => {
                     validateAuthentication(true);
@@ -430,54 +339,33 @@ export const useAuth = (config?: AuthHookConfig) => {
         }
     }, [authManager, finalConfig.autoValidate, finalConfig.validationDelay, updateAuthState, validateAuthentication]);
 
-    // 📊 STATUS & DIAGNOSTIC FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 📊 Lấy comprehensive auth status
-     * @returns {Object} Auth status object
-     */
     const getAuthStatus = useCallback(() => {
         return {
-            // 🎯 Basic auth state
             isAuthenticated: authState.isAuthenticated,
             user: authState.user,
             loading: authState.loading,
             error: authState.error,
-
-            // 🔍 Enhanced state
             isReady: authState.isReady,
             isValidating: authState.isValidating,
             lastValidation: authState.lastValidation,
-
-            // 🎫 Token status
             hasToken: !!authState.user?.accessToken,
             tokenValid: authState.validationStatus?.isValid || false,
             tokenExpired: authState.validationStatus?.isExpired || false,
             tokenExpiry: authState.validationStatus?.expiresAt,
-
-            // 📋 Permission status
             hasRequiredScopes: authState.permissionStatus?.hasRequiredScopes || false,
             hasDriveAccess: authState.permissionStatus?.hasDriveAccess || false,
             hasSheetsAccess: authState.permissionStatus?.hasSheetsAccess || false,
             hasCalendarAccess: authState.permissionStatus?.hasCalendarAccess || false,
-
-            // 🩺 Diagnostic info
             grantedScopes: authState.validationStatus?.grantedScopes || [],
             validationErrors: authState.validationStatus?.errors || [],
             scopeDetails: authState.permissionStatus?.scopeDetails || []
         };
     }, [authState]);
 
-    /**
-     * 🩺 Phân tích và chẩn đoán authentication issues
-     * @returns {Object} Diagnostic results với issues và recommendations
-     */
     const diagnoseAuthIssues = useCallback(() => {
         const issues: Array<{ type: string; severity: 'critical' | 'warning' | 'info'; message: string }> = [];
         const recommendations: string[] = [];
 
-        // 🚨 Critical issues
         if (!authState.isAuthenticated) {
             issues.push({ type: 'no_auth', severity: 'critical', message: 'User not authenticated' });
             recommendations.push('Please sign in with your Google account');
@@ -497,16 +385,14 @@ export const useAuth = (config?: AuthHookConfig) => {
             recommendations.push('Please ensure Drive and Sheets permissions are granted');
         }
 
-        // ⚠️ Warnings
         if (authState.validationStatus?.expiresAt) {
             const timeToExpiry = authState.validationStatus.expiresAt - Date.now();
-            if (timeToExpiry < 10 * 60 * 1000) { // ⏰ Less than 10 minutes
+            if (timeToExpiry < 10 * 60 * 1000) {
                 issues.push({ type: 'token_expiring', severity: 'warning', message: 'Access token expiring soon' });
                 recommendations.push('Token will expire soon, consider refreshing');
             }
         }
 
-        // ℹ️ Info
         if (authState.isValidating) {
             issues.push({ type: 'validation_in_progress', severity: 'info', message: 'Authentication validation in progress' });
         }
@@ -520,30 +406,14 @@ export const useAuth = (config?: AuthHookConfig) => {
         };
     }, [authState]);
 
-    /**
-     * 🔍 Kiểm tra có scope cụ thể không
-     * @param scope - Scope cần kiểm tra
-     * @returns {boolean} True nếu có scope
-     */
     const checkScope = useCallback((scope: string): boolean => {
         return authManager.hasScope(scope) || authState.validationStatus?.grantedScopes.includes(scope) || false;
     }, [authManager, authState.validationStatus?.grantedScopes]);
 
-    /**
-     * 📋 Lấy danh sách required scopes
-     * @returns {string[]} Array of required scopes
-     */
     const getRequiredScopes = useCallback((): string[] => {
         return [...finalConfig.requiredScopes];
     }, [finalConfig.requiredScopes]);
 
-    // 🔄 AUTO-RECOVERY FUNCTIONS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🔄 Thử tự động khôi phục authentication
-     * @returns {Promise<boolean>} True nếu recovery thành công
-     */
     const attemptAutoRecovery = useCallback(async (): Promise<boolean> => {
         try {
             console.log('🔄 Attempting auto-recovery...');
@@ -562,17 +432,12 @@ export const useAuth = (config?: AuthHookConfig) => {
         }
     }, [diagnoseAuthIssues, forceReauth]);
 
-    // ⚡ REACT EFFECTS
-    // ────────────────────────────────────────────────────────────────────────────
-
-    // 🚀 Initialization effect
     useEffect(() => {
         if (!hasInitialized.current) {
             initializeAuth();
         }
     }, [initializeAuth]);
 
-    // 📡 Auth manager subscription effect
     useEffect(() => {
         const unsubscribe = authManager.subscribe((newState) => {
             console.log('🔄 Auth manager state changed:', {
@@ -582,7 +447,6 @@ export const useAuth = (config?: AuthHookConfig) => {
                 error: newState.error
             });
 
-            // 🔄 Update state if there are meaningful changes
             if (newState.isAuthenticated !== authState.isAuthenticated ||
                 newState.user?.accessToken !== authState.user?.accessToken ||
                 newState.loading !== authState.loading ||
@@ -593,12 +457,10 @@ export const useAuth = (config?: AuthHookConfig) => {
                     user: newState.user,
                     loading: newState.loading,
                     error: newState.error,
-                    // 🧹 Clear validation state when auth state changes
                     validationStatus: null,
                     permissionStatus: null
                 });
 
-                // 🔄 Trigger validation for newly authenticated users
                 if (finalConfig.autoValidate &&
                     newState.isAuthenticated &&
                     newState.user?.accessToken &&
@@ -621,7 +483,6 @@ export const useAuth = (config?: AuthHookConfig) => {
         return unsubscribe;
     }, [authManager, authState.isAuthenticated, authState.user?.accessToken, authState.loading, authState.error, finalConfig.autoValidate, finalConfig.validationDelay, updateAuthState, validateAuthentication]);
 
-    // 🧹 Cleanup effect
     useEffect(() => {
         return () => {
             if (validationTimeoutRef.current) {
@@ -630,35 +491,24 @@ export const useAuth = (config?: AuthHookConfig) => {
         };
     }, []);
 
-    // 🎯 RETURN INTERFACE
-    // ────────────────────────────────────────────────────────────────────────────
     return {
-        // 📊 Core state
         authState,
         authManager,
-
-        // 📋 Status getters
         getAuthStatus,
         diagnoseAuthIssues,
         checkScope,
         getRequiredScopes,
-
-        // 🔧 Actions
         login,
         logout,
         forceReauth,
         validateAuth: validateAuthentication,
         initializeAuth,
         attemptAutoRecovery,
-
-        // 🎯 Computed values
         isReady: authState.isReady,
         isAuthenticated: authState.isAuthenticated,
         isLoading: authState.loading || authState.isValidating,
         hasError: !!authState.error,
         user: authState.user,
-
-        // 📋 Permission shortcuts
         permissions: authState.permissionStatus,
         hasDriveAccess: authState.permissionStatus?.hasDriveAccess || false,
         hasSheetsAccess: authState.permissionStatus?.hasSheetsAccess || false,

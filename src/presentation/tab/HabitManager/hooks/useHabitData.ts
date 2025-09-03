@@ -1,39 +1,7 @@
-// src/presentation/tab/HabitManager/hooks/useHabitData.ts
-// ═══════════════════════════════════════════════════════════════════════════════
-// 
-// 📋 TỔNG QUAN CHỨC NĂNG:
-// ├── 🏗️  Central hook for habit data management
-// ├── 🔄 Handles initialization and system status
-// ├── ⚡ Provides habit CRUD operations with caching
-// ├── 🔐 Manages authentication integration
-// ├── 📊 Computes statistics and metrics
-// └── 🔄 Background sync and state management
-// 
-// 🏗️ CẤU TRÚC CHÍNH:
-// ├── State Management      → Initialization, system status, loading states
-// ├── Hook Integration      → Auth, cache, habit operations
-// ├── Initialization Logic  → System setup and validation
-// ├── Habit Operations      → CRUD with caching
-// ├── Utility Functions     → Stats, background sync
-// └── Effects & Lifecycle   → State updates and cleanup
-// 
-// 🔧 CÁC CHỨC NĂNG CHÍNH:
-// ├── initializeSystem()    → Khởi tạo hệ thống với cached data
-// ├── handleCreateHabit()   → Tạo habit mới với caching
-// ├── handleUpdateHabit()   → Cập nhật habit với caching
-// ├── handleDeleteHabit()   → Xóa habit
-// ├── handleArchiveHabit()  → Archive/unarchive habit
-// ├── handleUpdateDailyHabit() → Cập nhật tracking hàng ngày
-// ├── getTodayStats()       → Tính toán statistics cho ngày hôm nay
-// ├── syncInBackground()    → Đồng bộ background tự động
-// └── System status tracking → Theo dõi trạng thái hệ thống
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useHabitCache } from "./cache/useHabitCache";
 import useHabit from "./habit/useHabit";
-
-// 📚 INTERFACES & TYPES
-// ════════════════════════════════════════════════════════════════════════════════
+import useAuth from "./auth/useAuth";
 
 export interface SystemStatus {
     canProceed: boolean;
@@ -42,7 +10,6 @@ export interface SystemStatus {
     needsPermissions: boolean;
     needsSetup: boolean;
     isInitializing: boolean;
-    authReady: boolean;
 }
 
 export interface HabitOperationResult {
@@ -53,12 +20,7 @@ export interface HabitOperationResult {
     data?: any;
 }
 
-// 🏗️ MAIN HOOK
-// ════════════════════════════════════════════════════════════════════════════════
-
 export const useHabitData = () => {
-    // ========== STATE MANAGEMENT ==========
-    // ────────────────────────────────────────────────────────────────────────────
     const [initialized, setInitialized] = useState(false);
     const [systemStatus, setSystemStatus] = useState<SystemStatus>({
         canProceed: false,
@@ -67,24 +29,14 @@ export const useHabitData = () => {
         needsPermissions: false,
         needsSetup: false,
         isInitializing: true,
-        authReady: false
     });
 
-    // 🚫 Prevent multiple initialization attempts
     const initPromiseRef = useRef<Promise<void> | null>(null);
     const hasInitialized = useRef(false);
 
-    // ========== HOOK INTEGRATION ==========
-    // ────────────────────────────────────────────────────────────────────────────
     const {
         authState,
-        isAuthReady,
-        handleLogin,
-        handleLogout,
-        handleForceReauth,
-        handleValidateAuth,
         getAuthStatus,
-        permissions,
         diagnoseAuthIssues,
         attemptAutoRecovery
     } = useAuth();
@@ -105,27 +57,14 @@ export const useHabitData = () => {
         syncHabits,
         setHabits: setHabitState
     } = useHabit({
-        isAuthReady,
         getAuthStatus
     });
 
-    // ========== INITIALIZATION ==========
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🚀 Khởi tạo hệ thống
-     * - Load cached habits
-     * - Setup drive structure
-     * - Thực hiện initial sync
-     * - Set initialized state
-     * @private
-     */
     const initializeSystem = useCallback(async () => {
         if (hasInitialized.current || initPromiseRef.current) {
             return initPromiseRef.current;
         }
 
-        // 🚫 Chỉ initialize khi có authentication
         if (!authState.isAuthenticated || !authState.user?.accessToken) {
             return;
         }
@@ -137,12 +76,10 @@ export const useHabitData = () => {
             try {
                 setSystemStatus(prev => ({ ...prev, isInitializing: true }));
 
-                // ⏳ Chờ auth validation nếu đang trong progress
                 if (authState.loading) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
-                // 💾 Load cached habits đầu tiên
                 try {
                     const cachedHabits = await getAllHabits();
                     if (cachedHabits.length > 0) {
@@ -153,7 +90,6 @@ export const useHabitData = () => {
                     console.warn('⚠️ Failed to load cached habits:', cacheError);
                 }
 
-                // 🏗️ Setup drive structure
                 try {
                     const setupResult = await setupDriveStructure();
                     if (setupResult.success) {
@@ -165,7 +101,6 @@ export const useHabitData = () => {
                     console.warn('⚠️ Drive setup error:', setupError);
                 }
 
-                // 🔄 Initial sync
                 try {
                     const syncResult = await syncHabits(true);
                     if (syncResult.success) {
@@ -177,13 +112,11 @@ export const useHabitData = () => {
                     console.warn('⚠️ Initial sync error:', syncError);
                 }
 
-                // ✅ Mark as initialized
                 setInitialized(true);
                 console.log('🎉 System initialization completed');
 
             } catch (error) {
                 console.error('❌ System initialization failed:', error);
-                // 🟡 Vẫn mark as initialized để tránh bị stuck
                 setInitialized(true);
             } finally {
                 setSystemStatus(prev => ({ ...prev, isInitializing: false }));
@@ -202,17 +135,6 @@ export const useHabitData = () => {
         syncHabits
     ]);
 
-    // ========== HABIT OPERATIONS ==========
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * ➕ Tạo habit mới
-     * - Gọi create operation
-     * - Cache habit sau khi tạo
-     * - Xử lý errors và auth requirements
-     * @param formData - Dữ liệu habit
-     * @returns {Promise<HabitOperationResult>} Kết quả operation
-     */
     const handleCreateHabit = useCallback(async (formData: any): Promise<HabitOperationResult> => {
         try {
             const result = await createHabitOperation(formData);
@@ -244,14 +166,6 @@ export const useHabitData = () => {
         }
     }, [createHabitOperation, storeHabit]);
 
-    /**
-     * ✏️ Cập nhật habit
-     * - Gọi update operation
-     * - Cache habit sau khi update
-     * - Xử lý errors và auth requirements
-     * @param habit - Habit object để update
-     * @returns {Promise<HabitOperationResult>} Kết quả operation
-     */
     const handleUpdateHabit = useCallback(async (habit: any): Promise<HabitOperationResult> => {
         try {
             const result = await updateHabitOperation(habit);
@@ -283,13 +197,6 @@ export const useHabitData = () => {
         }
     }, [updateHabitOperation, updateCachedHabit]);
 
-    /**
-     * 🗑️ Xóa habit
-     * - Gọi delete operation
-     * - Xử lý errors và auth requirements
-     * @param habitId - ID của habit để xóa
-     * @returns {Promise<HabitOperationResult>} Kết quả operation
-     */
     const handleDeleteHabit = useCallback(async (habitId: string): Promise<HabitOperationResult> => {
         try {
             const result = await deleteHabitOperation(habitId);
@@ -312,15 +219,6 @@ export const useHabitData = () => {
         }
     }, [deleteHabitOperation]);
 
-    /**
-     * 📦 Archive/Unarchive habit
-     * - Gọi archive operation
-     * - Cache habit sau khi archive
-     * - Xử lý errors và auth requirements
-     * @param habitId - ID của habit
-     * @param archive - True để archive, false để unarchive
-     * @returns {Promise<HabitOperationResult>} Kết quả operation
-     */
     const handleArchiveHabit = useCallback(async (habitId: string, archive: boolean): Promise<HabitOperationResult> => {
         try {
             const result = await archiveHabitOperation(habitId, archive);
@@ -352,16 +250,6 @@ export const useHabitData = () => {
         }
     }, [archiveHabitOperation, updateCachedHabit]);
 
-    /**
-     * 📅 Cập nhật daily habit tracking
-     * - Gọi daily update operation
-     * - Cache habit sau khi update
-     * - Xử lý errors và auth requirements
-     * @param habitId - ID của habit
-     * @param day - Ngày trong tháng (1-31)
-     * @param value - Giá trị tracking
-     * @returns {Promise<HabitOperationResult>} Kết quả operation
-     */
     const handleUpdateDailyHabit = useCallback(async (habitId: string, day: number, value: number): Promise<HabitOperationResult> => {
         try {
             const result = await updateDailyHabitOperation(habitId, day, value);
@@ -393,18 +281,6 @@ export const useHabitData = () => {
         }
     }, [updateDailyHabitOperation, updateCachedHabit]);
 
-    // ========== COMPUTED VALUES ==========
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 📊 Tính toán statistics cho ngày hôm nay
-     * - Total habits
-     - Completed habits
-     - Good habits completed
-     - Bad habits completed
-     - Completion rate
-     * @returns {Object} Today's statistics
-     */
     const getTodayStats = useCallback(() => {
         const today = new Date();
         const day = today.getDate();
@@ -433,15 +309,8 @@ export const useHabitData = () => {
         });
     }, [habits]);
 
-    /**
-     * 🔄 Background sync tự động
-     * - Chỉ sync khi system đã initialized
-     * - Không sync nếu đang có sync khác chạy
-     * - Xử lý errors một cách thầm lặng
-     * @returns {Promise<void>}
-     */
     const syncInBackground = useCallback(async (): Promise<void> => {
-        if (!initialized || !isAuthReady() || syncInProgress) {
+        if (!initialized || syncInProgress) {
             return;
         }
 
@@ -457,53 +326,33 @@ export const useHabitData = () => {
         } catch (error) {
             console.warn('⚠️ Background sync encountered an error:', error);
         }
-    }, [initialized, isAuthReady, syncInProgress, syncHabits]);
+    }, [initialized, syncInProgress, syncHabits]);
 
-    // ========== EFFECTS ==========
-    // ────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 🔄 Cập nhật system status dựa trên auth state
-     * - Theo dõi các thay đổi về authentication
-     * - Cập nhật trạng thái hệ thống
-     */
     useEffect(() => {
         const newStatus: SystemStatus = {
-            canProceed: authState.canProceed && initialized,
+            canProceed: authState.isReady && initialized,
             needsAuth: !authState.isAuthenticated,
-            needsReauth: authState.validationStatus.needsReauth,
-            needsPermissions: !permissions.allRequired,
+            needsReauth: authState.validationStatus?.isValid === false,
+            needsPermissions: !authState.permissionStatus?.hasRequiredScopes,
             needsSetup: !initialized,
             isInitializing: !initialized && authState.isAuthenticated,
-            authReady: isAuthReady()
         };
 
         setSystemStatus(newStatus);
     }, [
-        authState.canProceed,
+        authState.isReady,
         authState.isAuthenticated,
-        authState.validationStatus.needsReauth,
-        permissions.allRequired,
+        authState.validationStatus?.isValid,
+        authState.permissionStatus?.hasRequiredScopes,
         initialized,
-        isAuthReady
     ]);
 
-    /**
-     * 🚀 Khởi tạo hệ thống khi auth ready
-     * - Chỉ initialize khi authenticated
-     * - Chỉ chạy một lần
-     */
     useEffect(() => {
         if (authState.isAuthenticated && !initialized && !hasInitialized.current) {
             initializeSystem();
         }
     }, [authState.isAuthenticated, initialized, initializeSystem]);
 
-    /**
-     * 🧹 Cleanup trên unmount
-     * - Reset initialization flags
-     * - Clear pending promises
-     */
     useEffect(() => {
         return () => {
             hasInitialized.current = false;
@@ -511,10 +360,7 @@ export const useHabitData = () => {
         };
     }, []);
 
-    // ========== RETURN INTERFACE ==========
-    // ────────────────────────────────────────────────────────────────────────────
     return {
-        // 📊 State
         authState,
         habits,
         loading: habitLoading || authState.loading,
@@ -522,30 +368,16 @@ export const useHabitData = () => {
         initialized,
         systemStatus,
         syncInProgress,
-        permissions,
-
-        // 🎯 Status
-        isAuthReady: isAuthReady(),
         canProceed: systemStatus.canProceed,
         needsAuth: systemStatus.needsAuth,
         needsReauth: systemStatus.needsReauth,
         needsPermissions: systemStatus.needsPermissions,
         needsSetup: systemStatus.needsSetup,
-
-        // 🔐 Auth actions
-        handleLogin,
-        handleLogout,
-        handleForceReauth,
-        handleValidateAuth,
-
-        // ✅ Habit operations
         handleCreateHabit,
         handleUpdateHabit,
         handleDeleteHabit,
         handleArchiveHabit,
         handleUpdateDailyHabit,
-
-        // ⚙️ Utility functions
         syncInBackground,
         getTodayStats,
         getAuthStatus,
