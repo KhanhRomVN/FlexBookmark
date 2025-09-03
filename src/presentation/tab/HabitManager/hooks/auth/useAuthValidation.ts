@@ -30,6 +30,7 @@ interface PermissionStatus {
 
 interface UseAuthValidationProps {
     authState: CoreAuthState;
+    authManager: any;
     permissions: PermissionStatus;
     setPermissions: (permissions: PermissionStatus) => void;
     setIsCheckingPermissions: (checking: boolean) => void;

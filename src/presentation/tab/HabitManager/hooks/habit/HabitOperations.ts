@@ -91,6 +91,7 @@ export const HabitOperations = (params: HabitOperationsParams) => {
         }
 
         // Provide default values for goal/limit based on habit type
+        // FIX 1: Provide default values when undefined
         const goal = formData.habitType === 'good' ? (formData.goal || 1) : undefined;
         const limit = formData.habitType === 'bad' ? (formData.limit || 1) : undefined;
 
@@ -100,8 +101,9 @@ export const HabitOperations = (params: HabitOperationsParams) => {
             description: formData.description || '',
             habitType: formData.habitType,
             difficultyLevel: formData.difficultyLevel,
-            goal: goal,
-            limit: limit,
+            // FIX 1: Cast to number to ensure type safety
+            goal: goal as number | undefined,
+            limit: limit as number | undefined,
             currentStreak: 0,
             longestStreak: 0,
             dailyTracking: Array(31).fill(null),
@@ -288,9 +290,10 @@ export const HabitOperations = (params: HabitOperationsParams) => {
 
             console.log('✅ Daily habit tracking updated successfully');
 
+            // FIX 2: Handle case where updatedHabit might be null
             return {
                 success: true,
-                data: updatedHabit,
+                data: updatedHabit || undefined, // Convert null to undefined
                 timestamp: Date.now()
             };
 

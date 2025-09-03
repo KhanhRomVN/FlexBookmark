@@ -11,7 +11,7 @@
  * └── 📈 Giám sát tình trạng auth liên tục
  */
 
-import { AuthUtils } from './AuthUtils';
+import { AuthUtils, type AuthError as AuthErrorType } from './AuthUtils';
 
 // 📚 INTERFACES & TYPES
 // ════════════════════════════════════════════════════════════════════════════════
@@ -34,7 +34,7 @@ export interface AuthDiagnosticResult {
  * 🐛 Thông tin issue authentication
  */
 export interface AuthIssue {
-    type: AuthUtils.AuthError;
+    type: AuthErrorType;
     message: string;
     severity: 'critical' | 'warning' | 'info';
     canAutoRecover: boolean;
@@ -915,7 +915,7 @@ export class AuthErrorUtils {
 
                     try {
                         // ✅ Validate the new token
-                        const validation = await AuthUtils.validateToken(token);
+                        const validation = await AuthUtils.validateToken(token as string);
 
                         if (!validation.isValid) {
                             reject(new Error(`New token validation failed: ${validation.errors.join(', ')}`));
@@ -927,7 +927,7 @@ export class AuthErrorUtils {
 
                         resolve({
                             success: true,
-                            newToken: token,
+                            newToken: token as string,
                             grantedScopes
                         });
 
@@ -998,10 +998,10 @@ export class AuthErrorUtils {
                 manifestConfigValid: false,
                 cacheOperational: true
             } as SystemHealthStatus,
-            authAnalysis: null,
-            permissionAnalysis: null,
+            authAnalysis: null as any,
+            permissionAnalysis: null as any,
             networkStatus: false,
-            cacheStatus: null,
+            cacheStatus: null as any,
             recommendations: [] as string[]
         };
 

@@ -1,24 +1,14 @@
-// src/presentation/tab/HabitManager/services/habitService.ts
-
-/**
- * 🎯 HABIT SERVICE - API operations for habits
- * ═══════════════════════════════════════════════════════════════════════════════
- * 
- * 📋 TỔNG QUAN CHỨC NĂNG:
- * ├── 📊 CRUD operations for habits with Google Sheets integration
- * ├── 🔄 Sync operations between local state and remote storage
- * ├── 📈 Business logic for streak calculation and habit tracking
- * ├── 🗂️ Batch operations for multiple habits
- * └── 🛡️ Error handling and retry logic
- */
-
-import type { Habit, HabitFormData } from '../types/habit';
 import type {
-    HabitOperationResult,
-    BatchOperationResult,
-    SyncResult,
-    DriveSetupResult
-} from '../types/drive';
+    Habit,
+    GoodHabit,
+    BadHabit,
+    HabitCategory,
+    DriveSetupResult,
+    DriveSyncResult
+} from '../types';
+
+// Import values (not types) for enums
+import { HabitType } from '../types';
 
 export class HabitService {
     private accessToken: string;
@@ -55,25 +45,34 @@ export class HabitService {
 
                 return {
                     success: true,
+                    folderId,
                     sheetId: sheetFile.id,
-                    needsInitialSetup: true
+                    needsInitialSetup: true,
+                    existingFiles: [],
+                    timestamp: Date.now()
                 };
             } else {
                 this.currentSheetId = sheetExists.id;
 
                 return {
                     success: true,
+                    folderId,
                     sheetId: sheetExists.id,
-                    needsInitialSetup: false
+                    needsInitialSetup: false,
+                    existingFiles: [sheetExists],
+                    timestamp: Date.now()
                 };
             }
         } catch (error) {
             console.error('❌ Drive setup failed:', error);
             return {
                 success: false,
-                sheetId: null,
+                folderId: undefined,
+                sheetId: undefined,
                 needsInitialSetup: false,
-                error: error instanceof Error ? error.message : 'Drive setup failed'
+                existingFiles: [],
+                error: error instanceof Error ? error.message : 'Drive setup failed',
+                timestamp: Date.now()
             };
         }
     }
@@ -361,7 +360,7 @@ export class HabitService {
      * @param day Day of month (1-31)
      * @param value Tracking value
      */
-    async updateDailyHabit(habitId: string, day: number, value: number): Promise<Habit> {
+    async updateDailyHabit(habitId: string, value: number): Promise<Habit> {
         if (!this.currentSheetId) {
             throw new Error('No sheet initialized');
         }
@@ -374,22 +373,24 @@ export class HabitService {
                 throw new Error(`Habit ${habitId} not found`);
             }
 
-            // Update daily tracking
-            const updatedDailyTracking = [...habit.dailyTracking];
-            updatedDailyTracking[day - 1] = value;
+            // Recalculate streaks based on the new value
+            const { currentStreak, longestStreak } = this.calculateStreaks(habit, value);
 
-            // Recalculate streaks
-            const { currentStreak, longestStreak } = this.calculateStreaks({
-                ...habit,
-                dailyTracking: updatedDailyTracking
-            });
+            let updatedHabit: Habit;
 
-            const updatedHabit: Habit = {
-                ...habit,
-                dailyTracking: updatedDailyTracking,
-                currentStreak,
-                longestStreak: Math.max(longestStreak, habit.longestStreak)
-            };
+            if (isGoodHabit(habit)) {
+                updatedHabit = {
+                    ...habit,
+                    currentStreak,
+                    longestStreak: Math.max(longestStreak, habit.longestStreak)
+                };
+            } else {
+                updatedHabit = {
+                    ...habit,
+                    currentStreak,
+                    longestStreak: Math.max(longestStreak, habit.longestStreak)
+                };
+            }
 
             // Write back to sheet
             const habitIndex = habits.findIndex(h => h.id === habitId);
@@ -406,7 +407,7 @@ export class HabitService {
      * 🔄 Sync habits with remote storage
      * @param forceRefresh Force refresh from remote
      */
-    async syncHabits(forceRefresh: boolean = false): Promise<SyncResult> {
+    async syncHabits(forceRefresh: boolean = false): Promise<DriveSyncResult> {
         try {
             console.log('🔄 Syncing habits...');
 
@@ -420,7 +421,8 @@ export class HabitService {
                 success: true,
                 habitsCount: remoteHabits.length,
                 lastSync: Date.now(),
-                changes: { added: 0, updated: 0, deleted: 0 }
+                changes: { added: 0, updated: 0, deleted: 0 },
+                timestamp: Date.now()
             };
         } catch (error) {
             console.error('❌ Sync failed:', error);
@@ -429,7 +431,8 @@ export class HabitService {
                 habitsCount: 0,
                 lastSync: Date.now(),
                 changes: { added: 0, updated: 0, deleted: 0 },
-                error: error instanceof Error ? error.message : 'Sync failed'
+                error: error instanceof Error ? error.message : 'Sync failed',
+                timestamp: Date.now()
             };
         }
     }
@@ -468,13 +471,25 @@ export class HabitService {
         row[2] = habit.description || '';
         row[3] = habit.habitType;
         row[4] = habit.difficultyLevel;
-        row[5] = habit.goal || '';
-        row[6] = habit.limit || '';
+
+        // Type-specific properties
+        if (isGoodHabit(habit)) {
+            row[5] = habit.goal || '';
+            row[6] = ''; // Limit is for bad habits only
+            row[45] = habit.isQuantifiable ? 'TRUE' : 'FALSE';
+            row[46] = habit.unit || '';
+        } else {
+            row[5] = ''; // Goal is for good habits only
+            row[6] = habit.limit || '';
+            row[45] = 'FALSE'; // Bad habits are not quantifiable
+            row[46] = ''; // No unit for bad habits
+        }
+
         row[7] = habit.currentStreak;
 
-        // Daily tracking
+        // Daily tracking - we'll leave this empty since Habit type doesn't include dailyTracking
         for (let i = 0; i < 31; i++) {
-            row[8 + i] = habit.dailyTracking[i] ?? '';
+            row[8 + i] = ''; // Empty for daily tracking
         }
 
         // Additional properties
@@ -484,10 +499,10 @@ export class HabitService {
         row[42] = habit.category;
         row[43] = JSON.stringify(habit.tags);
         row[44] = habit.isArchived ? 'TRUE' : 'FALSE';
-        row[45] = habit.isQuantifiable ? 'TRUE' : 'FALSE';
-        row[46] = habit.unit || '';
-        row[47] = habit.startTime || '';
-        row[48] = JSON.stringify(habit.subtasks);
+
+        // Start time and subtasks are not part of the base Habit type
+        row[47] = '';
+        row[48] = '';
 
         return row;
     }
@@ -496,72 +511,65 @@ export class HabitService {
         try {
             if (!row || row.length === 0 || !row[0]) return null;
 
-            const dailyTracking = new Array(31).fill(null);
-            for (let i = 0; i < 31; i++) {
-                const value = row[8 + i];
-                if (value !== undefined && value !== '') {
-                    dailyTracking[i] = parseFloat(value) || 0;
-                }
-            }
-
-            return {
+            const habitType = row[3] as HabitType;
+            const baseHabit = {
                 id: row[0],
                 name: row[1] || '',
                 description: row[2] || '',
-                habitType: row[3] as any || 'good',
+                habitType,
                 difficultyLevel: parseInt(row[4]) || 1,
-                goal: row[5] ? parseFloat(row[5]) : undefined,
-                limit: row[6] ? parseFloat(row[6]) : undefined,
                 currentStreak: parseInt(row[7]) || 0,
-                dailyTracking,
                 createdDate: new Date(row[39] || Date.now()),
                 colorCode: row[40] || '#3b82f6',
                 longestStreak: parseInt(row[41]) || 0,
-                category: row[42] as any || 'other',
+                category: (row[42] as HabitCategory) || 'other',
                 tags: this.safeJsonParse(row[43], []),
                 isArchived: row[44] === 'TRUE',
-                isQuantifiable: row[45] === 'TRUE',
-                unit: row[46] || '',
-                startTime: row[47] || '',
-                subtasks: this.safeJsonParse(row[48], [])
+                updatedDate: new Date() // Assuming updated date is now
             };
+
+            if (habitType === HabitType.GOOD) {
+                const goodHabit: GoodHabit = {
+                    ...baseHabit,
+                    habitType: HabitType.GOOD,
+                    goal: row[5] ? parseFloat(row[5]) : 1,
+                    isQuantifiable: row[45] === 'TRUE',
+                    unit: row[46] || '',
+                };
+                return goodHabit;
+            } else {
+                const badHabit: BadHabit = {
+                    ...baseHabit,
+                    habitType: HabitType.BAD,
+                    limit: row[6] ? parseFloat(row[6]) : 1,
+                };
+                return badHabit;
+            }
         } catch (error) {
             console.error('❌ Failed to parse habit from row:', error);
             return null;
         }
     }
 
-    private calculateStreaks(habit: Habit): { currentStreak: number; longestStreak: number } {
-        const currentDate = new Date();
-        const currentDay = currentDate.getDate();
+    private calculateStreaks(habit: Habit, value: number): { currentStreak: number; longestStreak: number } {
+        // Simplified streak calculation
+        const isCompleted = this.isHabitCompletedForDay(habit, value);
 
-        let currentStreak = 0;
+        let currentStreak = habit.currentStreak;
         let longestStreak = habit.longestStreak;
-        let tempStreak = 0;
 
-        for (let day = 1; day <= currentDay; day++) {
-            const isCompleted = this.isHabitCompletedForDay(habit, day);
-
-            if (isCompleted) {
-                tempStreak++;
-                longestStreak = Math.max(longestStreak, tempStreak);
-            } else {
-                tempStreak = 0;
-            }
+        if (isCompleted) {
+            currentStreak++;
+            longestStreak = Math.max(longestStreak, currentStreak);
+        } else {
+            currentStreak = 0;
         }
 
-        currentStreak = tempStreak;
         return { currentStreak, longestStreak };
     }
 
-    private isHabitCompletedForDay(habit: Habit, day: number): boolean {
-        const dayIndex = day - 1;
-        if (dayIndex < 0 || dayIndex >= habit.dailyTracking.length) return false;
-
-        const value = habit.dailyTracking[dayIndex];
-        if (value === null) return false;
-
-        if (habit.habitType === 'good') {
+    private isHabitCompletedForDay(habit: Habit, value: number): boolean {
+        if (isGoodHabit(habit)) {
             return habit.goal ? value >= habit.goal : value > 0;
         } else {
             return habit.limit ? value <= habit.limit : value === 0;
@@ -577,5 +585,14 @@ export class HabitService {
         }
     }
 }
+
+// Type guards
+export const isGoodHabit = (habit: Habit): habit is GoodHabit => {
+    return habit.habitType === HabitType.GOOD;
+};
+
+export const isBadHabit = (habit: Habit): habit is BadHabit => {
+    return habit.habitType === HabitType.BAD;
+};
 
 export default HabitService;

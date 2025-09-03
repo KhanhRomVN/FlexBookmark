@@ -118,7 +118,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
                     lastSync: Date.now(),
                     changes: { added: 0, updated: 0, deleted: 0 },
                     error: 'Drive setup failed',
-                    needsAuth: true
+                    needsAuth: true,
+                    timestamp: Date.now()
                 };
             }
         }
@@ -147,7 +148,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
                     success: true,
                     habitsCount: sheetHabits.length,
                     lastSync: Date.now(),
-                    changes: { added, updated, deleted }
+                    changes: { added, updated, deleted },
+                    timestamp: Date.now()
                 };
 
                 console.log('✅ Habit sync completed:', result);
@@ -161,7 +163,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
                     lastSync: Date.now(),
                     changes: { added: 0, updated: 0, deleted: 0 },
                     error: error instanceof Error ? error.message : 'Sync failed',
-                    needsAuth: true
+                    needsAuth: true,
+                    timestamp: Date.now()
                 };
             } finally {
                 setSyncInProgress(false);
@@ -177,15 +180,17 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: 'Drive not initialized',
-                needsAuth: true
+                needsAuth: true,
+                timestamp: Date.now(),
             };
         }
 
-        const newHabit: Habit = {
+        const timestamp = Date.now();
+        const newHabit: Habit = formData.habitType === HabitType.GOOD ? {
             id: generateHabitId(),
             name: formData.name,
             description: formData.description || '',
-            habitType: formData.habitType,
+            habitType: HabitType.GOOD,
             difficultyLevel: formData.difficultyLevel,
             category: formData.category,
             colorCode: formData.colorCode || '#3b82f6',
@@ -193,17 +198,26 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             isArchived: false,
             createdDate: new Date(),
             updatedDate: new Date(),
-            ...(formData.habitType === HabitType.GOOD ? {
-                goal: formData.goal || 1,
-                isQuantifiable: formData.isQuantifiable || false,
-                unit: formData.unit || '',
-                currentStreak: 0,
-                longestStreak: 0
-            } : {
-                limit: formData.limit || 1,
-                currentStreak: 0,
-                longestStreak: 0
-            })
+            goal: formData.goal || 1,
+            isQuantifiable: formData.isQuantifiable || false,
+            unit: formData.unit || '',
+            currentStreak: 0,
+            longestStreak: 0
+        } : {
+            id: generateHabitId(),
+            name: formData.name,
+            description: formData.description || '',
+            habitType: HabitType.BAD,
+            difficultyLevel: formData.difficultyLevel,
+            category: formData.category,
+            colorCode: formData.colorCode || '#3b82f6',
+            tags: formData.tags || [],
+            isArchived: false,
+            createdDate: new Date(),
+            updatedDate: new Date(),
+            limit: formData.limit || 1,
+            currentStreak: 0,
+            longestStreak: 0
         };
 
         try {
@@ -214,7 +228,12 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             await habitUtils.writeHabit(currentSheetId, newHabit);
 
             console.log('✅ Habit created successfully:', newHabit.id);
-            return { success: true, data: newHabit };
+            return {
+                success: true,
+                data: newHabit,
+                timestamp,
+                needsAuth: false,
+            };
 
         } catch (error) {
             setHabits(prev => prev.filter(h => h.id !== newHabit.id));
@@ -222,7 +241,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Create habit failed',
-                needsAuth: true
+                needsAuth: true,
+                timestamp,
             };
         } finally {
             setLoading(false);
@@ -234,7 +254,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: 'Drive not initialized',
-                needsAuth: true
+                needsAuth: true,
+                timestamp: Date.now(),
             };
         }
 
@@ -242,7 +263,9 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
         if (!originalHabit) {
             return {
                 success: false,
-                error: 'Habit not found'
+                error: 'Habit not found',
+                needsAuth: false,
+                timestamp: Date.now(),
             };
         }
 
@@ -255,7 +278,12 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
             console.log('✅ Habit updated successfully:', updatedHabit.id);
-            return { success: true, data: updatedHabit };
+            return {
+                success: true,
+                data: updatedHabit,
+                needsAuth: false,
+                timestamp: Date.now(),
+            };
 
         } catch (error) {
             setHabits(prev => prev.map(h => h.id === updatedHabit.id ? originalHabit : h));
@@ -263,7 +291,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Update habit failed',
-                needsAuth: true
+                needsAuth: true,
+                timestamp: Date.now(),
             };
         } finally {
             setLoading(false);
@@ -275,7 +304,9 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: 'Drive not initialized',
-                needsAuth: true
+                needsAuth: true,
+                habitId,
+                timestamp: Date.now(),
             };
         }
 
@@ -283,7 +314,10 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
         if (!habitToDelete) {
             return {
                 success: false,
-                error: 'Habit not found'
+                error: 'Habit not found',
+                needsAuth: false,
+                habitId,
+                timestamp: Date.now(),
             };
         }
 
@@ -295,7 +329,12 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             await habitUtils.deleteHabit(currentSheetId, habitId);
 
             console.log('✅ Habit deleted successfully:', habitId);
-            return { success: true, habitId };
+            return {
+                success: true,
+                habitId,
+                needsAuth: false,
+                timestamp: Date.now(),
+            };
 
         } catch (error) {
             setHabits(prev => [...prev, habitToDelete]);
@@ -303,7 +342,9 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Delete habit failed',
-                needsAuth: true
+                needsAuth: true,
+                habitId,
+                timestamp: Date.now(),
             };
         } finally {
             setLoading(false);
@@ -319,14 +360,25 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: 'Drive not initialized',
-                needsAuth: true
+                needsAuth: true,
+                habitId,
+                date: new Date(),
+                value,
+                newStreak: 0,
+                timestamp: Date.now(),
             };
         }
 
         if (day < 1 || day > 31) {
             return {
                 success: false,
-                error: 'Day must be between 1 and 31'
+                error: 'Day must be between 1 and 31',
+                needsAuth: false,
+                habitId,
+                date: new Date(),
+                value,
+                newStreak: 0,
+                timestamp: Date.now(),
             };
         }
 
@@ -344,7 +396,9 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
                 habitId,
                 date: new Date(),
                 value,
-                newStreak: updatedHabit?.currentStreak || 0
+                newStreak: updatedHabit?.currentStreak || 0,
+                needsAuth: false,
+                timestamp: Date.now(),
             };
 
         } catch (error) {
@@ -352,7 +406,12 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Update daily tracking failed',
-                needsAuth: true
+                needsAuth: true,
+                habitId,
+                date: new Date(),
+                value,
+                newStreak: 0,
+                timestamp: Date.now(),
             };
         }
     }, [habitUtils, currentSheetId, handleError]);
@@ -362,7 +421,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: 'Drive not initialized',
-                needsAuth: true
+                needsAuth: true,
+                timestamp: Date.now(),
             };
         }
 
@@ -370,7 +430,9 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
         if (!originalHabit) {
             return {
                 success: false,
-                error: 'Habit not found'
+                error: 'Habit not found',
+                needsAuth: false,
+                timestamp: Date.now(),
             };
         }
 
@@ -384,7 +446,12 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             await habitUtils.writeHabit(currentSheetId, updatedHabit, habitIndex);
 
             console.log(`✅ Habit ${archive ? 'archived' : 'unarchived'} successfully:`, habitId);
-            return { success: true, data: updatedHabit };
+            return {
+                success: true,
+                data: updatedHabit,
+                needsAuth: false,
+                timestamp: Date.now(),
+            };
 
         } catch (error) {
             setHabits(prev => prev.map(h => h.id === habitId ? originalHabit : h));
@@ -392,7 +459,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : `${archive ? 'Archive' : 'Unarchive'} failed`,
-                needsAuth: true
+                needsAuth: true,
+                timestamp: Date.now(),
             };
         } finally {
             setLoading(false);
@@ -403,6 +471,7 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
         habitIds: string[],
         archive: boolean
     ): Promise<HabitBatchOperationResult> => {
+        const timestamp = Date.now();
         const results = await Promise.allSettled(
             habitIds.map(id => archiveHabit(id, archive))
         );
@@ -434,11 +503,13 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             successful,
             failed,
             errors,
-            needsAuth
+            needsAuth,
+            timestamp
         };
     }, [archiveHabit]);
 
     const batchDeleteHabits = useCallback(async (habitIds: string[]): Promise<HabitBatchOperationResult> => {
+        const timestamp = Date.now();
         const results = await Promise.allSettled(
             habitIds.map(id => deleteHabit(id))
         );
@@ -470,7 +541,8 @@ export const useHabit = ({ getAuthStatus }: UseHabitDependencies) => {
             successful,
             failed,
             errors,
-            needsAuth
+            needsAuth,
+            timestamp
         };
     }, [deleteHabit]);
 

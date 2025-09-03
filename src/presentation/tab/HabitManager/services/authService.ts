@@ -1,23 +1,33 @@
-// src/presentation/tab/HabitManager/services/authService.ts
-
-/**
- * 🔐 AUTH SERVICE - Authentication operations
- * ═══════════════════════════════════════════════════════════════════════════════
- * 
- * 📋 TỔNG QUAN CHỨC NĂNG:
- * ├── 🔑 Token management and validation
- * ├── 👤 User authentication and session management
- * ├── 📋 Permission checking and scope validation
- * ├── 🔄 Token refresh and reauthentication
- * └── 🛡️ Error handling and security
- */
-
 import { AuthUtils } from '../utils/auth/AuthUtils';
 import type {
-    AuthOperationResult,
-    TokenValidationResult,
-    TokenRefreshResult
-} from '../types/auth';
+    TokenInfo
+} from '../types';
+
+// 🔄 Define missing interfaces locally
+interface AuthOperationResult {
+    success: boolean;
+    error?: string;
+}
+
+interface TokenValidationResult {
+    isValid: boolean;
+    isExpired: boolean;
+    hasRequiredScopes: boolean;
+    expiresAt: number | null;
+    errors: string[];
+    scopeDetails?: {
+        grantedScopes: string[];
+        requiredScopes: string[];
+        missingScopes: string[];
+        optionalScopes: string[];
+    };
+}
+
+interface TokenRefreshResult {
+    success: boolean;
+    tokenInfo?: TokenInfo;
+    error?: string;
+}
 
 export class AuthService {
     private accessToken: string | null = null;
@@ -63,7 +73,8 @@ export class AuthService {
             return new Promise((resolve, reject) => {
                 chrome.identity.getAuthToken({ interactive: false }, (token) => {
                     if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
+                        const errorMessage = chrome.runtime.lastError.message || 'Unknown error';
+                        reject(new Error(errorMessage));
                         return;
                     }
 
@@ -72,11 +83,22 @@ export class AuthService {
                         return;
                     }
 
-                    this.accessToken = token;
+                    // Convert GetAuthTokenResult to string
+                    const tokenString = token.toString();
+                    this.accessToken = tokenString;
+
+                    // Create a proper TokenInfo object
+                    const tokenInfo: TokenInfo = {
+                        access_token: tokenString,
+                        expires_in: 3600, // Default value, will be updated by validation
+                        expires_at: Date.now() + 3600000, // Default 1 hour
+                        token_type: 'Bearer',
+                        scope: '' // Will be populated by validation
+                    };
 
                     resolve({
                         success: true,
-                        newToken: token
+                        tokenInfo
                     });
                 });
             });
@@ -121,7 +143,8 @@ export class AuthService {
             return new Promise((resolve, reject) => {
                 chrome.identity.getAuthToken({ interactive: true }, (token) => {
                     if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
+                        const errorMessage = chrome.runtime.lastError.message || 'Unknown error';
+                        reject(new Error(errorMessage));
                         return;
                     }
 
@@ -130,7 +153,9 @@ export class AuthService {
                         return;
                     }
 
-                    this.accessToken = token;
+                    // Convert GetAuthTokenResult to string
+                    const tokenString = token.toString();
+                    this.accessToken = tokenString;
                     resolve({ success: true });
                 });
             });

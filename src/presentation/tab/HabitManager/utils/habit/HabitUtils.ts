@@ -26,10 +26,10 @@
  * └── batchUpdateHabits()   → Batch update nhiều thói quen
  */
 
-import type { Habit } from '../../types/habit';
+import type { Habit } from '../../types';
 import { DriveUtils } from './DriveUtils';
 import { SheetsUtils } from './SheetsUtils';
-import type { DriveFolder, DriveFile, BatchOperation } from '../../types/drive';
+import type { DriveFolder, DriveFile, BatchOperation } from '../../types';
 
 export class HabitUtils {
     // 🔐 PRIVATE PROPERTIES

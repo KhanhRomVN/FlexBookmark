@@ -1,18 +1,4 @@
-// src/presentation/tab/HabitManager/services/googleService.ts
-
-/**
- * 🌐 GOOGLE SERVICE - Google API operations
- * ═══════════════════════════════════════════════════════════════════════════════
- * 
- * 📋 TỔNG QUAN CHỨC NĂNG:
- * ├── 📁 Google Drive file operations
- * ├── 📊 Google Sheets data operations
- * ├── 📅 Google Calendar integration (future)
- * ├── 🔐 OAuth authentication management
- * └── 🛡️ Error handling and rate limiting
- */
-
-import type { DriveFile, DriveFolder } from '../types/drive';
+import type { DriveFile, DriveFolder } from '../types';
 
 export class GoogleService {
     private accessToken: string;
@@ -349,30 +335,6 @@ export class GoogleService {
         // This is a simplified implementation
         // Actual quota usage would come from Google Cloud Console
         return { usage: 0, limit: 1000 };
-    }
-
-    /**
-     * ⏰ Handle rate limiting with exponential backoff
-     */
-    private async withRetry<T>(operation: () => Promise<T>, maxRetries: number = 3): Promise<T> {
-        let retries = 0;
-
-        while (retries < maxRetries) {
-            try {
-                return await operation();
-            } catch (error: any) {
-                if (error.status === 429 && retries < maxRetries) {
-                    // Rate limited, wait and retry
-                    const delay = Math.pow(2, retries) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    retries++;
-                } else {
-                    throw error;
-                }
-            }
-        }
-
-        throw new Error('Max retries exceeded');
     }
 }
 

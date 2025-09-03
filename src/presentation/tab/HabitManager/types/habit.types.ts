@@ -253,6 +253,7 @@ export interface TrackingState {
  * ➕ Create habit result
  */
 export interface CreateHabitResult extends CommonOperationResult {
+    needsAuth: boolean | undefined;
     data?: Habit;
     needsValidation?: boolean;
 }
@@ -261,6 +262,7 @@ export interface CreateHabitResult extends CommonOperationResult {
  * ✏️ Update habit result
  */
 export interface UpdateHabitResult extends CommonOperationResult {
+    needsAuth: boolean | undefined;
     data?: Habit;
     changes?: string[];
 }
@@ -269,6 +271,7 @@ export interface UpdateHabitResult extends CommonOperationResult {
  * 🗑️ Delete habit result
  */
 export interface DeleteHabitResult extends CommonOperationResult {
+    needsAuth: boolean | undefined;
     habitId: string;
 }
 
@@ -276,6 +279,7 @@ export interface DeleteHabitResult extends CommonOperationResult {
  * 📅 Track habit result
  */
 export interface TrackHabitResult extends CommonOperationResult {
+    needsAuth: boolean | undefined;
     habitId: string;
     date: Date;
     value: number;
@@ -286,6 +290,7 @@ export interface TrackHabitResult extends CommonOperationResult {
  * 📦 Batch operations result
  */
 export interface HabitBatchOperationResult extends CommonOperationResult {
+    needsAuth: boolean | undefined;
     successful: number;
     failed: number;
     errors: Array<{
@@ -353,3 +358,28 @@ export const isHabitWithTracking = (value: any): value is HabitWithTracking => {
         'tracking' in value &&
         'stats' in value;
 };
+
+// ========== BATCH OPERATION TYPES ==========
+
+/**
+ * 📦 Batch operation for multiple habits
+ */
+export interface BatchOperation {
+    type: 'create' | 'update' | 'delete';
+    habitId: string;
+    data?: Habit;
+    rowIndex?: number;
+}
+
+/**
+ * 📦 Batch operation result
+ */
+export interface BatchOperationResult {
+    successful: number;
+    failed: number;
+    errors: Array<{
+        habitId: string;
+        error: string;
+        operation: string;
+    }>;
+}

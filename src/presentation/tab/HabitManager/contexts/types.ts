@@ -58,20 +58,17 @@ export interface EnhancedAuthState {
     tokenRefreshInProgress: boolean;
     lastTokenRefresh: number | null;
     isReady: boolean;
-    validationStatus: {
-        needsReauth: any;
-        hasValidToken: any;
-        isValid: any;
-        expiresAt: any;
-    };
+    validationStatus: ValidationStatus;
 }
 
 export interface ValidationStatus {
+    grantedScopes: never[];
+    isExpired: boolean;
     isValid: boolean;
     hasValidToken: boolean;
     hasRequiredScopes: boolean;
     needsReauth: boolean;
-    lastValidation: number;
+    lastValidation: number | null;
     expiresAt: number | null;
     errors: string[];
     validationInProgress: boolean;
@@ -168,7 +165,7 @@ export interface HabitOperationResult {
 export interface BatchOperationResult {
     successful: number;
     failed: number;
-    errors: string[];
+    errors: Array<{ habitId: string; error: string }>;
     needsAuth?: boolean;
 }
 

@@ -1,17 +1,5 @@
 // src/presentation/tab/HabitManager/contexts/AuthContext.tsx
 
-/**
- * 🔐 AUTHENTICATION CONTEXT
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * 📋 TỔNG QUAN:
- * ├── 🎯 React Context cho authentication state management
- * ├── 🔄 Centralized auth state và operations
- * ├── 📊 Provider component với comprehensive state management
- * ├── 🧪 Validation và permission handling
- * └── 🛠️ Utility functions và error handling
- */
-
 import React, {
   createContext,
   useContext,
@@ -69,10 +57,12 @@ const initialState: AuthState = {
     hasValidToken: false,
     hasRequiredScopes: false,
     needsReauth: false,
-    lastValidation: 0,
+    lastValidation: null,
     expiresAt: null,
     errors: [],
     validationInProgress: false,
+    isExpired: false,
+    grantedScopes: [],
   },
   permissions: {
     hasDrive: false,
@@ -196,31 +186,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     dispatch({ type: "SET_LOADING", payload: loading });
   }, []);
 
-  // 🎯 HOOK INTEGRATION
+  // 🎯 HOOK INTEGRATION - Sửa lỗi type compatibility
   // ────────────────────────────────────────────────────────────────────────────
 
+  // Convert AuthState to CoreAuthState for useAuthValidation hook
+  const coreAuthState: any = {
+    ...state,
+    validationStatus: {
+      ...state.validationStatus,
+      // Đảm bảo các thuộc tính cần thiết tồn tại
+      isExpired: state.validationStatus.isExpired ?? false,
+      grantedScopes: state.validationStatus.grantedScopes ?? [],
+    },
+  };
+
   const validationHook = useAuthValidation({
-    authState: state,
+    authState: coreAuthState,
     authManager,
     permissions: state.permissions,
     setPermissions,
     setIsCheckingPermissions,
-    updateAuthState: updateAuthState as (
-      updates: Partial<EnhancedAuthState>
-    ) => void,
-    updateValidationStatus,
+    updateAuthState: (updates: any) => {
+      // Convert CoreAuthState updates to AuthState updates
+      const convertedUpdates: Partial<AuthState> = { ...updates };
+      updateAuthState(convertedUpdates);
+    },
+    updateValidationStatus: (updates: any) => {
+      updateValidationStatus(updates);
+    },
   });
 
   const tokenHook = useTokenManagement({
-    authState: state,
+    authState: coreAuthState,
     authManager,
-    updateAuthState: updateAuthState as (
-      updates: Partial<EnhancedAuthState>
-    ) => void,
-    updateValidationStatus,
+    updateAuthState: (updates: any) => {
+      const convertedUpdates: Partial<AuthState> = { ...updates };
+      updateAuthState(convertedUpdates);
+    },
+    updateValidationStatus: (updates: any) => {
+      updateValidationStatus(updates);
+    },
   });
 
-  // 🔐 AUTH OPERATIONS
+  // 🔐 AUTH OPERATIONS (giữ nguyên)
   // ────────────────────────────────────────────────────────────────────────────
 
   const login = useCallback(async (): Promise<AuthOperationResult> => {
@@ -342,7 +350,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     validationHook,
   ]);
 
-  // 📊 STATUS GETTERS
+  // 📊 STATUS GETTERS (giữ nguyên)
   // ────────────────────────────────────────────────────────────────────────────
 
   const getAuthStatus = useCallback((): AuthStatus => {
@@ -364,7 +372,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       hasDriveAccess: state.permissions.hasDrive,
       hasSheetsAccess: state.permissions.hasSheets,
       hasCalendarAccess: state.permissions.hasCalendar,
-      grantedScopes: [],
+      grantedScopes: state.validationStatus.grantedScopes || [],
       validationErrors: state.validationStatus.errors,
       scopeDetails: [],
     };
@@ -433,7 +441,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     };
   }, [state]);
 
-  // 🎯 COMPUTED VALUES
+  // 🎯 COMPUTED VALUES (giữ nguyên)
   // ────────────────────────────────────────────────────────────────────────────
 
   const isReady = state.isReady;
@@ -444,7 +452,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   const hasSheetsAccess = state.permissions.hasSheets;
   const hasCalendarAccess = state.permissions.hasCalendar;
 
-  // 🔄 INITIALIZATION EFFECT
+  // 🔄 INITIALIZATION EFFECT (giữ nguyên)
   // ────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -487,7 +495,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     validationHook,
   ]);
 
-  // 🎯 CONTEXT VALUE
+  // 🎯 CONTEXT VALUE (giữ nguyên)
   // ────────────────────────────────────────────────────────────────────────────
 
   const contextValue: AuthContextValue = {

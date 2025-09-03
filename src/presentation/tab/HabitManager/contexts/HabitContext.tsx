@@ -169,7 +169,6 @@ export const HabitProvider: React.FC<HabitProviderProps> = ({ children }) => {
   // ────────────────────────────────────────────────────────────────────────────
 
   const habitHook = useHabit({
-    isAuthReady: () => authState.isReady,
     getAuthStatus: () => ({
       isAuthenticated: authState.isAuthenticated,
       user: authState.user,
@@ -436,20 +435,30 @@ export const HabitProvider: React.FC<HabitProviderProps> = ({ children }) => {
 
         const result = await habitHook.batchArchiveHabits(habitIds, archive);
 
+        // Convert từ HabitBatchOperationResult sang BatchOperationResult
+        const convertedResult: BatchOperationResult = {
+          successful: result.successful,
+          failed: result.failed,
+          errors: result.errors,
+          needsAuth: result.needsAuth,
+        };
+
         if (result.successful > 0) {
           // Refresh the habits list to get updated data
           await syncHabits(true);
         }
 
-        return result;
+        return convertedResult;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Batch archive failed";
         setError(errorMessage);
+
+        // Trả về error dạng object array thay vì string array
         return {
           successful: 0,
           failed: habitIds.length,
-          errors: [errorMessage],
+          errors: [{ habitId: "batch", error: errorMessage }],
           needsAuth: true,
         };
       } finally {
@@ -467,6 +476,14 @@ export const HabitProvider: React.FC<HabitProviderProps> = ({ children }) => {
 
         const result = await habitHook.batchDeleteHabits(habitIds);
 
+        // Convert từ HabitBatchOperationResult sang BatchOperationResult
+        const convertedResult: BatchOperationResult = {
+          successful: result.successful,
+          failed: result.failed,
+          errors: result.errors,
+          needsAuth: result.needsAuth,
+        };
+
         if (result.successful > 0) {
           // Update local state by removing deleted habits
           setHabits((prev) => prev.filter((h) => !habitIds.includes(h.id)));
@@ -475,15 +492,17 @@ export const HabitProvider: React.FC<HabitProviderProps> = ({ children }) => {
           await habitCache.removeHabits(habitIds);
         }
 
-        return result;
+        return convertedResult;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Batch delete failed";
         setError(errorMessage);
+
+        // Trả về error dạng object array thay vì string array
         return {
           successful: 0,
           failed: habitIds.length,
-          errors: [errorMessage],
+          errors: [{ habitId: "batch", error: errorMessage }],
           needsAuth: true,
         };
       } finally {
