@@ -11,7 +11,7 @@
  * └── 🔧 Xử lý lỗi và retry logic
  */
 
-import { CacheConstants, type CacheMetadata } from '../../types/cache';
+import { CacheConstants, type CacheMetadata } from '../../types';
 
 // 🏭 MAIN CLASS
 // ════════════════════════════════════════════════════════════════════════════════

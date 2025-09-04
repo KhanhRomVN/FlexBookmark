@@ -22,9 +22,14 @@ export interface CacheMetadata {
     createdAt: number;
     expiresAt: number;
     version: string;
-    size: number;
+    size?: number;
     checksum?: string;
 }
+export const CacheConstants = {
+    HABIT_KEY_PREFIX: 'habit_',
+    METADATA_KEY: 'cache_metadata',
+    CACHE_VERSION: '1.0.0'
+} as const;
 
 /**
  * 📊 Cache entry

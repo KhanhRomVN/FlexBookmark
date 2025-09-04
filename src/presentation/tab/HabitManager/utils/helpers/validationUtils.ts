@@ -13,7 +13,7 @@
  */
 
 import { HabitType, DifficultyLevel, HabitCategory } from '../../types';
-import { VALIDATION_RULES } from '../../constant/habit.constants';
+import { VALIDATION_RULES, TRACKING_SETTINGS } from '../../constant/habit.constants';
 
 /**
  * 📋 Validation result structure
@@ -368,9 +368,10 @@ export const validateTags = (tags?: string[]): ValidationResult => {
         return result;
     }
 
-    if (tags.length > VALIDATION_RULES.MAX_TAGS_PER_HABIT) {
+    // Sử dụng TRACKING_SETTINGS.MAX_TAGS_PER_HABIT thay vì VALIDATION_RULES.MAX_TAGS_PER_HABIT
+    if (tags.length > TRACKING_SETTINGS.MAX_TAGS_PER_HABIT) {
         result.isValid = false;
-        result.errors.push(`Cannot have more than ${VALIDATION_RULES.MAX_TAGS_PER_HABIT} tags`);
+        result.errors.push(`Cannot have more than ${TRACKING_SETTINGS.MAX_TAGS_PER_HABIT} tags`);
     }
 
     tags.forEach((tag, index) => {
@@ -475,9 +476,10 @@ export const validateSubtasks = (subtasks?: string[]): ValidationResult => {
         return result;
     }
 
-    if (subtasks.length > VALIDATION_RULES.MAX_SUBTASKS_PER_HABIT) {
+    // Sử dụng TRACKING_SETTINGS.MAX_SUBTASKS_PER_HABIT thay vì VALIDATION_RULES.MAX_SUBTASKS_PER_HABIT
+    if (subtasks.length > TRACKING_SETTINGS.MAX_SUBTASKS_PER_HABIT) {
         result.isValid = false;
-        result.errors.push(`Cannot have more than ${VALIDATION_RULES.MAX_SUBTASKS_PER_HABIT} subtasks`);
+        result.errors.push(`Cannot have more than ${TRACKING_SETTINGS.MAX_SUBTASKS_PER_HABIT} subtasks`);
     }
 
     subtasks.forEach((subtask, index) => {

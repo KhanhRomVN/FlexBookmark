@@ -8,45 +8,45 @@
  * ├── 📈 Tính toán streaks và business logic
  * ├── 🎨 Formatting và styling sheets
  * └── 🔧 Xử lý transformation giữa objects và sheet rows
- * 
- * 🏗️ CẤU TRÚC CHÍNH:
- * ├── Sheet Initialization → Khởi tạo headers và formatting
- * ├── Content Operations   → Đọc/ghi dữ liệu thói quen
- * ├── Business Logic      → Tính streaks, validation
- * ├── Formatting          → Styling và formatting sheets
- * └── Helper Methods      → Utilities chuyển đổi dữ liệu
- * 
- * 🔧 CÁC CHỨC NĂNG CHÍNH:
- * ├── initializeSheetHeaders() → Khởi tạo headers
- * ├── readAllHabits()         → Đọc tất cả thói quen
- * ├── writeHabit()           → Ghi thói quen (create/update)
- * ├── deleteHabit()          → Xóa thói quen
- * ├── updateDailyHabit()     → Cập nhật tracking hàng ngày
- * ├── calculateStreaks()     → Tính toán streaks
- * └── convertHabitToRow()    → Chuyển habit object thành sheet row
  */
 
-import type { Habit } from '../../types/habit';
-import { HabitConstants, type BatchOperation } from '../../types/drive';
+import type { Habit, GoodHabit, BadHabit, BatchOperation } from '../../types';
+import { HabitConstants, HabitType, isGoodHabit, isBadHabit } from '../../types';
+
+// 🎯 Extended interface for sheet operations that includes dailyTracking
+interface HabitWithDailyTracking {
+    id: string;
+    name: string;
+    description?: string;
+    habitType: HabitType;
+    difficultyLevel: number;
+    category: string;
+    colorCode: string;
+    tags: string[];
+    isArchived: boolean;
+    createdDate: Date;
+    updatedDate: Date;
+    dailyTracking: (number | null)[];
+    currentStreak?: number;
+    longestStreak?: number;
+    goal?: number;
+    limit?: number;
+    isQuantifiable?: boolean;
+    unit?: string;
+    startTime?: string;
+    subtasks?: string[];
+}
 
 export class SheetsUtils {
     // 🔐 PRIVATE PROPERTIES
-    // ────────────────────────────────────────────────────────────────────────────
     private accessToken: string;
 
     // 🏗️ CONSTRUCTOR
-    // ════════════════════════════════════════════════════════════════════════════════
-
-    /**
-     * 🏗️ Khởi tạo SheetsUtils với access token
-     * @param accessToken - Google OAuth2 access token
-     */
     constructor(accessToken: string) {
         this.accessToken = accessToken;
     }
 
     // 🔄 TOKEN MANAGEMENT
-    // ════════════════════════════════════════════════════════════════════════════════
 
     /**
      * 🔄 Cập nhật access token mới
@@ -362,21 +362,31 @@ export class SheetsUtils {
                 throw new Error(`Habit ${habitId} not found`);
             }
 
-            // 🔄 Update daily tracking
-            const updatedDailyTracking = [...habit.dailyTracking];
+            // 🔄 Create habit with daily tracking for calculation
+            const habitWithTracking = this.convertToHabitWithTracking(habit);
+            const updatedDailyTracking = [...(habitWithTracking.dailyTracking || new Array(31).fill(null))];
             updatedDailyTracking[day - 1] = value;
 
             // 📈 Recalculate streaks
             const { currentStreak, longestStreak } = this.calculateStreaks(
-                { ...habit, dailyTracking: updatedDailyTracking }
+                { ...habitWithTracking, dailyTracking: updatedDailyTracking }
             );
 
-            const updatedHabit: Habit = {
-                ...habit,
-                dailyTracking: updatedDailyTracking,
-                currentStreak,
-                longestStreak: Math.max(longestStreak, habit.longestStreak)
-            };
+            // 📝 Update the habit
+            let updatedHabit: Habit;
+            if (isGoodHabit(habit)) {
+                updatedHabit = {
+                    ...habit,
+                    currentStreak,
+                    longestStreak: Math.max(longestStreak, habit.longestStreak || 0)
+                };
+            } else {
+                updatedHabit = {
+                    ...habit,
+                    currentStreak,
+                    longestStreak: Math.max(longestStreak, habit.longestStreak || 0)
+                };
+            }
 
             // 📝 Write back to sheet
             const habitIndex = habits.findIndex(h => h.id === habitId);
@@ -402,7 +412,7 @@ export class SheetsUtils {
             console.log(`📦 Processing batch update with ${operations.length} operations`);
 
             for (const operation of operations) {
-                switch (operation.operation) {
+                switch (operation.type) {
                     case 'create':
                     case 'update':
                         // 📝 These require individual API calls due to complexity
@@ -472,26 +482,39 @@ export class SheetsUtils {
         row[2] = habit.description || '';
         row[3] = habit.habitType;
         row[4] = habit.difficultyLevel;
-        row[5] = habit.goal || '';
-        row[6] = habit.limit || '';
-        row[7] = habit.currentStreak;
 
-        // 📅 Daily tracking (columns 8-38)
+        // Type-specific properties
+        if (isGoodHabit(habit)) {
+            row[5] = habit.goal || '';
+            row[6] = ''; // Limit is for bad habits only
+            row[45] = habit.isQuantifiable ? 'TRUE' : 'FALSE';
+            row[46] = habit.unit || '';
+        } else if (isBadHabit(habit)) {
+            row[5] = ''; // Goal is for good habits only
+            row[6] = habit.limit || '';
+        }
+
+        row[7] = habit.currentStreak || 0;
+
+        // 📅 Daily tracking (columns 8-38) - handled separately since it's not in the base Habit type
+        // For writing, we'll leave these empty as they're handled by updateDailyHabit
         for (let i = 0; i < 31; i++) {
-            row[8 + i] = habit.dailyTracking[i] ?? '';
+            row[8 + i] = '';
         }
 
         // 📊 Additional properties (columns 39+)
         row[39] = habit.createdDate.toISOString();
-        row[40] = habit.colorCode;
-        row[41] = habit.longestStreak;
-        row[42] = habit.category;
-        row[43] = JSON.stringify(habit.tags);
+        row[40] = habit.colorCode || '#3b82f6';
+        row[41] = habit.longestStreak || 0;
+        row[42] = habit.category || 'other';
+        row[43] = JSON.stringify(habit.tags || []);
         row[44] = habit.isArchived ? 'TRUE' : 'FALSE';
-        row[45] = habit.isQuantifiable ? 'TRUE' : 'FALSE';
-        row[46] = habit.unit || '';
-        row[47] = habit.startTime || '';
-        row[48] = JSON.stringify(habit.subtasks);
+
+        // Additional properties that might exist
+        if (isGoodHabit(habit)) {
+            row[47] = habit.startTime || '';
+            row[48] = JSON.stringify(habit.subtasks || []);
+        }
 
         return row;
     }
@@ -506,7 +529,9 @@ export class SheetsUtils {
         try {
             if (!row || row.length === 0 || !row[0]) return null;
 
+            const habitType = row[3] as HabitType;
             const dailyTracking = new Array(31).fill(null);
+
             for (let i = 0; i < 31; i++) {
                 const value = row[8 + i];
                 if (value !== undefined && value !== '') {
@@ -514,31 +539,66 @@ export class SheetsUtils {
                 }
             }
 
-            return {
+            const baseHabit = {
                 id: row[0],
                 name: row[1] || '',
                 description: row[2] || '',
-                habitType: row[3] as any || 'good',
+                habitType: habitType,
                 difficultyLevel: parseInt(row[4]) || 1,
-                goal: row[5] ? parseFloat(row[5]) : undefined,
-                limit: row[6] ? parseFloat(row[6]) : undefined,
                 currentStreak: parseInt(row[7]) || 0,
-                dailyTracking,
                 createdDate: new Date(row[39] || Date.now()),
                 colorCode: row[40] || '#3b82f6',
                 longestStreak: parseInt(row[41]) || 0,
-                category: row[42] as any || 'other',
+                category: (row[42] as any) || 'other',
                 tags: this.safeJsonParse(row[43], []),
                 isArchived: row[44] === 'TRUE',
-                isQuantifiable: row[45] === 'TRUE',
-                unit: row[46] || '',
-                startTime: row[47] || '',
-                subtasks: this.safeJsonParse(row[48], [])
+                updatedDate: new Date() // Default to current date
             };
+
+            if (habitType === HabitType.GOOD) {
+                const goodHabit: GoodHabit = {
+                    ...baseHabit,
+                    habitType: HabitType.GOOD,
+                    goal: row[5] ? parseFloat(row[5]) : 1,
+                    isQuantifiable: row[45] === 'TRUE',
+                    unit: row[46] || '',
+                    startTime: row[47] || '',
+                    subtasks: this.safeJsonParse(row[48], [])
+                };
+                return goodHabit;
+            } else {
+                const badHabit: BadHabit = {
+                    ...baseHabit,
+                    habitType: HabitType.BAD,
+                    limit: row[6] ? parseFloat(row[6]) : 1
+                };
+                return badHabit;
+            }
         } catch (error) {
             console.error('❌ Failed to parse habit from row:', error);
             return null;
         }
+    }
+
+    /**
+     * 🔄 Convert Habit to HabitWithDailyTracking
+     * @private
+     * @param habit - Habit object
+     * @returns {HabitWithDailyTracking} Habit with daily tracking
+     */
+    private convertToHabitWithTracking(habit: Habit): HabitWithDailyTracking {
+        return {
+            ...habit,
+            dailyTracking: new Array(31).fill(null),
+            currentStreak: habit.currentStreak,
+            longestStreak: habit.longestStreak,
+            goal: isGoodHabit(habit) ? habit.goal : undefined,
+            limit: isBadHabit(habit) ? habit.limit : undefined,
+            isQuantifiable: isGoodHabit(habit) ? habit.isQuantifiable : undefined,
+            unit: isGoodHabit(habit) ? habit.unit : undefined,
+            startTime: isGoodHabit(habit) ? habit.startTime : undefined,
+            subtasks: isGoodHabit(habit) ? habit.subtasks : undefined
+        };
     }
 
     /**
@@ -547,12 +607,12 @@ export class SheetsUtils {
      * @param habit - Habit object cần tính streaks
      * @returns {{ currentStreak: number; longestStreak: number }} Kết quả streaks
      */
-    private calculateStreaks(habit: Habit): { currentStreak: number; longestStreak: number } {
+    private calculateStreaks(habit: HabitWithDailyTracking): { currentStreak: number; longestStreak: number } {
         const currentDate = new Date();
         const currentDay = currentDate.getDate();
 
         let currentStreak = 0;
-        let longestStreak = habit.longestStreak;
+        let longestStreak = habit.longestStreak || 0;
         let tempStreak = 0;
 
         // 📆 Calculate streaks by going through all days up to today
@@ -579,18 +639,20 @@ export class SheetsUtils {
      * @param day - Ngày cần kiểm tra
      * @returns {boolean} True nếu hoàn thành
      */
-    private isHabitCompletedForDay(habit: Habit, day: number): boolean {
+    private isHabitCompletedForDay(habit: HabitWithDailyTracking, day: number): boolean {
         const dayIndex = day - 1;
-        if (dayIndex < 0 || dayIndex >= habit.dailyTracking.length) return false;
+        if (dayIndex < 0 || dayIndex >= (habit.dailyTracking?.length || 0)) return false;
 
         const value = habit.dailyTracking[dayIndex];
-        if (value === null) return false;
+        if (value === null || value === undefined) return false;
 
-        if (habit.habitType === 'good') {
-            return habit.goal ? value >= habit.goal : value > 0;
-        } else {
-            return habit.limit ? value <= habit.limit : value === 0;
+        if (habit.habitType === HabitType.GOOD) {
+            return habit.goal ? value >= (habit.goal || 0) : value > 0;
+        } else if (habit.habitType === HabitType.BAD) {
+            return habit.limit ? value <= (habit.limit || 0) : value === 0;
         }
+
+        return false;
     }
 
     /**

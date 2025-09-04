@@ -34,6 +34,7 @@ export interface HabitBase {
     isArchived: boolean;
     createdDate: Date;
     updatedDate: Date;
+    dailyTracking?: (number | null)[];
 }
 
 /**
@@ -46,6 +47,8 @@ export interface GoodHabit extends HabitBase {
     unit?: string;
     currentStreak: number;
     longestStreak: number;
+    startTime?: string;
+    subtasks?: string[];
 }
 
 /**
@@ -144,6 +147,9 @@ export interface DailyStats {
     goodHabitsCompleted: number;
     badHabitsCompleted: number;
     totalTimeSpent?: number;
+    completed: number;
+    total: number;
+    remaining: number;
 }
 
 /**

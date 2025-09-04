@@ -27,6 +27,10 @@ export class HabitCacheUtils {
     private static lastCleanup = 0;
     private static readonly CLEANUP_INTERVAL = 30 * 60 * 1000; // ⏰ 30 phút
 
+    // 🎯 CACHE CONSTANTS
+    private static readonly DEFAULT_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    private static readonly MAX_CACHE_SIZE = 5 * 1024 * 1024; // 5MB
+
     // 🎯 HABIT-SPECIFIC METHODS
 
     /**
@@ -35,19 +39,16 @@ export class HabitCacheUtils {
      * @param ttl - Time-to-live in milliseconds
      * @returns {Promise<void>}
      */
-    static async storeHabit(habit: Habit, ttl: number = CacheConstants.DEFAULT_TTL): Promise<void> {
+    static async storeHabit(habit: Habit, ttl: number = this.DEFAULT_TTL): Promise<void> {
         const key = this.cacheManager.generateHabitKey(habit.id);
         const now = Date.now();
-        const currentDate = new Date();
 
         const cachedHabit: CachedHabit = {
             ...habit,
-            _cacheMetadata: {
+            _cache: {
                 createdAt: now,
                 expiresAt: now + ttl,
-                version: CacheConstants.CACHE_VERSION,
-                month: currentDate.getMonth() + 1,
-                year: currentDate.getFullYear()
+                version: CacheConstants.CACHE_VERSION
             }
         };
 
@@ -76,7 +77,7 @@ export class HabitCacheUtils {
             if (!cachedHabit) return null;
 
             // ⏰ Check if expired
-            if (this.cacheManager.isExpired(cachedHabit._cacheMetadata)) {
+            if (this.cacheManager.isExpired(cachedHabit._cache)) {
                 await this.removeHabit(habitId, month, year);
                 return null;
             }
@@ -94,21 +95,18 @@ export class HabitCacheUtils {
      * @param ttl - Time-to-live in milliseconds
      * @returns {Promise<void>}
      */
-    static async storeHabits(habits: Habit[], ttl: number = CacheConstants.DEFAULT_TTL): Promise<void> {
+    static async storeHabits(habits: Habit[], ttl: number = this.DEFAULT_TTL): Promise<void> {
         const batchData: { [key: string]: CachedHabit } = {};
         const now = Date.now();
-        const currentDate = new Date();
 
         habits.forEach(habit => {
             const key = this.cacheManager.generateHabitKey(habit.id);
             batchData[key] = {
                 ...habit,
-                _cacheMetadata: {
+                _cache: {
                     createdAt: now,
                     expiresAt: now + ttl,
-                    version: CacheConstants.CACHE_VERSION,
-                    month: currentDate.getMonth() + 1,
-                    year: currentDate.getFullYear()
+                    version: CacheConstants.CACHE_VERSION
                 }
             };
         });
@@ -146,9 +144,9 @@ export class HabitCacheUtils {
                 if (!parsed || parsed.month !== targetMonth || parsed.year !== targetYear) continue;
 
                 const cachedHabit = value as CachedHabit;
-                if (!cachedHabit._cacheMetadata) continue;
+                if (!cachedHabit._cache) continue;
 
-                if (this.cacheManager.isExpired(cachedHabit._cacheMetadata)) {
+                if (this.cacheManager.isExpired(cachedHabit._cache)) {
                     expiredKeys.push(key);
                     continue;
                 }
@@ -182,9 +180,9 @@ export class HabitCacheUtils {
                 if (!key.startsWith(CacheConstants.HABIT_KEY_PREFIX)) continue;
 
                 const cachedHabit = value as CachedHabit;
-                if (!cachedHabit._cacheMetadata) continue;
+                if (!cachedHabit._cache) continue;
 
-                if (this.cacheManager.isExpired(cachedHabit._cacheMetadata)) {
+                if (this.cacheManager.isExpired(cachedHabit._cache)) {
                     expiredKeys.push(key);
                     continue;
                 }
@@ -272,7 +270,7 @@ export class HabitCacheUtils {
             const result = await chrome.storage.local.get([key]);
             const existing = result[key] as CachedHabit;
 
-            if (!existing || !existing._cacheMetadata) {
+            if (!existing || !existing._cache) {
                 // 💾 Nếu không có entry cũ, store như mới
                 await this.storeHabit(habit);
                 return;
@@ -281,7 +279,7 @@ export class HabitCacheUtils {
             // 🔄 Update habit data while preserving metadata
             const updated: CachedHabit = {
                 ...habit,
-                _cacheMetadata: existing._cacheMetadata
+                _cache: existing._cache
             };
 
             await chrome.storage.local.set({ [key]: updated });
@@ -295,9 +293,9 @@ export class HabitCacheUtils {
 
     /**
      * 📊 Lấy cache statistics
-     * @returns {Promise<CacheStats>} Cache statistics object
+     * @returns {Promise<Partial<CacheStats>>} Cache statistics object
      */
-    static async getCacheStats(): Promise<CacheStats> {
+    static async getCacheStats(): Promise<Partial<CacheStats>> {
         try {
             const allData = await chrome.storage.local.get(null);
             let totalEntries = 0;
@@ -313,10 +311,10 @@ export class HabitCacheUtils {
                 totalSize += JSON.stringify(value).length;
 
                 const cachedHabit = value as CachedHabit;
-                if (cachedHabit._cacheMetadata) {
-                    const createdAt = cachedHabit._cacheMetadata.createdAt;
+                if (cachedHabit._cache) {
+                    const createdAt = cachedHabit._cache.createdAt;
 
-                    if (this.cacheManager.isExpired(cachedHabit._cacheMetadata)) {
+                    if (this.cacheManager.isExpired(cachedHabit._cache)) {
                         expiredEntries++;
                     }
 
@@ -371,7 +369,7 @@ export class HabitCacheUtils {
                 if (!key.startsWith(CacheConstants.HABIT_KEY_PREFIX)) continue;
 
                 const cachedHabit = value as CachedHabit;
-                if (cachedHabit._cacheMetadata && this.cacheManager.isExpired(cachedHabit._cacheMetadata)) {
+                if (cachedHabit._cache && this.cacheManager.isExpired(cachedHabit._cache)) {
                     expiredKeys.push(key);
                 }
             }
@@ -396,7 +394,7 @@ export class HabitCacheUtils {
      */
     static async isCacheFull(): Promise<boolean> {
         const stats = await this.getCacheStats();
-        return stats.totalSize >= CacheConstants.MAX_CACHE_SIZE;
+        return stats.totalSize !== undefined && stats.totalSize >= this.MAX_CACHE_SIZE;
     }
 
     // 🔄 ADVANCED CACHE PATTERNS

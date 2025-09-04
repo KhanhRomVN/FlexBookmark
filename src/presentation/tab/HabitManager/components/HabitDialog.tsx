@@ -5,7 +5,7 @@ import type {
   HabitType,
   HabitCategory,
   DifficultyLevel,
-} from "../types/habit";
+} from "../types";
 
 interface HabitDialogProps {
   isOpen: boolean;

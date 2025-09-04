@@ -13,12 +13,11 @@
 import { AuthUtils } from './AuthUtils';
 import { AuthErrorUtils } from './AuthErrorUtils';
 import type {
-    AuthState,
     AuthUser,
-    TokenValidationResult,
+    TokenInfo,
     PermissionCheckResult,
-    AuthOperationResult
-} from '../../types/auth';
+    CommonOperationResult
+} from '../../types';
 
 // ⚙️ SERVICE SCOPES CONFIGURATION
 const SERVICE_SCOPES = {
@@ -38,18 +37,32 @@ const SERVICE_SCOPES = {
     ]
 } as const;
 
+// 🔧 Extended AuthUser interface with accessToken
+interface AuthUserWithToken extends AuthUser {
+    accessToken: string;
+    tokenInfo?: TokenInfo;
+}
+
+// 🔧 Extended AuthState interface
+interface ExtendedAuthState {
+    isAuthenticated: boolean;
+    user: AuthUserWithToken | null;
+    isLoading: boolean;
+    error: string | null;
+}
+
 export class ChromeAuthManager {
     // 🔧 SINGLETON PATTERN
     private static instance: ChromeAuthManager;
-    private authState: AuthState;
-    private subscribers: Array<(state: AuthState) => void> = [];
+    private authState: ExtendedAuthState;
+    private subscribers: Array<(state: ExtendedAuthState) => void> = [];
 
     // 🏗️ PRIVATE CONSTRUCTOR
     private constructor() {
         this.authState = {
             isAuthenticated: false,
             user: null,
-            loading: true,
+            isLoading: true,
             error: null
         };
     }
@@ -73,7 +86,7 @@ export class ChromeAuthManager {
      */
     async initialize(): Promise<void> {
         try {
-            this.updateState({ loading: true, error: null });
+            this.updateState({ isLoading: true, error: null });
 
             // 🔍 Kiểm tra Chrome Identity API availability
             if (!chrome.identity) {
@@ -86,7 +99,7 @@ export class ChromeAuthManager {
             if (token) {
                 // ✅ Đã authenticated, lấy user info
                 const userInfo = await AuthUtils.getUserInfo(token);
-                const user: AuthUser = {
+                const user: AuthUserWithToken = {
                     id: userInfo.id,
                     email: userInfo.email,
                     name: userInfo.name,
@@ -97,7 +110,7 @@ export class ChromeAuthManager {
                 this.updateState({
                     isAuthenticated: true,
                     user,
-                    loading: false,
+                    isLoading: false,
                     error: null
                 });
             } else {
@@ -105,7 +118,7 @@ export class ChromeAuthManager {
                 this.updateState({
                     isAuthenticated: false,
                     user: null,
-                    loading: false,
+                    isLoading: false,
                     error: null
                 });
             }
@@ -113,7 +126,7 @@ export class ChromeAuthManager {
         } catch (error) {
             console.error('❌ Auth initialization failed:', error);
             this.updateState({
-                loading: false,
+                isLoading: false,
                 error: error instanceof Error ? error.message : 'Initialization failed'
             });
         }
@@ -125,7 +138,7 @@ export class ChromeAuthManager {
      */
     async login(): Promise<boolean> {
         try {
-            this.updateState({ loading: true, error: null });
+            this.updateState({ isLoading: true, error: null });
 
             const allScopes = [
                 ...SERVICE_SCOPES.CORE,
@@ -141,7 +154,7 @@ export class ChromeAuthManager {
 
             // 📊 Lấy user info
             const userInfo = await AuthUtils.getUserInfo(token);
-            const user: AuthUser = {
+            const user: AuthUserWithToken = {
                 id: userInfo.id,
                 email: userInfo.email,
                 name: userInfo.name,
@@ -152,7 +165,7 @@ export class ChromeAuthManager {
             this.updateState({
                 isAuthenticated: true,
                 user,
-                loading: false,
+                isLoading: false,
                 error: null
             });
 
@@ -161,7 +174,7 @@ export class ChromeAuthManager {
         } catch (error) {
             console.error('❌ Login failed:', error);
             this.updateState({
-                loading: false,
+                isLoading: false,
                 error: error instanceof Error ? error.message : 'Login failed'
             });
             return false;
@@ -174,7 +187,7 @@ export class ChromeAuthManager {
      */
     async logout(): Promise<void> {
         try {
-            this.updateState({ loading: true });
+            this.updateState({ isLoading: true });
 
             if (this.authState.user?.accessToken) {
                 // 🚫 Revoke token hiện tại
@@ -182,21 +195,23 @@ export class ChromeAuthManager {
             }
 
             // 🧹 Xóa cached token
-            chrome.identity.removeCachedAuthToken({
-                token: this.authState.user?.accessToken || ''
-            });
+            if (this.authState.user?.accessToken) {
+                chrome.identity.removeCachedAuthToken({
+                    token: this.authState.user.accessToken
+                });
+            }
 
             this.updateState({
                 isAuthenticated: false,
                 user: null,
-                loading: false,
+                isLoading: false,
                 error: null
             });
 
         } catch (error) {
             console.error('❌ Logout failed:', error);
             this.updateState({
-                loading: false,
+                isLoading: false,
                 error: error instanceof Error ? error.message : 'Logout failed'
             });
         }
@@ -208,7 +223,7 @@ export class ChromeAuthManager {
      */
     async forceReauth(): Promise<boolean> {
         try {
-            this.updateState({ loading: true, error: null });
+            this.updateState({ isLoading: true, error: null });
 
             // 🧹 Xóa cached token trước
             if (this.authState.user?.accessToken) {
@@ -223,7 +238,7 @@ export class ChromeAuthManager {
         } catch (error) {
             console.error('❌ Force reauth failed:', error);
             this.updateState({
-                loading: false,
+                isLoading: false,
                 error: error instanceof Error ? error.message : 'Reauth failed'
             });
             return false;
@@ -249,12 +264,18 @@ export class ChromeAuthManager {
                         ...SERVICE_SCOPES.SHEETS
                     ]
                 },
-                (token) => {
+                (result) => {
                     if (chrome.runtime.lastError) {
                         console.warn('⚠️ Token acquisition failed:', chrome.runtime.lastError);
                         resolve(null);
+                    } else if (result && typeof result === 'object' && 'token' in result) {
+                        // 📦 Handle GetAuthTokenResult object
+                        resolve(result.token || null);
+                    } else if (typeof result === 'string') {
+                        // 🔧 Handle string token (legacy API)
+                        resolve(result || null);
                     } else {
-                        resolve(token || null);
+                        resolve(null);
                     }
                 }
             );
@@ -268,7 +289,7 @@ export class ChromeAuthManager {
      */
     async updateToken(newToken: string): Promise<void> {
         if (this.authState.user) {
-            const updatedUser: AuthUser = {
+            const updatedUser: AuthUserWithToken = {
                 ...this.authState.user,
                 accessToken: newToken
             };
@@ -284,19 +305,18 @@ export class ChromeAuthManager {
     /**
      * 🔍 Validate access token
      * @param token - Token cần validate
-     * @returns {Promise<TokenValidationResult>} Kết quả validation
+     * @returns {Promise<any>} Kết quả validation
      */
-    async validateToken(token: string): Promise<TokenValidationResult> {
+    async validateToken(token: string): Promise<any> {
         return AuthUtils.validateToken(token);
     }
 
     /**
      * 📋 Kiểm tra permissions
      * @param token - Access token
-     * @param scopes - Scopes cần kiểm tra
      * @returns {Promise<PermissionCheckResult>} Kết quả permission check
      */
-    async checkPermissions(token: string, scopes: string[]): Promise<PermissionCheckResult> {
+    async checkPermissions(token: string): Promise<PermissionCheckResult> {
         const scopeTests = await AuthUtils.testAllScopes(token);
 
         const requiredScopes = [
@@ -309,12 +329,7 @@ export class ChromeAuthManager {
         );
 
         return {
-            hasRequiredScopes,
-            hasDriveAccess: scopeTests.drive || false,
-            hasSheetsAccess: scopeTests.sheets || false,
-            hasCalendarAccess: scopeTests.calendar || false,
-            scopeDetails: [],
-            grantedScopes: [],
+            hasPermission: hasRequiredScopes,
             missingScopes: []
         };
     }
@@ -335,7 +350,7 @@ export class ChromeAuthManager {
             ...SERVICE_SCOPES.CALENDAR
         ];
 
-        return allScopes.includes(scope);
+        return allScopes.some(s => s === scope);
     }
 
     // ========== STATE MANAGEMENT ==========
@@ -345,7 +360,7 @@ export class ChromeAuthManager {
      * @private
      * @param updates - Phần state cần cập nhật
      */
-    private updateState(updates: Partial<AuthState>): void {
+    private updateState(updates: Partial<ExtendedAuthState>): void {
         this.authState = { ...this.authState, ...updates };
         this.notifySubscribers();
     }
@@ -363,7 +378,7 @@ export class ChromeAuthManager {
      * @param callback - Callback function
      * @returns {Function} Unsubscribe function
      */
-    subscribe(callback: (state: AuthState) => void): () => void {
+    subscribe(callback: (state: ExtendedAuthState) => void): () => void {
         this.subscribers.push(callback);
 
         // 📞 Gọi callback ngay lập tức với state hiện tại
@@ -378,17 +393,17 @@ export class ChromeAuthManager {
 
     /**
      * 📊 Lấy current auth state
-     * @returns {AuthState} Current auth state
+     * @returns {ExtendedAuthState} Current auth state
      */
-    getCurrentState(): AuthState {
+    getCurrentState(): ExtendedAuthState {
         return this.authState;
     }
 
     /**
      * 👤 Lấy current user (nếu authenticated)
-     * @returns {AuthUser | null} User object hoặc null
+     * @returns {AuthUserWithToken | null} User object hoặc null
      */
-    getCurrentUser(): AuthUser | null {
+    getCurrentUser(): AuthUserWithToken | null {
         return this.authState.user;
     }
 
@@ -405,7 +420,7 @@ export class ChromeAuthManager {
      * @returns {boolean} True nếu loading
      */
     get isLoading(): boolean {
-        return this.authState.loading;
+        return this.authState.isLoading;
     }
 
     /**
@@ -427,20 +442,16 @@ export class ChromeAuthManager {
             this.authState.error,
             this.authState,
             await this.checkPermissions(
-                this.authState.user?.accessToken || '',
-                [
-                    ...SERVICE_SCOPES.DRIVE,
-                    ...SERVICE_SCOPES.SHEETS
-                ]
+                this.authState.user?.accessToken || ''
             )
         );
     }
 
     /**
      * 🔄 Thử tự động khôi phục authentication
-     * @returns {Promise<AuthOperationResult>} Kết quả recovery
+     * @returns {Promise<CommonOperationResult>} Kết quả recovery
      */
-    async attemptAutoRecovery(): Promise<AuthOperationResult> {
+    async attemptAutoRecovery(): Promise<CommonOperationResult> {
         try {
             const diagnosis = await this.diagnoseAuthIssues();
 
@@ -448,19 +459,22 @@ export class ChromeAuthManager {
                 const success = await this.forceReauth();
                 return {
                     success,
-                    error: success ? undefined : 'Auto-recovery failed'
+                    error: success ? undefined : 'Auto-recovery failed',
+                    timestamp: Date.now()
                 };
             }
 
             return {
                 success: false,
-                error: 'Auto-recovery not possible for current issues'
+                error: 'Auto-recovery not possible for current issues',
+                timestamp: Date.now()
             };
 
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Auto-recovery failed'
+                error: error instanceof Error ? error.message : 'Auto-recovery failed',
+                timestamp: Date.now()
             };
         }
     }

@@ -285,8 +285,8 @@ export const useHabitData = () => {
         const today = new Date();
         const day = today.getDate();
 
-        return habits.reduce((stats: { completed: number; goodCompleted: number; badCompleted: number; total: number; }, habit: { dailyTracking: any[]; habitType: string; }) => {
-            const value = habit.dailyTracking?.[day - 1];
+        return habits.reduce((stats, habit) => {
+            const value = (habit as any).dailyTracking?.[day - 1];
             const isCompleted = value !== null && value !== undefined && value > 0;
 
             if (isCompleted) {

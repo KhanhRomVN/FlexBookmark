@@ -27,7 +27,7 @@
  * └── deleteSheet()         → Xóa file spreadsheet
  */
 
-import { HabitConstants, type DriveFolder, type DriveFile } from '../../types/drive';
+import { HabitConstants, type DriveFolder, type DriveFile } from '../../types';
 
 export class DriveUtils {
     // 🔐 PRIVATE PROPERTIES
