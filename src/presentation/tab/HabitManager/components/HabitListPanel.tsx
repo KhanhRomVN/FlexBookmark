@@ -1,7 +1,8 @@
 // src/presentation/tab/HabitManager/components/HabitListPanel.tsx
 import React from "react";
 import HabitCard from "./HabitList/HabitCard";
-import { Habit, HabitType, HabitCategory } from "../types/habit";
+import { Habit } from "../types/types";
+import { HabitType, HabitCategory } from "../constants/constant";
 
 interface HabitListPanelProps {
   habits: Habit[];
