@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Target,
   Clock,
@@ -20,7 +20,7 @@ import CustomDropdown, {
 interface HabitCardProps {
   habit: Habit;
   isCompleted: boolean;
-  onToggleComplete: () => void;
+  onToggleComplete: () => Promise<void>;
   onSkip?: () => void;
   onEdit: () => void;
   onArchive: () => void;
@@ -78,28 +78,6 @@ const getHabitTypeBadge = (habitType: string) => {
   }
 };
 
-// Helper function to lighten a hex color for trail
-const lightenColor = (hex: string, percent: number): string => {
-  // Remove # if present
-  const color = hex.replace("#", "");
-
-  // Parse r, g, b values
-  const num = parseInt(color, 16);
-  const r = num >> 16;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
-
-  // Lighten each component
-  const newR = Math.min(255, Math.floor(r + (255 - r) * percent));
-  const newG = Math.min(255, Math.floor(g + (255 - g) * percent));
-  const newB = Math.min(255, Math.floor(b + (255 - b) * percent));
-
-  // Convert back to hex
-  return `#${((newR << 16) | (newG << 8) | newB)
-    .toString(16)
-    .padStart(6, "0")}`;
-};
-
 const HabitCard: React.FC<HabitCardProps> = ({
   habit,
   isCompleted,
@@ -112,11 +90,21 @@ const HabitCard: React.FC<HabitCardProps> = ({
   completedCount = 0,
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localCompleted, setLocalCompleted] = useState(isCompleted);
+  const [localCompletedCount, setLocalCompletedCount] =
+    useState(completedCount);
+
+  // Sync với props khi thay đổi
+  useEffect(() => {
+    setLocalCompleted(isCompleted);
+    setLocalCompletedCount(completedCount);
+  }, [isCompleted, completedCount]);
 
   // Get completion progress for habits with goal/limit > 1
   const getCompletionProgress = () => {
     const target = habit.habitType === "good" ? habit.goal : habit.limit;
-    const current = completedCount || 0;
+    const current = localCompletedCount || 0;
 
     if (!target || target <= 1) return null;
 
@@ -125,6 +113,36 @@ const HabitCard: React.FC<HabitCardProps> = ({
       target,
       percentage: Math.min(100, (current / target) * 100),
     };
+  };
+
+  const handleToggleComplete = async () => {
+    if (localLoading) return;
+
+    setLocalLoading(true);
+
+    // Cập nhật UI ngay lập tức
+    const newCompleted = !localCompleted;
+    setLocalCompleted(newCompleted);
+
+    // Tính toán count mới
+    const progress = getCompletionProgress();
+    if (progress) {
+      const newCount = newCompleted
+        ? Math.min(localCompletedCount + 1, progress.target)
+        : Math.max(localCompletedCount - 1, 0);
+      setLocalCompletedCount(newCount);
+    }
+
+    try {
+      await onToggleComplete();
+    } catch (error) {
+      // Rollback nếu có lỗi
+      setLocalCompleted(isCompleted);
+      setLocalCompletedCount(completedCount);
+      console.error("Toggle failed:", error);
+    } finally {
+      setLocalLoading(false);
+    }
   };
 
   const progress = getCompletionProgress();
@@ -215,15 +233,17 @@ const HabitCard: React.FC<HabitCardProps> = ({
                 })}
               />
               <button
-                onClick={onToggleComplete}
-                disabled={loading}
+                onClick={handleToggleComplete}
+                disabled={localLoading}
                 className={`absolute inset-0 m-auto w-8 h-8 rounded-full flex items-center justify-center ${
-                  loading ? "opacity-50 cursor-not-allowed" : ""
+                  localLoading
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer"
                 }`}
               >
-                {loading ? (
+                {localLoading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : isCompleted ? (
+                ) : localCompleted ? (
                   <span className="text-base">{habit.emoji}</span>
                 ) : (
                   <span className="text-base opacity-60">{habit.emoji}</span>
@@ -232,20 +252,22 @@ const HabitCard: React.FC<HabitCardProps> = ({
             </div>
           ) : (
             <button
-              onClick={onToggleComplete}
-              disabled={loading}
+              onClick={handleToggleComplete}
+              disabled={localLoading}
               className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                loading ? "opacity-50 cursor-not-allowed" : ""
+                localLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer"
               } border-2`}
               style={{
-                borderColor: isCompleted
+                borderColor: localCompleted
                   ? habit.colorCode
                   : "var(--border-default)",
               }}
             >
-              {loading ? (
+              {localLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : isCompleted ? (
+              ) : localCompleted ? (
                 <span className="text-sm">{habit.emoji}</span>
               ) : (
                 <span className="text-sm opacity-60">{habit.emoji}</span>
@@ -316,7 +338,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
               <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-md">
                 <Target className="w-3 h-3" />
                 <span>
-                  {progress.completed}/{progress.target}
+                  {localCompletedCount}/{progress.target}
                 </span>
               </span>
             )}

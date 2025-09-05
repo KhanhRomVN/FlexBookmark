@@ -11,7 +11,7 @@ interface HabitListPanelProps {
   filterCategory: HabitCategory | "all";
   filterType: HabitType | "all";
   loading: boolean;
-  onToggleHabitComplete: (habitId: string) => void;
+  onToggleHabitComplete: (habitId: string) => Promise<void>;
   onEditHabit: (habit: Habit) => void;
   onArchiveHabit: (habitId: string) => void;
   onDeleteHabit: (habitId: string) => void;
@@ -103,8 +103,13 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
     onSelectHabit(habit);
   };
 
-  const handleToggleComplete = (habitId: string) => {
-    onToggleHabitComplete(habitId);
+  const handleToggleComplete = async (habitId: string) => {
+    try {
+      await onToggleHabitComplete(habitId);
+    } catch (error) {
+      // Hiển thị thông báo lỗi nếu cần
+      console.error("Failed to toggle habit:", error);
+    }
   };
 
   const handleEditHabit = (habit: Habit) => {
