@@ -30,8 +30,8 @@ interface HabitCardProps {
   completedCount?: number;
 }
 
-// Helper function to get difficulty emoji
-const getDifficultyEmoji = (difficultyLevel: number | string): string => {
+// Helper function to get difficulty badge info
+const getDifficultyBadge = (difficultyLevel: number | string) => {
   const difficulty =
     typeof difficultyLevel === "string"
       ? parseInt(difficultyLevel)
@@ -39,18 +39,65 @@ const getDifficultyEmoji = (difficultyLevel: number | string): string => {
 
   switch (difficulty) {
     case 1:
-      return "🟢"; // Easy
+      return { emoji: "🟢", text: "Easy" };
     case 2:
-      return "🟡"; // Medium
+      return { emoji: "🟡", text: "Medium" };
     case 3:
-      return "🟠"; // Hard
+      return { emoji: "🟠", text: "Hard" };
     case 4:
-      return "🔴"; // Very Hard
+      return { emoji: "🔴", text: "Very Hard" };
     case 5:
-      return "🟣"; // Expert
+      return { emoji: "🟣", text: "Expert" };
     default:
-      return "⚪"; // Unknown/Default
+      return { emoji: "⚪", text: "Unknown" };
   }
+};
+
+// Helper function to get habit type badge info
+const getHabitTypeBadge = (habitType: string) => {
+  switch (habitType) {
+    case "good":
+      return {
+        emoji: "✅",
+        text: "Good Habit",
+        color:
+          "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
+      };
+    case "bad":
+      return {
+        emoji: "❌",
+        text: "Bad Habit",
+        color: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+      };
+    default:
+      return {
+        emoji: "⚪",
+        text: "Habit",
+        color: "bg-gray-100 dark:bg-gray-700",
+      };
+  }
+};
+
+// Helper function to lighten a hex color for trail
+const lightenColor = (hex: string, percent: number): string => {
+  // Remove # if present
+  const color = hex.replace("#", "");
+
+  // Parse r, g, b values
+  const num = parseInt(color, 16);
+  const r = num >> 16;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+
+  // Lighten each component
+  const newR = Math.min(255, Math.floor(r + (255 - r) * percent));
+  const newG = Math.min(255, Math.floor(g + (255 - g) * percent));
+  const newB = Math.min(255, Math.floor(b + (255 - b) * percent));
+
+  // Convert back to hex
+  return `#${((newR << 16) | (newG << 8) | newB)
+    .toString(16)
+    .padStart(6, "0")}`;
 };
 
 const HabitCard: React.FC<HabitCardProps> = ({
@@ -81,6 +128,8 @@ const HabitCard: React.FC<HabitCardProps> = ({
   };
 
   const progress = getCompletionProgress();
+  const difficultyBadge = getDifficultyBadge(habit.difficultyLevel);
+  const habitTypeBadge = getHabitTypeBadge(habit.habitType);
 
   // Dropdown options
   const dropdownOptions: DropdownOption[] = [
@@ -116,26 +165,39 @@ const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
-  // Get progress bar colors based on habit type
+  // Get progress bar colors using habit's colorCode
   const getProgressColors = () => {
-    if (habit.habitType === "good") {
-      return {
-        pathColor: "#10b981", // green-500
-        trailColor: "#dcfce7", // green-100
-      };
-    } else {
-      return {
-        pathColor: "#ef4444", // red-500
-        trailColor: "#fee2e2", // red-100
-      };
-    }
+    const primaryColor = habit.colorCode || "#6b7280"; // fallback to gray if no colorCode
+
+    return {
+      pathColor: primaryColor,
+      trailColor: "transparent", // No trail color - only show progress
+    };
   };
 
   const progressColors = getProgressColors();
 
+  // Get border colors using habit's colorCode
+  const getBorderStyles = () => {
+    const primaryColor = habit.colorCode || "#ef4444"; // fallback to red if no colorCode
+    return {
+      borderLeftColor: primaryColor,
+      "--hover-border-color": primaryColor,
+    };
+  };
+
+  const borderStyles = getBorderStyles();
+
   return (
     <div
-      className={`relative p-3 rounded-lg border border-border-default`}
+      className="relative p-3 rounded-lg border border-border-default hover:border-[var(--hover-border-color)] transition-colors duration-200"
+      style={
+        {
+          borderLeftColor: borderStyles.borderLeftColor,
+          borderLeftWidth: "2px",
+          "--hover-border-color": borderStyles["--hover-border-color"],
+        } as React.CSSProperties
+      }
       tabIndex={0}
     >
       <div className="flex items-center gap-3">
@@ -145,7 +207,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
             <div className="w-10 h-10 relative">
               <CircularProgressbar
                 value={progress.percentage}
-                strokeWidth={8}
+                strokeWidth={5}
                 styles={buildStyles({
                   pathColor: progressColors.pathColor,
                   trailColor: progressColors.trailColor,
@@ -162,9 +224,9 @@ const HabitCard: React.FC<HabitCardProps> = ({
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : isCompleted ? (
-                  <span className="text-lg">{habit.emoji}</span>
+                  <span className="text-base">{habit.emoji}</span>
                 ) : (
-                  <span className="text-lg opacity-60">{habit.emoji}</span>
+                  <span className="text-base opacity-60">{habit.emoji}</span>
                 )}
               </button>
             </div>
@@ -172,7 +234,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
             <button
               onClick={onToggleComplete}
               disabled={loading}
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               } border-2`}
               style={{
@@ -184,9 +246,9 @@ const HabitCard: React.FC<HabitCardProps> = ({
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : isCompleted ? (
-                <span className="text-lg">{habit.emoji}</span>
+                <span className="text-sm">{habit.emoji}</span>
               ) : (
-                <span className="text-lg opacity-60">{habit.emoji}</span>
+                <span className="text-sm opacity-60">{habit.emoji}</span>
               )}
             </button>
           )}
@@ -194,14 +256,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
 
         {/* Middle Section - Habit Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {/* Difficulty Emoji */}
-            <div className="flex items-center">
-              <span className="text-lg">
-                {getDifficultyEmoji(habit.difficultyLevel)}
-              </span>
-            </div>
-
+          <div className="mb-1">
             {/* Habit Name */}
             <h3 className="font-semibold text-text-primary text-sm truncate">
               {habit.name}
@@ -210,6 +265,20 @@ const HabitCard: React.FC<HabitCardProps> = ({
 
           {/* Habit Details */}
           <div className="flex flex-wrap gap-2 text-xs text-text-secondary">
+            {/* Habit Type Badge */}
+            <span
+              className={`flex items-center gap-1 px-2 py-1 rounded-md ${habitTypeBadge.color}`}
+            >
+              {habitTypeBadge.emoji}
+              <span>{habitTypeBadge.text}</span>
+            </span>
+
+            {/* Difficulty Badge */}
+            <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-md">
+              {difficultyBadge.emoji}
+              <span>{difficultyBadge.text}</span>
+            </span>
+
             {habit.tags && habit.tags.length > 0 && (
               <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md">
                 <Tag className="w-3 h-3" />
