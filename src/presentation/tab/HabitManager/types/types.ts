@@ -16,6 +16,7 @@ export interface Habit {
     completedToday: boolean;
     startTime?: string;
     unit?: string;
+    tags: string[];
 }
 
 export interface HabitFormData {
@@ -29,6 +30,7 @@ export interface HabitFormData {
     category: string;
     startTime?: string;
     unit?: string;
+    tags?: string[];
 }
 
 export type HabitType = 'good' | 'bad';

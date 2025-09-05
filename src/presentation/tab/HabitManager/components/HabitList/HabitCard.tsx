@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Habit } from "../../types/habit";
+import { Habit } from "../../types/types";
 
 interface HabitCardProps {
   habit: Habit;
@@ -137,13 +137,6 @@ const HabitCard: React.FC<HabitCardProps> = ({
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-  };
-
   return (
     <div
       className="relative p-4 rounded-xl border bg-card-background border-border-default hover:border-border-hover transition-all duration-200"
@@ -190,7 +183,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 text-sm text-text-secondary flex-1 min-w-0">
           {/* Start Date + Time */}
-          {(habit.startDate || habit.startTime) && (
+          {habit.startTime && (
             <span className="flex items-center gap-1 flex-shrink-0">
               <svg
                 className="w-4 h-4"
@@ -205,8 +198,7 @@ const HabitCard: React.FC<HabitCardProps> = ({
                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              {habit.startDate && formatDate(habit.startDate)}
-              {habit.startTime && ` ${habit.startTime}`}
+              {habit.startTime}
             </span>
           )}
 
@@ -250,8 +242,8 @@ const HabitCard: React.FC<HabitCardProps> = ({
             </span>
           )}
 
-          {/* Tags count */}
-          {habit.tags.length > 0 && (
+          {/* Tags count - Sửa lỗi ở đây */}
+          {habit.tags && habit.tags.length > 0 && (
             <span className="flex items-center gap-1 flex-shrink-0">
               <svg
                 className="w-4 h-4"

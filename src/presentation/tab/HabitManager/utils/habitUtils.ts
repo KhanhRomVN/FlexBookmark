@@ -5,6 +5,7 @@ export const generateId = () => `habit_${Date.now()}_${Math.random().toString(36
 export const createHabit = (formData: HabitFormData): Habit => ({
     id: generateId(),
     ...formData,
+    tags: [],
     isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),

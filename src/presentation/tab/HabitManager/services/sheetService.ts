@@ -38,7 +38,9 @@ export class SheetService {
                 }
 
                 if (!response.ok) {
-                    throw new Error(`Google Sheets API error: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text();
+                    console.error('Google API error:', response.status, response.statusText, errorText);
+                    throw new Error(`Google API error: ${response.status} ${response.statusText}`);
                 }
 
                 return response.json();
@@ -61,8 +63,23 @@ export class SheetService {
                 'https://www.googleapis.com/drive/v3/files?q=name="FlexBookmark" and mimeType="application/vnd.google-apps.folder" and trashed=false'
             );
 
+            // FIX: Kiểm tra response hợp lệ
             let flexBookmarkFolderId;
-            if (flexBookmarkFolderResponse.files.length === 0) {
+            if (!flexBookmarkFolderResponse || !flexBookmarkFolderResponse.files) {
+                console.warn('Invalid response from Google Drive API, creating new folder');
+                // Tạo thư mục FlexBookmark
+                const createFolderResponse = await this.makeGoogleSheetsRequest(
+                    'https://www.googleapis.com/drive/v3/files',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: 'FlexBookmark',
+                            mimeType: 'application/vnd.google-apps.folder'
+                        })
+                    }
+                );
+                flexBookmarkFolderId = createFolderResponse.id;
+            } else if (flexBookmarkFolderResponse.files.length === 0) {
                 // Tạo thư mục FlexBookmark
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
@@ -84,8 +101,24 @@ export class SheetService {
                 `https://www.googleapis.com/drive/v3/files?q=name="HabitManager" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${flexBookmarkFolderId}" in parents`
             );
 
+            // FIX: Kiểm tra response hợp lệ
             let habitManagerFolderId;
-            if (habitManagerFolderResponse.files.length === 0) {
+            if (!habitManagerFolderResponse || !habitManagerFolderResponse.files) {
+                console.warn('Invalid response from Google Drive API, creating new folder');
+                // Tạo thư mục HabitManager
+                const createFolderResponse = await this.makeGoogleSheetsRequest(
+                    'https://www.googleapis.com/drive/v3/files',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: 'HabitManager',
+                            mimeType: 'application/vnd.google-apps.folder',
+                            parents: [flexBookmarkFolderId]
+                        })
+                    }
+                );
+                habitManagerFolderId = createFolderResponse.id;
+            } else if (habitManagerFolderResponse.files.length === 0) {
                 // Tạo thư mục HabitManager
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
@@ -109,8 +142,24 @@ export class SheetService {
                 `https://www.googleapis.com/drive/v3/files?q=name="${currentYear}" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${habitManagerFolderId}" in parents`
             );
 
+            // FIX: Kiểm tra response hợp lệ
             let yearFolderId;
-            if (yearFolderResponse.files.length === 0) {
+            if (!yearFolderResponse || !yearFolderResponse.files) {
+                console.warn('Invalid response from Google Drive API, creating new folder');
+                // Tạo thư mục năm
+                const createFolderResponse = await this.makeGoogleSheetsRequest(
+                    'https://www.googleapis.com/drive/v3/files',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: currentYear,
+                            mimeType: 'application/vnd.google-apps.folder',
+                            parents: [habitManagerFolderId]
+                        })
+                    }
+                );
+                yearFolderId = createFolderResponse.id;
+            } else if (yearFolderResponse.files.length === 0) {
                 // Tạo thư mục năm
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
@@ -137,7 +186,27 @@ export class SheetService {
                 `https://www.googleapis.com/drive/v3/files?q=name="${spreadsheetName}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false and "${yearFolderId}" in parents`
             );
 
-            if (spreadsheetResponse.files.length === 0) {
+            // FIX: Kiểm tra response hợp lệ
+            if (!spreadsheetResponse || !spreadsheetResponse.files) {
+                console.warn('Invalid response from Google Drive API, creating new spreadsheet');
+                // Tạo spreadsheet mới
+                const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
+                    'https://www.googleapis.com/drive/v3/files',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: spreadsheetName,
+                            mimeType: 'application/vnd.google-apps.spreadsheet',
+                            parents: [yearFolderId]
+                        })
+                    }
+                );
+
+                this.spreadsheetId = createSpreadsheetResponse.id;
+
+                // Khởi tạo spreadsheet với headers
+                await this.initializeSpreadsheet();
+            } else if (spreadsheetResponse.files.length === 0) {
                 // Tạo spreadsheet mới
                 const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
@@ -162,7 +231,27 @@ export class SheetService {
             return this.spreadsheetId!;
         } catch (error) {
             console.error('Error setting up Drive:', error);
-            throw error;
+
+            // FIX: Tạo một spreadsheet đơn giản nếu có lỗi
+            try {
+                const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
+                    'https://www.googleapis.com/drive/v3/files',
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: `flexBookmark_habitManager_${Date.now()}`,
+                            mimeType: 'application/vnd.google-apps.spreadsheet'
+                        })
+                    }
+                );
+
+                this.spreadsheetId = createSpreadsheetResponse.id;
+                await this.initializeSpreadsheet();
+                return this.spreadsheetId;
+            } catch (fallbackError) {
+                console.error('Fallback spreadsheet creation also failed:', fallbackError);
+                throw error; // Re-throw original error
+            }
         }
     }
 
@@ -195,14 +284,25 @@ export class SheetService {
         }
 
         try {
+            console.log('Fetching rows from spreadsheet:', this.spreadsheetId);
             const response = await this.makeGoogleSheetsRequest(
                 `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/A2:AX`
             );
 
-            return response.values || [];
+            console.log('API Response:', response);
+
+            // Kiểm tra response hợp lệ
+            if (!response || !response.values || !Array.isArray(response.values)) {
+                console.warn('No data found in spreadsheet or invalid response format:', response);
+                return [];
+            }
+
+            console.log('Fetched rows count:', response.values.length);
+            return response.values;
         } catch (error) {
             console.error('Error fetching rows from sheet:', error);
-            throw error;
+            // Trả về mảng rỗng thay vì throw error để tránh crash
+            return [];
         }
     }
 
@@ -293,11 +393,14 @@ export class SheetService {
                 `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${column}2:${column}`
             );
 
-            if (!response.values) {
+            if (!response.values || !Array.isArray(response.values)) {
                 return -1;
             }
 
-            return response.values.findIndex(([cellValue]: [string]) => cellValue === value);
+            return response.values.findIndex((cellArray: any[]) => {
+                const cellValue = cellArray && cellArray.length > 0 ? cellArray[0] : undefined;
+                return cellValue === value;
+            });
         } catch (error) {
             console.error('Error finding row index:', error);
             throw error;

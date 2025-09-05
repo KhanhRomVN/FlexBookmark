@@ -40,6 +40,7 @@ export const useHabit = () => {
 
     const loadHabits = useCallback(async () => {
         if (!authToken || !hasDriveAccess) {
+            console.log('No auth token or drive access');
             setLoading(false);
             return;
         }
@@ -49,15 +50,27 @@ export const useHabit = () => {
             let currentSheetId = sheetId;
 
             if (!currentSheetId) {
+                console.log('Setting up Drive...');
                 const id = await habitService.setupDrive();
                 setSheetId(id);
                 currentSheetId = id;
+                console.log('Drive setup complete, sheet ID:', id);
             }
 
+            console.log('Fetching habits from server...');
             const habitsData = await habitService.fetchHabitsFromServer();
-            setHabits(habitsData);
+            console.log('Habits data received:', habitsData);
+
+            // Đảm bảo habitsData là mảng hợp lệ
+            const validHabits = Array.isArray(habitsData) ? habitsData : [];
+            console.log('Valid habits count:', validHabits.length);
+
+            setHabits(validHabits);
         } catch (err) {
+            console.error('Error loading habits:', err);
             setError((err as Error).message);
+            // Đặt habits thành mảng rỗng khi có lỗi
+            setHabits([]);
         } finally {
             setLoading(false);
         }
