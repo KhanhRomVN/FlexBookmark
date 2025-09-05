@@ -10,6 +10,8 @@ import {
   Trash2,
   MoreVertical,
 } from "lucide-react";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 import { Habit } from "../../types/types";
 import CustomDropdown, {
   DropdownOption,
@@ -114,16 +116,22 @@ const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
-  const progressColorClasses =
-    habit.habitType === "good"
-      ? {
-          bg: "text-green-200 dark:text-green-800",
-          fill: "text-green-500 dark:text-green-400",
-        }
-      : {
-          bg: "text-red-200 dark:text-red-800",
-          fill: "text-red-500 dark:text-red-400",
-        };
+  // Get progress bar colors based on habit type
+  const getProgressColors = () => {
+    if (habit.habitType === "good") {
+      return {
+        pathColor: "#10b981", // green-500
+        trailColor: "#dcfce7", // green-100
+      };
+    } else {
+      return {
+        pathColor: "#ef4444", // red-500
+        trailColor: "#fee2e2", // red-100
+      };
+    }
+  };
+
+  const progressColors = getProgressColors();
 
   return (
     <div
@@ -131,46 +139,57 @@ const HabitCard: React.FC<HabitCardProps> = ({
       tabIndex={0}
     >
       <div className="flex items-center gap-3">
-        {/* Left Section - Completion Checkbox with Emoji */}
+        {/* Left Section - Completion Checkbox with Progress Circle */}
         <div className="flex-shrink-0 relative">
-          {progress && (
-            <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
-              <circle
-                cx="18"
-                cy="18"
-                r="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeDasharray={100}
-                strokeDashoffset={100 - progress.percentage}
-                className={progressColorClasses.fill}
-                strokeLinecap="round"
+          {progress ? (
+            <div className="w-10 h-10 relative">
+              <CircularProgressbar
+                value={progress.percentage}
+                strokeWidth={8}
+                styles={buildStyles({
+                  pathColor: progressColors.pathColor,
+                  trailColor: progressColors.trailColor,
+                  strokeLinecap: "round",
+                })}
               />
-            </svg>
+              <button
+                onClick={onToggleComplete}
+                disabled={loading}
+                className={`absolute inset-0 m-auto w-8 h-8 rounded-full flex items-center justify-center ${
+                  loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : isCompleted ? (
+                  <span className="text-lg">{habit.emoji}</span>
+                ) : (
+                  <span className="text-lg opacity-60">{habit.emoji}</span>
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onToggleComplete}
+              disabled={loading}
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              } border-2`}
+              style={{
+                borderColor: isCompleted
+                  ? habit.colorCode
+                  : "var(--border-default)",
+              }}
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : isCompleted ? (
+                <span className="text-lg">{habit.emoji}</span>
+              ) : (
+                <span className="text-lg opacity-60">{habit.emoji}</span>
+              )}
+            </button>
           )}
-          <button
-            onClick={onToggleComplete}
-            disabled={loading}
-            className={`${
-              progress ? "absolute inset-0 m-auto w-8 h-8" : "w-10 h-10"
-            } rounded-full flex items-center justify-center ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            } border-2`}
-            style={{
-              borderColor: isCompleted
-                ? habit.colorCode
-                : "var(--border-default)",
-            }}
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : isCompleted ? (
-              <span className="text-lg">{habit.emoji}</span>
-            ) : (
-              <span className="text-lg opacity-60">{habit.emoji}</span>
-            )}
-          </button>
         </div>
 
         {/* Middle Section - Habit Info */}
