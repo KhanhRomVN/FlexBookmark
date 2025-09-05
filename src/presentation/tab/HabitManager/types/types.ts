@@ -24,6 +24,8 @@ export interface Habit {
     unit?: string;
     tags: string[];
     subtasks?: HabitSubtask[];
+    dailyCounts: number[];
+    emoji?: string;
 }
 
 export interface HabitFormData {
@@ -39,6 +41,7 @@ export interface HabitFormData {
     unit?: string;
     tags?: string[];
     subtasks?: HabitSubtask[];
+    emoji?: string;
 }
 
 export type HabitType = 'good' | 'bad';

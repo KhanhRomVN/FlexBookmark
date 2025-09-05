@@ -70,6 +70,7 @@ const ComboboxInput: FC<
   const [input, setInput] = useState("");
   const [showDrop, setShowDrop] = useState(false);
   const [dynamicOptions, setDynamicOptions] = useState<Option[]>([]);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const isMulti = !!multiple;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -84,6 +85,7 @@ const ComboboxInput: FC<
       ) {
         setShowDrop(false);
         setInput("");
+        setIsInputFocused(false);
       }
     };
     if (showDrop) {
@@ -170,23 +172,29 @@ const ComboboxInput: FC<
       ? allOptions.filter((o) => o.value === value)
       : [];
 
-  // Display value logic
+  // Display value logic - FIXED
   let displayValue: string = input;
   if (isMulti && Array.isArray(value)) {
     // badges handle display, input is just search
-  } else if (
-    !isMulti &&
-    typeof value === "string" &&
-    value &&
-    allOptions.find((o) => o.value === value)
-  ) {
-    displayValue =
-      input !== "" ? input : allOptions.find((o) => o.value === value)!.label;
+    displayValue = input;
+  } else if (!isMulti && typeof value === "string") {
+    if (isInputFocused || showDrop) {
+      // When focused or dropdown open, always show the input value
+      displayValue = input;
+    } else {
+      // When not focused, show the label if value exists and input is empty
+      if (value && input === "" && allOptions.find((o) => o.value === value)) {
+        displayValue = allOptions.find((o) => o.value === value)!.label;
+      } else {
+        displayValue = input;
+      }
+    }
   }
 
   // Dropdown toggles
   const openDropdown = () => {
     setShowDrop(true);
+    setIsInputFocused(true);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -195,12 +203,15 @@ const ComboboxInput: FC<
   const closeDropdown = () => {
     setShowDrop(false);
     setInput("");
+    setIsInputFocused(false);
   };
 
   const toggleMulti = (val: string) => {
     if (!isMulti) {
       onChange(val);
       setShowDrop(false);
+      setInput("");
+      setIsInputFocused(false);
       return;
     }
     const arr = Array.isArray(value) ? value.slice() : [];
@@ -247,6 +258,37 @@ const ComboboxInput: FC<
     }
   };
 
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInput(newValue);
+    setShowDrop(true);
+
+    // If input is cleared and we're in single mode, clear the selection
+    if (!isMulti && newValue === "") {
+      onChange("");
+    }
+  };
+
+  // Handle focus
+  const handleFocus = () => {
+    setIsInputFocused(true);
+    setShowDrop(true);
+    // When focusing, if there's a selected value, show it in input for editing
+    if (!isMulti && typeof value === "string" && value && input === "") {
+      const selectedOption = allOptions.find((o) => o.value === value);
+      if (selectedOption) {
+        setInput(selectedOption.label);
+      }
+    }
+  };
+
+  // Handle blur
+  const handleBlur = () => {
+    setIsInputFocused(false);
+    // Don't clear input immediately on blur, let the click outside handler manage it
+  };
+
   return (
     <div className={cn("w-full", className)}>
       {label && (
@@ -267,11 +309,9 @@ const ComboboxInput: FC<
               "w-full h-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400",
               isInput ? "pl-10 pr-8" : "pl-3 pr-8"
             )}
-            onChange={(e) => {
-              setInput(e.target.value);
-              setShowDrop(true);
-            }}
-            onFocus={() => setShowDrop(true)}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
           />
           {/* Conditionally show Search Icon */}

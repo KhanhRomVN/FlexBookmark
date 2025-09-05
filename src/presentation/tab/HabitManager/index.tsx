@@ -63,6 +63,8 @@ const HabitManager: React.FC = () => {
     difficultyLevel: 3,
     colorCode: "#3b82f6",
     category: "health",
+    subtasks: [],
+    tags: [],
   });
   const [selectedTab, setSelectedTab] = useState<"active" | "archived">(
     "active"
@@ -138,7 +140,11 @@ const HabitManager: React.FC = () => {
     });
   };
 
-  const isHabitCompletedForDate = (habit: Habit, date: Date): boolean => {
+  const isHabitCompletedForDate = (
+    habit: Habit | undefined,
+    date: Date
+  ): boolean => {
+    if (!habit) return false;
     return (
       habit.completedToday && date.toDateString() === new Date().toDateString()
     );
@@ -164,15 +170,18 @@ const HabitManager: React.FC = () => {
   // Auth state
   if (authState.loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        Loading auth...
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading auth...</p>
+        </div>
       </div>
     );
   }
 
   if (!authState.isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 p-4">
+      <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="text-red-500 mb-4">Authentication required</div>
         <button
           onClick={handleLogin}
@@ -186,7 +195,7 @@ const HabitManager: React.FC = () => {
 
   if (!authState.hasDriveAccess) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 p-4">
+      <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="text-red-500 mb-4">Drive access required</div>
         <div className="text-sm text-gray-600 mb-4 text-center">
           Habit Manager requires access to Google Drive to store your habits.
@@ -205,7 +214,7 @@ const HabitManager: React.FC = () => {
   // Show cached habits immediately, only show loading if no cached data
   if (loading && habits.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p>Loading habits for the first time...</p>
@@ -218,7 +227,7 @@ const HabitManager: React.FC = () => {
   const showSyncIndicator = isBackgroundLoading && habits.length > 0;
 
   return (
-    <div className="h-full flex">
+    <div className="h-screen flex">
       {/* Sidebar */}
       <Sidebar
         onNewHabit={() => setIsDialogOpen(true)}
@@ -229,7 +238,7 @@ const HabitManager: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {showSyncIndicator && (
           <div className="bg-blue-50 border-b border-blue-200 p-2 text-center text-sm text-blue-700">
             <div className="flex items-center justify-center gap-2">
@@ -239,9 +248,9 @@ const HabitManager: React.FC = () => {
           </div>
         )}
 
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-h-0">
           {/* Habit List Panel */}
-          <div className="flex-1">
+          <div className="flex-1 min-h-0 overflow-auto">
             <HabitListPanel
               habits={habits}
               selectedDate={selectedDate}
@@ -250,7 +259,9 @@ const HabitManager: React.FC = () => {
               filterCategory={filterCategory}
               filterType={filterType}
               loading={loading && habits.length === 0}
-              onToggleHabitComplete={(habitId) => toggleHabit(habitId, true)}
+              onToggleHabitComplete={(habitId: string) =>
+                toggleHabit(habitId, true)
+              }
               onEditHabit={handleEditHabit}
               onArchiveHabit={archiveHabit}
               onDeleteHabit={deleteHabit}
@@ -260,6 +271,7 @@ const HabitManager: React.FC = () => {
               isHabitCompletedForDate={isHabitCompletedForDate}
               getActiveHabitsCount={getActiveHabitsCount}
               getArchivedHabitsCount={getArchivedHabitsCount}
+              onSelectHabit={setSelectedHabit}
             />
           </div>
 

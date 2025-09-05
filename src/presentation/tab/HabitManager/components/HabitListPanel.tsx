@@ -1,8 +1,7 @@
-// src/presentation/tab/HabitManager/components/HabitListPanel.tsx
-import React from "react";
+import React, { useState } from "react";
+import { Habit, HabitType, HabitCategory } from "../types/types";
 import HabitCard from "./HabitList/HabitCard";
-import { Habit } from "../types/types";
-import { HabitType, HabitCategory } from "../constants/constant";
+import { HABIT_TYPES } from "../constants/constant";
 
 interface HabitListPanelProps {
   habits: Habit[];
@@ -14,14 +13,15 @@ interface HabitListPanelProps {
   loading: boolean;
   onToggleHabitComplete: (habitId: string) => void;
   onEditHabit: (habit: Habit) => void;
-  onArchiveHabit: (habitId: string, archive: boolean) => void;
+  onArchiveHabit: (habitId: string) => void;
   onDeleteHabit: (habitId: string) => void;
   onTabChange: (tab: "active" | "archived") => void;
   onCategoryFilterChange: (category: HabitCategory | "all") => void;
   onTypeFilterChange: (type: HabitType | "all") => void;
-  isHabitCompletedForDate: (habit: Habit, date: Date) => boolean;
+  isHabitCompletedForDate: (habit: Habit | undefined, date: Date) => boolean;
   getActiveHabitsCount: () => number;
   getArchivedHabitsCount: () => number;
+  onSelectHabit: (habit: Habit | undefined) => void;
 }
 
 const HabitListPanel: React.FC<HabitListPanelProps> = ({
@@ -42,198 +42,243 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   isHabitCompletedForDate,
   getActiveHabitsCount,
   getArchivedHabitsCount,
+  onSelectHabit,
 }) => {
-  // Helper function to determine time category based on startTime
-  const getTimeCategory = (startTime?: string): string => {
-    if (!startTime) return "Today";
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
 
-    const [hours] = startTime.split(":").map(Number);
-
-    if (hours >= 6 && hours < 12) return "Morning";
-    if (hours >= 12 && hours < 18) return "Afternoon";
-    if (hours >= 18 || hours < 6) return "Evening";
-
-    return "Today";
-  };
-
-  // Filter habits based on time filter
-  const getFilteredHabitsByTime = (habitsToFilter: Habit[]): Habit[] => {
-    if (timeFilter === "All habit") return habitsToFilter;
-
-    return habitsToFilter.filter((habit) => {
-      const timeCategory = getTimeCategory(habit.startTime);
-
-      if (timeFilter === "Morning")
-        return timeCategory === "Morning" || timeCategory === "Today";
-      if (timeFilter === "Afternoon")
-        return timeCategory === "Afternoon" || timeCategory === "Today";
-      if (timeFilter === "Evening")
-        return timeCategory === "Evening" || timeCategory === "Today";
-
-      return true;
-    });
-  };
-
-  // Filter habits based on all criteria
+  // Filter habits with null checks
   const filteredHabits = habits.filter((habit) => {
-    const matchesTab =
-      selectedTab === "active" ? !habit.isArchived : habit.isArchived;
-    const matchesCategory =
-      filterCategory === "all" || habit.category === filterCategory;
-    const matchesType = filterType === "all" || habit.habitType === filterType;
-    return matchesTab && matchesCategory && matchesType;
+    if (!habit) return false;
+
+    // Filter by archive status
+    if (selectedTab === "active" && habit.isArchived) return false;
+    if (selectedTab === "archived" && !habit.isArchived) return false;
+
+    // Filter by category
+    if (filterCategory !== "all" && habit.category !== filterCategory)
+      return false;
+
+    // Filter by type
+    if (filterType !== "all" && habit.habitType !== filterType) return false;
+
+    // Filter by time (simplified time filter logic)
+    if (timeFilter !== "All habit") {
+      // Add your time filtering logic here based on habit.startTime
+      // This is a placeholder implementation
+      if (
+        timeFilter === "Morning" &&
+        (!habit.startTime || parseInt(habit.startTime.split(":")[0]) < 6)
+      ) {
+        return false;
+      }
+      if (
+        timeFilter === "Afternoon" &&
+        (!habit.startTime ||
+          parseInt(habit.startTime.split(":")[0]) < 12 ||
+          parseInt(habit.startTime.split(":")[0]) >= 18)
+      ) {
+        return false;
+      }
+      if (
+        timeFilter === "Evening" &&
+        (!habit.startTime || parseInt(habit.startTime.split(":")[0]) < 18)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
-  const timeFilteredHabits = getFilteredHabitsByTime(filteredHabits);
+  // Separate habits by type
+  const goodHabits = filteredHabits.filter(
+    (habit) => habit.habitType === HABIT_TYPES.GOOD
+  );
+  const badHabits = filteredHabits.filter(
+    (habit) => habit.habitType === HABIT_TYPES.BAD
+  );
 
-  // Group habits by time category
-  const groupedHabits = {
-    Today: timeFilteredHabits.filter(
-      (habit) => getTimeCategory(habit.startTime) === "Today"
-    ),
-    Morning: timeFilteredHabits.filter(
-      (habit) => getTimeCategory(habit.startTime) === "Morning"
-    ),
-    Afternoon: timeFilteredHabits.filter(
-      (habit) => getTimeCategory(habit.startTime) === "Afternoon"
-    ),
-    Evening: timeFilteredHabits.filter(
-      (habit) => getTimeCategory(habit.startTime) === "Evening"
-    ),
+  const handleHabitClick = (habit: Habit) => {
+    setSelectedHabitId(habit.id);
+    onSelectHabit(habit);
   };
 
-  const renderHabitSection = (title: string, sectionHabits: Habit[]) => {
-    if (sectionHabits.length === 0) return null;
+  const handleToggleComplete = (habitId: string) => {
+    onToggleHabitComplete(habitId);
+  };
 
+  const handleEditHabit = (habit: Habit) => {
+    onEditHabit(habit);
+  };
+
+  const handleArchiveHabit = (habitId: string) => {
+    onArchiveHabit(habitId);
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    onDeleteHabit(habitId);
+  };
+
+  if (loading && habits.length === 0) {
     return (
-      <div key={title} className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
-          <span className="px-2 py-1 bg-card-background text-text-secondary text-xs rounded-full font-medium">
-            {sectionHabits.length}
-          </span>
-        </div>
-
-        <div className="space-y-4">
-          {sectionHabits.map((habit) => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              isCompleted={isHabitCompletedForDate(habit, selectedDate)}
-              onToggleComplete={() => onToggleHabitComplete(habit.id)}
-              onEdit={() => onEditHabit(habit)}
-              onArchive={() => onArchiveHabit(habit.id, !habit.isArchived)}
-              onDelete={() => onDeleteHabit(habit.id)}
-              loading={loading}
-              showActions={true}
-            />
-          ))}
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading habits...</p>
         </div>
       </div>
     );
-  };
+  }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background p-6">
-      {/* Header with tabs and filters */}
-      <div className="pb-6 border-b border-default mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          {/* Tabs */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onTabChange("active")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedTab === "active"
-                  ? "bg-button-bg text-button-bgText shadow-lg"
-                  : "bg-card-background text-text-primary hover:bg-button-second-bg"
-              }`}
-            >
-              Active ({getActiveHabitsCount()})
-            </button>
-            <button
-              onClick={() => onTabChange("archived")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedTab === "archived"
-                  ? "bg-slate-500 text-white shadow-lg"
-                  : "bg-card-background text-text-primary hover:bg-button-second-bg"
-              }`}
-            >
-              Archived ({getArchivedHabitsCount()})
-            </button>
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Habits</h2>
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>{getActiveHabitsCount()} Active</span>
+            <span>{getArchivedHabitsCount()} Archived</span>
           </div>
+        </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            <select
-              value={filterCategory}
-              onChange={(e) =>
-                onCategoryFilterChange(e.target.value as HabitCategory | "all")
-              }
-              className="px-3 py-2 bg-input-background border border-default rounded-lg text-sm text-text-primary focus:ring-2 focus:ring-primary focus:border-border-focus"
-            >
-              <option value="all">All Categories</option>
-              <option value="health">🏥 Health</option>
-              <option value="fitness">💪 Fitness</option>
-              <option value="productivity">⚡ Productivity</option>
-              <option value="mindfulness">🧘 Mindfulness</option>
-              <option value="learning">📚 Learning</option>
-              <option value="social">👥 Social</option>
-              <option value="finance">💰 Finance</option>
-              <option value="creativity">🎨 Creativity</option>
-              <option value="other">📌 Other</option>
-            </select>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => onTabChange("active")}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              selectedTab === "active"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => onTabChange("archived")}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              selectedTab === "archived"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Archived
+          </button>
+        </div>
 
-            <select
-              value={filterType}
-              onChange={(e) =>
-                onTypeFilterChange(e.target.value as HabitType | "all")
-              }
-              className="px-3 py-2 bg-input-background border border-default rounded-lg text-sm text-text-primary focus:ring-2 focus:ring-primary focus:border-border-focus"
-            >
-              <option value="all">All Types</option>
-              <option value="good">Good Habits</option>
-              <option value="bad">Bad Habits</option>
-            </select>
-          </div>
+        {/* Filters */}
+        <div className="flex gap-4 mb-4">
+          <select
+            value={filterCategory}
+            onChange={(e) =>
+              onCategoryFilterChange(e.target.value as HabitCategory | "all")
+            }
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+          >
+            <option value="all">All Categories</option>
+            <option value="health">Health</option>
+            <option value="fitness">Fitness</option>
+            <option value="productivity">Productivity</option>
+            <option value="mindfulness">Mindfulness</option>
+            <option value="learning">Learning</option>
+            <option value="social">Social</option>
+            <option value="finance">Finance</option>
+            <option value="creativity">Creativity</option>
+            <option value="other">Other</option>
+          </select>
+
+          <select
+            value={filterType}
+            onChange={(e) =>
+              onTypeFilterChange(e.target.value as HabitType | "all")
+            }
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+          >
+            <option value="all">All Types</option>
+            <option value="good">Good Habits</option>
+            <option value="bad">Bad Habits</option>
+          </select>
         </div>
       </div>
 
-      {/* Show selected date */}
-      <div className="mb-6 p-4 bg-card-background rounded-xl border border-default">
-        <h2 className="text-lg font-semibold text-text-primary mb-1">
-          Viewing habits for{" "}
-          {selectedDate.toLocaleDateString("vi-VN", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </h2>
-        <p className="text-sm text-text-secondary">
-          Time filter:{" "}
-          <span className="font-medium text-primary">{timeFilter}</span>
-        </p>
-      </div>
-
-      {/* Habits grouped by time */}
-      <div className="flex-1 overflow-auto">
-        {timeFilter === "All habit" ? (
+      {/* Habit List */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Good Habits Section */}
+        {goodHabits.length > 0 && (
           <div>
-            {renderHabitSection("Today", groupedHabits.Today)}
-            {renderHabitSection("Morning", groupedHabits.Morning)}
-            {renderHabitSection("Afternoon", groupedHabits.Afternoon)}
-            {renderHabitSection("Evening", groupedHabits.Evening)}
+            <h3 className="text-lg font-semibold text-green-700 mb-4">
+              Good Habits
+            </h3>
+            <div className="grid gap-3">
+              {goodHabits.map((habit) => (
+                <div
+                  key={habit.id}
+                  onClick={() => handleHabitClick(habit)}
+                  className={`cursor-pointer transition-all duration-200 ${
+                    selectedHabitId === habit.id
+                      ? "ring-2 ring-blue-500 rounded-xl"
+                      : "hover:scale-[1.02]"
+                  }`}
+                >
+                  <HabitCard
+                    habit={habit}
+                    isCompleted={isHabitCompletedForDate(habit, selectedDate)}
+                    onToggleComplete={() => handleToggleComplete(habit.id)}
+                    onEdit={() => handleEditHabit(habit)}
+                    onArchive={() => handleArchiveHabit(habit.id)}
+                    onDelete={() => handleDeleteHabit(habit.id)}
+                    loading={loading}
+                    completedCount={
+                      habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div>{renderHabitSection(timeFilter, timeFilteredHabits)}</div>
         )}
 
-        {/* Empty state */}
-        {timeFilteredHabits.length === 0 && !loading && (
+        {/* Bad Habits Section */}
+        {badHabits.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-red-700 mb-4">
+              Bad Habits
+            </h3>
+            <div className="grid gap-3">
+              {badHabits.map((habit) => (
+                <div
+                  key={habit.id}
+                  onClick={() => handleHabitClick(habit)}
+                  className={`cursor-pointer transition-all duration-200 ${
+                    selectedHabitId === habit.id
+                      ? "ring-2 ring-blue-500 rounded-xl"
+                      : "hover:scale-[1.02]"
+                  }`}
+                >
+                  <HabitCard
+                    habit={habit}
+                    isCompleted={isHabitCompletedForDate(habit, selectedDate)}
+                    onToggleComplete={() => handleToggleComplete(habit.id)}
+                    onEdit={() => handleEditHabit(habit)}
+                    onArchive={() => handleArchiveHabit(habit.id)}
+                    onDelete={() => handleDeleteHabit(habit.id)}
+                    loading={loading}
+                    completedCount={
+                      habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {filteredHabits.length === 0 && (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 bg-card-background rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <svg
-                className="w-8 h-8 text-text-secondary"
+                className="w-8 h-8 text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -242,30 +287,18 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-text-primary mb-2">
-              {selectedTab === "active"
-                ? "No active habits"
-                : "No archived habits"}
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No habits found
             </h3>
-            <p className="text-text-secondary">
+            <p className="text-gray-600">
               {selectedTab === "active"
-                ? timeFilter === "All habit"
-                  ? "Start building good habits by creating your first one"
-                  : `No habits scheduled for ${timeFilter.toLowerCase()}`
-                : "Archived habits will appear here"}
+                ? "Create your first habit to get started!"
+                : "No archived habits yet."}
             </p>
-          </div>
-        )}
-
-        {/* Loading state */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-text-secondary">Loading habits...</p>
           </div>
         )}
       </div>
