@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useHabit } from "./hooks/useHabit";
 import HabitDialog from "./components/HabitDialog";
 import HabitListPanel from "./components/HabitListPanel";
+import HabitDetailPanel from "./components/HabitDetailPanel";
+import Sidebar from "./components/Sidebar";
 import { Habit, HabitFormData } from "./types/types";
 import { HabitType, HabitCategory } from "./constants/constant";
 import ChromeAuthManager from "../../../utils/chromeAuth";
@@ -18,6 +20,7 @@ const HabitManager: React.FC = () => {
     archiveHabit,
     deleteHabit,
     hasDriveAccess,
+    isBackgroundLoading,
   } = useHabit();
 
   const [authState, setAuthState] = useState({
@@ -68,6 +71,11 @@ const HabitManager: React.FC = () => {
     "all"
   );
   const [filterType, setFilterType] = useState<HabitType | "all">("all");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [timeFilter, setTimeFilter] = useState<string>("All habit");
+  const [selectedCollection, setSelectedCollection] =
+    useState<string>("Default");
+  const [selectedHabit, setSelectedHabit] = useState<Habit | undefined>();
 
   const handleFormChange = (newFormData: HabitFormData) => {
     setFormData(newFormData);
@@ -140,6 +148,19 @@ const HabitManager: React.FC = () => {
   const getArchivedHabitsCount = () =>
     habits.filter((h) => h.isArchived).length;
 
+  // Calculate today's stats for the detail panel
+  const todayStats = {
+    completed: habits.filter((h) => h.completedToday && !h.isArchived).length,
+    total: habits.filter((h) => !h.isArchived).length,
+    remaining: habits.filter((h) => !h.completedToday && !h.isArchived).length,
+    completionRate:
+      habits.filter((h) => !h.isArchived).length > 0
+        ? (habits.filter((h) => h.completedToday && !h.isArchived).length /
+            habits.filter((h) => !h.isArchived).length) *
+          100
+        : 0,
+  };
+
   // Auth state
   if (authState.loading) {
     return (
@@ -181,75 +202,106 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // Habits loading/error
+  // Show cached habits immediately, only show loading if no cached data
   if (loading && habits.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        Loading habits...
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading habits for the first time...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-500">
-        Error: {error}
-      </div>
-    );
-  }
+  // Show background sync indicator
+  const showSyncIndicator = isBackgroundLoading && habits.length > 0;
 
   return (
-    <div className="h-full flex flex-col">
-      <HabitListPanel
-        habits={habits}
-        selectedDate={new Date()}
-        timeFilter="All habit"
-        selectedTab={selectedTab}
-        filterCategory={filterCategory}
-        filterType={filterType}
-        loading={loading}
-        onToggleHabitComplete={(habitId) => toggleHabit(habitId, true)}
-        onEditHabit={handleEditHabit}
-        onArchiveHabit={archiveHabit}
-        onDeleteHabit={deleteHabit}
-        onTabChange={setSelectedTab}
-        onCategoryFilterChange={setFilterCategory}
-        onTypeFilterChange={setFilterType}
-        isHabitCompletedForDate={isHabitCompletedForDate}
-        getActiveHabitsCount={getActiveHabitsCount}
-        getArchivedHabitsCount={getArchivedHabitsCount}
+    <div className="h-full flex">
+      {/* Sidebar */}
+      <Sidebar
+        onNewHabit={() => setIsDialogOpen(true)}
+        onDateChange={setSelectedDate}
+        onTimeFilterChange={setTimeFilter}
+        onCollectionChange={setSelectedCollection}
+        selectedDate={selectedDate}
       />
 
-      <HabitDialog
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        onSubmit={handleSubmitHabit}
-        editingHabit={editingHabit}
-        loading={loading}
-        formData={formData}
-        onFormChange={handleFormChange}
-      />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {showSyncIndicator && (
+          <div className="bg-blue-50 border-b border-blue-200 p-2 text-center text-sm text-blue-700">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              Syncing habits in background...
+            </div>
+          </div>
+        )}
 
-      {/* Floating action button */}
-      <button
-        onClick={() => setIsDialogOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-button-bg hover:bg-button-bgHover text-white rounded-full 
-                 shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
+        <div className="flex-1 flex">
+          {/* Habit List Panel */}
+          <div className="flex-1">
+            <HabitListPanel
+              habits={habits}
+              selectedDate={selectedDate}
+              timeFilter={timeFilter}
+              selectedTab={selectedTab}
+              filterCategory={filterCategory}
+              filterType={filterType}
+              loading={loading && habits.length === 0}
+              onToggleHabitComplete={(habitId) => toggleHabit(habitId, true)}
+              onEditHabit={handleEditHabit}
+              onArchiveHabit={archiveHabit}
+              onDeleteHabit={deleteHabit}
+              onTabChange={setSelectedTab}
+              onCategoryFilterChange={setFilterCategory}
+              onTypeFilterChange={setFilterType}
+              isHabitCompletedForDate={isHabitCompletedForDate}
+              getActiveHabitsCount={getActiveHabitsCount}
+              getArchivedHabitsCount={getArchivedHabitsCount}
+            />
+          </div>
+
+          {/* Habit Detail Panel */}
+          <HabitDetailPanel
+            selectedHabit={selectedHabit}
+            selectedDate={selectedDate}
+            todayStats={todayStats}
           />
-        </svg>
-      </button>
+        </div>
+
+        <HabitDialog
+          isOpen={isDialogOpen}
+          onClose={handleCloseDialog}
+          onSubmit={handleSubmitHabit}
+          editingHabit={editingHabit}
+          loading={loading}
+          formData={formData}
+          onFormChange={handleFormChange}
+        />
+
+        {/* Floating action button */}
+        <button
+          onClick={() => setIsDialogOpen(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-button-bg hover:bg-button-bgHover text-white rounded-full 
+                   shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };

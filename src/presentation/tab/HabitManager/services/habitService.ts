@@ -18,11 +18,18 @@ export class HabitServer {
             const rows = await this.sheetService.fetchRowsFromSheet();
             console.log('Raw rows from sheet:', rows);
 
+            // If no rows found or invalid response, return empty array
+            if (!rows || !Array.isArray(rows) || rows.length === 0) {
+                console.log('No habits found in sheet, returning empty array');
+                return [];
+            }
+
             const habits = rows.map(row => this.rowToHabit(row));
-            console.log('Converted habits:', habits);
+            console.log('Successfully fetched', habits.length, 'habits');
             return habits;
         } catch (error) {
             console.error('Error fetching habits from server:', error);
+            // Re-throw to handle in useHabit
             throw error;
         }
     }
@@ -52,6 +59,27 @@ export class HabitServer {
             }
         }
 
+        // Xử lý ngày tháng an toàn
+        const parseDateSafe = (dateString: any): Date => {
+            if (!dateString) return new Date();
+
+            try {
+                // Thử parse theo nhiều định dạng
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    // Nếu parse thất bại, thử parse từ timestamp
+                    const timestamp = Date.parse(dateString);
+                    if (!isNaN(timestamp)) {
+                        return new Date(timestamp);
+                    }
+                    return new Date();
+                }
+                return date;
+            } catch {
+                return new Date();
+            }
+        };
+
         return {
             id: safeRow.length > 0 ? safeRow[0] || '' : '',
             name: safeRow.length > 1 ? safeRow[1] || '' : '',
@@ -63,11 +91,11 @@ export class HabitServer {
             currentStreak: safeRow.length > 7 ? parseInt(safeRow[7]) || 0 : 0,
             completedToday: hasCompletedToday ? safeRow[completedTodayIndex] === 'TRUE' : false,
             colorCode: safeRow.length > 40 ? safeRow[40] || '#3b82f6' : '#3b82f6',
-            category: safeRow.length > 42 ? safeRow[42] || 'other' : 'other', // Điều chỉnh index
-            tags: tags, // Thêm tags
+            category: safeRow.length > 42 ? safeRow[42] || 'other' : 'other',
+            tags: tags,
             isArchived: safeRow.length > 44 ? safeRow[44] === 'TRUE' : false,
-            createdAt: new Date(safeRow.length > 39 ? safeRow[39] || Date.now() : Date.now()),
-            updatedAt: new Date(),
+            createdAt: parseDateSafe(safeRow.length > 39 ? safeRow[39] : undefined),
+            updatedAt: new Date(), // Luôn dùng thời gian hiện tại cho updatedAt
             longestStreak: safeRow.length > 41 ? parseInt(safeRow[41]) || 0 : 0,
             startTime: safeRow.length > 47 ? safeRow[47] : undefined,
             unit: safeRow.length > 46 ? safeRow[46] : undefined
@@ -99,6 +127,14 @@ export class HabitServer {
         // Đảm bảo habit có giá trị hợp lệ
         if (!habit) return row;
 
+        // Helper function để format date an toàn
+        const formatDateSafe = (date: Date | undefined): string => {
+            if (!date || isNaN(date.getTime())) {
+                return new Date().toISOString().split('T')[0];
+            }
+            return date.toISOString().split('T')[0];
+        };
+
         row[0] = habit.id || '';
         row[1] = habit.name || '';
         row[2] = habit.description || '';
@@ -107,11 +143,11 @@ export class HabitServer {
         row[5] = habit.goal?.toString() || '';
         row[6] = habit.limit?.toString() || '';
         row[7] = (habit.currentStreak || 0).toString();
-        row[39] = habit.createdAt ? habit.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        row[39] = formatDateSafe(habit.createdAt);
         row[40] = habit.colorCode || '#3b82f6';
         row[41] = (habit.longestStreak || 0).toString();
         row[42] = habit.category || 'other';
-        row[43] = habit.tags?.join(',') || ''; // Xử lý tags
+        row[43] = habit.tags?.join(',') || '';
         row[44] = habit.isArchived ? 'TRUE' : 'FALSE';
         row[46] = habit.unit || '';
         row[47] = habit.startTime || '';
@@ -143,6 +179,17 @@ export class HabitServer {
 
     async updateHabitOnServer(habit: Habit) {
         try {
+            // Validate habit data trước khi update
+            if (!habit || !habit.id) {
+                throw new Error('Invalid habit data');
+            }
+
+            // Validate dates
+            if (habit.createdAt && isNaN(habit.createdAt.getTime())) {
+                console.warn('Invalid createdAt date, resetting to current date');
+                habit.createdAt = new Date();
+            }
+
             // First, find the row index of the habit
             const rowIndex = await this.sheetService.findRowIndex('A', habit.id);
             if (rowIndex === -1) {

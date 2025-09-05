@@ -1,3 +1,9 @@
+export interface HabitSubtask {
+    id: string;
+    title: string;
+    completed: boolean;
+}
+
 export interface Habit {
     id: string;
     name: string;
@@ -17,6 +23,7 @@ export interface Habit {
     startTime?: string;
     unit?: string;
     tags: string[];
+    subtasks?: HabitSubtask[];
 }
 
 export interface HabitFormData {
@@ -31,6 +38,7 @@ export interface HabitFormData {
     startTime?: string;
     unit?: string;
     tags?: string[];
+    subtasks?: HabitSubtask[];
 }
 
 export type HabitType = 'good' | 'bad';

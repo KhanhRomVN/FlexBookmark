@@ -65,10 +65,12 @@ const ComboboxInput: FC<
   placeholder,
   multiple = false,
   creatable = false,
+  isInput = false,
 }) => {
   const [input, setInput] = useState("");
   const [showDrop, setShowDrop] = useState(false);
   const [dynamicOptions, setDynamicOptions] = useState<Option[]>([]);
+
   const isMulti = !!multiple;
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -84,7 +86,6 @@ const ComboboxInput: FC<
         setInput("");
       }
     };
-
     if (showDrop) {
       document.addEventListener("mousedown", handleClickOutside);
       return () =>
@@ -140,7 +141,6 @@ const ComboboxInput: FC<
   // Filtered options
   const filteredOpts = useMemo(() => {
     const safeInput = String(input || "").toLowerCase();
-
     if (isMulti && Array.isArray(value)) {
       return allOptions
         .filter(
@@ -153,7 +153,6 @@ const ComboboxInput: FC<
           return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
         });
     }
-
     return input
       ? allOptions.filter((opt) => {
           const safeLabel = String(opt.label || "").toLowerCase();
@@ -255,7 +254,6 @@ const ComboboxInput: FC<
           {label}
         </label>
       )}
-
       {/* Input container */}
       <div className="relative" ref={dropdownRef}>
         <div className="relative flex items-center">
@@ -266,7 +264,8 @@ const ComboboxInput: FC<
             value={displayValue}
             placeholder={placeholder}
             className={cn(
-              "w-full pl-10 pr-8 py-2 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+              "w-full h-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400",
+              isInput ? "pl-10 pr-8" : "pl-3 pr-8"
             )}
             onChange={(e) => {
               setInput(e.target.value);
@@ -275,10 +274,10 @@ const ComboboxInput: FC<
             onFocus={() => setShowDrop(true)}
             onKeyDown={handleKeyDown}
           />
-
-          {/* Search Icon */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-
+          {/* Conditionally show Search Icon */}
+          {isInput && (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          )}
           {/* Chevron/Close Button */}
           {showDrop ? (
             <button
@@ -305,8 +304,7 @@ const ComboboxInput: FC<
             </button>
           )}
         </div>
-
-        {/* Dropdown Menu - Styled like Header's menu */}
+        {/* Dropdown Menu */}
         {showDrop && (
           <div className="absolute left-0 right-0 top-full z-30 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
             <div className="max-h-60 overflow-auto py-1">
@@ -358,7 +356,6 @@ const ComboboxInput: FC<
           </div>
         )}
       </div>
-
       {/* Multi-select badges */}
       {isMulti && selectedOpts.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">

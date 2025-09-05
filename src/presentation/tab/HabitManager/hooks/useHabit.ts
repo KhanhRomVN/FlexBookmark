@@ -1,16 +1,22 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HabitServer } from '../services/habitService';
 import { Habit, HabitFormData } from '../types/types';
 import { createHabit, calculateStreak } from '../utils/habitUtils';
 import ChromeAuthManager from '../../../../utils/chromeAuth';
+import { cacheHabits, getCachedHabits } from '../utils/cacheUtils';
 
 export const useHabit = () => {
     const [habits, setHabits] = useState<Habit[]>([]);
+    const [cachedHabits, setCachedHabits] = useState<Habit[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const [sheetId, setSheetId] = useState<string>('');
     const [authToken, setAuthToken] = useState<string>('');
     const [hasDriveAccess, setHasDriveAccess] = useState(false);
+    const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const lastSyncRef = useRef<number>(0);
+    const SYNC_COOLDOWN = 30000; // 30 seconds cooldown
 
     const habitService = useMemo(() => new HabitServer(authToken), [authToken]);
 
@@ -38,7 +44,35 @@ export const useHabit = () => {
         return unsubscribe;
     }, []);
 
-    const loadHabits = useCallback(async () => {
+    // Load habits from cache first
+    useEffect(() => {
+        const loadFromCache = async () => {
+            try {
+                const cached = await getCachedHabits();
+                if (cached && cached.length > 0) {
+                    console.log('Loading habits from cache:', cached.length);
+                    setCachedHabits(cached);
+                    setHabits(cached); // Show cached habits immediately
+                    setLoading(false);
+                } else {
+                    console.log('No cached habits found');
+                }
+            } catch (cacheError) {
+                console.error('Error loading from cache:', cacheError);
+            }
+        };
+        loadFromCache();
+    }, []);
+
+    const loadHabits = useCallback(async (isBackground: boolean = false) => {
+        if (isBackground) {
+            const now = Date.now();
+            if (now - lastSyncRef.current < SYNC_COOLDOWN) {
+                console.log('Sync skipped - in cooldown period');
+                return;
+            }
+        }
+
         if (!authToken || !hasDriveAccess) {
             console.log('No auth token or drive access');
             setLoading(false);
@@ -46,7 +80,12 @@ export const useHabit = () => {
         }
 
         try {
-            setLoading(true);
+            if (!isBackground) {
+                setLoading(true);
+            } else {
+                setIsBackgroundLoading(true);
+            }
+
             let currentSheetId = sheetId;
 
             if (!currentSheetId) {
@@ -66,15 +105,25 @@ export const useHabit = () => {
             console.log('Valid habits count:', validHabits.length);
 
             setHabits(validHabits);
+            // Cache the new habits
+            await cacheHabits(validHabits);
+            lastSyncRef.current = Date.now(); // Update last sync time
+
+            if (isBackground) {
+                console.log('Background sync completed');
+            }
         } catch (err) {
             console.error('Error loading habits:', err);
             setError((err as Error).message);
-            // Đặt habits thành mảng rỗng khi có lỗi
-            setHabits([]);
+            // Keep showing cached habits even if there's an error
+            if (cachedHabits.length === 0 && habits.length === 0) {
+                setHabits([]);
+            }
         } finally {
             setLoading(false);
+            setIsBackgroundLoading(false);
         }
-    }, [sheetId, habitService, authToken, hasDriveAccess]);
+    }, [sheetId, habitService, authToken, hasDriveAccess, cachedHabits, habits]);
 
     const addHabit = useCallback(async (formData: HabitFormData) => {
         if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
@@ -82,24 +131,37 @@ export const useHabit = () => {
         try {
             const newHabit = createHabit(formData);
             await habitService.createHabitOnServer(newHabit);
-            setHabits(prev => [...prev, newHabit]);
+            const updatedHabits = [...habits, newHabit];
+            setHabits(updatedHabits);
+            await cacheHabits(updatedHabits); // Update cache
+            lastSyncRef.current = Date.now(); // Reset sync cooldown
         } catch (err) {
             setError((err as Error).message);
             throw err;
         }
-    }, [habitService, authToken, hasDriveAccess]);
+    }, [habitService, authToken, hasDriveAccess, habits]);
 
     const updateHabit = useCallback(async (habit: Habit) => {
         if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
 
         try {
+            console.log('Updating habit:', {
+                ...habit,
+                createdAt: habit.createdAt?.toString(),
+                updatedAt: habit.updatedAt?.toString()
+            });
+
             await habitService.updateHabitOnServer(habit);
-            setHabits(prev => prev.map(h => h.id === habit.id ? habit : h));
+            const updatedHabits = habits.map(h => h.id === habit.id ? habit : h);
+            setHabits(updatedHabits);
+            await cacheHabits(updatedHabits);
+            lastSyncRef.current = Date.now();
         } catch (err) {
+            console.error('Error updating habit:', err);
             setError((err as Error).message);
             throw err;
         }
-    }, [habitService, authToken, hasDriveAccess]);
+    }, [habitService, authToken, hasDriveAccess, habits]);
 
     const toggleHabit = useCallback(async (habitId: string, completed: boolean) => {
         if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
@@ -136,18 +198,31 @@ export const useHabit = () => {
 
         try {
             await habitService.deleteHabitOnServer(habitId);
-            setHabits(prev => prev.filter(h => h.id !== habitId));
+            const updatedHabits = habits.filter(h => h.id !== habitId);
+            setHabits(updatedHabits);
+            await cacheHabits(updatedHabits); // Update cache
+            lastSyncRef.current = Date.now(); // Reset sync cooldown
         } catch (err) {
             setError((err as Error).message);
             throw err;
         }
-    }, [authToken, habitService, hasDriveAccess]);
+    }, [authToken, habitService, hasDriveAccess, habits]);
 
     useEffect(() => {
         if (authToken && hasDriveAccess) {
-            loadHabits();
+            if (isInitialLoad) {
+                loadHabits(false);
+                setIsInitialLoad(false);
+            } else if (cachedHabits.length > 0) {
+                // Only sync in background if we have cached data and not in cooldown
+                const now = Date.now();
+                if (now - lastSyncRef.current >= SYNC_COOLDOWN) {
+                    console.log('Starting background sync...');
+                    loadHabits(true); // Load in background
+                }
+            }
         }
-    }, [authToken, hasDriveAccess, loadHabits]);
+    }, [authToken, hasDriveAccess, loadHabits, cachedHabits, isInitialLoad]);
 
     return {
         habits,
@@ -160,6 +235,7 @@ export const useHabit = () => {
         deleteHabit,
         reloadHabits: loadHabits,
         isAuthenticated: !!authToken,
-        hasDriveAccess
+        hasDriveAccess,
+        isBackgroundLoading
     };
 };

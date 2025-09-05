@@ -13,6 +13,9 @@ export class SheetService {
     }
 
     private async makeGoogleSheetsRequest(url: string, options: RequestInit = {}, retryCount = 3): Promise<any> {
+        // Add delay to prevent rate limiting (1 second between requests)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         this.checkAuth();
 
         for (let i = 0; i < retryCount; i++) {
