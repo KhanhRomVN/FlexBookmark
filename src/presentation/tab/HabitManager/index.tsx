@@ -280,6 +280,9 @@ const HabitManager: React.FC = () => {
             selectedHabit={selectedHabit}
             selectedDate={selectedDate}
             todayStats={todayStats}
+            habits={habits}
+            onToggleHabitComplete={toggleHabit}
+            onEditHabit={handleEditHabit}
           />
         </div>
 
@@ -292,27 +295,6 @@ const HabitManager: React.FC = () => {
           formData={formData}
           onFormChange={handleFormChange}
         />
-
-        {/* Floating action button */}
-        <button
-          onClick={() => setIsDialogOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-button-bg hover:bg-button-bgHover text-white rounded-full 
-                   shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
       </div>
     </div>
   );

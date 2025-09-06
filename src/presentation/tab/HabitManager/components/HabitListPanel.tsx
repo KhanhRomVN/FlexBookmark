@@ -36,12 +36,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   onEditHabit,
   onArchiveHabit,
   onDeleteHabit,
-  onTabChange,
-  onCategoryFilterChange,
-  onTypeFilterChange,
   isHabitCompletedForDate,
-  getActiveHabitsCount,
-  getArchivedHabitsCount,
   onSelectHabit,
 }) => {
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
@@ -137,75 +132,6 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Habits</h2>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>{getActiveHabitsCount()} Active</span>
-            <span>{getArchivedHabitsCount()} Archived</span>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => onTabChange("active")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedTab === "active"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => onTabChange("archived")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              selectedTab === "archived"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Archived
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-4 mb-4">
-          <select
-            value={filterCategory}
-            onChange={(e) =>
-              onCategoryFilterChange(e.target.value as HabitCategory | "all")
-            }
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            <option value="all">All Categories</option>
-            <option value="health">Health</option>
-            <option value="fitness">Fitness</option>
-            <option value="productivity">Productivity</option>
-            <option value="mindfulness">Mindfulness</option>
-            <option value="learning">Learning</option>
-            <option value="social">Social</option>
-            <option value="finance">Finance</option>
-            <option value="creativity">Creativity</option>
-            <option value="other">Other</option>
-          </select>
-
-          <select
-            value={filterType}
-            onChange={(e) =>
-              onTypeFilterChange(e.target.value as HabitType | "all")
-            }
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            <option value="all">All Types</option>
-            <option value="good">Good Habits</option>
-            <option value="bad">Bad Habits</option>
-          </select>
-        </div>
-      </div>
-
       {/* Habit List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Good Habits Section */}
@@ -221,7 +147,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                   onClick={() => handleHabitClick(habit)}
                   className={`cursor-pointer transition-all duration-200 ${
                     selectedHabitId === habit.id
-                      ? "ring-2 ring-blue-500 rounded-xl"
+                      ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
                       : "hover:scale-[1.02]"
                   }`}
                 >
@@ -256,7 +182,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                   onClick={() => handleHabitClick(habit)}
                   className={`cursor-pointer transition-all duration-200 ${
                     selectedHabitId === habit.id
-                      ? "ring-2 ring-blue-500 rounded-xl"
+                      ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
                       : "hover:scale-[1.02]"
                   }`}
                 >

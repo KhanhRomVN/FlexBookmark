@@ -59,14 +59,14 @@ const getHabitTypeBadge = (habitType: string) => {
     case "good":
       return {
         emoji: "✅",
-        text: "Good Habit",
+        text: "Good",
         color:
           "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
       };
     case "bad":
       return {
         emoji: "❌",
-        text: "Bad Habit",
+        text: "Bad",
         color: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
       };
     default:
@@ -85,7 +85,6 @@ const HabitCard: React.FC<HabitCardProps> = ({
   onEdit,
   onArchive,
   onDelete,
-  loading = false,
   showActions = true,
   completedCount = 0,
 }) => {

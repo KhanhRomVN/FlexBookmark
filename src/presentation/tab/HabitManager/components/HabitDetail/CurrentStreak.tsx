@@ -6,52 +6,41 @@ interface CurrentStreakProps {
 }
 
 const CurrentStreak: React.FC<CurrentStreakProps> = ({ habit }) => {
-  if (!habit) {
-    return (
-      <div className="bg-card-background rounded-xl p-6 border border-border-default">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">
-          Current Streak
-        </h3>
-        <div className="text-center text-text-secondary">
-          Select a habit to view streak details
-        </div>
-      </div>
-    );
-  }
+  if (!habit) return null;
 
   return (
-    <div className="bg-card-background rounded-xl p-6 border border-border-default">
-      <h3 className="text-lg font-semibold text-text-primary mb-4">
+    <div>
+      <h3 className="text-lg font-semibold text-text-primary mb-4 p-6 pb-0">
         Current Streak
       </h3>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="text-center p-4 bg-blue-50 rounded-lg">
-          <div className="text-2xl font-bold text-blue-600">
-            {habit.currentStreak}
+      <div className="p-6 pt-4 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+            <div className="text-2xl font-bold text-blue-600">
+              {habit.currentStreak}
+            </div>
+            <div className="text-sm text-blue-500 mt-1">Current</div>
           </div>
-          <div className="text-sm text-blue-500 mt-1">Current Streak</div>
+
+          <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+            <div className="text-2xl font-bold text-green-600">
+              {habit.longestStreak}
+            </div>
+            <div className="text-sm text-green-500 mt-1">Longest</div>
+          </div>
         </div>
 
-        <div className="text-center p-4 bg-green-50 rounded-lg">
-          <div className="text-2xl font-bold text-green-600">
-            {habit.longestStreak}
+        <div className="bg-background/50 rounded-lg p-3 border border-border-default">
+          <div className="text-sm text-text-secondary">
+            {habit.currentStreak > 0 ? (
+              <span className="text-green-600 font-medium">
+                🔥 On a {habit.currentStreak}-day streak!
+              </span>
+            ) : (
+              <span>Start your streak today!</span>
+            )}
           </div>
-          <div className="text-sm text-green-500 mt-1">Longest Streak</div>
-        </div>
-      </div>
-
-      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-        <div className="text-sm text-text-secondary">
-          {habit.currentStreak > 0 ? (
-            <span className="text-green-600 font-medium">
-              🔥 On a {habit.currentStreak}-day streak!
-            </span>
-          ) : (
-            <span className="text-text-secondary">
-              Start your streak today!
-            </span>
-          )}
         </div>
       </div>
     </div>
