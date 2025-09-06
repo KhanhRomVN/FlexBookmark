@@ -29,6 +29,33 @@ const HabitManager: React.FC = () => {
     hasDriveAccess: false,
   });
 
+  // New filter states
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterTimeOfDay, setFilterTimeOfDay] = useState<string[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [formData, setFormData] = useState<HabitFormData>({
+    name: "",
+    description: "",
+    habitType: "good",
+    difficultyLevel: 3,
+    colorCode: "#3b82f6",
+    category: "health",
+    subtasks: [],
+    tags: [],
+  });
+  const [selectedTab, setSelectedTab] = useState<"active" | "archived">(
+    "active"
+  );
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [timeFilter, setTimeFilter] = useState<string>("All habit");
+  const [selectedCollection, setSelectedCollection] =
+    useState<string>("Default");
+  const [selectedHabit, setSelectedHabit] = useState<Habit | undefined>();
+
   useEffect(() => {
     const authManager = ChromeAuthManager.getInstance();
     const unsubscribe = authManager.subscribe(async (state) => {
@@ -53,31 +80,6 @@ const HabitManager: React.FC = () => {
     const authManager = ChromeAuthManager.getInstance();
     await authManager.login();
   };
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [formData, setFormData] = useState<HabitFormData>({
-    name: "",
-    description: "",
-    habitType: "good",
-    difficultyLevel: 3,
-    colorCode: "#3b82f6",
-    category: "health",
-    subtasks: [],
-    tags: [],
-  });
-  const [selectedTab, setSelectedTab] = useState<"active" | "archived">(
-    "active"
-  );
-  const [filterCategory, setFilterCategory] = useState<HabitCategory | "all">(
-    "all"
-  );
-  const [filterType, setFilterType] = useState<HabitType | "all">("all");
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [timeFilter, setTimeFilter] = useState<string>("All habit");
-  const [selectedCollection, setSelectedCollection] =
-    useState<string>("Default");
-  const [selectedHabit, setSelectedHabit] = useState<Habit | undefined>();
 
   const handleFormChange = (newFormData: HabitFormData) => {
     setFormData(newFormData);
@@ -104,6 +106,8 @@ const HabitManager: React.FC = () => {
         difficultyLevel: 3,
         colorCode: "#3b82f6",
         category: "health",
+        subtasks: [],
+        tags: [],
       });
     } catch (error) {
       console.error("Error saving habit:", error);
@@ -123,6 +127,9 @@ const HabitManager: React.FC = () => {
       category: habit.category,
       startTime: habit.startTime,
       unit: habit.unit,
+      tags: habit.tags || [],
+      subtasks: habit.subtasks || [],
+      emoji: habit.emoji,
     });
     setIsDialogOpen(true);
   };
@@ -137,6 +144,8 @@ const HabitManager: React.FC = () => {
       difficultyLevel: 3,
       colorCode: "#3b82f6",
       category: "health",
+      subtasks: [],
+      tags: [],
     });
   };
 
@@ -232,8 +241,10 @@ const HabitManager: React.FC = () => {
       <Sidebar
         onNewHabit={() => setIsDialogOpen(true)}
         onDateChange={setSelectedDate}
-        onTimeFilterChange={setTimeFilter}
-        onCollectionChange={setSelectedCollection}
+        onCategoryFilter={setFilterCategories}
+        onTagFilter={setFilterTags}
+        onTimeOfDayFilter={setFilterTimeOfDay}
+        onArchiveFilter={setShowArchived}
         selectedDate={selectedDate}
       />
 
@@ -256,8 +267,10 @@ const HabitManager: React.FC = () => {
               selectedDate={selectedDate}
               timeFilter={timeFilter}
               selectedTab={selectedTab}
-              filterCategory={filterCategory}
-              filterType={filterType}
+              filterCategory={filterCategories}
+              filterTags={filterTags}
+              filterTimeOfDay={filterTimeOfDay}
+              showArchived={showArchived}
               loading={loading && habits.length === 0}
               onToggleHabitComplete={(habitId: string) =>
                 toggleHabit(habitId, true)
@@ -266,8 +279,10 @@ const HabitManager: React.FC = () => {
               onArchiveHabit={archiveHabit}
               onDeleteHabit={deleteHabit}
               onTabChange={setSelectedTab}
-              onCategoryFilterChange={setFilterCategory}
-              onTypeFilterChange={setFilterType}
+              onCategoryFilterChange={setFilterCategories}
+              onTagFilterChange={setFilterTags}
+              onTimeOfDayFilterChange={setFilterTimeOfDay}
+              onArchiveFilterChange={setShowArchived}
               isHabitCompletedForDate={isHabitCompletedForDate}
               getActiveHabitsCount={getActiveHabitsCount}
               getArchivedHabitsCount={getArchivedHabitsCount}

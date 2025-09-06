@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Habit, HabitType, HabitCategory } from "../types/types";
+import React, { useState, useMemo } from "react";
+import { Habit } from "../types/types";
 import HabitCard from "./HabitList/HabitCard";
 import { HABIT_TYPES } from "../constants/constant";
 
@@ -8,16 +8,20 @@ interface HabitListPanelProps {
   selectedDate: Date;
   timeFilter: string;
   selectedTab: "active" | "archived";
-  filterCategory: HabitCategory | "all";
-  filterType: HabitType | "all";
+  filterCategory: string[];
+  filterTags: string[];
+  filterTimeOfDay: string[];
+  showArchived: boolean;
   loading: boolean;
   onToggleHabitComplete: (habitId: string) => Promise<void>;
   onEditHabit: (habit: Habit) => void;
   onArchiveHabit: (habitId: string) => void;
   onDeleteHabit: (habitId: string) => void;
   onTabChange: (tab: "active" | "archived") => void;
-  onCategoryFilterChange: (category: HabitCategory | "all") => void;
-  onTypeFilterChange: (type: HabitType | "all") => void;
+  onCategoryFilterChange: (categories: string[]) => void;
+  onTagFilterChange: (tags: string[]) => void;
+  onTimeOfDayFilterChange: (timeOfDay: string[]) => void;
+  onArchiveFilterChange: (showArchived: boolean) => void;
   isHabitCompletedForDate: (habit: Habit | undefined, date: Date) => boolean;
   getActiveHabitsCount: () => number;
   getArchivedHabitsCount: () => number;
@@ -27,10 +31,10 @@ interface HabitListPanelProps {
 const HabitListPanel: React.FC<HabitListPanelProps> = ({
   habits,
   selectedDate,
-  timeFilter,
-  selectedTab,
   filterCategory,
-  filterType,
+  filterTags,
+  filterTimeOfDay,
+  showArchived,
   loading,
   onToggleHabitComplete,
   onEditHabit,
@@ -41,57 +45,130 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
 }) => {
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
 
+  // Get all unique tags from habits for the combobox
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    habits.forEach((habit) => {
+      habit.tags?.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).map((tag) => ({ value: tag, label: tag }));
+  }, [habits]);
+
   // Filter habits with null checks
-  const filteredHabits = habits.filter((habit) => {
-    if (!habit) return false;
+  const filteredHabits = useMemo(() => {
+    return habits.filter((habit) => {
+      if (!habit) return false;
 
-    // Filter by archive status
-    if (selectedTab === "active" && habit.isArchived) return false;
-    if (selectedTab === "archived" && !habit.isArchived) return false;
+      // Filter by archive status
+      if (!showArchived && habit.isArchived) return false;
+      if (showArchived && !habit.isArchived) return false;
 
-    // Filter by category
-    if (filterCategory !== "all" && habit.category !== filterCategory)
-      return false;
-
-    // Filter by type
-    if (filterType !== "all" && habit.habitType !== filterType) return false;
-
-    // Filter by time (simplified time filter logic)
-    if (timeFilter !== "All habit") {
-      // Add your time filtering logic here based on habit.startTime
-      // This is a placeholder implementation
+      // Filter by category
       if (
-        timeFilter === "Morning" &&
-        (!habit.startTime || parseInt(habit.startTime.split(":")[0]) < 6)
+        filterCategory.length > 0 &&
+        !filterCategory.includes(habit.category)
       ) {
         return false;
       }
+
+      // Filter by tags
       if (
-        timeFilter === "Afternoon" &&
-        (!habit.startTime ||
-          parseInt(habit.startTime.split(":")[0]) < 12 ||
-          parseInt(habit.startTime.split(":")[0]) >= 18)
+        filterTags.length > 0 &&
+        !filterTags.some((tag) => habit.tags?.includes(tag))
       ) {
         return false;
       }
-      if (
-        timeFilter === "Evening" &&
-        (!habit.startTime || parseInt(habit.startTime.split(":")[0]) < 18)
-      ) {
-        return false;
+
+      // Filter by time of day
+      if (filterTimeOfDay.length > 0 && habit.startTime) {
+        const habitHour = parseInt(habit.startTime.split(":")[0]);
+        let timeMatch = false;
+
+        for (const timeFilter of filterTimeOfDay) {
+          switch (timeFilter) {
+            case "morning":
+              timeMatch = timeMatch || (habitHour >= 6 && habitHour < 12);
+              break;
+            case "afternoon":
+              timeMatch = timeMatch || (habitHour >= 12 && habitHour < 18);
+              break;
+            case "evening":
+              timeMatch = timeMatch || (habitHour >= 18 && habitHour < 24);
+              break;
+            case "night":
+              timeMatch = timeMatch || (habitHour >= 0 && habitHour < 6);
+              break;
+          }
+        }
+
+        if (!timeMatch) return false;
       }
-    }
 
-    return true;
-  });
+      return true;
+    });
+  }, [habits, showArchived, filterCategory, filterTags, filterTimeOfDay]);
 
-  // Separate habits by type
-  const goodHabits = filteredHabits.filter(
-    (habit) => habit.habitType === HABIT_TYPES.GOOD
-  );
-  const badHabits = filteredHabits.filter(
-    (habit) => habit.habitType === HABIT_TYPES.BAD
-  );
+  // Separate habits by type and categorize by time status
+  const { goodHabits, badHabits } = useMemo(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    const categorizeHabits = (habits: Habit[]) => {
+      const upcoming: Habit[] = [];
+      const preparing: Habit[] = [];
+      const missed: Habit[] = [];
+      const others: Habit[] = [];
+
+      habits.forEach((habit) => {
+        if (!habit.startTime) {
+          others.push(habit);
+          return;
+        }
+
+        const habitHour = parseInt(habit.startTime.split(":")[0]);
+        const habitMinute = parseInt(habit.startTime.split(":")[1]) || 0;
+
+        // Calculate time difference in minutes
+        const currentTotalMinutes = currentHour * 60 + now.getMinutes();
+        const habitTotalMinutes = habitHour * 60 + habitMinute;
+
+        let timeDiff = habitTotalMinutes - currentTotalMinutes;
+
+        // Handle cross-day scenarios
+        if (timeDiff < -720) {
+          // More than 12 hours ago, consider it tomorrow
+          timeDiff += 1440;
+        } else if (timeDiff > 720) {
+          // More than 12 hours ahead, consider it yesterday
+          timeDiff -= 1440;
+        }
+
+        if (timeDiff > 0 && timeDiff <= 60) {
+          upcoming.push(habit);
+        } else if (timeDiff > 60) {
+          preparing.push(habit);
+        } else if (timeDiff < 0 && timeDiff >= -1440) {
+          missed.push(habit);
+        } else {
+          others.push(habit);
+        }
+      });
+
+      return { upcoming, preparing, missed, others };
+    };
+
+    const goodHabits = filteredHabits.filter(
+      (habit) => habit.habitType === HABIT_TYPES.GOOD
+    );
+    const badHabits = filteredHabits.filter(
+      (habit) => habit.habitType === HABIT_TYPES.BAD
+    );
+
+    return {
+      goodHabits: categorizeHabits(goodHabits),
+      badHabits: categorizeHabits(badHabits),
+    };
+  }, [filteredHabits]);
 
   const handleHabitClick = (habit: Habit) => {
     setSelectedHabitId(habit.id);
@@ -102,22 +179,65 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
     try {
       await onToggleHabitComplete(habitId);
     } catch (error) {
-      // Hiển thị thông báo lỗi nếu cần
       console.error("Failed to toggle habit:", error);
     }
   };
 
-  const handleEditHabit = (habit: Habit) => {
-    onEditHabit(habit);
+  const renderHabitSection = (
+    title: string,
+    habits: Habit[],
+    showLabel: boolean = true
+  ) => {
+    if (habits.length === 0) return null;
+
+    return (
+      <div>
+        {showLabel && (
+          <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3 uppercase tracking-wide">
+            {title}
+          </h3>
+        )}
+        <div className="grid gap-3 mb-4">
+          {habits.map((habit) => (
+            <div
+              key={habit.id}
+              onClick={() => handleHabitClick(habit)}
+              className={`cursor-pointer transition-all duration-200 ${
+                selectedHabitId === habit.id
+                  ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
+                  : "hover:scale-[1.02]"
+              }`}
+            >
+              <HabitCard
+                habit={habit}
+                isCompleted={isHabitCompletedForDate(habit, selectedDate)}
+                onToggleComplete={() => handleToggleComplete(habit.id)}
+                onEdit={() => onEditHabit(habit)}
+                onArchive={() => onArchiveHabit(habit.id)}
+                onDelete={() => onDeleteHabit(habit.id)}
+                loading={loading}
+                completedCount={
+                  habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
-  const handleArchiveHabit = (habitId: string) => {
-    onArchiveHabit(habitId);
-  };
+  const hasGoodHabits =
+    goodHabits.upcoming.length > 0 ||
+    goodHabits.preparing.length > 0 ||
+    goodHabits.missed.length > 0 ||
+    goodHabits.others.length > 0;
 
-  const handleDeleteHabit = (habitId: string) => {
-    onDeleteHabit(habitId);
-  };
+  const hasBadHabits =
+    badHabits.upcoming.length > 0 ||
+    badHabits.preparing.length > 0 ||
+    badHabits.missed.length > 0 ||
+    badHabits.others.length > 0;
 
   if (loading && habits.length === 0) {
     return (
@@ -133,74 +253,42 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Habit List */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Good Habits Section */}
-        {goodHabits.length > 0 && (
+        {hasGoodHabits && (
           <div>
-            <h3 className="text-lg font-semibold text-green-700 mb-4">
+            <h3 className="text-lg font-semibold text-green-700 mb-6 flex items-center gap-2 border-b border-green-200 pb-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               Good Habits
             </h3>
-            <div className="grid gap-3">
-              {goodHabits.map((habit) => (
-                <div
-                  key={habit.id}
-                  onClick={() => handleHabitClick(habit)}
-                  className={`cursor-pointer transition-all duration-200 ${
-                    selectedHabitId === habit.id
-                      ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
-                      : "hover:scale-[1.02]"
-                  }`}
-                >
-                  <HabitCard
-                    habit={habit}
-                    isCompleted={isHabitCompletedForDate(habit, selectedDate)}
-                    onToggleComplete={() => handleToggleComplete(habit.id)}
-                    onEdit={() => handleEditHabit(habit)}
-                    onArchive={() => handleArchiveHabit(habit.id)}
-                    onDelete={() => handleDeleteHabit(habit.id)}
-                    loading={loading}
-                    completedCount={
-                      habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+
+            {renderHabitSection("⏰ Coming up (<1h)", goodHabits.upcoming)}
+            {renderHabitSection("📋 Preparing (>1h)", goodHabits.preparing)}
+            {renderHabitSection("❌ Missed today", goodHabits.missed)}
+            {renderHabitSection(
+              "📅 Other habits",
+              goodHabits.others,
+              goodHabits.others.length > 0
+            )}
           </div>
         )}
 
-        {/* Bad Habits Section */}
-        {badHabits.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-red-700 mb-4">
+        {/* Bad Habits Section - Only show if there are bad habits */}
+        {hasBadHabits && (
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-red-700 mb-6 flex items-center gap-2 border-b border-red-200 pb-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
               Bad Habits
             </h3>
-            <div className="grid gap-3">
-              {badHabits.map((habit) => (
-                <div
-                  key={habit.id}
-                  onClick={() => handleHabitClick(habit)}
-                  className={`cursor-pointer transition-all duration-200 ${
-                    selectedHabitId === habit.id
-                      ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
-                      : "hover:scale-[1.02]"
-                  }`}
-                >
-                  <HabitCard
-                    habit={habit}
-                    isCompleted={isHabitCompletedForDate(habit, selectedDate)}
-                    onToggleComplete={() => handleToggleComplete(habit.id)}
-                    onEdit={() => handleEditHabit(habit)}
-                    onArchive={() => handleArchiveHabit(habit.id)}
-                    onDelete={() => handleDeleteHabit(habit.id)}
-                    loading={loading}
-                    completedCount={
-                      habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+
+            {renderHabitSection("⏰ Coming up (<1h)", badHabits.upcoming)}
+            {renderHabitSection("📋 Preparing (>1h)", badHabits.preparing)}
+            {renderHabitSection("❌ Missed today", badHabits.missed)}
+            {renderHabitSection(
+              "📅 Other habits",
+              badHabits.others,
+              badHabits.others.length > 0
+            )}
           </div>
         )}
 
@@ -226,9 +314,9 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
               No habits found
             </h3>
             <p className="text-gray-600">
-              {selectedTab === "active"
-                ? "Create your first habit to get started!"
-                : "No archived habits yet."}
+              {showArchived
+                ? "No archived habits found with current filters"
+                : "No active habits found with current filters"}
             </p>
           </div>
         )}

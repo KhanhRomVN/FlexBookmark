@@ -1,289 +1,282 @@
 import React, { useState } from "react";
+import { Plus, Archive, Calendar, Palette } from "lucide-react";
+import CustomCombobox from "../../../components/common/CustomCombobox";
 
 interface SidebarProps {
   onNewHabit: () => void;
   onDateChange: (date: Date) => void;
-  onTimeFilterChange: (filter: string) => void;
-  onCollectionChange: (collection: string) => void;
+  onCategoryFilter: (categories: string[]) => void;
+  onTagFilter: (tags: string[]) => void;
+  onArchiveFilter: (showArchived: boolean) => void;
+  onTimeOfDayFilter: (timeOfDay: string[]) => void;
+  onOpenTheme?: () => void;
   selectedDate: Date;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   onNewHabit,
   onDateChange,
-  onTimeFilterChange,
-  onCollectionChange,
+  onCategoryFilter,
+  onTagFilter,
+  onArchiveFilter,
+  onTimeOfDayFilter,
+  onOpenTheme,
   selectedDate,
 }) => {
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [timeFilter, setTimeFilter] = useState("All habit");
-  const [collection, setCollection] = useState("Default");
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<string[]>([]);
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+
+  const habitCategories = [
+    { value: "health", label: "Health" },
+    { value: "fitness", label: "Fitness" },
+    { value: "productivity", label: "Productivity" },
+    { value: "mindfulness", label: "Mindfulness" },
+    { value: "learning", label: "Learning" },
+    { value: "social", label: "Social" },
+    { value: "finance", label: "Finance" },
+    { value: "creativity", label: "Creativity" },
+    { value: "other", label: "Other" },
+  ];
+
+  const timeOfDayOptions = [
+    { id: "morning", label: "Morning (6AM-12PM)", emoji: "🌅" },
+    { id: "afternoon", label: "Afternoon (12PM-6PM)", emoji: "☀️" },
+    { id: "evening", label: "Evening (6PM-12AM)", emoji: "🌙" },
+    { id: "night", label: "Night (12AM-6AM)", emoji: "🌌" },
+  ];
+
+  const handleCategoryChange = (values: string[]) => {
+    setSelectedCategories(values);
+    onCategoryFilter(values);
+  };
+
+  const handleTagChange = (values: string[]) => {
+    setSelectedTags(values);
+    onTagFilter(values);
+  };
+
+  const handleTimeOfDayChange = (timeId: string) => {
+    const newSelection = selectedTimeOfDay.includes(timeId)
+      ? selectedTimeOfDay.filter((id) => id !== timeId)
+      : [...selectedTimeOfDay, timeId];
+
+    setSelectedTimeOfDay(newSelection);
+    onTimeOfDayFilter(newSelection);
+  };
+
+  const handleArchiveToggle = () => {
+    const newValue = !showArchived;
+    setShowArchived(newValue);
+    onArchiveFilter(newValue);
+  };
 
   const handleDateChange = (date: Date) => {
     onDateChange(date);
-    setShowDatePicker(false);
   };
 
-  const handleTimeFilterChange = (filter: string) => {
-    setTimeFilter(filter);
-    onTimeFilterChange(filter);
+  const handleCustomDateClick = () => {
+    setShowCustomDatePicker(!showCustomDatePicker);
   };
 
-  const handleCollectionChange = (newCollection: string) => {
-    setCollection(newCollection);
-    onCollectionChange(newCollection);
+  const handleCustomDateChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const selectedDate = new Date(event.target.value);
+    handleDateChange(selectedDate);
+    setShowCustomDatePicker(false);
   };
 
-  const formatDisplayDate = (date: Date) => {
-    return date.toLocaleDateString("vi-VN", {
-      weekday: "short",
-      year: "numeric",
+  const formatSelectedDate = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const isSameDay = (date1: Date, date2: Date) =>
+      date1.toDateString() === date2.toDateString();
+
+    if (isSameDay(date, today)) return "Today";
+    if (isSameDay(date, yesterday)) return "Yesterday";
+    if (isSameDay(date, tomorrow)) return "Tomorrow";
+
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
     });
   };
 
-  // Icon Components for better maintainability
-  const PlusIcon = () => (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-      />
-    </svg>
-  );
-
-  const ChevronDownIcon = ({ isOpen }: { isOpen: boolean }) => (
-    <svg
-      className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
-        isOpen ? "rotate-180" : ""
-      }`}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
-  );
-
-  const SettingsIcon = () => (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-    </svg>
-  );
-
-  const SunIcon = () => (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-      />
-    </svg>
-  );
-
-  const BookIcon = () => (
-    <svg
-      className="w-4 h-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4 4 4 0 004-4V5z"
-      />
-    </svg>
-  );
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split("T")[0];
+  };
 
   return (
-    <div className="w-64 bg-sidebar-background border-r border-border-default h-full overflow-y-auto">
-      <div className="p-4 space-y-6">
+    <div className="w-72 bg-sidebar-background border-r border-border-default h-full overflow-y-auto">
+      <div className="p-4 space-y-4">
         {/* Header */}
-        <div>
+        <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-text-primary">FlexBookmark</h1>
         </div>
 
         {/* New Habit Button */}
         <button
           onClick={onNewHabit}
-          className="w-full flex items-center justify-center gap-2 bg-button-bg hover:bg-button-bgHover text-button-bgText px-4 py-3 rounded-xl font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="w-full flex items-center justify-center gap-2 bg-button-bg hover:bg-button-bgHover text-button-bgText px-4 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
         >
-          <PlusIcon />
+          <Plus className="w-5 h-5" />
           New Habit
         </button>
 
-        {/* Date Picker Section */}
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Select Date
-          </label>
-          <div className="relative">
+        {/* Filters Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-text-primary">Filters</h3>
+
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Category
+            </label>
+            <CustomCombobox
+              value={selectedCategories}
+              options={habitCategories}
+              onChange={handleCategoryChange}
+              placeholder="Select categories..."
+              multiple
+            />
+          </div>
+
+          {/* Tags Filter */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Tags
+            </label>
+            <CustomCombobox
+              value={selectedTags}
+              options={[]} // Will be populated from habits data
+              onChange={handleTagChange}
+              placeholder="Select tags..."
+              multiple
+              creatable
+            />
+          </div>
+
+          {/* Time of Day Filter */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Time of Day
+            </label>
+            <div className="space-y-2">
+              {timeOfDayOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleTimeOfDayChange(option.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                    selectedTimeOfDay.includes(option.id)
+                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                      : "bg-input-background hover:bg-sidebar-itemHover text-text-primary"
+                  }`}
+                >
+                  <span className="text-lg">{option.emoji}</span>
+                  <span className="flex-1 text-left">{option.label}</span>
+                  {selectedTimeOfDay.includes(option.id) && (
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Archive Filter */}
+          <div>
             <button
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className="w-full px-3 py-2 bg-input-background border border-border-default rounded-lg hover:border-border-hover focus:ring-2 focus:ring-primary focus:border-border-focus text-left flex items-center justify-between transition-all duration-200"
+              onClick={handleArchiveToggle}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full ${
+                showArchived
+                  ? "bg-blue-500 text-white"
+                  : "bg-input-background hover:bg-sidebar-itemHover"
+              }`}
             >
-              <span className="text-text-primary">
-                {formatDisplayDate(selectedDate)}
-              </span>
-              <ChevronDownIcon isOpen={showDatePicker} />
-            </button>
-
-            {showDatePicker && (
-              <div className="absolute z-10 mt-1 w-full bg-dropdown-background border border-border-default rounded-lg shadow-lg p-4 backdrop-blur-sm">
-                <div className="space-y-3">
-                  {/* Quick Date Options */}
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      {
-                        label: "Hôm nay",
-                        offset: 0,
-                        style: "bg-green-50 hover:bg-green-100 text-green-700",
-                      },
-                      {
-                        label: "Hôm qua",
-                        offset: -1,
-                        style: "bg-slate-50 hover:bg-slate-100 text-slate-700",
-                      },
-                      {
-                        label: "Ngày mai",
-                        offset: 1,
-                        style: "bg-blue-50 hover:bg-blue-100 text-blue-700",
-                      },
-                    ].map(({ label, offset, style }) => (
-                      <button
-                        key={label}
-                        onClick={() => {
-                          const date = new Date();
-                          date.setDate(date.getDate() + offset);
-                          handleDateChange(date);
-                        }}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors ${style}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Native Date Input */}
-                  <div className="border-t border-border-default pt-3">
-                    <input
-                      type="date"
-                      value={selectedDate.toISOString().split("T")[0]}
-                      onChange={(e) =>
-                        handleDateChange(new Date(e.target.value))
-                      }
-                      className="w-full px-3 py-2 bg-input-background border border-border-default rounded-lg focus:ring-2 focus:ring-primary focus:border-border-focus transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Time Filter Section */}
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Time in day
-          </label>
-          <select
-            value={timeFilter}
-            onChange={(e) => handleTimeFilterChange(e.target.value)}
-            className="w-full px-3 py-2 bg-input-background border border-border-default rounded-lg focus:ring-2 focus:ring-primary focus:border-border-focus text-text-primary transition-colors"
-          >
-            <option value="All habit">All habit</option>
-            <option value="Morning">Morning (6:00 - 12:00)</option>
-            <option value="Afternoon">Afternoon (12:00 - 18:00)</option>
-            <option value="Evening">Evening (18:00 - 24:00)</option>
-          </select>
-        </div>
-
-        {/* Collection Management */}
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Collection
-          </label>
-          <select
-            value={collection}
-            onChange={(e) => handleCollectionChange(e.target.value)}
-            className="w-full px-3 py-2 bg-input-background border border-border-default rounded-lg focus:ring-2 focus:ring-primary focus:border-border-focus text-text-primary mb-3 transition-colors"
-          >
-            <option value="Default">Default</option>
-            <option value="Health & Fitness">Health & Fitness</option>
-            <option value="Productivity">Productivity</option>
-            <option value="Learning">Learning</option>
-            <option value="Personal Growth">Personal Growth</option>
-          </select>
-
-          <div className="space-y-2">
-            <button className="w-full text-left px-3 py-2 bg-button-secondBg hover:bg-button-secondBgHover text-text-primary rounded-lg transition-all duration-200 hover:translate-x-1">
-              New Collection
-            </button>
-            <button className="w-full text-left px-3 py-2 bg-sidebar-itemHover hover:bg-sidebar-itemFocus text-text-primary rounded-lg transition-all duration-200 hover:translate-x-1">
-              Manage Collections
+              <Archive className="w-4 h-4" />
+              {showArchived ? "Hide Archived" : "Show Archived"}
             </button>
           </div>
+
+          {/* Theme Option */}
+          {onOpenTheme && (
+            <div>
+              <button
+                onClick={onOpenTheme}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full bg-input-background hover:bg-sidebar-itemHover text-text-primary"
+              >
+                <Palette className="w-4 h-4" />
+                Theme
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Other Options */}
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Other
-          </label>
-          <div className="space-y-2">
+        {/* Quick Date Selection */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-text-primary">
+            Quick Select
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Manager", icon: <SettingsIcon /> },
-              { label: "Relax Time", icon: <SunIcon /> },
-              { label: "Theme", icon: <BookIcon /> },
-            ].map(({ label, icon }) => (
+              { label: "Today", offset: 0 },
+              { label: "Yesterday", offset: -1 },
+              { label: "Tomorrow", offset: 1 },
+            ].map(({ label, offset }) => (
               <button
                 key={label}
-                className="w-full text-left px-3 py-2 bg-sidebar-itemHover hover:bg-sidebar-itemFocus text-text-primary rounded-lg transition-all duration-200 flex items-center gap-2 hover:translate-x-1 group"
+                onClick={() => {
+                  const date = new Date();
+                  date.setDate(date.getDate() + offset);
+                  handleDateChange(date);
+                }}
+                className="px-3 py-2 bg-input-background hover:bg-sidebar-itemHover rounded-lg text-sm transition-colors"
               >
-                <span className="text-text-secondary group-hover:text-text-primary transition-colors">
-                  {icon}
-                </span>
                 {label}
               </button>
             ))}
+
+            {/* Custom Date Button */}
+            <button
+              onClick={handleCustomDateClick}
+              className={`px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-1 ${
+                showCustomDatePicker
+                  ? "bg-purple-500 hover:bg-purple-600 text-white"
+                  : "bg-input-background hover:bg-sidebar-itemHover text-text-primary"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Custom Date
+            </button>
           </div>
+
+          {/* Custom Date Picker */}
+          {showCustomDatePicker && (
+            <div className="mt-3 p-3 bg-input-background rounded-lg border border-border-default">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                Select Date
+              </label>
+              <input
+                type="date"
+                value={formatDateForInput(selectedDate)}
+                onChange={handleCustomDateChange}
+                className="w-full px-3 py-2 bg-white border border-border-default rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => setShowCustomDatePicker(false)}
+                className="mt-2 w-full px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm text-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
