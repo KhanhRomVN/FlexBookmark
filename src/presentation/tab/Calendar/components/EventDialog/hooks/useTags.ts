@@ -1,6 +1,6 @@
 // src/presentation/components/EventManager/EventDialog/hooks/useTags.ts - Debug version
 import { useState } from "react";
-import { CalendarEvent } from "../../../../types/calendar";
+import { CalendarEvent } from "../../../types";
 
 export const useTags = (
     editedEvent: CalendarEvent | null,

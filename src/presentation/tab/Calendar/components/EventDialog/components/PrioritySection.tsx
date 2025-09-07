@@ -1,5 +1,5 @@
 import React from "react";
-import { Priority, CalendarEvent } from "../../../../types/calendar";
+import { Priority, CalendarEvent } from "../../../types";
 import { Flag, Star } from "lucide-react";
 
 interface PrioritySectionProps {

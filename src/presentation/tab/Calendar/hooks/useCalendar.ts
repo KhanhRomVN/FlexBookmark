@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchGoogleEvents, fetchGoogleCalendars, createGoogleEvent, updateGoogleEvent } from "../../../utils/GGCalender";
-import ChromeAuthManager, { AuthState } from "../../../utils/chromeAuth";
-import type { CalendarEvent, GoogleCalendar } from "../../types/calendar";
+import { fetchGoogleEvents, fetchGoogleCalendars, createGoogleEvent, updateGoogleEvent } from "../../../../utils/GGCalender";
+import ChromeAuthManager, { AuthState } from "../../../../utils/chromeAuth";
+import type { CalendarEvent, GoogleCalendar } from "../types";
 import { startOfWeek, endOfWeek } from "date-fns";
 
 export const useCalendarData = () => {

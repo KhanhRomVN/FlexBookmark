@@ -1,4 +1,4 @@
-import { CalendarEvent } from "../../../../types/calendar";
+import { CalendarEvent } from "../../../types";
 
 // Note: Status type should be defined in calendar.ts
 type Status = "confirmed" | "tentative" | "cancelled";

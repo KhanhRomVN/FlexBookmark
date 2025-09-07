@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
-import { CalendarEvent } from "../../../../types/calendar";
+import { CalendarEvent } from "../../../types";
 
 interface CollectionSectionProps {
   editedEvent: CalendarEvent;

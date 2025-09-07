@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import CalendarPanel from "../../components/Calendar/CalendarPanel";
 import TimeLinePanel from "../../components/Calendar/TimeLinePanel";
-import EventDialog from "../../components/Calendar/EventDialog";
+import EventDialog from "./components/EventDialog";
 import { useCalendarData } from "./useCalendarData";
 import type { CalendarEvent } from "../../types/calendar";
 

@@ -14,7 +14,7 @@ import {
   Maximize2,
   Map,
 } from "lucide-react";
-import { CalendarEvent } from "../../../../types/calendar"; // Add this import
+import { CalendarEvent } from "../../../types"; // Add this import
 
 interface LocationSectionProps {
   editedEvent: {

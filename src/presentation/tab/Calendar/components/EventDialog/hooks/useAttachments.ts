@@ -1,6 +1,6 @@
 // src/presentation/components/EventManager/EventDialog/hooks/useAttachments.ts
 import { useState } from "react";
-import { CalendarEvent, Attachment } from "../../../../types/calendar";
+import { CalendarEvent, Attachment } from "../../../types";
 
 export const useAttachments = (
     editedEvent: CalendarEvent | null,

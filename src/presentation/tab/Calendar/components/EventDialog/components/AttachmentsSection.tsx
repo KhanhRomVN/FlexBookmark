@@ -9,7 +9,7 @@ import {
   File,
   FileText,
 } from "lucide-react";
-import { Attachment } from "../../../../types/calendar";
+import { Attachment } from "../../../types";
 
 interface AttachmentsSectionProps {
   editedEvent: { attachments?: Attachment[] };

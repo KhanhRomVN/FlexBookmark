@@ -1,7 +1,7 @@
 // src/presentation/components/Calendar/EventDialog/index.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { X, Repeat, Bell, Clock } from "lucide-react";
-import { CalendarEvent } from "../../../types/calendar";
+import { CalendarEvent } from "../../types";
 import {
   DateTimeSection,
   TagsSection,

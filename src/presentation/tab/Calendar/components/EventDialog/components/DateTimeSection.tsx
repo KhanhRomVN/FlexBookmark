@@ -1,6 +1,6 @@
 // src/presentation/components/Calendar/EventDialog/components/DateTimeSection.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import ModernDateTimePicker from "../../../common/ModernDateTimePicker";
+import ModernDateTimePicker from "../../../../../components/common/ModernDateTimePicker";
 import {
   Calendar,
   Clock,
@@ -14,7 +14,7 @@ import {
   getCurrentTimeZone,
   formatTimeZone,
   combineDateTime,
-} from "../../../../types/calendar";
+} from "../../../types";
 import {
   formatDisplayDate,
   formatDisplayTime,

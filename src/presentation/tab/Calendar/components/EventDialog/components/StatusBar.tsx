@@ -1,5 +1,5 @@
 import React from "react";
-import { Status, CalendarEvent } from "../../../../types/calendar";
+import { Status, CalendarEvent } from "../../../types";
 
 interface StatusBarProps {
   currentStatus: Status;

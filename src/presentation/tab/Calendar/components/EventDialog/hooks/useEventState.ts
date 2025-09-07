@@ -1,7 +1,7 @@
 // src/presentation/components/Calendar/EventDialog/hooks/useEventState.ts
 
 import { useState, useEffect } from "react";
-import { CalendarEvent, Status } from "../../../../types/calendar";
+import { CalendarEvent, Status } from "../../../types";
 import { getSuggestedStatusFromDates } from "../utils/eventTransitions";
 
 const hasIncompleteRequiredSubtasks = (event: CalendarEvent | null): boolean => {

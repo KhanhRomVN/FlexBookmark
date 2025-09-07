@@ -1,6 +1,6 @@
 // src/presentation/components/TaskManager/TaskDialog/hooks/useSubtasks.ts - FIXED: Follow tags pattern exactly
 import { useState } from "react";
-import { Task, Subtask } from "../../../../types/task";
+import { Task, Subtask } from "../../../../../types/task";
 
 export const useSubtasks = (
     editedTask: Task | null,

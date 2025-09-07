@@ -9,7 +9,7 @@ import {
   Lock,
   Smile,
 } from "lucide-react";
-import { Subtask, CalendarEvent } from "../../../../types/calendar";
+import { Subtask, CalendarEvent } from "../../../types";
 
 interface SubtasksSectionProps {
   editedEvent: CalendarEvent;
