@@ -1,13 +1,13 @@
 import React from "react";
 import { useTheme } from "../../providers/theme-provider";
 import useWindowSize from "../../../hooks/useWindowSize";
-import { useDashboardData } from "./useDashboardData";
-import Clock from "../../components/Dashboard/Clock";
-import WeatherWidget from "../../components/Dashboard/WeatherWidget";
-import SearchBar from "../../components/Dashboard/SearchBar";
-import BookmarkGrid from "../../components/Dashboard/BookmarkGrid";
+import { useDashboard } from "./hooks/useDashboard";
+import Clock from "./components/Clock";
+import WeatherWidget from "./components/WeatherWidget";
+import SearchBar from "./components/SearchBar";
+import BookmarkGrid from "./components/BookmarkGrid";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
-import BookmarkBarDrawer from "../../components/Dashboard/BookmarkBarDrawer";
+import BookmarkBarDrawer from "./components/BookmarkBarDrawer";
 
 const Dashboard: React.FC = () => {
   const windowSize = useWindowSize();
@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
     handleFolderRename,
     handleFolderDelete,
     handleAddBookmark,
-  } = useDashboardData();
+  } = useDashboard();
 
   const [showThemeDrawer, setShowThemeDrawer] = React.useState(false);
   const [showBookmarkDrawer, setShowBookmarkDrawer] = React.useState(false);

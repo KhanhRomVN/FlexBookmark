@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "../ui/dropdown-menu";
+} from "../../../components/ui/dropdown-menu";
 
 interface SearchBarProps {
   searchQuery: string;

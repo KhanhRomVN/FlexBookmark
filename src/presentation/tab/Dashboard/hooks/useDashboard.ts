@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getBookmarks } from "../../../utils/api";
+import { getBookmarks } from "../../../../utils/api";
 
 export interface BookmarkNode {
     id: string;
@@ -14,7 +14,7 @@ interface WeatherData {
     description: string;
 }
 
-export const useDashboardData = () => {
+export const useDashboard = () => {
     const [weather, setWeather] = useState<WeatherData | null>(null);
     const [bookmarks, setBookmarks] = useState<BookmarkNode[]>([]);
     const [barFolderId, setBarFolderId] = useState<string>("");

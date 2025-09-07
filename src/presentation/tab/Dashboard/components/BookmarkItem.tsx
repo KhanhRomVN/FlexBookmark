@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { BookmarkNode } from "../../types/bookmark";
+import { BookmarkNode } from "../types";
 
 interface BookmarkItemProps {
   bookmark: BookmarkNode;

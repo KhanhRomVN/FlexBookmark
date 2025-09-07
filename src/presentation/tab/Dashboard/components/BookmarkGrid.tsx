@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BookmarkNode } from "../../types/bookmark";
+import { BookmarkNode } from "../types";
 import BookmarkItem from "./BookmarkItem";
 import FolderPreview from "./FolderPreview";
 import {

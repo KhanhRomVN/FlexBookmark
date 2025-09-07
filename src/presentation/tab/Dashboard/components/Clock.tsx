@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useTheme } from "../../providers/theme-provider";
+import { useTheme } from "../../../providers/theme-provider";
 
 const Clock: React.FC = () => {
   const [time, setTime] = useState<string>("");
