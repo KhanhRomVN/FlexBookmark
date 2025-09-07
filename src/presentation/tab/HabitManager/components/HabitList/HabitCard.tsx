@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Target,
   Clock,
@@ -28,6 +28,8 @@ interface HabitCardProps {
   loading?: boolean;
   showActions?: boolean;
   completedCount?: number;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 // Helper function to get difficulty badge info
@@ -87,18 +89,39 @@ const HabitCard: React.FC<HabitCardProps> = ({
   onDelete,
   showActions = true,
   completedCount = 0,
+  isSelected = false,
+  onSelect,
 }) => {
-  const [showDropdown, setShowDropdown] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
   const [localCompleted, setLocalCompleted] = useState(isCompleted);
   const [localCompletedCount, setLocalCompletedCount] =
     useState(completedCount);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync với props khi thay đổi
   useEffect(() => {
     setLocalCompleted(isCompleted);
     setLocalCompletedCount(completedCount);
   }, [isCompleted, completedCount]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showDropdown]);
 
   // Get completion progress for habits with goal/limit > 1
   const getCompletionProgress = () => {
@@ -144,6 +167,46 @@ const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger selection if clicking on the dropdown button or progress circle
+    if (
+      (e.target as HTMLElement).closest(".dropdown-button") ||
+      (e.target as HTMLElement).closest(".progress-circle")
+    ) {
+      return;
+    }
+
+    if (onSelect) {
+      onSelect();
+    }
+  };
+
+  const handleDropdownButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card selection
+    e.preventDefault(); // Prevent any default behavior
+    setShowDropdown((prev) => !prev);
+  };
+
+  const handleDropdownSelect = (value: string) => {
+    setShowDropdown(false);
+    switch (value) {
+      case "edit":
+        onEdit();
+        break;
+      case "archive":
+        onArchive();
+        break;
+      case "delete":
+        onDelete();
+        break;
+    }
+  };
+
+  // Close dropdown when option is selected
+  const handleDropdownClose = () => {
+    setShowDropdown(false);
+  };
+
   const progress = getCompletionProgress();
   const difficultyBadge = getDifficultyBadge(habit.difficultyLevel);
   const habitTypeBadge = getHabitTypeBadge(habit.habitType);
@@ -167,20 +230,6 @@ const HabitCard: React.FC<HabitCardProps> = ({
       danger: true,
     },
   ];
-
-  const handleDropdownSelect = (value: string) => {
-    switch (value) {
-      case "edit":
-        onEdit();
-        break;
-      case "archive":
-        onArchive();
-        break;
-      case "delete":
-        onDelete();
-        break;
-    }
-  };
 
   // Get progress bar colors using habit's colorCode
   const getProgressColors = () => {
@@ -207,7 +256,9 @@ const HabitCard: React.FC<HabitCardProps> = ({
 
   return (
     <div
-      className="relative p-3 rounded-lg border border-border-default hover:border-[var(--hover-border-color)] transition-colors duration-200"
+      className={`relative p-3 rounded-lg border border-border-default hover:border-[var(--hover-border-color)] transition-colors duration-200 cursor-pointer ${
+        isSelected ? "bg-blue-50 dark:bg-blue-900/20" : ""
+      }`}
       style={
         {
           borderLeftColor: borderStyles.borderLeftColor,
@@ -215,11 +266,13 @@ const HabitCard: React.FC<HabitCardProps> = ({
           "--hover-border-color": borderStyles["--hover-border-color"],
         } as React.CSSProperties
       }
+      onClick={handleCardClick}
       tabIndex={0}
+      ref={dropdownRef}
     >
       <div className="flex items-center gap-3">
         {/* Left Section - Completion Checkbox with Progress Circle */}
-        <div className="flex-shrink-0 relative">
+        <div className="flex-shrink-0 relative progress-circle">
           {progress ? (
             <div className="w-10 h-10 relative">
               <CircularProgressbar
@@ -348,19 +401,22 @@ const HabitCard: React.FC<HabitCardProps> = ({
         {showActions && (
           <div className="flex-shrink-0 relative">
             <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-full transition-all duration-200"
+              onClick={handleDropdownButtonClick}
+              className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-full transition-all duration-200 dropdown-button"
+              type="button"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
 
-            <CustomDropdown
-              options={dropdownOptions}
-              onSelect={handleDropdownSelect}
-              align="right"
-              width="w-36"
-              className={showDropdown ? "block" : "hidden"}
-            />
+            {showDropdown && (
+              <CustomDropdown
+                options={dropdownOptions}
+                onSelect={handleDropdownSelect}
+                align="right"
+                width="w-36"
+                className="absolute top-full right-0 z-50 mt-1"
+              />
+            )}
           </div>
         )}
       </div>

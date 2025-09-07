@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { useTheme } from "../../providers/theme-provider";
+import { useTheme } from "../../../providers/theme-provider";
 import { Circle, FolderPlus, EllipsisVertical } from "lucide-react";
 import {
   DndContext,

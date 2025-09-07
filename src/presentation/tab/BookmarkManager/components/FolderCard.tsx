@@ -8,7 +8,7 @@ import { EllipsisVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import BookmarkForm from "./BookmarkForm";
 import { Pencil, Trash2, Plus } from "lucide-react";
-import { useTheme } from "../../providers/theme-provider";
+import { useTheme } from "../../../providers/theme-provider";
 
 // Drop zone between bookmarks for insert hints
 interface GapDropZoneProps {

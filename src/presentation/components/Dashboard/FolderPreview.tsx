@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { BookmarkNode } from "../../types/bookmark";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import BookmarkForm from "../BookmarkManager/BookmarkForm";
+import BookmarkForm from "../../tab/BookmarkManager/components/BookmarkForm";
 
 interface FolderPreviewProps {
   folder: BookmarkNode;

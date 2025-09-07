@@ -24,12 +24,27 @@ export class HabitServer {
                 return [];
             }
 
-            const habits = rows.map(row => this.rowToHabit(row));
+            // Filter out empty rows and rows with missing ID
+            const validRows = rows.filter(row =>
+                row &&
+                Array.isArray(row) &&
+                row.length > 0 &&
+                row[0] &&
+                row[0].toString().trim() !== ''
+            );
+
+            console.log('Valid rows count:', validRows.length);
+
+            if (validRows.length === 0) {
+                console.log('No valid habit rows found');
+                return [];
+            }
+
+            const habits = validRows.map(row => this.rowToHabit(row));
             console.log('Successfully fetched', habits.length, 'habits');
             return habits;
         } catch (error) {
             console.error('Error fetching habits from server:', error);
-            // Re-throw to handle in useHabit
             throw error;
         }
     }

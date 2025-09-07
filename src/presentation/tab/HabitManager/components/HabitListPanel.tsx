@@ -15,7 +15,7 @@ interface HabitListPanelProps {
   loading: boolean;
   onToggleHabitComplete: (habitId: string) => Promise<void>;
   onEditHabit: (habit: Habit) => void;
-  onArchiveHabit: (habitId: string) => void;
+  onArchiveHabit: (habitId: string, isArchived: boolean) => void;
   onDeleteHabit: (habitId: string) => void;
   onTabChange: (tab: "active" | "archived") => void;
   onCategoryFilterChange: (categories: string[]) => void;
@@ -171,8 +171,15 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   }, [filteredHabits]);
 
   const handleHabitClick = (habit: Habit) => {
-    setSelectedHabitId(habit.id);
-    onSelectHabit(habit);
+    if (selectedHabitId === habit.id) {
+      // If clicking the same habit, deselect it
+      setSelectedHabitId(null);
+      onSelectHabit(undefined);
+    } else {
+      // If clicking a different habit, select it
+      setSelectedHabitId(habit.id);
+      onSelectHabit(habit);
+    }
   };
 
   const handleToggleComplete = async (habitId: string) => {
@@ -180,6 +187,13 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
       await onToggleHabitComplete(habitId);
     } catch (error) {
       console.error("Failed to toggle habit:", error);
+    }
+  };
+
+  const handleArchiveHabit = (habitId: string) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (habit) {
+      onArchiveHabit(habitId, !habit.isArchived);
     }
   };
 
@@ -201,7 +215,6 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
           {habits.map((habit) => (
             <div
               key={habit.id}
-              onClick={() => handleHabitClick(habit)}
               className={`cursor-pointer transition-all duration-200 ${
                 selectedHabitId === habit.id
                   ? "bg-blue-50 dark:bg-blue-900/20 rounded-xl"
@@ -213,12 +226,14 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                 isCompleted={isHabitCompletedForDate(habit, selectedDate)}
                 onToggleComplete={() => handleToggleComplete(habit.id)}
                 onEdit={() => onEditHabit(habit)}
-                onArchive={() => onArchiveHabit(habit.id)}
+                onArchive={() => handleArchiveHabit(habit.id)}
                 onDelete={() => onDeleteHabit(habit.id)}
                 loading={loading}
                 completedCount={
                   habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
                 }
+                isSelected={selectedHabitId === habit.id}
+                onSelect={() => handleHabitClick(habit)}
               />
             </div>
           ))}
@@ -251,7 +266,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       {/* Habit List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Good Habits Section */}
@@ -310,10 +325,10 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium mb-2 text-text-primary">
               No habits found
             </h3>
-            <p className="text-gray-600">
+            <p className="text-text-secondary">
               {showArchived
                 ? "No archived habits found with current filters"
                 : "No active habits found with current filters"}

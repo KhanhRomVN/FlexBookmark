@@ -1,7 +1,7 @@
 import React from "react";
-import ThemeSelector from "../common/ThemeSelector";
-import { useTheme } from "../../providers/theme-provider";
-import { useSearchStore } from "../../store/searchStore";
+import ThemeSelector from "../../../components/common/ThemeSelector";
+import { useTheme } from "../../../providers/theme-provider";
+import { useSearchStore } from "../../../store/searchStore";
 import { Search } from "lucide-react";
 
 interface HeaderProps {

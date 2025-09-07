@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useTheme } from "../../providers/theme-provider";
-import { createBookmark } from "../../../utils/api";
+import { useTheme } from "../../../providers/theme-provider";
+import { createBookmark } from "../../../../utils/api";
 
 interface BookmarkFormProps {
   parentId: string;
