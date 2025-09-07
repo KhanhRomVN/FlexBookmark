@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import CalendarPanel from "../../components/Calendar/CalendarPanel";
-import TimeLinePanel from "../../components/Calendar/TimeLinePanel";
+import CalendarPanel from "./components/CalendarPanel";
+import TimeLinePanel from "./components/TimeLinePanel";
 import EventDialog from "./components/EventDialog";
-import { useCalendarData } from "./useCalendarData";
-import type { CalendarEvent } from "../../types/calendar";
+import { useCalendar } from "./hooks/useCalendar";
+import type { CalendarEvent } from "./types";
 
 const Calendar: React.FC = () => {
   const {
@@ -23,7 +23,7 @@ const Calendar: React.FC = () => {
     handleToggleCalendar,
     handleSaveEvent,
     handleForceReauth,
-  } = useCalendarData();
+  } = useCalendar();
 
   // State cho EventDialog
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);

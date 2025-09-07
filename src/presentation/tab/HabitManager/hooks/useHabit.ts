@@ -20,7 +20,7 @@ export const useHabit = () => {
 
     const habitService = useMemo(() => new HabitServer(authToken), [authToken]);
 
-    // Lắng nghe auth từ ChromeAuthManager
+    // Listen for auth from ChromeAuthManager
     useEffect(() => {
         const authManager = ChromeAuthManager.getInstance();
         const unsubscribe = authManager.subscribe(async (state) => {
@@ -53,12 +53,14 @@ export const useHabit = () => {
                     console.log('Loading habits from cache:', cached.length);
                     setCachedHabits(cached);
                     setHabits(cached); // Show cached habits immediately
-                    setLoading(false);
+                    setLoading(false); // Set loading to false since we have cached data
                 } else {
                     console.log('No cached habits found');
+                    setLoading(true); // Set loading to true if no cache
                 }
             } catch (cacheError) {
                 console.error('Error loading from cache:', cacheError);
+                setLoading(true); // Set loading to true on error
             }
         };
         loadFromCache();
@@ -89,50 +91,61 @@ export const useHabit = () => {
             let currentSheetId = sheetId;
 
             if (!currentSheetId) {
-                console.log('Setting up Drive...');
-                const id = await habitService.setupDrive();
-                setSheetId(id);
-                currentSheetId = id;
-                console.log('Drive setup complete, sheet ID:', id);
+                try {
+                    console.log('Setting up Drive...');
+                    const id = await habitService.setupDrive();
+                    setSheetId(id);
+                    currentSheetId = id;
+                    console.log('Drive setup complete, sheet ID:', id);
+                } catch (setupError) {
+                    // If setup fails, use empty habits
+                    console.log('Drive setup failed, using empty habits');
+                    setHabits([]);
+                    await cacheHabits([]);
+                    return;
+                }
             }
 
-            console.log('Fetching habits from server...');
-            const habitsData = await habitService.fetchHabitsFromServer();
-            console.log('Habits data received:', habitsData);
+            // Only fetch if we have a valid spreadsheet
+            if (currentSheetId) {
+                console.log('Fetching habits from server...');
+                const habitsData = await habitService.fetchHabitsFromServer();
+                console.log('Habits data received:', habitsData);
 
-            // Đảm bảo habitsData là mảng hợp lệ
-            const validHabits = Array.isArray(habitsData) ? habitsData : [];
-            console.log('Valid habits count:', validHabits.length);
+                // Ensure habitsData is valid array
+                const validHabits = Array.isArray(habitsData) ? habitsData : [];
+                console.log('Valid habits count:', validHabits.length);
 
-            setHabits(validHabits);
-            // Cache the new habits
-            await cacheHabits(validHabits);
-            lastSyncRef.current = Date.now(); // Update last sync time
+                setHabits(validHabits);
+                // Cache the new habits
+                await cacheHabits(validHabits);
+                lastSyncRef.current = Date.now(); // Update last sync time
 
-            if (isBackground) {
-                console.log('Background sync completed');
+                if (isBackground) {
+                    console.log('Background sync completed');
+                }
             }
         } catch (err) {
             console.error('Error loading habits:', err);
             setError((err as Error).message);
-            // Keep showing cached habits even if there's an error
-            if (cachedHabits.length === 0 && habits.length === 0) {
-                setHabits([]);
+            // Keep cached habits even on error
+            if (cachedHabits.length > 0) {
+                setHabits(cachedHabits);
             }
         } finally {
             setLoading(false);
             setIsBackgroundLoading(false);
         }
-    }, [sheetId, habitService, authToken, hasDriveAccess, cachedHabits, habits]);
+    }, [sheetId, habitService, authToken, hasDriveAccess, cachedHabits]);
 
-    // Hàm đồng bộ ở background
+    // Background sync function
     const updateHabitOnServerInBackground = useCallback(async (habit: Habit) => {
         try {
             await habitService.updateHabitOnServer(habit);
             console.log('Background sync successful for habit:', habit.id);
         } catch (error) {
             console.error('Background sync error:', error);
-            throw error; // Re-throw để xử lý rollback
+            throw error; // Re-throw for rollback handling
         }
     }, [habitService]);
 
@@ -142,16 +155,16 @@ export const useHabit = () => {
         try {
             const newHabit = createHabit(formData);
 
-            // Cập nhật UI ngay lập tức
+            // Update UI immediately
             const updatedHabits = [...habits, newHabit];
             setHabits(updatedHabits);
             await cacheHabits(updatedHabits);
 
-            // Đồng bộ ở background
+            // Sync in background
             if (authToken && hasDriveAccess) {
                 habitService.createHabitOnServer(newHabit).catch(error => {
                     console.error('Background create failed:', error);
-                    // Rollback nếu thất bại
+                    // Rollback on failure
                     const rolledBackHabits = habits.filter(h => h.id !== newHabit.id);
                     setHabits(rolledBackHabits);
                     cacheHabits(rolledBackHabits);
@@ -167,16 +180,16 @@ export const useHabit = () => {
         if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
 
         try {
-            // Cập nhật UI ngay lập tức
+            // Update UI immediately
             const updatedHabits = habits.map(h => h.id === habit.id ? habit : h);
             setHabits(updatedHabits);
             await cacheHabits(updatedHabits);
 
-            // Đồng bộ ở background
+            // Sync in background
             if (authToken && hasDriveAccess) {
                 updateHabitOnServerInBackground(habit).catch(error => {
                     console.error('Background update failed:', error);
-                    // Rollback nếu thất bại
+                    // Rollback on failure
                     setHabits(habits);
                     cacheHabits(habits);
                 });
@@ -193,17 +206,17 @@ export const useHabit = () => {
             const habit = habits.find(h => h.id === habitId);
             if (!habit) return;
 
-            // Cập nhật UI ngay lập tức
+            // Update UI immediately
             const updated = calculateStreak(habit, completed);
             const updatedHabits = habits.map(h => h.id === habitId ? updated : h);
             setHabits(updatedHabits);
             await cacheHabits(updatedHabits);
 
-            // Đồng bộ với server ở background (không chờ kết quả)
+            // Sync with server in background (don't wait for result)
             if (authToken && hasDriveAccess) {
                 updateHabitOnServerInBackground(updated).catch(error => {
                     console.error('Background sync failed:', error);
-                    // Nếu thất bại, rollback lại UI
+                    // If failed, rollback UI
                     setHabits(habits);
                     cacheHabits(habits);
                 });
@@ -221,13 +234,13 @@ export const useHabit = () => {
             const habit = habits.find(h => h.id === habitId);
             if (!habit) return;
 
-            // Cập nhật UI ngay lập tức
+            // Update UI immediately
             const updated = { ...habit, isArchived: archive, updatedAt: new Date() };
             const updatedHabits = habits.map(h => h.id === habitId ? updated : h);
             setHabits(updatedHabits);
             await cacheHabits(updatedHabits);
 
-            // Đồng bộ ở background
+            // Sync in background
             if (authToken && hasDriveAccess) {
                 updateHabitOnServerInBackground(updated).catch(error => {
                     console.error('Background archive failed:', error);
@@ -246,22 +259,22 @@ export const useHabit = () => {
         if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
 
         try {
-            // Lưu habits hiện tại để rollback nếu cần
+            // Save current habits for rollback if needed
             const currentHabits = [...habits];
             const habitToDelete = currentHabits.find(h => h.id === habitId);
 
             if (!habitToDelete) return;
 
-            // Cập nhật UI ngay lập tức
+            // Update UI immediately
             const updatedHabits = currentHabits.filter(h => h.id !== habitId);
             setHabits(updatedHabits);
             await cacheHabits(updatedHabits);
 
-            // Đồng bộ ở background
+            // Sync in background
             if (authToken && hasDriveAccess) {
                 habitService.deleteHabitOnServer(habitId).catch(error => {
                     console.error('Background delete failed:', error);
-                    // Rollback nếu thất bại
+                    // Rollback on failure
                     setHabits(currentHabits);
                     cacheHabits(currentHabits);
                 });

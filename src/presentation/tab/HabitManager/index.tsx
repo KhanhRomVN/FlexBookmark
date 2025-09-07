@@ -6,20 +6,17 @@ import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
 import Sidebar from "./components/Sidebar";
 import { Habit, HabitFormData } from "./types/types";
-import { HabitType, HabitCategory } from "./constants/constant";
 import ChromeAuthManager from "../../../utils/chromeAuth";
 
 const HabitManager: React.FC = () => {
   const {
     habits,
     loading,
-    error,
     addHabit,
     updateHabit,
     toggleHabit,
     archiveHabit,
     deleteHabit,
-    hasDriveAccess,
     isBackgroundLoading,
   } = useHabit();
 
@@ -51,10 +48,10 @@ const HabitManager: React.FC = () => {
     "active"
   );
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [timeFilter, setTimeFilter] = useState<string>("All habit");
-  const [selectedCollection, setSelectedCollection] =
-    useState<string>("Default");
+  const [timeFilter] = useState<string>("All habit");
+  useState<string>("Default");
   const [selectedHabit, setSelectedHabit] = useState<Habit | undefined>();
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   useEffect(() => {
     const authManager = ChromeAuthManager.getInstance();
@@ -87,6 +84,8 @@ const HabitManager: React.FC = () => {
 
   const handleSubmitHabit = async (habitFormData: HabitFormData) => {
     try {
+      setIsCreatingNew(false);
+
       if (editingHabit) {
         const updatedHabit: Habit = {
           ...editingHabit,
@@ -137,6 +136,28 @@ const HabitManager: React.FC = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingHabit(null);
+
+    if (!isCreatingNew || editingHabit) {
+      setFormData({
+        name: "",
+        description: "",
+        habitType: "good",
+        difficultyLevel: 3,
+        colorCode: "#3b82f6",
+        category: "health",
+        subtasks: [],
+        tags: [],
+      });
+      setIsCreatingNew(false);
+    }
+  };
+
+  const handleOpenNewHabitDialog = () => {
+    setIsCreatingNew(true);
+    setIsDialogOpen(true);
+  };
+
+  const handleResetForm = () => {
     setFormData({
       name: "",
       description: "",
@@ -147,6 +168,8 @@ const HabitManager: React.FC = () => {
       subtasks: [],
       tags: [],
     });
+    setIsCreatingNew(false);
+    setIsDialogOpen(false);
   };
 
   const isHabitCompletedForDate = (
@@ -220,17 +243,17 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  // Show cached habits immediately, only show loading if no cached data
-  if (loading && habits.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Loading habits for the first time...</p>
-        </div>
-      </div>
-    );
-  }
+  // Remove the full-screen loading check - let the component handle skeleton loading
+  // if (loading && habits.length === 0) {
+  //   return (
+  //     <div className="flex items-center justify-center h-screen">
+  //       <div className="text-center">
+  //         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+  //         <p>Loading habits for the first time...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Show background sync indicator
   const showSyncIndicator = isBackgroundLoading && habits.length > 0;
@@ -239,7 +262,7 @@ const HabitManager: React.FC = () => {
     <div className="h-screen flex">
       {/* Sidebar */}
       <Sidebar
-        onNewHabit={() => setIsDialogOpen(true)}
+        onNewHabit={handleOpenNewHabitDialog}
         onDateChange={setSelectedDate}
         onCategoryFilter={setFilterCategories}
         onTagFilter={setFilterTags}
@@ -271,7 +294,7 @@ const HabitManager: React.FC = () => {
               filterTags={filterTags}
               filterTimeOfDay={filterTimeOfDay}
               showArchived={showArchived}
-              loading={loading && habits.length === 0}
+              loading={loading}
               onToggleHabitComplete={(habitId: string) =>
                 toggleHabit(habitId, true)
               }
@@ -287,6 +310,7 @@ const HabitManager: React.FC = () => {
               getActiveHabitsCount={getActiveHabitsCount}
               getArchivedHabitsCount={getArchivedHabitsCount}
               onSelectHabit={setSelectedHabit}
+              onNewHabit={handleOpenNewHabitDialog}
             />
           </div>
 
@@ -304,6 +328,8 @@ const HabitManager: React.FC = () => {
         <HabitDialog
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}
+          onReset={handleResetForm}
+          isCreatingNew={isCreatingNew}
           onSubmit={handleSubmitHabit}
           editingHabit={editingHabit}
           loading={loading}

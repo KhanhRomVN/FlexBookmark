@@ -32,12 +32,12 @@ const CustomCombobox: FC<CustomComboboxProps> = ({
   multiple = false,
   creatable = false,
 }) => {
-  const isInput =
-    multiple === true
-      ? true
-      : typeof searchable === "boolean"
-      ? searchable
-      : options.length >= OPTION_INPUT_THRESHOLD;
+  // Auto determine if should be searchable
+  const isInput = useMemo(() => {
+    if (multiple === true) return true;
+    if (typeof searchable === "boolean") return searchable;
+    return options.length >= OPTION_INPUT_THRESHOLD;
+  }, [multiple, searchable, options.length]);
 
   return (
     <ComboboxInput
@@ -140,28 +140,37 @@ const ComboboxInput: FC<
     [options, dynamicOptions]
   );
 
-  // Filtered options
+  // Filtered options - FIXED: Always show all options when dropdown opens
   const filteredOpts = useMemo(() => {
-    const safeInput = String(input || "").toLowerCase();
     if (isMulti && Array.isArray(value)) {
-      return allOptions
-        .filter(
-          (opt) => !value.some((v) => String(v) === String(opt.value || ""))
-        )
-        .filter((opt) => {
-          if (!input) return true;
-          const safeLabel = String(opt.label || "").toLowerCase();
-          const safeValue = String(opt.value || "").toLowerCase();
-          return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
-        });
+      // For multi-select, exclude already selected options
+      const availableOptions = allOptions.filter(
+        (opt) => !value.some((v) => String(v) === String(opt.value || ""))
+      );
+
+      if (!input.trim()) {
+        return availableOptions;
+      }
+
+      const safeInput = input.toLowerCase();
+      return availableOptions.filter((opt) => {
+        const safeLabel = String(opt.label || "").toLowerCase();
+        const safeValue = String(opt.value || "").toLowerCase();
+        return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
+      });
     }
-    return input
-      ? allOptions.filter((opt) => {
-          const safeLabel = String(opt.label || "").toLowerCase();
-          const safeValue = String(opt.value || "").toLowerCase();
-          return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
-        })
-      : allOptions;
+
+    // For single select - FIXED: Show all options when no input
+    if (!input.trim()) {
+      return allOptions;
+    }
+
+    const safeInput = input.toLowerCase();
+    return allOptions.filter((opt) => {
+      const safeLabel = String(opt.label || "").toLowerCase();
+      const safeValue = String(opt.value || "").toLowerCase();
+      return safeLabel.includes(safeInput) || safeValue.includes(safeInput);
+    });
   }, [allOptions, input, value, isMulti]);
 
   // Selected options
@@ -172,29 +181,40 @@ const ComboboxInput: FC<
       ? allOptions.filter((o) => o.value === value)
       : [];
 
-  // Display value logic - FIXED
-  let displayValue: string = input;
+  // Display value logic - IMPROVED
+  let displayValue: string = "";
   if (isMulti && Array.isArray(value)) {
-    // badges handle display, input is just search
+    // For multi-select, input is just for searching
     displayValue = input;
   } else if (!isMulti && typeof value === "string") {
     if (isInputFocused || showDrop) {
-      // When focused or dropdown open, always show the input value
+      // When focused or dropdown open, show input for editing/searching
       displayValue = input;
     } else {
-      // When not focused, show the label if value exists and input is empty
-      if (value && input === "" && allOptions.find((o) => o.value === value)) {
-        displayValue = allOptions.find((o) => o.value === value)!.label;
+      // When not focused and dropdown closed
+      if (value && !input) {
+        // Show the selected option's label
+        const selectedOption = allOptions.find((o) => o.value === value);
+        displayValue = selectedOption ? selectedOption.label : value;
       } else {
         displayValue = input;
       }
     }
+  } else {
+    displayValue = input;
   }
 
   // Dropdown toggles
   const openDropdown = () => {
     setShowDrop(true);
     setIsInputFocused(true);
+
+    // FIXED: For non-searchable dropdowns, don't populate input with current value
+    if (!isInput && !isMulti && typeof value === "string" && value) {
+      // For dropdown-only mode, keep input empty for clean selection
+      setInput("");
+    }
+
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -258,35 +278,37 @@ const ComboboxInput: FC<
     }
   };
 
-  // Handle input changes
+  // Handle input changes - IMPROVED
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInput(newValue);
     setShowDrop(true);
 
-    // If input is cleared and we're in single mode, clear the selection
-    if (!isMulti && newValue === "") {
+    // FIXED: For non-searchable single selects, clear selection when typing
+    if (!isInput && !isMulti && newValue === "") {
       onChange("");
     }
   };
 
-  // Handle focus
+  // Handle focus - IMPROVED
   const handleFocus = () => {
     setIsInputFocused(true);
     setShowDrop(true);
-    // When focusing, if there's a selected value, show it in input for editing
-    if (!isMulti && typeof value === "string" && value && input === "") {
+
+    // FIXED: Different behavior for searchable vs non-searchable
+    if (isInput && !isMulti && typeof value === "string" && value && !input) {
+      // For searchable inputs, populate with current label for editing
       const selectedOption = allOptions.find((o) => o.value === value);
       if (selectedOption) {
         setInput(selectedOption.label);
       }
     }
+    // For non-searchable dropdowns, keep input empty for clean selection
   };
 
   // Handle blur
   const handleBlur = () => {
     setIsInputFocused(false);
-    // Don't clear input immediately on blur, let the click outside handler manage it
   };
 
   return (
@@ -313,6 +335,7 @@ const ComboboxInput: FC<
             onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
+            readOnly={!isInput && !creatable} // Make non-searchable inputs readonly
           />
           {/* Conditionally show Search Icon */}
           {isInput && (

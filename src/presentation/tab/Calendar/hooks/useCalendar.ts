@@ -4,7 +4,7 @@ import ChromeAuthManager, { AuthState } from "../../../../utils/chromeAuth";
 import type { CalendarEvent, GoogleCalendar } from "../types";
 import { startOfWeek, endOfWeek } from "date-fns";
 
-export const useCalendarData = () => {
+export const useCalendar = () => {
     const authManager = ChromeAuthManager.getInstance();
     const [authState, setAuthState] = useState<AuthState>({
         isAuthenticated: false,

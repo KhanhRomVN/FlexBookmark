@@ -57,33 +57,64 @@ export class SheetService {
         }
     }
 
+    // Check if spreadsheet exists without creating it
+    async checkSpreadsheetExists(spreadsheetId: string): Promise<boolean> {
+        try {
+            await this.makeGoogleSheetsRequest(
+                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=spreadsheetId`
+            );
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Check if spreadsheet is empty
+    async isSpreadsheetEmpty(): Promise<boolean> {
+        if (!this.spreadsheetId) return true;
+
+        try {
+            const response = await this.makeGoogleSheetsRequest(
+                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/A2:A`
+            );
+
+            return !response.values || response.values.length === 0;
+        } catch (error) {
+            return true;
+        }
+    }
+
     async setupDrive(): Promise<string> {
         this.checkAuth();
 
         try {
-            // 1. Tìm hoặc tạo thư mục FlexBookmark
+            // First, try to find existing spreadsheet for current month without creating folders
+            const now = new Date();
+            const monthYear = `${now.getMonth() + 1}_${now.getFullYear()}`;
+            const spreadsheetName = `flexBookmark_habitManager_${monthYear}`;
+
+            // Search for spreadsheet directly without creating folders first
+            const spreadsheetSearchResponse = await this.makeGoogleSheetsRequest(
+                `https://www.googleapis.com/drive/v3/files?q=name="${spreadsheetName}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`
+            );
+
+            if (spreadsheetSearchResponse?.files && spreadsheetSearchResponse.files.length > 0) {
+                this.spreadsheetId = spreadsheetSearchResponse.files[0].id;
+                console.log('Found existing spreadsheet:', this.spreadsheetId);
+                return this.spreadsheetId;
+            }
+
+            // Only create folder structure and spreadsheet if not found
+            console.log('No existing spreadsheet found, creating new one...');
+
+            // 1. Find or create FlexBookmark folder
             const flexBookmarkFolderResponse = await this.makeGoogleSheetsRequest(
                 'https://www.googleapis.com/drive/v3/files?q=name="FlexBookmark" and mimeType="application/vnd.google-apps.folder" and trashed=false'
             );
 
-            // FIX: Kiểm tra response hợp lệ
             let flexBookmarkFolderId;
-            if (!flexBookmarkFolderResponse || !flexBookmarkFolderResponse.files) {
-                console.warn('Invalid response from Google Drive API, creating new folder');
-                // Tạo thư mục FlexBookmark
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: 'FlexBookmark',
-                            mimeType: 'application/vnd.google-apps.folder'
-                        })
-                    }
-                );
-                flexBookmarkFolderId = createFolderResponse.id;
-            } else if (flexBookmarkFolderResponse.files.length === 0) {
-                // Tạo thư mục FlexBookmark
+            if (!flexBookmarkFolderResponse || !flexBookmarkFolderResponse.files || flexBookmarkFolderResponse.files.length === 0) {
+                console.log('Creating FlexBookmark folder...');
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
                     {
@@ -99,30 +130,14 @@ export class SheetService {
                 flexBookmarkFolderId = flexBookmarkFolderResponse.files[0].id;
             }
 
-            // 2. Tìm hoặc tạo thư mục HabitManager trong FlexBookmark
+            // 2. Find or create HabitManager folder in FlexBookmark
             const habitManagerFolderResponse = await this.makeGoogleSheetsRequest(
                 `https://www.googleapis.com/drive/v3/files?q=name="HabitManager" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${flexBookmarkFolderId}" in parents`
             );
 
-            // FIX: Kiểm tra response hợp lệ
             let habitManagerFolderId;
-            if (!habitManagerFolderResponse || !habitManagerFolderResponse.files) {
-                console.warn('Invalid response from Google Drive API, creating new folder');
-                // Tạo thư mục HabitManager
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: 'HabitManager',
-                            mimeType: 'application/vnd.google-apps.folder',
-                            parents: [flexBookmarkFolderId]
-                        })
-                    }
-                );
-                habitManagerFolderId = createFolderResponse.id;
-            } else if (habitManagerFolderResponse.files.length === 0) {
-                // Tạo thư mục HabitManager
+            if (!habitManagerFolderResponse || !habitManagerFolderResponse.files || habitManagerFolderResponse.files.length === 0) {
+                console.log('Creating HabitManager folder...');
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
                     {
@@ -139,31 +154,15 @@ export class SheetService {
                 habitManagerFolderId = habitManagerFolderResponse.files[0].id;
             }
 
-            // 3. Tìm hoặc tạo thư mục năm hiện tại trong HabitManager
+            // 3. Find or create year folder in HabitManager
             const currentYear = new Date().getFullYear().toString();
             const yearFolderResponse = await this.makeGoogleSheetsRequest(
                 `https://www.googleapis.com/drive/v3/files?q=name="${currentYear}" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${habitManagerFolderId}" in parents`
             );
 
-            // FIX: Kiểm tra response hợp lệ
             let yearFolderId;
-            if (!yearFolderResponse || !yearFolderResponse.files) {
-                console.warn('Invalid response from Google Drive API, creating new folder');
-                // Tạo thư mục năm
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: currentYear,
-                            mimeType: 'application/vnd.google-apps.folder',
-                            parents: [habitManagerFolderId]
-                        })
-                    }
-                );
-                yearFolderId = createFolderResponse.id;
-            } else if (yearFolderResponse.files.length === 0) {
-                // Tạo thư mục năm
+            if (!yearFolderResponse || !yearFolderResponse.files || yearFolderResponse.files.length === 0) {
+                console.log('Creating year folder...');
                 const createFolderResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
                     {
@@ -180,63 +179,32 @@ export class SheetService {
                 yearFolderId = yearFolderResponse.files[0].id;
             }
 
-            // 4. Tạo hoặc tìm spreadsheet cho tháng hiện tại trong thư mục năm
-            const now = new Date();
-            const monthYear = `${now.getMonth() + 1}_${now.getFullYear()}`;
-            const spreadsheetName = `flexBookmark_habitManager_${monthYear}`;
-
-            const spreadsheetResponse = await this.makeGoogleSheetsRequest(
-                `https://www.googleapis.com/drive/v3/files?q=name="${spreadsheetName}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false and "${yearFolderId}" in parents`
+            // 4. Create spreadsheet for current month in year folder
+            console.log('Creating new spreadsheet...');
+            const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
+                'https://www.googleapis.com/drive/v3/files',
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: spreadsheetName,
+                        mimeType: 'application/vnd.google-apps.spreadsheet',
+                        parents: [yearFolderId]
+                    })
+                }
             );
 
-            // FIX: Kiểm tra response hợp lệ
-            if (!spreadsheetResponse || !spreadsheetResponse.files) {
-                console.warn('Invalid response from Google Drive API, creating new spreadsheet');
-                // Tạo spreadsheet mới
-                const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: spreadsheetName,
-                            mimeType: 'application/vnd.google-apps.spreadsheet',
-                            parents: [yearFolderId]
-                        })
-                    }
-                );
+            this.spreadsheetId = createSpreadsheetResponse.id;
 
-                this.spreadsheetId = createSpreadsheetResponse.id;
-
-                // Khởi tạo spreadsheet với headers
-                await this.initializeSpreadsheet();
-            } else if (spreadsheetResponse.files.length === 0) {
-                // Tạo spreadsheet mới
-                const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: spreadsheetName,
-                            mimeType: 'application/vnd.google-apps.spreadsheet',
-                            parents: [yearFolderId]
-                        })
-                    }
-                );
-
-                this.spreadsheetId = createSpreadsheetResponse.id;
-
-                // Khởi tạo spreadsheet với headers
-                await this.initializeSpreadsheet();
-            } else {
-                this.spreadsheetId = spreadsheetResponse.files[0].id;
-            }
+            // Initialize spreadsheet with headers
+            await this.initializeSpreadsheet();
 
             return this.spreadsheetId!;
         } catch (error) {
             console.error('Error setting up Drive:', error);
 
-            // FIX: Tạo một spreadsheet đơn giản nếu có lỗi
+            // Fallback: Create a simple spreadsheet without folder structure
             try {
+                console.log('Attempting fallback spreadsheet creation...');
                 const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
                     'https://www.googleapis.com/drive/v3/files',
                     {
@@ -267,7 +235,7 @@ export class SheetService {
             '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25',
             '26', '27', '28', '29', '30', '31', 'createdDate', 'colorCode', 'longestStreak',
             'category', 'tags', 'isArchived', 'isQuantifiable', 'unit', 'startTime', 'subtasks',
-            'emoji' // Thêm cột emoji ở đây (cột 49)
+            'emoji' // Column 49
         ];
 
         await this.makeGoogleSheetsRequest(
@@ -295,7 +263,7 @@ export class SheetService {
 
             console.log('API Response:', response);
 
-            // Kiểm tra response hợp lệ
+            // Check valid response
             if (!response || !response.values || !Array.isArray(response.values)) {
                 console.warn('No data found in spreadsheet or invalid response format:', response);
                 return [];
@@ -305,7 +273,7 @@ export class SheetService {
             return response.values;
         } catch (error) {
             console.error('Error fetching rows from sheet:', error);
-            // Trả về mảng rỗng thay vì throw error để tránh crash
+            // Return empty array instead of throwing error to avoid crash
             return [];
         }
     }

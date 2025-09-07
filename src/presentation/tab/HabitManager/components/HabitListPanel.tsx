@@ -3,6 +3,46 @@ import { Habit } from "../types/types";
 import HabitCard from "./HabitList/HabitCard";
 import { HABIT_TYPES } from "../constants/constant";
 
+// Skeleton Loader Component using Tailwind CSS
+const SkeletonHabitCard = () => (
+  <div className="bg-card-background border border-border-default rounded-xl p-4 animate-pulse">
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-3">
+        {/* Habit emoji/icon skeleton */}
+        <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+
+        {/* Habit name and description skeleton */}
+        <div className="flex-1">
+          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-32 mb-2"></div>
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+        </div>
+      </div>
+
+      {/* Action buttons skeleton */}
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      </div>
+    </div>
+
+    {/* Progress bar skeleton */}
+    <div className="mb-3">
+      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+        <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded-full w-3/4"></div>
+      </div>
+    </div>
+
+    {/* Stats row skeleton */}
+    <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center gap-4">
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+      </div>
+      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-10"></div>
+    </div>
+  </div>
+);
+
 interface HabitListPanelProps {
   habits: Habit[];
   selectedDate: Date;
@@ -44,15 +84,6 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
   onSelectHabit,
 }) => {
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
-
-  // Get all unique tags from habits for the combobox
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    habits.forEach((habit) => {
-      habit.tags?.forEach((tag) => tags.add(tag));
-    });
-    return Array.from(tags).map((tag) => ({ value: tag, label: tag }));
-  }, [habits]);
 
   // Filter habits with null checks
   const filteredHabits = useMemo(() => {
@@ -254,12 +285,33 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
     badHabits.missed.length > 0 ||
     badHabits.others.length > 0;
 
+  // Show skeleton loading when loading and no habits
   if (loading && habits.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Loading habits...</p>
+      <div className="h-full flex flex-col relative">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <div>
+            <h3 className="text-lg font-semibold text-green-700 mb-6 flex items-center gap-2 border-b border-green-200 pb-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              Good Habits
+            </h3>
+            {[...Array(3)].map((_, index) => (
+              <div key={`good-${index}`} className="mb-4">
+                <SkeletonHabitCard />
+              </div>
+            ))}
+          </div>
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-red-700 mb-6 flex items-center gap-2 border-b border-red-200 pb-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+              Bad Habits
+            </h3>
+            {[...Array(2)].map((_, index) => (
+              <div key={`bad-${index}`} className="mb-4">
+                <SkeletonHabitCard />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -308,7 +360,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
         )}
 
         {/* Empty State */}
-        {filteredHabits.length === 0 && (
+        {filteredHabits.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <svg

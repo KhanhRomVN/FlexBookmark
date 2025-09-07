@@ -20,14 +20,23 @@ interface HabitDialogProps {
   loading?: boolean;
   formData: HabitFormData;
   onFormChange: (formData: HabitFormData) => void;
+  onReset?: () => void;
+  isCreatingNew?: boolean;
+}
+
+interface ValidationErrors {
+  name?: string;
+  description?: string;
+  tags?: string;
+  subtasks?: string;
 }
 
 const difficultyOptions = [
-  { value: 1, label: "Very Easy", emoji: "😊" },
-  { value: 2, label: "Easy", emoji: "😄" },
-  { value: 3, label: "Medium", emoji: "😐" },
-  { value: 4, label: "Hard", emoji: "😓" },
-  { value: 5, label: "Very Hard", emoji: "😰" },
+  { value: "1", label: "Very Easy", emoji: "😊" },
+  { value: "2", label: "Easy", emoji: "😄" },
+  { value: "3", label: "Medium", emoji: "😐" },
+  { value: "4", label: "Hard", emoji: "😓" },
+  { value: "5", label: "Very Hard", emoji: "😰" },
 ];
 
 const categoryOptions = [
@@ -100,6 +109,16 @@ const emojiOptions = [
   "🌙",
 ];
 
+// Validation constants
+const VALIDATION_LIMITS = {
+  NAME_MAX_LENGTH: 50,
+  DESCRIPTION_MAX_LENGTH: 200,
+  TAG_MAX_LENGTH: 20,
+  SUBTASK_MAX_LENGTH: 100,
+  MAX_TAGS: 10,
+  MAX_SUBTASKS: 20,
+};
+
 const HabitDialog: React.FC<HabitDialogProps> = ({
   isOpen,
   onClose,
@@ -108,11 +127,15 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
   loading = false,
   formData,
   onFormChange,
+  onReset,
+  isCreatingNew = false,
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
-
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,13 +154,56 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
 
   if (!isOpen) return null;
 
+  // Validation functions
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+
+    // Name validation
+    if (!formData.name?.trim()) {
+      errors.name = "Habit name is required";
+    } else if (formData.name.length > VALIDATION_LIMITS.NAME_MAX_LENGTH) {
+      errors.name = `Name must be ${VALIDATION_LIMITS.NAME_MAX_LENGTH} characters or less`;
+    }
+
+    // Description validation
+    if (
+      formData.description &&
+      formData.description.length > VALIDATION_LIMITS.DESCRIPTION_MAX_LENGTH
+    ) {
+      errors.description = `Description must be ${VALIDATION_LIMITS.DESCRIPTION_MAX_LENGTH} characters or less`;
+    }
+
+    // Tags validation
+    if (formData.tags && formData.tags.length > VALIDATION_LIMITS.MAX_TAGS) {
+      errors.tags = `Maximum ${VALIDATION_LIMITS.MAX_TAGS} tags allowed`;
+    }
+
+    // Subtasks validation
+    if (
+      formData.subtasks &&
+      formData.subtasks.length > VALIDATION_LIMITS.MAX_SUBTASKS
+    ) {
+      errors.subtasks = `Maximum ${VALIDATION_LIMITS.MAX_SUBTASKS} subtasks allowed`;
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (!formData.name?.trim()) return;
+    if (!validateForm()) return;
     await onSubmit(formData);
   };
 
   const updateFormData = (updates: Partial<HabitFormData>) => {
     onFormChange({ ...formData, ...updates });
+    // Clear related validation errors
+    if (updates.name !== undefined && validationErrors.name) {
+      setValidationErrors((prev) => ({ ...prev, name: undefined }));
+    }
+    if (updates.description !== undefined && validationErrors.description) {
+      setValidationErrors((prev) => ({ ...prev, description: undefined }));
+    }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -152,36 +218,72 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
   };
 
   const handleAddTag = () => {
-    if (newTag.trim()) {
-      const newTags = [...(formData.tags || []), newTag.trim()];
-      updateFormData({ tags: newTags });
-      setNewTag("");
+    if (!newTag.trim()) return;
+
+    if (newTag.length > VALIDATION_LIMITS.TAG_MAX_LENGTH) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        tags: `Tag must be ${VALIDATION_LIMITS.TAG_MAX_LENGTH} characters or less`,
+      }));
+      return;
     }
+
+    if ((formData.tags || []).length >= VALIDATION_LIMITS.MAX_TAGS) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        tags: `Maximum ${VALIDATION_LIMITS.MAX_TAGS} tags allowed`,
+      }));
+      return;
+    }
+
+    const newTags = [...(formData.tags || []), newTag.trim()];
+    updateFormData({ tags: newTags });
+    setNewTag("");
+    setValidationErrors((prev) => ({ ...prev, tags: undefined }));
   };
 
   const handleRemoveTag = (index: number) => {
     const newTags = formData.tags?.filter((_, i) => i !== index) || [];
     updateFormData({ tags: newTags });
+    setValidationErrors((prev) => ({ ...prev, tags: undefined }));
   };
 
   const handleAddSubtask = () => {
-    if (newSubtask.trim()) {
-      const newSubtasks: HabitSubtask[] = [
-        ...(formData.subtasks || []),
-        {
-          id: Date.now().toString(),
-          title: newSubtask.trim(),
-          completed: false,
-        },
-      ];
-      updateFormData({ subtasks: newSubtasks });
-      setNewSubtask("");
+    if (!newSubtask.trim()) return;
+
+    if (newSubtask.length > VALIDATION_LIMITS.SUBTASK_MAX_LENGTH) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        subtasks: `Subtask must be ${VALIDATION_LIMITS.SUBTASK_MAX_LENGTH} characters or less`,
+      }));
+      return;
     }
+
+    if ((formData.subtasks || []).length >= VALIDATION_LIMITS.MAX_SUBTASKS) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        subtasks: `Maximum ${VALIDATION_LIMITS.MAX_SUBTASKS} subtasks allowed`,
+      }));
+      return;
+    }
+
+    const newSubtasks: HabitSubtask[] = [
+      ...(formData.subtasks || []),
+      {
+        id: Date.now().toString(),
+        title: newSubtask.trim(),
+        completed: false,
+      },
+    ];
+    updateFormData({ subtasks: newSubtasks });
+    setNewSubtask("");
+    setValidationErrors((prev) => ({ ...prev, subtasks: undefined }));
   };
 
   const handleRemoveSubtask = (id: string) => {
     const newSubtasks = formData.subtasks?.filter((st) => st.id !== id) || [];
     updateFormData({ subtasks: newSubtasks });
+    setValidationErrors((prev) => ({ ...prev, subtasks: undefined }));
   };
 
   const handleToggleSubtask = (id: string) => {
@@ -193,6 +295,8 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
   };
 
   const handleUpdateSubtaskTitle = (id: string, title: string) => {
+    if (title.length > VALIDATION_LIMITS.SUBTASK_MAX_LENGTH) return;
+
     const newSubtasks =
       formData.subtasks?.map((st) => (st.id === id ? { ...st, title } : st)) ||
       [];
@@ -241,6 +345,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                     <Smile className="w-5 h-5 text-gray-400" />
                   )}
                 </button>
+
                 {showEmojiPicker && (
                   <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 grid grid-cols-6 gap-1 min-w-max">
                     {emojiOptions.map((emoji) => (
@@ -264,13 +369,32 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => updateFormData({ name: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= VALIDATION_LIMITS.NAME_MAX_LENGTH) {
+                      updateFormData({ name: value });
+                    }
+                  }}
+                  className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg 
                            focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200
-                           text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                           text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${
+                             validationErrors.name
+                               ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                               : "border-gray-200 dark:border-gray-600"
+                           }`}
                   placeholder="e.g., Drink 2 liters of water daily"
                   required
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {validationErrors.name && (
+                    <span className="text-sm text-red-500">
+                      {validationErrors.name}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {formData.name.length}/{VALIDATION_LIMITS.NAME_MAX_LENGTH}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -281,17 +405,39 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
               </label>
               <CustomTextArea
                 value={formData.description || ""}
-                onChange={(value) => updateFormData({ description: value })}
+                onChange={(value) => {
+                  if (
+                    value.length <= VALIDATION_LIMITS.DESCRIPTION_MAX_LENGTH
+                  ) {
+                    updateFormData({ description: value });
+                  }
+                }}
                 placeholder="Describe your habit in detail..."
                 rows={3}
+                className={
+                  validationErrors.description
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                    : ""
+                }
               />
+              <div className="flex justify-between items-center mt-1">
+                {validationErrors.description && (
+                  <span className="text-sm text-red-500">
+                    {validationErrors.description}
+                  </span>
+                )}
+                <span className="text-xs text-gray-400 ml-auto">
+                  {(formData.description || "").length}/
+                  {VALIDATION_LIMITS.DESCRIPTION_MAX_LENGTH}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Habit Type */}
+              {/* Habit Type - Fixed to use searchable=false */}
               <CustomCombobox
                 label="Habit Type"
-                value={formData.habitType}
+                value={formData.habitType || ""}
                 options={[
                   { value: "good", label: "✅ Good Habit (to maintain)" },
                   { value: "bad", label: "⛔ Bad Habit (to limit)" },
@@ -299,14 +445,16 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 onChange={(value) =>
                   updateFormData({ habitType: value as HabitType })
                 }
+                searchable={false}
+                placeholder="Select habit type..."
               />
 
-              {/* Difficulty Level */}
+              {/* Difficulty Level - Fixed to use searchable=false */}
               <CustomCombobox
                 label="Difficulty Level"
-                value={formData.difficultyLevel.toString()}
+                value={formData.difficultyLevel?.toString() || ""}
                 options={difficultyOptions.map((opt) => ({
-                  value: opt.value.toString(),
+                  value: opt.value,
                   label: `${opt.emoji} ${opt.label}`,
                 }))}
                 onChange={(value) =>
@@ -314,12 +462,14 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                     difficultyLevel: parseInt(value) as DifficultyLevel,
                   })
                 }
+                searchable={false}
+                placeholder="Select difficulty level..."
               />
 
-              {/* Category */}
+              {/* Category - Fixed to not have default value */}
               <CustomCombobox
                 label="Category"
-                value={formData.category}
+                value={formData.category || ""}
                 options={categoryOptions}
                 onChange={(value) =>
                   updateFormData({
@@ -327,6 +477,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                   })
                 }
                 creatable
+                placeholder="Select or create category..."
               />
 
               {/* Unit */}
@@ -336,6 +487,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 options={unitOptions}
                 onChange={(value) => updateFormData({ unit: value })}
                 creatable
+                placeholder="Select or create unit..."
               />
             </div>
 
@@ -349,6 +501,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
               <input
                 type="number"
                 min="0"
+                max="9999"
                 value={
                   formData.habitType === "good"
                     ? formData.goal || ""
@@ -380,7 +533,6 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
               <Tag className="w-4 h-4" />
               Tags
             </h4>
-
             <div className="flex flex-wrap gap-2">
               {formData.tags?.map((tag, index) => (
                 <span
@@ -398,20 +550,42 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 </span>
               ))}
             </div>
-
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Add a tag..."
-                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleAddTag();
-                  }
-                }}
-              />
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => {
+                    if (
+                      e.target.value.length <= VALIDATION_LIMITS.TAG_MAX_LENGTH
+                    ) {
+                      setNewTag(e.target.value);
+                      if (validationErrors.tags) {
+                        setValidationErrors((prev) => ({
+                          ...prev,
+                          tags: undefined,
+                        }));
+                      }
+                    }
+                  }}
+                  placeholder="Add a tag..."
+                  className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 ${
+                    validationErrors.tags
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      : "border-gray-200 dark:border-gray-600"
+                  }`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddTag();
+                    }
+                  }}
+                />
+                {validationErrors.tags && (
+                  <span className="text-sm text-red-500 mt-1 block">
+                    {validationErrors.tags}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleAddTag}
                 disabled={!newTag.trim()}
@@ -428,7 +602,6 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
               <ListChecks className="w-4 h-4" />
               Subtasks
             </h4>
-
             <div className="space-y-2">
               {formData.subtasks?.map((subtask) => (
                 <div
@@ -448,6 +621,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                       handleUpdateSubtaskTitle(subtask.id, e.target.value)
                     }
                     className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 rounded text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                    maxLength={VALIDATION_LIMITS.SUBTASK_MAX_LENGTH}
                   />
                   <button
                     type="button"
@@ -459,20 +633,43 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 </div>
               ))}
             </div>
-
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
-                placeholder="Add a subtask..."
-                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleAddSubtask();
-                  }
-                }}
-              />
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={newSubtask}
+                  onChange={(e) => {
+                    if (
+                      e.target.value.length <=
+                      VALIDATION_LIMITS.SUBTASK_MAX_LENGTH
+                    ) {
+                      setNewSubtask(e.target.value);
+                      if (validationErrors.subtasks) {
+                        setValidationErrors((prev) => ({
+                          ...prev,
+                          subtasks: undefined,
+                        }));
+                      }
+                    }
+                  }}
+                  placeholder="Add a subtask..."
+                  className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 ${
+                    validationErrors.subtasks
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                      : "border-gray-200 dark:border-gray-600"
+                  }`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddSubtask();
+                    }
+                  }}
+                />
+                {validationErrors.subtasks && (
+                  <span className="text-sm text-red-500 mt-1 block">
+                    {validationErrors.subtasks}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleAddSubtask}
                 disabled={!newSubtask.trim()}
@@ -488,7 +685,6 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Advanced Options
             </h4>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Start Time */}
               <div>
@@ -542,19 +738,32 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
           </section>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50">
+        {/* Footer - Fixed alignment */}
+        <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 flex-shrink-0">
+          {isCreatingNew && formData.name.trim() && onReset && (
+            <button
+              onClick={onReset}
+              className="px-5 py-2.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 
+                       transition-all duration-200 rounded-lg font-medium"
+            >
+              Clear Form
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="px-5 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 
+            className="px-5 py-2.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 
                      transition-all duration-200 rounded-lg font-medium"
           >
-            Cancel
+            {isCreatingNew ? "Close" : "Cancel"}
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !formData.name?.trim()}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 
+            disabled={
+              loading ||
+              !formData.name?.trim() ||
+              Object.keys(validationErrors).length > 0
+            }
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 
                      text-white rounded-lg font-medium transition-all duration-200 
                      disabled:cursor-not-allowed disabled:text-gray-500
                      flex items-center gap-2 min-w-[120px] justify-center"
