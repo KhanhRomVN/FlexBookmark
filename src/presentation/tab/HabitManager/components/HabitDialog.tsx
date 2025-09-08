@@ -22,6 +22,7 @@ interface HabitDialogProps {
   onFormChange: (formData: HabitFormData) => void;
   onReset?: () => void;
   isCreatingNew?: boolean;
+  existingHabits: Habit[]; // Add this line
 }
 
 interface ValidationErrors {
@@ -352,6 +353,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
   onFormChange,
   onReset,
   isCreatingNew = false,
+  existingHabits,
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [activeEmojiTab, setActiveEmojiTab] =
@@ -406,6 +408,20 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
       errors.name = "Habit name is required";
     } else if (formData.name.length > VALIDATION_LIMITS.NAME_MAX_LENGTH) {
       errors.name = `Name must be ${VALIDATION_LIMITS.NAME_MAX_LENGTH} characters or less`;
+    } else {
+      // Only check for duplicates if we have access to existingHabits
+      if (existingHabits) {
+        const normalizedNewName = formData.name.trim().toLowerCase();
+        const duplicate = existingHabits.find(
+          (habit) =>
+            habit.name.toLowerCase() === normalizedNewName &&
+            (!editingHabit || habit.id !== editingHabit.id)
+        );
+
+        if (duplicate) {
+          errors.name = "A habit with this name already exists";
+        }
+      }
     }
 
     // Description validation
@@ -431,6 +447,17 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const isHabitNameDuplicate = (name: string): boolean => {
+    if (!name.trim()) return false;
+
+    const normalizedName = name.trim().toLowerCase();
+    return existingHabits.some(
+      (habit) =>
+        habit.name.toLowerCase() === normalizedName &&
+        (!editingHabit || habit.id !== editingHabit.id)
+    );
   };
 
   const handleSubmit = async () => {
@@ -1058,7 +1085,8 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
             disabled={
               loading ||
               !formData.name?.trim() ||
-              Object.keys(validationErrors).length > 0
+              Object.keys(validationErrors).length > 0 ||
+              isHabitNameDuplicate(formData.name)
             }
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 
                      text-white rounded-lg font-medium transition-all duration-200 

@@ -110,7 +110,20 @@ export class HabitServer {
             completedToday: todayCount > 0,
             dailyCounts: Array.from({ length: 31 }, (_, i) => {
                 const dayIndex = 8 + i;
-                return safeRow.length > dayIndex ? parseInt(safeRow[dayIndex]) || 0 : 0;
+                if (safeRow.length > dayIndex) {
+                    const value = safeRow[dayIndex];
+                    // Handle different string values properly
+                    if (value === '' || value === null || value === undefined) {
+                        return "";
+                    }
+                    if (value === "skip_day_month") {
+                        return "skip_day_month";
+                    }
+                    // Try to parse as number, if fails return null
+                    const parsed = parseInt(value);
+                    return isNaN(parsed) ? null : parsed;
+                }
+                return ""; // Return empty string for missing columns
             }),
             colorCode: safeRow.length > 40 ? safeRow[40] || '#3b82f6' : '#3b82f6',
             category: safeRow.length > 42 ? safeRow[42] || 'other' : 'other',
@@ -141,7 +154,7 @@ export class HabitServer {
             currentStreak: 0,
             longestStreak: 0,
             completedToday: false,
-            dailyCounts: Array.from({ length: 31 }, () => 0)
+            dailyCounts: Array.from({ length: 31 }, () => "")
         };
     }
 
@@ -173,7 +186,17 @@ export class HabitServer {
             for (let i = 0; i < 31; i++) {
                 const columnIndex = 8 + i;
                 if (columnIndex < row.length) {
-                    row[columnIndex] = (habit.dailyCounts[i] || 0).toString();
+                    const count = habit.dailyCounts[i];
+                    // Handle different types properly
+                    if (count === null) {
+                        row[columnIndex] = ''; // null becomes empty string in sheet
+                    } else if (count === "skip_day_month") {
+                        row[columnIndex] = 'skip_day_month';
+                    } else if (count === "") {
+                        row[columnIndex] = ''; // empty string stays empty
+                    } else {
+                        row[columnIndex] = count.toString(); // numbers to string
+                    }
                 }
             }
         }

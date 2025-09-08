@@ -335,6 +335,7 @@ const HabitManager: React.FC = () => {
           loading={loading}
           formData={formData}
           onFormChange={handleFormChange}
+          existingHabits={habits}
         />
       </div>
     </div>
