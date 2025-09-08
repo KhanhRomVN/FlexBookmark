@@ -1,29 +1,13 @@
-import React from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
+import React, { useMemo } from "react";
 import { Habit } from "../../types/types";
-import { Calendar, TrendingUp, Target, CheckCircle } from "lucide-react";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+import {
+  Calendar,
+  TrendingUp,
+  Target,
+  CheckCircle,
+  Award,
+  Flame,
+} from "lucide-react";
 
 interface MonthlyContributionProps {
   habit?: Habit;
@@ -36,122 +20,187 @@ const MonthlyContribution: React.FC<MonthlyContributionProps> = ({
 }) => {
   if (!habit) return null;
 
-  const generateMonthData = () => {
+  const calendarData = useMemo(() => {
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1);
 
-    return Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      const date = new Date(year, month, day);
-      const count = habit.dailyCounts[i] || 0;
-      const completed = count > 0;
+    // Get the day of week (0 = Sunday, 1 = Monday, etc.)
+    // Convert to Monday = 0, Tuesday = 1, ..., Sunday = 6
+    const firstDayOfWeek = (firstDay.getDay() + 6) % 7;
 
-      return {
-        day,
-        date,
-        completed,
-        completionValue: completed ? 1 : 0,
-        count,
-      };
+    // Calculate number of weeks needed (5 or 6)
+    const totalCells = firstDayOfWeek + daysInMonth;
+    const weeksNeeded = Math.ceil(totalCells / 7);
+
+    const calendarGrid: Array<
+      Array<{
+        date: Date | null;
+        dayNumber: number | null;
+        completed: boolean;
+        completionCount: number;
+        isCurrentMonth: boolean;
+      }>
+    > = [];
+
+    let dayCounter = 1;
+
+    for (let week = 0; week < weeksNeeded; week++) {
+      const weekData = [];
+
+      for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
+        const cellIndex = week * 7 + dayOfWeek;
+        let date: Date | null = null;
+        let dayNumber: number | null = null;
+        let completed = false;
+        let completionCount = 0;
+        let isCurrentMonth = false;
+
+        if (cellIndex >= firstDayOfWeek && dayCounter <= daysInMonth) {
+          // Current month day
+          date = new Date(year, month, dayCounter);
+          dayNumber = dayCounter;
+          isCurrentMonth = true;
+
+          // Get completion data from habit.dailyCounts
+          const dayIndex = dayCounter - 1;
+          if (dayIndex >= 0 && dayIndex < habit.dailyCounts.length) {
+            completionCount = habit.dailyCounts[dayIndex] || 0;
+            completed = completionCount > 0;
+          }
+
+          dayCounter++;
+        } else if (cellIndex < firstDayOfWeek) {
+          // Previous month days
+          const prevMonth = month === 0 ? 11 : month - 1;
+          const prevYear = month === 0 ? year - 1 : year;
+          const daysInPrevMonth = new Date(
+            prevYear,
+            prevMonth + 1,
+            0
+          ).getDate();
+          const prevMonthDay =
+            daysInPrevMonth - (firstDayOfWeek - cellIndex - 1);
+
+          date = new Date(prevYear, prevMonth, prevMonthDay);
+          dayNumber = prevMonthDay;
+          isCurrentMonth = false;
+        } else {
+          // Next month days
+          const nextMonth = month === 11 ? 0 : month + 1;
+          const nextYear = month === 11 ? year + 1 : year;
+          const nextMonthDay = cellIndex - firstDayOfWeek - daysInMonth + 1;
+
+          date = new Date(nextYear, nextMonth, nextMonthDay);
+          dayNumber = nextMonthDay;
+          isCurrentMonth = false;
+        }
+
+        weekData.push({
+          date,
+          dayNumber,
+          completed,
+          completionCount,
+          isCurrentMonth,
+        });
+      }
+
+      calendarGrid.push(weekData);
+    }
+
+    return calendarGrid;
+  }, [habit, selectedDate]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const currentMonthDays = calendarData
+      .flat()
+      .filter((day) => day.isCurrentMonth);
+
+    const completedDays = currentMonthDays.filter(
+      (day) => day.completed
+    ).length;
+    const totalDays = currentMonthDays.length;
+    const completionRate =
+      totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+
+    // Calculate current streak
+    let currentStreak = 0;
+    const today = new Date();
+    const currentDay = today.getDate();
+
+    // Count backwards from current day
+    for (let i = currentDay - 1; i >= 0; i--) {
+      if (habit.dailyCounts[i] > 0) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Calculate total completions this month
+    const totalCompletions = currentMonthDays.reduce(
+      (sum, day) => sum + day.completionCount,
+      0
+    );
+
+    return {
+      completedDays,
+      totalDays,
+      completionRate,
+      currentStreak,
+      totalCompletions,
+    };
+  }, [calendarData, habit]);
+
+  const getIntensityColor = (day: any) => {
+    if (!day.isCurrentMonth) {
+      return "bg-gray-50 dark:bg-gray-900 opacity-30";
+    }
+
+    if (!day.completed) {
+      return "bg-gray-100 dark:bg-gray-800";
+    }
+
+    // Use completion count for intensity
+    const intensity = Math.min(
+      day.completionCount / (habit.goal || habit.limit || 1),
+      1
+    );
+
+    if (intensity >= 1) return "bg-emerald-600 dark:bg-emerald-500";
+    if (intensity >= 0.7) return "bg-emerald-500 dark:bg-emerald-600";
+    if (intensity >= 0.4) return "bg-emerald-400 dark:bg-emerald-500";
+    return "bg-emerald-300 dark:bg-emerald-400";
+  };
+
+  const getTooltipText = (day: any) => {
+    if (!day.date) return "";
+
+    const dateStr = day.date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
     });
+
+    if (!day.isCurrentMonth) {
+      return dateStr;
+    }
+
+    return `${dateStr}: ${
+      day.completed
+        ? `✅ Completed (${day.completionCount})`
+        : "❌ Not completed"
+    }`;
   };
 
-  const monthData = generateMonthData();
-  const completedDays = monthData.filter((d) => d.completed).length;
-  const completionRate = Math.round((completedDays / monthData.length) * 100);
-  const currentStreak = habit.currentStreak;
-  const monthName = selectedDate.toLocaleString("default", { month: "long" });
+  const monthName = selectedDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
-  // Prepare chart data
-  const chartData = {
-    labels: monthData.map((d) => d.day.toString()),
-    datasets: [
-      {
-        label: "Daily Completion",
-        data: monthData.map((d) => d.completionValue),
-        borderColor: "rgb(16, 185, 129)",
-        backgroundColor: "rgba(16, 185, 129, 0.1)",
-        borderWidth: 2.5,
-        pointBackgroundColor: monthData.map((d) =>
-          d.completed ? "rgb(16, 185, 129)" : "rgb(229, 231, 235)"
-        ),
-        pointBorderColor: monthData.map((d) =>
-          d.completed ? "rgb(255, 255, 255)" : "rgb(156, 163, 175)"
-        ),
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        fill: true,
-        tension: 0.1,
-      },
-    ],
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        titleColor: "#fff",
-        bodyColor: "#fff",
-        borderColor: "rgba(16, 185, 129, 0.3)",
-        borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: false,
-        callbacks: {
-          title: function (context: any) {
-            const index = context[0].dataIndex;
-            const date = monthData[index].date;
-            return date.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            });
-          },
-          label: function (context: any) {
-            const index = context.dataIndex;
-            const count = monthData[index].count;
-            return count > 0 ? `✅ Completed (${count})` : "❌ Not completed";
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        display: true,
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: "rgb(107, 114, 128)",
-          font: {
-            size: 10,
-          },
-          callback: function (value: any, index: number) {
-            return (index + 1) % 5 === 0 ||
-              index === 0 ||
-              index === monthData.length - 1
-              ? monthData[index]?.day
-              : "";
-          },
-        },
-      },
-      y: {
-        display: false,
-        beginAtZero: true,
-        max: 1,
-      },
-    },
-    interaction: {
-      intersect: false,
-      mode: "index" as const,
-    },
-  };
+  const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
   return (
     <div className="bg-card-background rounded-xl p-6 border border-border-default">
@@ -165,112 +214,145 @@ const MonthlyContribution: React.FC<MonthlyContributionProps> = ({
             <h3 className="text-lg font-semibold text-text-primary">
               Monthly Progress
             </h3>
-            <p className="text-sm text-text-secondary">
-              {monthName} {selectedDate.getFullYear()}
-            </p>
+            <p className="text-sm text-text-secondary">{monthName}</p>
           </div>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {completionRate}%
+            {stats.completionRate}%
           </div>
           <div className="text-xs text-text-secondary">Completion</div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {/* Completed Days */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800/30">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800/30">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
               COMPLETED
             </span>
           </div>
-          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-            {completedDays}
+          <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+            {stats.completedDays}
           </div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-            of {monthData.length} days
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">
+            of {stats.totalDays} days
           </div>
         </div>
 
-        {/* Current Streak */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800/30">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-4 h-4 text-orange-600 dark:text-orange-400">
-              🔥
-            </div>
+        <div className="bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800/30">
+          <div className="flex items-center gap-2 mb-1">
+            <Flame className="w-3 h-3 text-orange-600 dark:text-orange-400" />
             <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">
               STREAK
             </span>
           </div>
-          <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
-            {currentStreak}
+          <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
+            {stats.currentStreak}
           </div>
-          <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-            days current
+          <div className="text-xs text-orange-600 dark:text-orange-400">
+            current days
           </div>
         </div>
 
-        {/* Remaining Days */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800/30">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800/30">
+          <div className="flex items-center gap-2 mb-1">
+            <Target className="w-3 h-3 text-blue-600 dark:text-blue-400" />
             <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-              REMAINING
+              TOTAL
             </span>
           </div>
-          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-            {monthData.length - completedDays}
+          <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+            {stats.totalCompletions}
           </div>
-          <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-            days left
+          <div className="text-xs text-blue-600 dark:text-blue-400">
+            completions
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800/30">
+          <div className="flex items-center gap-2 mb-1">
+            <Award className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+            <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+              SUCCESS
+            </span>
+          </div>
+          <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
+            {stats.completionRate}%
+          </div>
+          <div className="text-xs text-purple-600 dark:text-purple-400">
+            rate
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-text-primary">
-            Monthly Achievement
-          </span>
-          <span className="text-sm text-text-secondary">
-            {completedDays}/{monthData.length} days
-          </span>
+      {/* Calendar Grid */}
+      <div className="space-y-2 mb-4">
+        {/* Day labels */}
+        <div className="flex gap-1 mb-2">
+          {dayLabels.map((day, index) => (
+            <div
+              key={index}
+              className="w-8 h-6 flex items-center justify-center text-xs font-medium text-text-secondary"
+            >
+              {day}
+            </div>
+          ))}
         </div>
-        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
-          <div
-            className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${completionRate}%` }}
-          />
-        </div>
+
+        {/* Calendar weeks */}
+        {calendarData.map((week, weekIndex) => (
+          <div key={weekIndex} className="flex gap-1">
+            {week.map((day, dayIndex) => (
+              <div
+                key={`${weekIndex}-${dayIndex}`}
+                className={`w-8 h-8 rounded-md transition-all duration-200 hover:scale-110 hover:shadow-sm cursor-pointer flex items-center justify-center relative group ${getIntensityColor(
+                  day
+                )}`}
+                title={getTooltipText(day)}
+              >
+                {day.dayNumber && (
+                  <span
+                    className={`text-xs font-medium ${
+                      day.isCurrentMonth
+                        ? day.completed
+                          ? "text-white"
+                          : "text-text-secondary"
+                        : "text-text-secondary opacity-50"
+                    }`}
+                  >
+                    {day.dayNumber}
+                  </span>
+                )}
+
+                {/* Today indicator */}
+                {day.isCurrentMonth &&
+                  day.dayNumber === new Date().getDate() && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white dark:border-gray-800"></div>
+                  )}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
-      {/* Line Chart */}
-      <div className="h-64 mb-4">
-        <Line data={chartData} options={chartOptions} />
-      </div>
-
-      {/* Bottom Stats */}
+      {/* Legend and Summary */}
       <div className="flex items-center justify-between pt-4 border-t border-border-default">
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <TrendingUp className="w-4 h-4" />
-          <span>
-            {completionRate >= 80
-              ? "Outstanding performance!"
-              : completionRate >= 60
-              ? "Great progress!"
-              : completionRate >= 40
-              ? "Good effort, keep going!"
-              : "Room for improvement"}
-          </span>
+        <div className="text-xs text-text-secondary">
+          {stats.completedDays} of {stats.totalDays} days completed this month
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-          <span className="text-xs text-text-secondary">Daily Completion</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-text-secondary">Less</span>
+          <div className="flex gap-1">
+            <div className="w-3 h-3 bg-gray-100 dark:bg-gray-800 rounded-sm"></div>
+            <div className="w-3 h-3 bg-emerald-300 rounded-sm"></div>
+            <div className="w-3 h-3 bg-emerald-400 rounded-sm"></div>
+            <div className="w-3 h-3 bg-emerald-500 rounded-sm"></div>
+            <div className="w-3 h-3 bg-emerald-600 rounded-sm"></div>
+          </div>
+          <span className="text-xs text-text-secondary">More</span>
         </div>
       </div>
     </div>

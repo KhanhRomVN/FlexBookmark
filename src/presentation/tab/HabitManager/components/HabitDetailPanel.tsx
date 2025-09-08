@@ -6,11 +6,11 @@ import TodayOverview from "./HabitDetail/TodayOverview";
 import OverallStatistics from "./HabitDetail/OverallStatistics";
 import WeeklyPerformance from "./HabitDetail/WeeklyPerformance";
 import CategoryDistribution from "./HabitDetail/CategoryDistribution";
-import TimeAnalysis from "./HabitDetail/TimeAnalysis";
 import ConsistencyScore from "./HabitDetail/ConsistencyScore";
 import ProgressTrend from "./HabitDetail/ProgressTrend";
 import ComparativeAnalysis from "./HabitDetail/ComparativeAnalysis";
 import YearlyCalendarContribute from "./HabitDetail/YearlyCalendarContribute";
+import HabitOverview from "./HabitDetail/HabitOverview";
 
 interface HabitDetailPanelProps {
   selectedHabit?: Habit;
@@ -51,7 +51,6 @@ const HabitDetailPanel: React.FC<HabitDetailPanelProps> = ({
             <TodayOverview todayStats={safeTodayStats} habits={habits} />
             <WeeklyPerformance habits={habits} selectedDate={selectedDate} />
             <CategoryDistribution habits={habits} />
-            <TimeAnalysis habits={habits} />
             <ConsistencyScore
               habits={habits}
               todayStats={{
@@ -66,6 +65,7 @@ const HabitDetailPanel: React.FC<HabitDetailPanelProps> = ({
         ) : (
           /* FOCUS MODE - Detailed view of selected habit */
           <>
+            <HabitOverview habit={selectedHabit} />
             <CurrentStreak habit={selectedHabit} />
             <ProgressTrend habit={selectedHabit} selectedDate={selectedDate} />
             <YearlyCalendarContribute habit={selectedHabit} habits={habits} />
@@ -73,7 +73,6 @@ const HabitDetailPanel: React.FC<HabitDetailPanelProps> = ({
               habit={selectedHabit}
               selectedDate={selectedDate}
             />
-            <TimeAnalysis habits={[selectedHabit]} />
             <ComparativeAnalysis habit={selectedHabit} habits={habits} />
           </>
         )}

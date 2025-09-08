@@ -66,7 +66,7 @@ export class HabitServer {
         // Change from boolean to number
         const todayCount = hasCompletedToday ? parseInt(safeRow[completedTodayIndex]) || 0 : 0;
 
-        // Xử lý tags - cột 44 là isArchived, nên tags có thể ở cột 43
+        // Xử lý tags - cột 43
         let tags: string[] = [];
         if (safeRow.length > 43 && safeRow[43]) {
             try {
@@ -74,6 +74,27 @@ export class HabitServer {
             } catch (error) {
                 console.warn('Error parsing tags:', error);
                 tags = [];
+            }
+        }
+
+        // Xử lý subtasks - cột 48
+        let subtasks: HabitSubtask[] = [];
+        if (safeRow.length > 48 && safeRow[48]) {
+            try {
+                const parsedSubtasks = JSON.parse(safeRow[48]);
+                // Validate subtasks structure
+                if (Array.isArray(parsedSubtasks)) {
+                    subtasks = parsedSubtasks.filter(subtask =>
+                        subtask &&
+                        typeof subtask === 'object' &&
+                        typeof subtask.id === 'string' &&
+                        typeof subtask.title === 'string' &&
+                        typeof subtask.completed === 'boolean'
+                    );
+                }
+            } catch (error) {
+                console.warn('Error parsing subtasks:', error);
+                subtasks = [];
             }
         }
 
@@ -128,13 +149,14 @@ export class HabitServer {
             colorCode: safeRow.length > 40 ? safeRow[40] || '#3b82f6' : '#3b82f6',
             category: safeRow.length > 42 ? safeRow[42] || 'other' : 'other',
             tags: tags || [],
+            subtasks: subtasks || [],
             isArchived: safeRow.length > 44 ? safeRow[44] === 'TRUE' : false,
             createdAt: parseDateSafe(safeRow.length > 39 ? safeRow[39] : undefined),
             updatedAt: new Date(),
             longestStreak: safeRow.length > 41 ? parseInt(safeRow[41]) || 0 : 0,
             startTime: safeRow.length > 47 ? safeRow[47] : undefined,
             unit: safeRow.length > 46 ? safeRow[46] : undefined,
-            emoji: safeRow.length > 48 ? safeRow[48] || "" : ""
+            emoji: safeRow.length > 49 ? safeRow[49] || "" : ""
         };
     }
 
@@ -209,7 +231,28 @@ export class HabitServer {
         row[44] = habit.isArchived ? 'TRUE' : 'FALSE';
         row[46] = habit.unit || '';
         row[47] = habit.startTime || '';
-        row[48] = habit.emoji || "";
+
+        // Add subtasks to column 48 - serialize as JSON
+        if (habit.subtasks && habit.subtasks.length > 0) {
+            try {
+                // Validate subtasks before serializing
+                const validSubtasks = habit.subtasks.filter(subtask =>
+                    subtask &&
+                    typeof subtask === 'object' &&
+                    typeof subtask.id === 'string' &&
+                    typeof subtask.title === 'string' &&
+                    typeof subtask.completed === 'boolean'
+                );
+                row[48] = JSON.stringify(validSubtasks);
+            } catch (error) {
+                console.warn('Error serializing subtasks:', error);
+                row[48] = '';
+            }
+        } else {
+            row[48] = '';
+        }
+
+        row[49] = habit.emoji || "";
 
         return row;
     }
