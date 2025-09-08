@@ -76,38 +76,261 @@ const colorOptions = [
   "#6366F1",
 ];
 
-const emojiOptions = [
-  "💧",
-  "🏃",
-  "📚",
-  "💤",
-  "🍎",
-  "💪",
-  "🧘",
-  "📱",
-  "⚽",
-  "🎮",
-  "🎨",
-  "🎵",
-  "🚴",
-  "🍽️",
-  "💻",
-  "🌱",
-  "🎯",
-  "⏰",
-  "☕",
-  "📖",
-  "🎯",
-  "💰",
-  "🧠",
-  "❤️",
-  "🏆",
-  "🎉",
-  "🚫",
-  "✅",
-  "🌞",
-  "🌙",
-];
+// Enhanced emoji options with categories
+const emojiCategories = {
+  health: {
+    label: "Health & Wellness",
+    emojis: [
+      "💧",
+      "🍎",
+      "🥗",
+      "🏥",
+      "💊",
+      "🧘",
+      "💪",
+      "🏃",
+      "🚴",
+      "🏊",
+      "🧠",
+      "❤️",
+      "🫁",
+      "🦷",
+      "👁️",
+      "🩺",
+    ],
+  },
+  fitness: {
+    label: "Fitness & Sports",
+    emojis: [
+      "🏃",
+      "💪",
+      "🏋️",
+      "🚴",
+      "🏊",
+      "⚽",
+      "🏀",
+      "🎾",
+      "🏐",
+      "🏓",
+      "🥊",
+      "🤸",
+      "🧗",
+      "⛹️",
+      "🏌️",
+      "🤾",
+    ],
+  },
+  productivity: {
+    label: "Work & Productivity",
+    emojis: [
+      "💻",
+      "📚",
+      "📖",
+      "✍️",
+      "📝",
+      "📊",
+      "📈",
+      "💼",
+      "🎯",
+      "⏰",
+      "📱",
+      "🖥️",
+      "⌨️",
+      "📞",
+      "📧",
+      "🗂️",
+    ],
+  },
+  mindfulness: {
+    label: "Mindfulness & Mental",
+    emojis: [
+      "🧘",
+      "🌸",
+      "🕯️",
+      "☯️",
+      "🧠",
+      "💭",
+      "🤔",
+      "😌",
+      "😊",
+      "🙏",
+      "🌅",
+      "🌙",
+      "⭐",
+      "🌟",
+      "✨",
+      "🔮",
+    ],
+  },
+  creativity: {
+    label: "Creative & Arts",
+    emojis: [
+      "🎨",
+      "🖌️",
+      "✏️",
+      "🎵",
+      "🎼",
+      "🎸",
+      "🎹",
+      "🎤",
+      "📸",
+      "🎭",
+      "🎪",
+      "🖼️",
+      "📷",
+      "🎬",
+      "🎯",
+      "🌈",
+    ],
+  },
+  social: {
+    label: "Social & Family",
+    emojis: [
+      "👥",
+      "👨‍👩‍👧‍👦",
+      "💑",
+      "🤝",
+      "🗣️",
+      "💬",
+      "📞",
+      "🎉",
+      "🥳",
+      "🍽️",
+      "☕",
+      "🍵",
+      "🎂",
+      "🎁",
+      "💌",
+      "❤️",
+    ],
+  },
+  finance: {
+    label: "Money & Finance",
+    emojis: [
+      "💰",
+      "💳",
+      "💸",
+      "💹",
+      "📊",
+      "📈",
+      "💎",
+      "🏦",
+      "💵",
+      "💴",
+      "💶",
+      "💷",
+      "🪙",
+      "💲",
+      "🤑",
+      "📱",
+    ],
+  },
+  food: {
+    label: "Food & Cooking",
+    emojis: [
+      "🍽️",
+      "🍳",
+      "🥘",
+      "🍕",
+      "🍔",
+      "🥗",
+      "🍎",
+      "🥕",
+      "🥦",
+      "🍌",
+      "🍓",
+      "☕",
+      "🧊",
+      "🥛",
+      "🍵",
+      "🧑‍🍳",
+    ],
+  },
+  nature: {
+    label: "Nature & Environment",
+    emojis: [
+      "🌱",
+      "🌿",
+      "🌳",
+      "🌸",
+      "🌺",
+      "🌻",
+      "🌼",
+      "🌷",
+      "🍃",
+      "🌲",
+      "🌴",
+      "🌊",
+      "☀️",
+      "🌙",
+      "⭐",
+      "🌍",
+    ],
+  },
+  lifestyle: {
+    label: "Lifestyle & Daily",
+    emojis: [
+      "🏠",
+      "🛏️",
+      "🚿",
+      "🧴",
+      "🧼",
+      "🪥",
+      "💤",
+      "⏰",
+      "📅",
+      "🗓️",
+      "✅",
+      "❌",
+      "🔔",
+      "🔕",
+      "📳",
+      "🔄",
+    ],
+  },
+  transportation: {
+    label: "Travel & Transport",
+    emojis: [
+      "🚗",
+      "🚌",
+      "🚊",
+      "🚇",
+      "✈️",
+      "🚲",
+      "🛴",
+      "🏃",
+      "🚶",
+      "🗺️",
+      "🧳",
+      "📍",
+      "🌍",
+      "🏖️",
+      "🏔️",
+      "🏙️",
+    ],
+  },
+  entertainment: {
+    label: "Fun & Entertainment",
+    emojis: [
+      "🎮",
+      "🎲",
+      "🎯",
+      "🎪",
+      "🎭",
+      "🎬",
+      "📺",
+      "📻",
+      "🎧",
+      "🎤",
+      "🎸",
+      "🥳",
+      "🎉",
+      "🎊",
+      "🎈",
+      "🍿",
+    ],
+  },
+};
 
 // Validation constants
 const VALIDATION_LIMITS = {
@@ -131,6 +354,8 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
   isCreatingNew = false,
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [activeEmojiTab, setActiveEmojiTab] =
+    useState<keyof typeof emojiCategories>("health");
   const [newTag, setNewTag] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
@@ -151,6 +376,24 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Updated useEffect to clear validation errors when tags/subtasks change
+  useEffect(() => {
+    const errors: ValidationErrors = { ...validationErrors };
+
+    // Clear tags error if tags are within limit
+    if (formData.tags && formData.tags.length <= VALIDATION_LIMITS.MAX_TAGS) {
+      delete errors.tags;
+    }
+    // Clear subtasks error if subtasks are within limit
+    if (
+      formData.subtasks &&
+      formData.subtasks.length <= VALIDATION_LIMITS.MAX_SUBTASKS
+    ) {
+      delete errors.subtasks;
+    }
+    setValidationErrors(errors);
+  }, [formData.tags, formData.subtasks, validationErrors]);
 
   if (!isOpen) return null;
 
@@ -217,6 +460,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
     setShowEmojiPicker(false);
   };
 
+  // Updated handleAddTag function to clear errors when adding successfully
   const handleAddTag = () => {
     if (!newTag.trim()) return;
 
@@ -239,7 +483,13 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
     const newTags = [...(formData.tags || []), newTag.trim()];
     updateFormData({ tags: newTags });
     setNewTag("");
-    setValidationErrors((prev) => ({ ...prev, tags: undefined }));
+
+    // Clear any existing tag errors after successful addition
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.tags;
+      return newErrors;
+    });
   };
 
   const handleRemoveTag = (index: number) => {
@@ -248,6 +498,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
     setValidationErrors((prev) => ({ ...prev, tags: undefined }));
   };
 
+  // Updated handleAddSubtask function to clear errors when adding successfully
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
 
@@ -277,7 +528,13 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
     ];
     updateFormData({ subtasks: newSubtasks });
     setNewSubtask("");
-    setValidationErrors((prev) => ({ ...prev, subtasks: undefined }));
+
+    // Clear any existing subtask errors after successful addition
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.subtasks;
+      return newErrors;
+    });
   };
 
   const handleRemoveSubtask = (id: string) => {
@@ -332,7 +589,7 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
 
             {/* Name and Emoji */}
             <div className="flex gap-3">
-              {/* Emoji Picker */}
+              {/* Enhanced Emoji Picker */}
               <div className="relative flex-shrink-0" ref={emojiPickerRef}>
                 <button
                   type="button"
@@ -347,16 +604,56 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 </button>
 
                 {showEmojiPicker && (
-                  <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 grid grid-cols-6 gap-1 min-w-max">
-                    {emojiOptions.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleEmojiSelect(emoji)}
-                        className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                  <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-80 max-h-96 overflow-hidden">
+                    {/* Tab Menu */}
+                    <div className="border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex overflow-x-auto scrollbar-hide">
+                        {Object.entries(emojiCategories).map(
+                          ([key, category]) => (
+                            <button
+                              key={key}
+                              onClick={() =>
+                                setActiveEmojiTab(
+                                  key as keyof typeof emojiCategories
+                                )
+                              }
+                              className={`px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
+                                activeEmojiTab === key
+                                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                              }`}
+                            >
+                              {category.label}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Emoji Grid */}
+                    <div className="p-3 max-h-64 overflow-y-auto">
+                      <div className="grid grid-cols-8 gap-1">
+                        {emojiCategories[activeEmojiTab].emojis.map(
+                          (emoji, index) => (
+                            <button
+                              key={`${activeEmojiTab}-${index}`}
+                              onClick={() => handleEmojiSelect(emoji)}
+                              className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 hover:scale-110"
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Search */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                        💡 Tip: Click any emoji to select it for your habit
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

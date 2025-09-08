@@ -333,7 +333,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
             {renderHabitSection("📋 Preparing (>1h)", goodHabits.preparing)}
             {renderHabitSection("❌ Missed today", goodHabits.missed)}
             {renderHabitSection(
-              "📅 Other habits",
+              "📅 All Day",
               goodHabits.others,
               goodHabits.others.length > 0
             )}
@@ -352,7 +352,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
             {renderHabitSection("📋 Preparing (>1h)", badHabits.preparing)}
             {renderHabitSection("❌ Missed today", badHabits.missed)}
             {renderHabitSection(
-              "📅 Other habits",
+              "📅 All Day",
               badHabits.others,
               badHabits.others.length > 0
             )}

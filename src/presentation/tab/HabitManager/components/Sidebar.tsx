@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/presentation/tab/HabitManager/components/Sidebar.tsx
+import React, { useState, useEffect } from "react";
 import { Plus, Archive, Calendar, Palette } from "lucide-react";
 import CustomCombobox from "../../../components/common/CustomCombobox";
 
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<string[]>([]);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [activeDateButton, setActiveDateButton] = useState<string>("today");
 
   const habitCategories = [
     { value: "health", label: "Health" },
@@ -47,6 +49,28 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: "evening", label: "Evening (6PM-12AM)", emoji: "🌙" },
     { id: "night", label: "Night (12AM-6AM)", emoji: "🌌" },
   ];
+
+  // Update active date button when selectedDate changes
+  useEffect(() => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const isSameDay = (date1: Date, date2: Date) =>
+      date1.toDateString() === date2.toDateString();
+
+    if (isSameDay(selectedDate, today)) {
+      setActiveDateButton("today");
+    } else if (isSameDay(selectedDate, yesterday)) {
+      setActiveDateButton("yesterday");
+    } else if (isSameDay(selectedDate, tomorrow)) {
+      setActiveDateButton("tomorrow");
+    } else {
+      setActiveDateButton("custom");
+    }
+  }, [selectedDate]);
 
   const handleCategoryChange = (values: string[]) => {
     setSelectedCategories(values);
@@ -73,20 +97,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     onArchiveFilter(newValue);
   };
 
-  const handleDateChange = (date: Date) => {
+  const handleDateButtonClick = (date: Date, buttonId: string) => {
+    setActiveDateButton(buttonId);
     onDateChange(date);
-  };
-
-  const handleCustomDateClick = () => {
-    setShowCustomDatePicker(!showCustomDatePicker);
+    setShowCustomDatePicker(false);
   };
 
   const handleCustomDateChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const selectedDate = new Date(event.target.value);
-    handleDateChange(selectedDate);
-    setShowCustomDatePicker(false);
+    handleDateButtonClick(selectedDate, "custom");
   };
 
   const formatSelectedDate = (date: Date) => {
@@ -112,6 +133,16 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split("T")[0];
+  };
+
+  const getDateButtonClass = (buttonId: string) => {
+    const baseClass = "px-3 py-2 rounded-lg text-sm transition-colors";
+
+    if (activeDateButton === buttonId) {
+      return `${baseClass} bg-blue-500 text-white hover:bg-blue-600`;
+    }
+
+    return `${baseClass} bg-input-background hover:bg-sidebar-itemHover text-text-primary`;
   };
 
   return (
@@ -226,34 +257,32 @@ const Sidebar: React.FC<SidebarProps> = ({
           </h3>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Today", offset: 0 },
-              { label: "Yesterday", offset: -1 },
-              { label: "Tomorrow", offset: 1 },
-            ].map(({ label, offset }) => (
-              <button
-                key={label}
-                onClick={() => {
-                  const date = new Date();
-                  date.setDate(date.getDate() + offset);
-                  handleDateChange(date);
-                }}
-                className="px-3 py-2 bg-input-background hover:bg-sidebar-itemHover rounded-lg text-sm transition-colors"
-              >
-                {label}
-              </button>
-            ))}
+              { label: "Today", offset: 0, id: "today" },
+              { label: "Yesterday", offset: -1, id: "yesterday" },
+              { label: "Tomorrow", offset: 1, id: "tomorrow" },
+            ].map(({ label, offset, id }) => {
+              const date = new Date();
+              date.setDate(date.getDate() + offset);
+
+              return (
+                <button
+                  key={id}
+                  onClick={() => handleDateButtonClick(date, id)}
+                  className={getDateButtonClass(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
 
             {/* Custom Date Button */}
             <button
-              onClick={handleCustomDateClick}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-1 ${
-                showCustomDatePicker
-                  ? "bg-purple-500 hover:bg-purple-600 text-white"
-                  : "bg-input-background hover:bg-sidebar-itemHover text-text-primary"
-              }`}
+              onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
+              className={getDateButtonClass("custom")}
             >
-              <Calendar className="w-4 h-4" />
-              Custom Date
+              {activeDateButton === "custom"
+                ? formatSelectedDate(selectedDate)
+                : "Custom"}
             </button>
           </div>
 
@@ -267,11 +296,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                 type="date"
                 value={formatDateForInput(selectedDate)}
                 onChange={handleCustomDateChange}
-                className="w-full px-3 py-2 bg-white border border-border-default rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-input-background border border-border-default rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 onClick={() => setShowCustomDatePicker(false)}
-                className="mt-2 w-full px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm text-gray-700 transition-colors"
+                className="mt-2 w-full px-3 py-1 bg-button-bg hover:bg-button-bgHover rounded-lg text-sm text-text-primary transition-colors"
               >
                 Cancel
               </button>
