@@ -10,7 +10,7 @@ import TimeAnalysis from "./HabitDetail/TimeAnalysis";
 import ConsistencyScore from "./HabitDetail/ConsistencyScore";
 import ProgressTrend from "./HabitDetail/ProgressTrend";
 import ComparativeAnalysis from "./HabitDetail/ComparativeAnalysis";
-import { Edit3, CheckCircle } from "lucide-react";
+import YearlyCalendarContribute from "./HabitDetail/YearlyCalendarContribute";
 
 interface HabitDetailPanelProps {
   selectedHabit?: Habit;
@@ -31,8 +31,6 @@ const HabitDetailPanel: React.FC<HabitDetailPanelProps> = ({
   selectedDate,
   todayStats,
   habits,
-  onToggleHabitComplete,
-  onEditHabit,
 }) => {
   // Tạo todayStats mặc định nếu không được cung cấp
   const defaultTodayStats = {
@@ -70,35 +68,13 @@ const HabitDetailPanel: React.FC<HabitDetailPanelProps> = ({
           <>
             <CurrentStreak habit={selectedHabit} />
             <ProgressTrend habit={selectedHabit} selectedDate={selectedDate} />
+            <YearlyCalendarContribute habit={selectedHabit} habits={habits} />
             <MonthlyContribution
               habit={selectedHabit}
               selectedDate={selectedDate}
             />
             <TimeAnalysis habits={[selectedHabit]} />
             <ComparativeAnalysis habit={selectedHabit} habits={habits} />
-
-            {/* Quick Actions */}
-            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Quick Actions
-              </h3>
-              <div className="grid grid-cols-1 gap-3">
-                <button
-                  onClick={() => onToggleHabitComplete(selectedHabit.id)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-sm font-semibold"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Mark as Completed
-                </button>
-                <button
-                  onClick={() => onEditHabit(selectedHabit)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl transition-colors text-sm font-semibold"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit Habit
-                </button>
-              </div>
-            </div>
           </>
         )}
       </div>
