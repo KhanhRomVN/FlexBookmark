@@ -39,34 +39,23 @@ export interface TokenValidationResult {
 }
 
 export const SERVICE_SCOPES = {
-    // Core user info (luôn cần thiết)
     CORE: [
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
         'openid'
     ] as string[],
-
-    // Drive service (HabitManager, TaskManager)
     DRIVE: [
         'https://www.googleapis.com/auth/drive.file'
     ] as string[],
-
-    // Sheets service (HabitManager, TaskManager) 
     SHEETS: [
         'https://www.googleapis.com/auth/spreadsheets'
     ] as string[],
-
-    // Calendar service (CalendarManager)
     CALENDAR: [
         'https://www.googleapis.com/auth/calendar',
     ] as string[],
-
-    // Tasks service
     TASKS: [
         'https://www.googleapis.com/auth/tasks'
     ] as string[],
-
-    // All required scopes for the entire extension
     ALL_SCOPES: [
         'openid',
         'email',
@@ -123,7 +112,6 @@ class ChromeAuthManager {
         this.notifyListeners();
     }
 
-    // Validate token with Google
     async validateToken(token: string): Promise<TokenValidationResult> {
         try {
             const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
@@ -176,17 +164,33 @@ class ChromeAuthManager {
                 throw new Error('OAuth2 client_id not configured in manifest');
             }
 
-            // Try to get token silently with ALL required scopes
+            // Try to get token silently first
             const token = await this.getToken(false, SERVICE_SCOPES.ALL_SCOPES);
             if (token) {
-                // Validate token before using it
+                console.log('Got token silently, validating...');
                 const validation = await this.validateToken(token);
+
                 if (!validation.isValid || validation.isExpired) {
                     console.log('Token invalid or expired, clearing cache');
                     await this.clearAllCachedTokens();
                     this.updateState({
                         loading: false,
-                        error: "Authentication expired. Please log in again."
+                        error: null // Don't show error on initial load
+                    });
+                    return;
+                }
+
+                // Check if we have all required permissions
+                const permissionCheck = await this.getPermissionStatus();
+                if (!permissionCheck.hasRequiredScopes ||
+                    !permissionCheck.hasDriveAccess ||
+                    !permissionCheck.hasSheetsAccess ||
+                    !permissionCheck.hasCalendarAccess) {
+                    console.log('Missing required permissions, clearing cache');
+                    await this.clearAllCachedTokens();
+                    this.updateState({
+                        loading: false,
+                        error: null
                     });
                     return;
                 }
@@ -195,7 +199,8 @@ class ChromeAuthManager {
                 this.updateState({
                     isAuthenticated: true,
                     user: { ...user, accessToken: token },
-                    loading: false
+                    loading: false,
+                    error: null
                 });
             } else {
                 this.updateState({ loading: false });
@@ -210,30 +215,30 @@ class ChromeAuthManager {
     }
 
     async login(): Promise<boolean> {
-        // Always use all required scopes
-        const scopes = [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/tasks",
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/userinfo.profile",
-            "https://www.googleapis.com/auth/drive.file",
-            "https://www.googleapis.com/auth/spreadsheets"
-        ];
-
+        console.log('Starting login process...');
         this.updateState({ loading: true, error: null });
 
         try {
-            // Use the correct getToken method with interactive=true and scopes
-            const token = await this.getToken(true, scopes);
+            // Clear all cached tokens first
+            await this.clearAllCachedTokens();
+            console.log('Cleared cached tokens');
+
+            // Request token with all scopes interactively
+            const token = await this.getToken(true, SERVICE_SCOPES.ALL_SCOPES);
+            console.log('Got token:', token ? 'success' : 'failed');
+
             if (token) {
-                // Validate token before using it
+                // Validate token
                 const validation = await this.validateToken(token);
+                console.log('Token validation:', validation);
+
                 if (!validation.isValid || validation.isExpired) {
                     throw new Error('Invalid or expired token received');
                 }
+
+                // Double check permissions
+                const permissionCheck = await this.getPermissionStatus();
+                console.log('Permission check:', permissionCheck);
 
                 const user = await this.getUserInfo(token);
                 this.updateState({
@@ -274,10 +279,15 @@ class ChromeAuthManager {
         });
     }
 
-    private async getToken(interactive: boolean, scopes: string[] = SERVICE_SCOPES.CORE): Promise<string | null> {
+    private async getToken(interactive: boolean, scopes: string[] = SERVICE_SCOPES.ALL_SCOPES): Promise<string | null> {
         return new Promise((resolve) => {
+            console.log(`Getting token - interactive: ${interactive}, scopes:`, scopes);
+
             chrome.identity.getAuthToken(
-                { interactive, scopes },
+                {
+                    interactive,
+                    scopes
+                },
                 (token: string | undefined) => {
                     if (chrome.runtime.lastError) {
                         console.error('Token error:', chrome.runtime.lastError);
@@ -286,6 +296,7 @@ class ChromeAuthManager {
                         console.warn('No token received');
                         resolve(null);
                     } else {
+                        console.log('Token received successfully');
                         resolve(token);
                     }
                 }
@@ -324,6 +335,7 @@ class ChromeAuthManager {
                 if (chrome.runtime.lastError) {
                     console.error('Clear tokens error:', chrome.runtime.lastError);
                 }
+                console.log('All cached tokens cleared');
                 resolve();
             });
         });
@@ -345,7 +357,6 @@ class ChromeAuthManager {
         return { ...this.authState };
     }
 
-    // Check if token has required scopes
     async hasRequiredScopes(requiredScopes: string[]): Promise<boolean> {
         const token = this.getCurrentToken();
         if (!token) return false;
@@ -360,21 +371,15 @@ class ChromeAuthManager {
         }
     }
 
-    // Check if user has calendar write permissions
     async hasCalendarWritePermission(): Promise<boolean> {
         return this.hasRequiredScopes(SERVICE_SCOPES.CALENDAR);
     }
 
-    // Force reauthentication with all scopes
     async forceReauth(): Promise<string | null> {
-        // Clear cached tokens
         await this.clearAllCachedTokens();
-
-        // Get new token with all scopes
         return this.getToken(true, SERVICE_SCOPES.ALL_SCOPES);
     }
 
-    // Reauthenticate with all permissions and update state
     async reauthWithAllPermissions(): Promise<boolean> {
         this.updateState({ loading: true, error: null });
         try {
@@ -383,7 +388,6 @@ class ChromeAuthManager {
                 throw new Error('No token received during reauth');
             }
 
-            // Validate new token
             const validation = await this.validateToken(token);
             if (!validation.isValid) {
                 throw new Error('Invalid token received during reauth');
@@ -407,7 +411,6 @@ class ChromeAuthManager {
         }
     }
 
-    // Get comprehensive permission check
     async getPermissionStatus(): Promise<PermissionCheckResult> {
         const token = this.getCurrentToken();
         if (!token) {
@@ -453,6 +456,7 @@ class ChromeAuthManager {
                 lastChecked: Date.now()
             };
         } catch (error) {
+            console.error('Permission check error:', error);
             const allRequiredScopes = SERVICE_SCOPES.ALL_SCOPES;
             return {
                 hasRequiredScopes: false,
@@ -470,7 +474,6 @@ class ChromeAuthManager {
         }
     }
 
-    // Handle API errors and trigger reauth if needed
     async handleApiError(error: any): Promise<boolean> {
         if (error?.status === 401 || error?.message?.includes('401') ||
             error?.message?.includes('UNAUTHORIZED') ||

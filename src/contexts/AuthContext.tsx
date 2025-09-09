@@ -23,42 +23,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     error: null,
   });
 
-  // Check if user has all required scopes
-  const hasAllRequiredScopes = (scopes: string[]): boolean => {
-    const requiredScopes = [
-      "openid",
-      "email",
-      "profile",
-      "https://www.googleapis.com/auth/tasks",
-      "https://www.googleapis.com/auth/calendar",
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile",
-      "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/spreadsheets",
-    ];
-
-    return requiredScopes.every((scope) => scopes.includes(scope));
-  };
-
   useEffect(() => {
     initialize();
   }, []);
 
   const initialize = async () => {
     const authManager = ChromeAuthManager.getInstance();
-    const unsubscribe = authManager.subscribe((newAuthState) => {
-      // Check if we have all required scopes when authenticated
-      if (newAuthState.isAuthenticated && newAuthState.user) {
-        const hasAllScopes = hasAllRequiredScopes(
-          newAuthState.user.scopes || []
-        );
-        setAuthState({
-          ...newAuthState,
-          isAuthenticated: hasAllScopes,
-          error: hasAllScopes
-            ? null
-            : "Missing required permissions. Please re-authenticate to grant all necessary permissions.",
-        });
+    const unsubscribe = authManager.subscribe(async (newAuthState) => {
+      // If user is authenticated, check permissions via API call
+      if (newAuthState.isAuthenticated && newAuthState.user?.accessToken) {
+        try {
+          const permissionStatus = await authManager.getPermissionStatus();
+          const hasRequiredPermissions =
+            permissionStatus.hasRequiredScopes &&
+            permissionStatus.hasDriveAccess &&
+            permissionStatus.hasSheetsAccess &&
+            permissionStatus.hasCalendarAccess;
+
+          setAuthState({
+            ...newAuthState,
+            isAuthenticated: hasRequiredPermissions,
+            error: hasRequiredPermissions
+              ? null
+              : "Missing required permissions. Please re-authenticate to grant all necessary permissions.",
+          });
+        } catch (error) {
+          console.error("Permission check failed:", error);
+          setAuthState({
+            ...newAuthState,
+            error:
+              "Failed to verify permissions. Please try re-authenticating.",
+          });
+        }
       } else {
         setAuthState(newAuthState);
       }
@@ -67,7 +63,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return unsubscribe;
   };
 
-  // Modified login to always request all scopes
   const login = async () => {
     const authManager = ChromeAuthManager.getInstance();
     // Clear any existing tokens to force re-auth with all scopes
@@ -87,9 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const reauthWithAllPermissions = async () => {
     const authManager = ChromeAuthManager.getInstance();
-    // Clear cached tokens and reauthenticate with all scopes
-    await authManager.clearAllCachedTokens();
-    return await authManager.login();
+    return await authManager.reauthWithAllPermissions();
   };
 
   return (
