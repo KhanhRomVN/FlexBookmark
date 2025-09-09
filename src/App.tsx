@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/presentation/providers/theme-provider";
 import { HelmetProvider } from "react-helmet-async";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Tabs, TabsContent } from "@/presentation/components/ui/tabs";
+import { AuthProvider } from "./contexts/AuthContext";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
 import TaskAndEvent from "@/presentation/tab/Calendar";
@@ -81,37 +82,42 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <div className="min-h-screen flex flex-col ">
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) =>
-                setActiveTab(
-                  v as
-                    | "dashboard"
-                    | "manager"
-                    | "tasks"
-                    | "taskManager"
-                    | "habits"
-                )
-              }
-            >
-              <TabsContent value="dashboard" className="flex-1 overflow-auto">
-                <Dashboard />
-              </TabsContent>
-              <TabsContent value="manager" className="flex-1 overflow-auto">
-                <BookmarkManager />
-              </TabsContent>
-              <TabsContent value="tasks" className="flex-1 overflow-auto">
-                <TaskAndEvent />
-              </TabsContent>
-              <TabsContent value="taskManager" className="flex-1 overflow-auto">
-                <TaskManager />
-              </TabsContent>
-              <TabsContent value="habits" className="flex-1 overflow-auto">
-                <HabitManager />
-              </TabsContent>
-            </Tabs>
-          </div>
+          <AuthProvider>
+            <div className="min-h-screen flex flex-col ">
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) =>
+                  setActiveTab(
+                    v as
+                      | "dashboard"
+                      | "manager"
+                      | "tasks"
+                      | "taskManager"
+                      | "habits"
+                  )
+                }
+              >
+                <TabsContent value="dashboard" className="flex-1 overflow-auto">
+                  <Dashboard />
+                </TabsContent>
+                <TabsContent value="manager" className="flex-1 overflow-auto">
+                  <BookmarkManager />
+                </TabsContent>
+                <TabsContent value="tasks" className="flex-1 overflow-auto">
+                  <TaskAndEvent />
+                </TabsContent>
+                <TabsContent
+                  value="taskManager"
+                  className="flex-1 overflow-auto"
+                >
+                  <TaskManager />
+                </TabsContent>
+                <TabsContent value="habits" className="flex-1 overflow-auto">
+                  <HabitManager />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </AuthProvider>
         </ThemeProvider>
       </HelmetProvider>
     </QueryClientProvider>

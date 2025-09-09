@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HabitServer } from '../services/habitService';
 import { Habit, HabitFormData } from '../types/types';
 import { createHabit, calculateStreak } from '../utils/habitUtils';
+import { useAuth } from '../../../../contexts/AuthContext';
 import ChromeAuthManager from '../../../../utils/chromeAuth';
 import { cacheHabits, getCachedHabits } from '../utils/cacheUtils';
 
@@ -11,38 +12,35 @@ export const useHabit = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const [sheetId, setSheetId] = useState<string>('');
-    const [authToken, setAuthToken] = useState<string>('');
     const [hasDriveAccess, setHasDriveAccess] = useState(false);
     const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const lastSyncRef = useRef<number>(0);
     const SYNC_COOLDOWN = 30000; // 30 seconds cooldown
 
+    // Use global auth context instead of local auth state
+    const { authState } = useAuth();
+    const authToken = authState.user?.accessToken || '';
+
     const habitService = useMemo(() => new HabitServer(authToken), [authToken]);
 
-    // Listen for auth from ChromeAuthManager
+    // Check Drive access when auth state changes
     useEffect(() => {
-        const authManager = ChromeAuthManager.getInstance();
-        const unsubscribe = authManager.subscribe(async (state) => {
-            if (state.isAuthenticated && state.user) {
-                setAuthToken(state.user.accessToken);
-
-                // Check if we have required scopes
+        const checkDriveAccess = async () => {
+            if (authState.isAuthenticated && authState.user) {
+                const authManager = ChromeAuthManager.getInstance();
                 const hasAccess = await authManager.hasRequiredScopes([
                     'https://www.googleapis.com/auth/drive.file',
                     'https://www.googleapis.com/auth/spreadsheets'
                 ]);
                 setHasDriveAccess(hasAccess);
             } else {
-                setAuthToken('');
                 setHasDriveAccess(false);
             }
-        });
+        };
 
-        authManager.initialize();
-
-        return unsubscribe;
-    }, []);
+        checkDriveAccess();
+    }, [authState.isAuthenticated, authState.user]);
 
     // Load habits from cache first
     useEffect(() => {

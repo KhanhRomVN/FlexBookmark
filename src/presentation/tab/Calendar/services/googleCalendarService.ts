@@ -1,6 +1,6 @@
 // src/utils/GGCalender.ts
 
-import { CalendarEvent, GoogleCalendar } from "../presentation/types/calendar";
+import { CalendarEvent, GoogleCalendar } from "../types";
 
 // Helper function to safely parse dates
 function safeDateParse(dateStr: string): Date {

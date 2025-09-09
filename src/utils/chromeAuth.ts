@@ -39,33 +39,44 @@ export interface TokenValidationResult {
 }
 
 export const SERVICE_SCOPES = {
-    // 🧑‍💼 Core user info (luôn cần thiết)
+    // Core user info (luôn cần thiết)
     CORE: [
         'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/userinfo.profile'
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'openid'
     ] as string[],
 
-    // 📁 Drive service (HabitManager, TaskManager)
+    // Drive service (HabitManager, TaskManager)
     DRIVE: [
         'https://www.googleapis.com/auth/drive.file'
     ] as string[],
 
-    // 📊 Sheets service (HabitManager, TaskManager) 
+    // Sheets service (HabitManager, TaskManager) 
     SHEETS: [
         'https://www.googleapis.com/auth/spreadsheets'
     ] as string[],
 
-    // 📅 Calendar service (CalendarManager)
+    // Calendar service (CalendarManager)
     CALENDAR: [
-        'https://www.googleapis.com/auth/calendar'
+        'https://www.googleapis.com/auth/calendar',
     ] as string[],
 
-    // All required scopes for HabitManager
-    HABIT_MANAGER: [
+    // Tasks service
+    TASKS: [
+        'https://www.googleapis.com/auth/tasks'
+    ] as string[],
+
+    // All required scopes for the entire extension
+    ALL_SCOPES: [
+        'openid',
+        'email',
+        'profile',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/spreadsheets'
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/tasks'
     ] as string[]
 } as const;
 
@@ -112,6 +123,47 @@ class ChromeAuthManager {
         this.notifyListeners();
     }
 
+    // Validate token with Google
+    async validateToken(token: string): Promise<TokenValidationResult> {
+        try {
+            const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+
+            if (!response.ok) {
+                return {
+                    isValid: false,
+                    isExpired: response.status === 401,
+                    expiresAt: null,
+                    hasRequiredScopes: false,
+                    grantedScopes: [],
+                    errors: [`Token validation failed with status ${response.status}`]
+                };
+            }
+
+            const tokenInfo = await response.json();
+            const grantedScopes = tokenInfo.scope?.split(' ') || [];
+            const expiresAt = tokenInfo.expires_in ? Date.now() + (tokenInfo.expires_in * 1000) : null;
+            const hasRequiredScopes = SERVICE_SCOPES.CORE.every(scope => grantedScopes.includes(scope));
+
+            return {
+                isValid: true,
+                isExpired: false,
+                expiresAt,
+                hasRequiredScopes,
+                grantedScopes,
+                errors: []
+            };
+        } catch (error) {
+            return {
+                isValid: false,
+                isExpired: false,
+                expiresAt: null,
+                hasRequiredScopes: false,
+                grantedScopes: [],
+                errors: [error instanceof Error ? error.message : 'Unknown validation error']
+            };
+        }
+    }
+
     async initialize(): Promise<void> {
         this.updateState({ loading: true, error: null });
         try {
@@ -124,9 +176,21 @@ class ChromeAuthManager {
                 throw new Error('OAuth2 client_id not configured in manifest');
             }
 
-            // Try to get token silently with all required scopes
-            const token = await this.getToken(false, SERVICE_SCOPES.HABIT_MANAGER);
+            // Try to get token silently with ALL required scopes
+            const token = await this.getToken(false, SERVICE_SCOPES.ALL_SCOPES);
             if (token) {
+                // Validate token before using it
+                const validation = await this.validateToken(token);
+                if (!validation.isValid || validation.isExpired) {
+                    console.log('Token invalid or expired, clearing cache');
+                    await this.clearAllCachedTokens();
+                    this.updateState({
+                        loading: false,
+                        error: "Authentication expired. Please log in again."
+                    });
+                    return;
+                }
+
                 const user = await this.getUserInfo(token);
                 this.updateState({
                     isAuthenticated: true,
@@ -137,6 +201,7 @@ class ChromeAuthManager {
                 this.updateState({ loading: false });
             }
         } catch (error) {
+            console.error('Initialization error:', error);
             this.updateState({
                 loading: false,
                 error: error instanceof Error ? error.message : 'Initialization failed'
@@ -145,22 +210,48 @@ class ChromeAuthManager {
     }
 
     async login(): Promise<boolean> {
+        // Always use all required scopes
+        const scopes = [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/tasks",
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/drive.file",
+            "https://www.googleapis.com/auth/spreadsheets"
+        ];
+
         this.updateState({ loading: true, error: null });
+
         try {
-            const token = await this.getToken(true, SERVICE_SCOPES.HABIT_MANAGER);
-            if (!token) {
-                throw new Error('No token received');
+            // Use the correct getToken method with interactive=true and scopes
+            const token = await this.getToken(true, scopes);
+            if (token) {
+                // Validate token before using it
+                const validation = await this.validateToken(token);
+                if (!validation.isValid || validation.isExpired) {
+                    throw new Error('Invalid or expired token received');
+                }
+
+                const user = await this.getUserInfo(token);
+                this.updateState({
+                    isAuthenticated: true,
+                    user: { ...user, accessToken: token },
+                    loading: false,
+                    error: null
+                });
+                return true;
             }
 
-            const user = await this.getUserInfo(token);
             this.updateState({
-                isAuthenticated: true,
-                user: { ...user, accessToken: token },
                 loading: false,
-                error: null
+                error: "Failed to get authentication token"
             });
-            return true;
+            return false;
         } catch (error) {
+            console.error("Login failed:", error);
             this.updateState({
                 loading: false,
                 error: error instanceof Error ? error.message : 'Login failed'
@@ -188,8 +279,11 @@ class ChromeAuthManager {
             chrome.identity.getAuthToken(
                 { interactive, scopes },
                 (token: string | undefined) => {
-                    if (chrome.runtime.lastError || !token) {
+                    if (chrome.runtime.lastError) {
                         console.error('Token error:', chrome.runtime.lastError);
+                        resolve(null);
+                    } else if (!token) {
+                        console.warn('No token received');
                         resolve(null);
                     } else {
                         resolve(token);
@@ -203,22 +297,35 @@ class ChromeAuthManager {
         const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to get user info');
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to get user info: ${response.status} - ${errorText}`);
+        }
+
         return await response.json();
     }
 
     private async revokeToken(token: string): Promise<boolean> {
         try {
-            await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, { method: 'POST' });
-            return true;
-        } catch {
+            const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+                method: 'POST'
+            });
+            return response.ok;
+        } catch (error) {
+            console.error('Token revocation failed:', error);
             return false;
         }
     }
 
-    private async clearAllCachedTokens(): Promise<void> {
+    async clearAllCachedTokens(): Promise<void> {
         return new Promise((resolve) => {
-            chrome.identity.clearAllCachedAuthTokens(resolve);
+            chrome.identity.clearAllCachedAuthTokens(() => {
+                if (chrome.runtime.lastError) {
+                    console.error('Clear tokens error:', chrome.runtime.lastError);
+                }
+                resolve();
+            });
         });
     }
 
@@ -238,25 +345,147 @@ class ChromeAuthManager {
         return { ...this.authState };
     }
 
-    // New method to check if token has required scopes
+    // Check if token has required scopes
     async hasRequiredScopes(requiredScopes: string[]): Promise<boolean> {
         const token = this.getCurrentToken();
         if (!token) return false;
 
         try {
-            const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const validation = await this.validateToken(token);
+            if (!validation.isValid) return false;
 
-            if (!response.ok) return false;
-
-            const tokenInfo = await response.json();
-            const grantedScopes = tokenInfo.scope?.split(' ') || [];
-
-            return requiredScopes.every(scope => grantedScopes.includes(scope));
+            return requiredScopes.every(scope => validation.grantedScopes.includes(scope));
         } catch {
             return false;
         }
+    }
+
+    // Check if user has calendar write permissions
+    async hasCalendarWritePermission(): Promise<boolean> {
+        return this.hasRequiredScopes(SERVICE_SCOPES.CALENDAR);
+    }
+
+    // Force reauthentication with all scopes
+    async forceReauth(): Promise<string | null> {
+        // Clear cached tokens
+        await this.clearAllCachedTokens();
+
+        // Get new token with all scopes
+        return this.getToken(true, SERVICE_SCOPES.ALL_SCOPES);
+    }
+
+    // Reauthenticate with all permissions and update state
+    async reauthWithAllPermissions(): Promise<boolean> {
+        this.updateState({ loading: true, error: null });
+        try {
+            const token = await this.forceReauth();
+            if (!token) {
+                throw new Error('No token received during reauth');
+            }
+
+            // Validate new token
+            const validation = await this.validateToken(token);
+            if (!validation.isValid) {
+                throw new Error('Invalid token received during reauth');
+            }
+
+            const user = await this.getUserInfo(token);
+            this.updateState({
+                isAuthenticated: true,
+                user: { ...user, accessToken: token },
+                loading: false,
+                error: null
+            });
+            return true;
+        } catch (error) {
+            console.error('Reauth error:', error);
+            this.updateState({
+                loading: false,
+                error: error instanceof Error ? error.message : 'Reauth failed'
+            });
+            return false;
+        }
+    }
+
+    // Get comprehensive permission check
+    async getPermissionStatus(): Promise<PermissionCheckResult> {
+        const token = this.getCurrentToken();
+        if (!token) {
+            return {
+                hasRequiredScopes: false,
+                hasDriveAccess: false,
+                hasSheetsAccess: false,
+                hasCalendarAccess: false,
+                scopeDetails: [],
+                lastChecked: Date.now()
+            };
+        }
+
+        try {
+            const validation = await this.validateToken(token);
+            if (!validation.isValid) {
+                throw new Error('Token validation failed');
+            }
+
+            const grantedScopes = validation.grantedScopes;
+            const scopeDetails: ScopePermissionResult[] = [];
+            const allRequiredScopes = SERVICE_SCOPES.ALL_SCOPES;
+
+            allRequiredScopes.forEach(scope => {
+                scopeDetails.push({
+                    scope,
+                    granted: grantedScopes.includes(scope),
+                    tested: true
+                });
+            });
+
+            const hasDriveAccess = SERVICE_SCOPES.DRIVE.every(scope => grantedScopes.includes(scope));
+            const hasSheetsAccess = SERVICE_SCOPES.SHEETS.every(scope => grantedScopes.includes(scope));
+            const hasCalendarAccess = SERVICE_SCOPES.CALENDAR.every(scope => grantedScopes.includes(scope));
+            const hasRequiredScopes = SERVICE_SCOPES.CORE.every(scope => grantedScopes.includes(scope));
+
+            return {
+                hasRequiredScopes,
+                hasDriveAccess,
+                hasSheetsAccess,
+                hasCalendarAccess,
+                scopeDetails,
+                lastChecked: Date.now()
+            };
+        } catch (error) {
+            const allRequiredScopes = SERVICE_SCOPES.ALL_SCOPES;
+            return {
+                hasRequiredScopes: false,
+                hasDriveAccess: false,
+                hasSheetsAccess: false,
+                hasCalendarAccess: false,
+                scopeDetails: allRequiredScopes.map(scope => ({
+                    scope,
+                    granted: false,
+                    tested: false,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                })),
+                lastChecked: Date.now()
+            };
+        }
+    }
+
+    // Handle API errors and trigger reauth if needed
+    async handleApiError(error: any): Promise<boolean> {
+        if (error?.status === 401 || error?.message?.includes('401') ||
+            error?.message?.includes('UNAUTHORIZED') ||
+            error?.message?.includes('OAuth2 not granted')) {
+
+            console.log('API authentication error detected, clearing tokens');
+            await this.clearAllCachedTokens();
+            this.updateState({
+                isAuthenticated: false,
+                user: null,
+                error: "Authentication expired. Please log in again."
+            });
+            return true;
+        }
+        return false;
     }
 }
 

@@ -6,6 +6,7 @@ import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
 import Sidebar from "./components/Sidebar";
 import { Habit, HabitFormData } from "./types/types";
+import { useAuth } from "../../../contexts/AuthContext";
 import ChromeAuthManager from "../../../utils/chromeAuth";
 
 const HabitManager: React.FC = () => {
@@ -20,11 +21,9 @@ const HabitManager: React.FC = () => {
     isBackgroundLoading,
   } = useHabit();
 
-  const [authState, setAuthState] = useState({
-    isAuthenticated: false,
-    loading: true,
-    hasDriveAccess: false,
-  });
+  // Use global auth context instead of local auth state
+  const { authState, login } = useAuth();
+  const [hasDriveAccess, setHasDriveAccess] = useState(false);
 
   // New filter states
   const [filterCategories, setFilterCategories] = useState<string[]>([]);
@@ -53,29 +52,26 @@ const HabitManager: React.FC = () => {
   const [selectedHabit, setSelectedHabit] = useState<Habit | undefined>();
   const [isCreatingNew, setIsCreatingNew] = useState(false);
 
+  // Check Drive access when auth state changes
   useEffect(() => {
-    const authManager = ChromeAuthManager.getInstance();
-    const unsubscribe = authManager.subscribe(async (state) => {
-      const hasAccess = await authManager.hasRequiredScopes([
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/spreadsheets",
-      ]);
+    const checkDriveAccess = async () => {
+      if (authState.isAuthenticated && authState.user) {
+        const authManager = ChromeAuthManager.getInstance();
+        const hasAccess = await authManager.hasRequiredScopes([
+          "https://www.googleapis.com/auth/drive.file",
+          "https://www.googleapis.com/auth/spreadsheets",
+        ]);
+        setHasDriveAccess(hasAccess);
+      } else {
+        setHasDriveAccess(false);
+      }
+    };
 
-      setAuthState({
-        isAuthenticated: state.isAuthenticated,
-        loading: state.loading,
-        hasDriveAccess: hasAccess,
-      });
-    });
-
-    authManager.initialize();
-
-    return unsubscribe;
-  }, []);
+    checkDriveAccess();
+  }, [authState.isAuthenticated, authState.user]);
 
   const handleLogin = async () => {
-    const authManager = ChromeAuthManager.getInstance();
-    await authManager.login();
+    await login();
   };
 
   const handleFormChange = (newFormData: HabitFormData) => {
@@ -199,7 +195,7 @@ const HabitManager: React.FC = () => {
         : 0,
   };
 
-  // Auth state
+  // Auth state loading
   if (authState.loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -211,6 +207,7 @@ const HabitManager: React.FC = () => {
     );
   }
 
+  // Not authenticated
   if (!authState.isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
@@ -225,7 +222,8 @@ const HabitManager: React.FC = () => {
     );
   }
 
-  if (!authState.hasDriveAccess) {
+  // No Drive access
+  if (!hasDriveAccess) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="text-red-500 mb-4">Drive access required</div>
@@ -242,18 +240,6 @@ const HabitManager: React.FC = () => {
       </div>
     );
   }
-
-  // Remove the full-screen loading check - let the component handle skeleton loading
-  // if (loading && habits.length === 0) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen">
-  //       <div className="text-center">
-  //         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-  //         <p>Loading habits for the first time...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   // Show background sync indicator
   const showSyncIndicator = isBackgroundLoading && habits.length > 0;
