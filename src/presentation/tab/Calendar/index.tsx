@@ -75,30 +75,6 @@ const Calendar: React.FC = () => {
     handleCloseDialog();
   };
 
-  if (authState.loading) {
-    return (
-      <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-900 dark:to-indigo-900">
-        <div className="text-center p-8">
-          <div className="relative mb-8">
-            <div className="w-16 h-16 mx-auto">
-              <div className="absolute inset-0 rounded-full border-4 border-blue-200 dark:border-blue-800"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 dark:border-t-blue-400 animate-spin"></div>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full animate-pulse"></div>
-            </div>
-          </div>
-          <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Đang khởi tạo...
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Vui lòng đợi trong giây lát
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <PermissionGuard>
       <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-blue-950/30 dark:to-indigo-950/30">
