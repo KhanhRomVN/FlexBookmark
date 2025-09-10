@@ -1,6 +1,6 @@
 // src/presentation/tab/TaskManager/layout/TableLayout.tsx
 import React, { useState } from "react";
-import { Task } from "../../../types/task";
+import { Task } from "../types/task";
 import Table from "../components/TableStyle/Table";
 
 interface TableLayoutProps {

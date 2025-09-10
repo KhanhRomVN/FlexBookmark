@@ -1,5 +1,5 @@
 
-import type { Task } from "../../../types/task";
+import type { Task } from "../types/task";
 
 // Advanced sorting algorithms with multiple criteria
 export const sortingAlgorithms = {

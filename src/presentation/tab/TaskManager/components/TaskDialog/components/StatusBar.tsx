@@ -1,5 +1,5 @@
 import React from "react";
-import { Status, Task } from "../../../../../types/task";
+import { Status, Task } from "../../../types/task";
 
 interface StatusBarProps {
   currentStatus: Status;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Task, Status } from "../../../types/task";
+import type { Task, Status } from "../types/task";
 import { folders } from "../useTaskManager";
 
 export interface TaskList {

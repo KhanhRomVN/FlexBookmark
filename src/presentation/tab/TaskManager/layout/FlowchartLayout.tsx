@@ -16,13 +16,10 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { Task, Status } from "../../../types/task";
+import type { Task, Status } from "../types/task";
 import TaskNode from "../components/FlowchartStyle/TaskNode";
 import CollectionNode from "../components/FlowchartStyle/CollectionNode";
-import type {
-  TaskNodeData,
-  CollectionNodeData,
-} from "../../../types/nodeTypes";
+import type { TaskNodeData, CollectionNodeData } from "../types/nodeTypes";
 import { FolderTree, Workflow } from "lucide-react";
 
 interface FlowchartLayoutProps {

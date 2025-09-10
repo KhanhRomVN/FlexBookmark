@@ -1,6 +1,6 @@
 import React from "react";
 import { X, Archive, Calendar, RotateCcw, Trash2, Search } from "lucide-react";
-import type { Task } from "../../types/task";
+import type { Task } from "../types/task";
 
 interface ArchiveDrawerProps {
   isOpen: boolean;

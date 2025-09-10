@@ -1,6 +1,6 @@
 // src/presentation/tab/TaskManager/layout/KanbanLayout.tsx
 import React, { Dispatch, SetStateAction } from "react";
-import type { Status } from "../../../types/task";
+import type { Status } from "../types/task";
 import FolderCard from "../components/KanbanStyle/FolderCard";
 
 interface KanbanLayoutProps {

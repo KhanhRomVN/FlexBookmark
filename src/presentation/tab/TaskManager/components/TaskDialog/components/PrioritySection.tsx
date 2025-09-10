@@ -1,5 +1,5 @@
 import React from "react";
-import { Priority, Task } from "../../../../../types/task";
+import { Priority, Task } from "../../../types/task";
 import { Flag, Star } from "lucide-react";
 
 interface PrioritySectionProps {

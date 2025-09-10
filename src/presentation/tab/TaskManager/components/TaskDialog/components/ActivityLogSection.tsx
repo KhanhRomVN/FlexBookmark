@@ -1,6 +1,6 @@
 import React from "react";
 import { Activity } from "lucide-react";
-import { Task } from "../../../../../types/task";
+import { Task } from "../../../types/task";
 
 interface ActivityLogSectionProps {
   editedTask: Task;

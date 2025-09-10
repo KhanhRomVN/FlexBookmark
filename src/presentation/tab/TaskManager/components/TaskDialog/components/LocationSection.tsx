@@ -14,7 +14,7 @@ import {
   Maximize2,
   Map,
 } from "lucide-react";
-import { Task } from "../../../../../types/task"; // Add this import
+import { Task } from "../../../types/task";
 
 interface LocationSectionProps {
   editedTask: {

@@ -9,7 +9,7 @@ import {
   Lock,
   Smile,
 } from "lucide-react";
-import { Subtask, Task } from "../../../../../types/task";
+import { Subtask, Task } from "../../../types/task";
 
 interface SubtasksSectionProps {
   editedTask: Task;

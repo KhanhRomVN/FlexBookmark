@@ -9,7 +9,7 @@ import {
   File,
   FileText,
 } from "lucide-react";
-import { Attachment } from "../../../../../types/task";
+import { Attachment } from "../../../types/task";
 
 interface AttachmentsSectionProps {
   editedTask: { attachments?: Attachment[] };

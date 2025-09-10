@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TransitionConfirmationProps } from "../../../../../types/task";
+import { TransitionConfirmationProps } from "../../../types/task";
 import { AlertCircle, ChevronRight } from "lucide-react";
 
 const TransitionConfirmationDialog: React.FC<TransitionConfirmationProps> = ({

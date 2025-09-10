@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
-import { Task } from "../../../../../types/task";
+import { Task } from "../../../types/task";
 
 interface CollectionSectionProps {
   editedTask: Task;

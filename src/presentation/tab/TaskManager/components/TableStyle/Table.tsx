@@ -1,6 +1,6 @@
 // src/presentation/components/TaskManager/TableStyle/Table.tsx
 import React from "react";
-import { Task, Priority } from "../../../../types/task";
+import { Task, Priority } from "../../types/task";
 import {
   ChevronDown,
   ChevronRight,

@@ -1,18 +1,17 @@
-// src/presentation/tab/TaskManager/useTaskManager.ts
-// Enhanced version with proper startDate/endDate range filtering
+
 
 import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useAuth } from "./hooks/useAuth";
-import { useTaskGroups } from "./hooks/useTaskGroups";
-import { useTaskState } from "./hooks/useTaskState";
-import { useTaskOperations } from "./hooks/useTaskOperations";
-import { useTaskFilters } from "./hooks/useTaskFilters";
-import { useTaskHelpers } from "./hooks/useTaskHelpers";
-import { usePerformance } from "./hooks/usePerformance";
-import { fetchGoogleTasks } from "../../../utils/GGTask";
-import type { Task, Status } from "../../types/task";
+import { useAuth } from "./useAuth";
+import { useTaskGroups } from "./useTaskGroups";
+import { useTaskState } from "./useTaskState";
+import { useTaskOperations } from "./useTaskOperations";
+import { useTaskFilters } from "./useTaskFilters";
+import { useTaskHelpers } from "./useTaskHelpers";
+import { usePerformance } from "./usePerformance";
+import { fetchGoogleTasks } from "../services/GoogleTaskService";
+import type { Task, Status } from "../types/task";
 
 export const folders = [
     { id: "backlog", title: "Backlog", emoji: "📥", priority: 1 },

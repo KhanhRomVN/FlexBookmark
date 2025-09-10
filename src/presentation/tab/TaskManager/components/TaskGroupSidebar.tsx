@@ -11,7 +11,9 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import CustomDropdown, { DropdownOption } from "../common/CustomDropdown";
+import CustomDropdown, {
+  DropdownOption,
+} from "../../../components/common/CustomDropdown";
 
 interface TaskGroup {
   id: string;

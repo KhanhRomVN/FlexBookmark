@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus, X, Smile } from "lucide-react";
-import { Task } from "../../../../../types/task";
+import { Task } from "../../../types/task";
 
 interface TagsSectionProps {
   editedTask: Task;

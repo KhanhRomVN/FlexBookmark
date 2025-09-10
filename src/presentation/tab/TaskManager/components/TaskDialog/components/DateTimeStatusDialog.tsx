@@ -1,6 +1,6 @@
 // src/presentation/components/TaskManager/TaskDialog/components/DateTimeStatusDialog.tsx
 import React, { useState, useEffect } from "react";
-import { Task, Status } from "../../../../../types/task";
+import { Task, Status } from "../../../types/task";
 import { determineTaskStatus } from "../../../hooks/useTaskHelpers";
 import ModernDateTimePicker from "../../../../../components/common/ModernDateTimePicker";
 import {
@@ -14,7 +14,6 @@ import {
   X,
   CheckCircle,
   AlertTriangle,
-  Info,
   ChevronRight,
 } from "lucide-react";
 

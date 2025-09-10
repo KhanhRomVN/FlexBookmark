@@ -17,7 +17,7 @@ import {
     createInitialActivityLog,
     checkAndMoveOverdueTasks
 } from "./useTaskHelpers";
-import type { Task, Status } from "../../../types/task";
+import type { Task, Status } from "../types/task";
 import type { TaskList } from "./useTaskState";
 import { folders } from "../useTaskManager";
 

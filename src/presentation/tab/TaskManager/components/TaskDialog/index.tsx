@@ -1,6 +1,6 @@
-// src/presentation/components/TaskManager/TaskDialog/index.tsx - Added auto-expanding height and character counter
+// src/presentation/components/TaskManager/TaskDialog/index.tsx - Fixed imports to use unified hook
 import React, { useState, useRef, useEffect } from "react";
-import { Task, Status } from "../../../../types/task";
+import { Task, Status } from "../../types/task";
 import {
   X,
   Trash2,
@@ -10,27 +10,19 @@ import {
   Archive,
   AlertTriangle,
 } from "lucide-react";
-import { calculateTaskMetadataSize } from "../../../../../utils/GGTask";
-import {
-  TransitionConfirmationDialog,
-  StatusBar,
-  PrioritySection,
-  DateTimeSection,
-  TagsSection,
-  SubtasksSection,
-  AttachmentsSection,
-  ActivityLogSection,
-  DateTimeStatusDialog,
-} from "./components";
+import { calculateTaskMetadataSize } from "../../services/GoogleTaskService";
+import TransitionConfirmationDialog from "./components/TransitionConfirmationDialog";
+import StatusBar from "./components/StatusBar";
 import CollectionSection from "./components/CollectionSection";
 import LocationSection from "./components/LocationSection";
-import { useTaskState } from "./hooks/useTaskState";
-import { useSubtasks } from "./hooks/useSubtasks";
-import { useAttachments } from "./hooks/useAttachments";
-import { useTags } from "./hooks/useTags";
-import { useActivityLog } from "./hooks/useActivityLog";
-import { useStatusTransitions } from "./hooks/useStatusTransitions";
-import { useGoogleTasksIntegration } from "./hooks/useGoogleTasksIntegration";
+import PrioritySection from "./components/PrioritySection";
+import DateTimeSection from "./components/DateTimeSection";
+import TagsSection from "./components/TagsSection";
+import SubtasksSection from "./components/SubtasksSection";
+import AttachmentsSection from "./components/AttachmentsSection";
+import ActivityLogSection from "./components/ActivityLogSection";
+import DateTimeStatusDialog from "./components/DateTimeStatusDialog";
+import { useTaskDialog } from "./hooks/useTaskDialog";
 import LinkedTasksSection from "./components/LinkedTasksSection";
 import RestoreConfirmationDialog from "./components/RestoreConfirmationDialog";
 
@@ -90,72 +82,48 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   setSelectedTask,
   setIsDialogOpen,
 }) => {
-  // Use hooks for state management
+  // Use the unified hook
   const {
+    // State
     editedTask,
+    suggestedStatus,
+    showRestoreDialog,
+    pendingRestoreStatus,
+    pendingTransition,
+    showTransitionDialog,
+    newAttachment,
+    newSubtask,
+    newTag,
+
+    // Setters
     setEditedTask,
+    setNewAttachment,
+    setNewSubtask,
+    setNewTag,
+    setShowRestoreDialog,
+    setPendingRestoreStatus,
+    setShowTransitionDialog,
+    setPendingTransition,
+
+    // Functions
     handleChange,
     handleSystemStatusChange,
-    suggestedStatus,
     getEffectiveStatus,
-  } = useTaskState(task, isCreateMode);
-
-  const { addActivityLog } = useActivityLog(
-    editedTask,
-    setEditedTask,
-    isCreateMode
-  );
-
-  // DEBUG: Monitor handleChange function
-  const debugHandleChange = (field: keyof Task, value: any) => {
-    // Call the original handleChange
-    const result = handleChange(field, value);
-
-    return result;
-  };
-
-  const {
-    newSubtask,
-    setNewSubtask,
+    handleStatusChange,
+    executeStatusTransition,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+    handleAddAttachment,
+    handleDeleteAttachment,
     handleSubtaskChange,
     handleAddSubtask,
     handleDeleteSubtask,
-  } = useSubtasks(editedTask, debugHandleChange, addActivityLog); // Use debug version
-
-  const {
-    newAttachment,
-    setNewAttachment,
-    handleAddAttachment,
-    handleDeleteAttachment,
-  } = useAttachments(editedTask, setEditedTask, addActivityLog);
-  const { newTag, setNewTag, handleAddTag, handleDeleteTag } = useTags(
-    editedTask,
-    handleChange,
-    addActivityLog
-  );
-  const {
-    pendingTransition,
-    showTransitionDialog,
-    setShowTransitionDialog,
-    setPendingTransition,
-    handleStatusChange,
-    executeStatusTransition,
-  } = useStatusTransitions(
-    editedTask,
-    setEditedTask,
-    onSave,
+    handleAddTag,
+    handleDeleteTag,
+  } = useTaskDialog(
+    task,
     isCreateMode,
-    getEffectiveStatus
-  );
-  const {
-    showRestoreDialog,
-    pendingRestoreStatus,
-    setShowRestoreDialog,
-    setPendingRestoreStatus,
-    handleRestoreConfirm,
-    handleRestoreCancel,
-  } = useGoogleTasksIntegration(
-    editedTask,
+    onSave,
     onClose,
     getFreshToken,
     createGoogleTask,
@@ -224,10 +192,6 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     if (onTaskClick) {
       onTaskClick(taskId);
     }
-  };
-
-  const debugOnSave = (task: Task) => {
-    return onSave(task);
   };
 
   if (!isOpen || !editedTask) {
@@ -615,7 +579,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               Cancel
             </button>
             <button
-              onClick={() => debugOnSave(editedTask)}
+              onClick={() => onSave(editedTask)}
               className="px-6 py-2.5 bg-button-bg hover:bg-button-bgHover text-button-bgText rounded-lg font-medium"
             >
               {isCreateMode ? "Create Task" : "Save Task"}

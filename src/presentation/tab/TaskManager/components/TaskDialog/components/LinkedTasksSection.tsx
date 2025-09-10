@@ -1,7 +1,7 @@
 // src/presentation/components/TaskManager/TaskDialog/components/LinkedTasksSection.tsx
 import React from "react";
 import { Link, ExternalLink } from "lucide-react";
-import { Task } from "../../../../../types/task";
+import { Task } from "../../../types/task";
 
 interface LinkedTasksSectionProps {
   currentTask: Task;

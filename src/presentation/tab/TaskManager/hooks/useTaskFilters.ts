@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Task } from "../../../types/task";
+import type { Task } from "../types/task";
 import { advancedFilters, sortingAlgorithms } from "./useAdvancedAlgorithms";
 
 interface TaskList {

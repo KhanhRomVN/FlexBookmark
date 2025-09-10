@@ -1,6 +1,4 @@
-// src/utils/GGTask.ts - Fixed location storage (similar to tags)
-
-import type { Task } from "../presentation/types/task";
+import type { Task } from "../types/task";
 
 // Google Tasks API limits
 const MAX_NOTES_LENGTH = 4095; // Google Tasks notes limit

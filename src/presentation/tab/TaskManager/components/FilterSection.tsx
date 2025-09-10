@@ -1,6 +1,3 @@
-// src/presentation/components/TaskManager/FilterSection.tsx
-// Enhanced filter section with date range filtering and mode selection
-
 import React from "react";
 import {
   Filter,
@@ -12,8 +9,8 @@ import {
   Clock,
   Calendar,
 } from "lucide-react";
-import CustomCombobox from "../common/CustomCombobox";
-import ModernDateTimePicker from "../common/ModernDateTimePicker";
+import CustomCombobox from "../../../components/common/CustomCombobox";
+import ModernDateTimePicker from "../../../components/common/ModernDateTimePicker";
 
 interface FilterSectionProps {
   showAdvancedFilters: boolean;

@@ -1,29 +1,23 @@
-// src/presentation/tab/TaskManager/index.tsx
-// Updated with enhanced filter support and proper group management
-
 import React from "react";
-import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
+import TaskGroupSidebar from "./components/TaskGroupSidebar";
 import TaskDialog from "./components/TaskDialog";
-import TaskHeader, {
-  LayoutType,
-} from "../../components/TaskManager/TasKHeader";
-import ArchiveDrawer from "../../components/TaskManager/ArchiveDrawer";
+import TaskHeader, { LayoutType } from "./components/TasKHeader";
+import ArchiveDrawer from "./components/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
 import TableLayout from "./layout/TableLayout";
-import GanttChartLayout from "./layout/GanttChartLayout";
 import FlowchartLayout from "./layout/FlowchartLayout";
 import { Globe } from "lucide-react";
-import { useTaskManager, folders } from "./useTaskManager";
+import { useTaskManager, folders } from "./hooks/useTaskManager";
 import {
   createGoogleTask,
   deleteGoogleTask,
   fetchGoogleTasks,
   updateGoogleTaskList,
   deleteGoogleTaskList,
-} from "../../../utils/GGTask";
-import { createGoogleTaskList } from "../../../utils/GGTask";
-import { Status, Task } from "@/presentation/types/task";
+  createGoogleTaskList,
+} from "./services/GoogleTaskService";
+import { Status, Task } from "./types/task";
 
 // Import dialog components for status transitions
 import TransitionConfirmationDialog from "./components/TaskDialog/components/TransitionConfirmationDialog";
@@ -715,25 +709,6 @@ const TaskManager: React.FC = () => {
             />
           ) : layoutType === "kanban" ? (
             <KanbanLayout
-              filteredLists={mainBoardLists}
-              onTaskClick={handleTaskClickWrapper}
-              onDragEnd={handleDragEnd}
-              quickAddStatus={quickAddStatus}
-              setQuickAddStatus={(status) =>
-                setQuickAddStatus(status as Status | null)
-              }
-              quickAddTitle={quickAddTitle}
-              setQuickAddTitle={setQuickAddTitle}
-              handleQuickAddTask={async (status) => {
-                await handleQuickAddTask(status as Status);
-              }}
-              onArchiveTasks={handleArchiveTasks}
-              onDeleteTasks={handleDeleteTasks}
-              onSortTasks={handleSortTasks}
-              onStatusTransition={handleStatusTransition}
-            />
-          ) : layoutType === "gantt" ? (
-            <GanttChartLayout
               filteredLists={mainBoardLists}
               onTaskClick={handleTaskClickWrapper}
               onDragEnd={handleDragEnd}

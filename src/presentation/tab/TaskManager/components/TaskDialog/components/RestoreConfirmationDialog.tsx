@@ -1,6 +1,6 @@
 // src/presentation/components/TaskManager/TaskDialog/components/RestoreConfirmationDialog.tsx
 import React from "react";
-import { Status } from "../../../../../types/task";
+import { Status } from "../../../types/task";
 
 interface RestoreConfirmationDialogProps {
   isOpen: boolean;

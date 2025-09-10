@@ -1,6 +1,6 @@
 // src/presentation/components/TaskManager/TaskDialog/utils/GGTaskStatusHandler.ts
 
-import type { Task, Status } from '../../../../../types/task';
+import type { Task, Status } from '../../../types/task';
 
 /**
  * Enhanced status handling for Google Tasks limitations

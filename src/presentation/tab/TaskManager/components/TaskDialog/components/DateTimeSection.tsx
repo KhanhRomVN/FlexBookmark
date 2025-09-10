@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from "react";
 import ModernDateTimePicker from "../../../../../components/common/ModernDateTimePicker";
 import { Calendar, Clock, AlertTriangle, CheckCircle, X } from "lucide-react";
-import { Task, Status } from "../../../../../types/task";
+import { Task, Status } from "../../../types/task";
 import { formatDisplayDate, formatDisplayTime } from "../utils/taskTransitions";
 
 const hasIncompleteRequiredSubtasks = (task: Task | null): boolean => {
