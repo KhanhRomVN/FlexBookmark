@@ -3,7 +3,7 @@
 
 import React from "react";
 import TaskGroupSidebar from "../../components/TaskManager/TaskGroupSidebar";
-import TaskDialog from "../../components/TaskManager/TaskDialog";
+import TaskDialog from "./components/TaskDialog";
 import TaskHeader, {
   LayoutType,
 } from "../../components/TaskManager/TasKHeader";
@@ -26,14 +26,14 @@ import { createGoogleTaskList } from "../../../utils/GGTask";
 import { Status, Task } from "@/presentation/types/task";
 
 // Import dialog components for status transitions
-import TransitionConfirmationDialog from "../../components/TaskManager/TaskDialog/components/TransitionConfirmationDialog";
-import DateTimeStatusDialog from "../../components/TaskManager/TaskDialog/components/DateTimeStatusDialog";
+import TransitionConfirmationDialog from "./components/TaskDialog/components/TransitionConfirmationDialog";
+import DateTimeStatusDialog from "./components/TaskDialog/components/DateTimeStatusDialog";
 
 // Import transition utilities
 import {
   getTransitionScenarios,
   executeStatusTransition,
-} from "../../components/TaskManager/TaskDialog/utils/taskTransitions";
+} from "./components/TaskDialog/utils/taskTransitions";
 
 const TaskManager: React.FC = () => {
   const {

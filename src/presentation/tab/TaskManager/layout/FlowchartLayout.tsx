@@ -17,8 +17,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Task, Status } from "../../../types/task";
-import TaskNode from "../../../components/TaskManager/FlowchartStyle/TaskNode";
-import CollectionNode from "../../../components/TaskManager/FlowchartStyle/CollectionNode";
+import TaskNode from "../components/FlowchartStyle/TaskNode";
+import CollectionNode from "../components/FlowchartStyle/CollectionNode";
 import type {
   TaskNodeData,
   CollectionNodeData,

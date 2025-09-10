@@ -50,9 +50,6 @@ export const SERVICE_SCOPES = {
     SHEETS: [
         'https://www.googleapis.com/auth/spreadsheets'
     ] as string[],
-    CALENDAR: [
-        'https://www.googleapis.com/auth/calendar',
-    ] as string[],
     TASKS: [
         'https://www.googleapis.com/auth/tasks'
     ] as string[],
@@ -64,7 +61,6 @@ export const SERVICE_SCOPES = {
         'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/tasks'
     ] as string[]
 } as const;

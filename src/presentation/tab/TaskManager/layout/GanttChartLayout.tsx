@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { Task, Status } from "../../../types/task";
-import TaskListPanel from "../../../components/TaskManager/KanttChartStyle/TaskListPanel";
-import GanttChartPanel from "../../../components/TaskManager/KanttChartStyle/GanttChartPanel";
+import TaskListPanel from "../components/KanttChartStyle/TaskListPanel";
+import GanttChartPanel from "../components/KanttChartStyle/GanttChartPanel";
 
 interface GanttChartLayoutProps {
   filteredLists: {
