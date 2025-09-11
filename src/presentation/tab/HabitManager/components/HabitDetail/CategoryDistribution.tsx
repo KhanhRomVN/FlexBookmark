@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Habit } from "../../types/types";
-import { PieChart, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CategoryDistributionProps {
   habits: Habit[];
@@ -83,7 +83,7 @@ const CategoryDistribution: React.FC<CategoryDistributionProps> = ({
 
       {/* Category List */}
       <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-        {currentCategories.map(([category, data], index) => {
+        {currentCategories.map(([category, data]) => {
           const completionRate =
             data.total > 0 ? (data.completed / data.total) * 100 : 0;
 
@@ -110,7 +110,7 @@ const CategoryDistribution: React.FC<CategoryDistributionProps> = ({
               {/* Progress Bar with Color Segments */}
               <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 mb-2 overflow-hidden">
                 <div className="flex h-full">
-                  {data.habits.map((habit, habitIndex) => {
+                  {data.habits.map((habit) => {
                     const segmentWidth = (1 / data.total) * 100;
 
                     return (

@@ -261,7 +261,7 @@ const HabitListPanel: React.FC<HabitListPanelProps> = ({
                 onDelete={() => onDeleteHabit(habit.id)}
                 loading={loading}
                 completedCount={
-                  habit.dailyCounts?.[selectedDate.getDate() - 1] || 0
+                  Number(habit.dailyCounts?.[selectedDate.getDate() - 1]) || 0
                 }
                 isSelected={selectedHabitId === habit.id}
                 onSelect={() => handleHabitClick(habit)}

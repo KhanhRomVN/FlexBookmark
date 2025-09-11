@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { HabitServer } from '../services/habitService';
 import { Habit, HabitFormData } from '../types/types';
 import { createHabit, calculateStreak } from '../utils/habitUtils';
@@ -18,11 +18,8 @@ export const useHabit = () => {
     const lastSyncRef = useRef<number>(0);
     const SYNC_COOLDOWN = 30000; // 30 seconds cooldown
 
-    // Use global auth context instead of local auth state
-    const { authState } = useAuth();
-    const authToken = authState.user?.accessToken || '';
-
-    const habitService = useMemo(() => new HabitServer(authToken), [authToken]);
+    // Use global auth context with getFreshToken
+    const { authState, getFreshToken } = useAuth();
 
     // Check Drive access when auth state changes
     useEffect(() => {
@@ -73,8 +70,14 @@ export const useHabit = () => {
             }
         }
 
-        if (!authToken || !hasDriveAccess) {
-            console.log('No auth token or drive access');
+        if (!authState.isAuthenticated) {
+            console.warn('Cannot load habits: missing auth');
+            setLoading(false);
+            return;
+        }
+
+        if (!hasDriveAccess) {
+            console.log('No drive access');
             setLoading(false);
             return;
         }
@@ -86,12 +89,22 @@ export const useHabit = () => {
                 setIsBackgroundLoading(true);
             }
 
+            // Use getFreshToken for authentication
+            const token = await getFreshToken();
+            if (!token) {
+                console.error('Failed to get fresh token');
+                setLoading(false);
+                return;
+            }
+
+            // Update habit service with fresh token
+            const freshHabitService = new HabitServer(token);
             let currentSheetId = sheetId;
 
             if (!currentSheetId) {
                 try {
                     console.log('Setting up Drive...');
-                    const id = await habitService.setupDrive();
+                    const id = await freshHabitService.setupDrive();
                     setSheetId(id);
                     currentSheetId = id;
                     console.log('Drive setup complete, sheet ID:', id);
@@ -107,7 +120,7 @@ export const useHabit = () => {
             // Only fetch if we have a valid spreadsheet
             if (currentSheetId) {
                 console.log('Fetching habits from server...');
-                const habitsData = await habitService.fetchHabitsFromServer();
+                const habitsData = await freshHabitService.fetchHabitsFromServer();
                 console.log('Habits data received:', habitsData);
 
                 // Ensure habitsData is valid array
@@ -134,21 +147,29 @@ export const useHabit = () => {
             setLoading(false);
             setIsBackgroundLoading(false);
         }
-    }, [sheetId, habitService, authToken, hasDriveAccess, cachedHabits]);
+    }, [sheetId, authState.isAuthenticated, hasDriveAccess, cachedHabits, getFreshToken]);
 
     // Background sync function
     const updateHabitOnServerInBackground = useCallback(async (habit: Habit) => {
         try {
-            await habitService.updateHabitOnServer(habit);
+            const token = await getFreshToken();
+            if (!token) {
+                throw new Error('Failed to get fresh token');
+            }
+
+            const freshHabitService = new HabitServer(token);
+            await freshHabitService.updateHabitOnServer(habit);
             console.log('Background sync successful for habit:', habit.id);
         } catch (error) {
             console.error('Background sync error:', error);
             throw error; // Re-throw for rollback handling
         }
-    }, [habitService]);
+    }, [getFreshToken]);
 
     const addHabit = useCallback(async (formData: HabitFormData) => {
-        if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
+        if (!authState.isAuthenticated || !hasDriveAccess) {
+            throw new Error('Not authenticated or missing Drive access');
+        }
 
         try {
             const newHabit = createHabit(formData);
@@ -159,23 +180,29 @@ export const useHabit = () => {
             await cacheHabits(updatedHabits);
 
             // Sync in background
-            if (authToken && hasDriveAccess) {
-                habitService.createHabitOnServer(newHabit).catch(error => {
-                    console.error('Background create failed:', error);
-                    // Rollback on failure
-                    const rolledBackHabits = habits.filter(h => h.id !== newHabit.id);
-                    setHabits(rolledBackHabits);
-                    cacheHabits(rolledBackHabits);
-                });
+            if (authState.isAuthenticated && hasDriveAccess) {
+                const token = await getFreshToken();
+                if (token) {
+                    const freshHabitService = new HabitServer(token);
+                    freshHabitService.createHabitOnServer(newHabit).catch(error => {
+                        console.error('Background create failed:', error);
+                        // Rollback on failure
+                        const rolledBackHabits = habits.filter(h => h.id !== newHabit.id);
+                        setHabits(rolledBackHabits);
+                        cacheHabits(rolledBackHabits);
+                    });
+                }
             }
         } catch (err) {
             setError((err as Error).message);
             throw err;
         }
-    }, [habitService, authToken, hasDriveAccess, habits]);
+    }, [authState.isAuthenticated, hasDriveAccess, habits, getFreshToken]);
 
     const updateHabit = useCallback(async (habit: Habit) => {
-        if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
+        if (!authState.isAuthenticated || !hasDriveAccess) {
+            throw new Error('Not authenticated or missing Drive access');
+        }
 
         try {
             // Update UI immediately
@@ -184,7 +211,7 @@ export const useHabit = () => {
             await cacheHabits(updatedHabits);
 
             // Sync in background
-            if (authToken && hasDriveAccess) {
+            if (authState.isAuthenticated && hasDriveAccess) {
                 updateHabitOnServerInBackground(habit).catch(error => {
                     console.error('Background update failed:', error);
                     // Rollback on failure
@@ -197,9 +224,14 @@ export const useHabit = () => {
             setError((err as Error).message);
             throw err;
         }
-    }, [habitService, authToken, hasDriveAccess, habits, updateHabitOnServerInBackground]);
+    }, [authState.isAuthenticated, hasDriveAccess, habits, updateHabitOnServerInBackground]);
 
     const toggleHabit = useCallback(async (habitId: string, completed: boolean) => {
+        if (!authState.isAuthenticated) {
+            console.warn('Cannot toggle habit: missing auth');
+            return;
+        }
+
         try {
             const habit = habits.find(h => h.id === habitId);
             if (!habit) return;
@@ -211,7 +243,7 @@ export const useHabit = () => {
             await cacheHabits(updatedHabits);
 
             // Sync with server in background (don't wait for result)
-            if (authToken && hasDriveAccess) {
+            if (authState.isAuthenticated && hasDriveAccess) {
                 updateHabitOnServerInBackground(updated).catch(error => {
                     console.error('Background sync failed:', error);
                     // If failed, rollback UI
@@ -223,10 +255,12 @@ export const useHabit = () => {
             setError((err as Error).message);
             throw err;
         }
-    }, [habits, authToken, hasDriveAccess, updateHabitOnServerInBackground]);
+    }, [habits, authState.isAuthenticated, hasDriveAccess, updateHabitOnServerInBackground]);
 
     const archiveHabit = useCallback(async (habitId: string, archive: boolean) => {
-        if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
+        if (!authState.isAuthenticated || !hasDriveAccess) {
+            throw new Error('Not authenticated or missing Drive access');
+        }
 
         try {
             const habit = habits.find(h => h.id === habitId);
@@ -239,7 +273,7 @@ export const useHabit = () => {
             await cacheHabits(updatedHabits);
 
             // Sync in background
-            if (authToken && hasDriveAccess) {
+            if (authState.isAuthenticated && hasDriveAccess) {
                 updateHabitOnServerInBackground(updated).catch(error => {
                     console.error('Background archive failed:', error);
                     // Rollback
@@ -251,10 +285,12 @@ export const useHabit = () => {
             setError((err as Error).message);
             throw err;
         }
-    }, [habits, updateHabitOnServerInBackground, authToken, hasDriveAccess]);
+    }, [habits, updateHabitOnServerInBackground, authState.isAuthenticated, hasDriveAccess]);
 
     const deleteHabit = useCallback(async (habitId: string) => {
-        if (!authToken || !hasDriveAccess) throw new Error('Not authenticated or missing Drive access');
+        if (!authState.isAuthenticated || !hasDriveAccess) {
+            throw new Error('Not authenticated or missing Drive access');
+        }
 
         try {
             // Save current habits for rollback if needed
@@ -269,22 +305,26 @@ export const useHabit = () => {
             await cacheHabits(updatedHabits);
 
             // Sync in background
-            if (authToken && hasDriveAccess) {
-                habitService.deleteHabitOnServer(habitId).catch(error => {
-                    console.error('Background delete failed:', error);
-                    // Rollback on failure
-                    setHabits(currentHabits);
-                    cacheHabits(currentHabits);
-                });
+            if (authState.isAuthenticated && hasDriveAccess) {
+                const token = await getFreshToken();
+                if (token) {
+                    const freshHabitService = new HabitServer(token);
+                    freshHabitService.deleteHabitOnServer(habitId).catch(error => {
+                        console.error('Background delete failed:', error);
+                        // Rollback on failure
+                        setHabits(currentHabits);
+                        cacheHabits(currentHabits);
+                    });
+                }
             }
         } catch (err) {
             setError((err as Error).message);
             throw err;
         }
-    }, [authToken, habitService, hasDriveAccess, habits]);
+    }, [authState.isAuthenticated, hasDriveAccess, habits, getFreshToken]);
 
     useEffect(() => {
-        if (authToken && hasDriveAccess) {
+        if (authState.isAuthenticated && hasDriveAccess) {
             if (isInitialLoad) {
                 loadHabits(false);
                 setIsInitialLoad(false);
@@ -297,7 +337,7 @@ export const useHabit = () => {
                 }
             }
         }
-    }, [authToken, hasDriveAccess, loadHabits, cachedHabits, isInitialLoad]);
+    }, [authState.isAuthenticated, hasDriveAccess, loadHabits, cachedHabits, isInitialLoad]);
 
     return {
         habits,
@@ -309,7 +349,7 @@ export const useHabit = () => {
         archiveHabit,
         deleteHabit,
         reloadHabits: loadHabits,
-        isAuthenticated: !!authToken,
+        isAuthenticated: authState.isAuthenticated,
         hasDriveAccess,
         isBackgroundLoading
     };

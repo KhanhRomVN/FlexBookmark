@@ -202,11 +202,6 @@ const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
-  // Close dropdown when option is selected
-  const handleDropdownClose = () => {
-    setShowDropdown(false);
-  };
-
   const progress = getCompletionProgress();
   const difficultyBadge = getDifficultyBadge(habit.difficultyLevel);
   const habitTypeBadge = getHabitTypeBadge(habit.habitType);

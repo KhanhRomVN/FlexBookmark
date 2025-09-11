@@ -1,10 +1,11 @@
-import { Habit } from '../types/types';
+import { Habit, HabitSubtask } from '../types/types';
 import { SheetService } from './sheetService';
 
 export class HabitServer {
     private sheetService: SheetService;
 
     constructor(accessToken: string) {
+        // Fix lỗi 1: Xóa unused variable accessToken
         this.sheetService = new SheetService(accessToken);
     }
 
@@ -176,7 +177,7 @@ export class HabitServer {
             currentStreak: 0,
             longestStreak: 0,
             completedToday: false,
-            dailyCounts: Array.from({ length: 31 }, () => "")
+            dailyCounts: Array.from({ length: 31 }, () => "" as string | number | null)
         };
     }
 
@@ -212,9 +213,9 @@ export class HabitServer {
                     // Handle different types properly
                     if (count === null) {
                         row[columnIndex] = ''; // null becomes empty string in sheet
-                    } else if (count === "skip_day_month") {
+                    } else if (typeof count === 'string' && count === "skip_day_month") {
                         row[columnIndex] = 'skip_day_month';
-                    } else if (count === "") {
+                    } else if (typeof count === 'string' && count === "") {
                         row[columnIndex] = ''; // empty string stays empty
                     } else {
                         row[columnIndex] = count.toString(); // numbers to string

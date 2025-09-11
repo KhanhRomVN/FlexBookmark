@@ -50,10 +50,10 @@ export const calculateStreak = (habit: Habit, completed: boolean): Habit => {
     const currentCount = habit.dailyCounts[todayIndex] || 0;
     const newCount = completed ?
         Math.min(
-            currentCount + 1,
+            (typeof currentCount === 'number' ? currentCount : 0) + 1,
             habit.habitType === 'good' ? (habit.goal || 1) : Infinity
         ) :
-        Math.max(currentCount - 1, 0);
+        Math.max((typeof currentCount === 'number' ? currentCount : 0) - 1, 0);
 
     // Update dailyCounts array
     const newDailyCounts = [...habit.dailyCounts];

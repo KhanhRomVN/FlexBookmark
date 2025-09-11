@@ -1,13 +1,6 @@
 import React, { useMemo } from "react";
 import { Habit } from "../../types/types";
-import {
-  Calendar,
-  TrendingUp,
-  Target,
-  CheckCircle,
-  Award,
-  Flame,
-} from "lucide-react";
+import { Calendar, Target, CheckCircle, Award, Flame } from "lucide-react";
 
 interface MonthlyContributionProps {
   habit?: Habit;

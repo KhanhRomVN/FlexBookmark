@@ -1,6 +1,5 @@
-// src/presentation/tab/HabitManager/components/Sidebar.tsx
 import React, { useState, useEffect } from "react";
-import { Plus, Archive, Calendar, Palette } from "lucide-react";
+import { Plus, Archive, Palette } from "lucide-react";
 import CustomCombobox from "../../../components/common/CustomCombobox";
 
 interface SidebarProps {
@@ -72,12 +71,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [selectedDate]);
 
-  const handleCategoryChange = (values: string[]) => {
+  const handleCategoryChange = (value: string | string[]) => {
+    const values = Array.isArray(value) ? value : [value];
     setSelectedCategories(values);
     onCategoryFilter(values);
   };
 
-  const handleTagChange = (values: string[]) => {
+  const handleTagChange = (value: string | string[]) => {
+    const values = Array.isArray(value) ? value : [value];
     setSelectedTags(values);
     onTagFilter(values);
   };
@@ -172,6 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               Category
             </label>
             <CustomCombobox
+              label=""
               value={selectedCategories}
               options={habitCategories}
               onChange={handleCategoryChange}
@@ -186,8 +188,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               Tags
             </label>
             <CustomCombobox
+              label=""
               value={selectedTags}
-              options={[]} // Will be populated from habits data
+              options={[]}
               onChange={handleTagChange}
               placeholder="Select tags..."
               multiple

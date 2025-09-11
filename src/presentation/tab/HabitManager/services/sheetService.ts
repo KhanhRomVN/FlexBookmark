@@ -101,6 +101,10 @@ export class SheetService {
             if (spreadsheetSearchResponse?.files && spreadsheetSearchResponse.files.length > 0) {
                 this.spreadsheetId = spreadsheetSearchResponse.files[0].id;
                 console.log('Found existing spreadsheet:', this.spreadsheetId);
+                // Fix lỗi 1: Thêm null check
+                if (!this.spreadsheetId) {
+                    throw new Error('Failed to get existing spreadsheet ID');
+                }
                 return this.spreadsheetId;
             }
 
@@ -198,7 +202,11 @@ export class SheetService {
             // Initialize spreadsheet with headers
             await this.initializeSpreadsheet();
 
-            return this.spreadsheetId!;
+            // Fix lỗi 2: Thêm null check
+            if (!this.spreadsheetId) {
+                throw new Error('Failed to create spreadsheet');
+            }
+            return this.spreadsheetId;
         } catch (error) {
             console.error('Error setting up Drive:', error);
 
@@ -218,6 +226,10 @@ export class SheetService {
 
                 this.spreadsheetId = createSpreadsheetResponse.id;
                 await this.initializeSpreadsheet();
+
+                if (!this.spreadsheetId) {
+                    throw new Error('Failed to create fallback spreadsheet');
+                }
                 return this.spreadsheetId;
             } catch (fallbackError) {
                 console.error('Fallback spreadsheet creation also failed:', fallbackError);

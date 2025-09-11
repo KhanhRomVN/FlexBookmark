@@ -12,7 +12,6 @@ import {
   ListChecks,
   ChevronDown,
   ChevronUp,
-  Calendar,
   TrendingUp,
   Award,
   Flame,

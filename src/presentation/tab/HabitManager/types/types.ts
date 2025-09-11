@@ -24,7 +24,7 @@ export interface Habit {
     unit?: string;
     tags: string[];
     subtasks?: HabitSubtask[];
-    dailyCounts: number[];
+    dailyCounts: (number | string | null)[];
     emoji?: string;
 }
 

@@ -781,11 +781,12 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                   value: opt.value,
                   label: `${opt.emoji} ${opt.label}`,
                 }))}
-                onChange={(value) =>
+                onChange={(value) => {
+                  const stringValue = Array.isArray(value) ? value[0] : value;
                   updateFormData({
-                    difficultyLevel: parseInt(value) as DifficultyLevel,
-                  })
-                }
+                    difficultyLevel: parseInt(stringValue) as DifficultyLevel,
+                  });
+                }}
                 searchable={false}
                 placeholder="Select difficulty level..."
               />
@@ -809,7 +810,10 @@ const HabitDialog: React.FC<HabitDialogProps> = ({
                 label="Measurement Unit"
                 value={formData.unit || ""}
                 options={unitOptions}
-                onChange={(value) => updateFormData({ unit: value })}
+                onChange={(value) => {
+                  const stringValue = Array.isArray(value) ? value[0] : value;
+                  updateFormData({ unit: stringValue });
+                }}
                 creatable
                 placeholder="Select or create unit..."
               />

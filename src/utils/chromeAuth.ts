@@ -1,5 +1,3 @@
-// src/utils/chromeAuth.ts - Improved version with better OAuth handling
-
 export interface User {
     id: string;
     email: string;
@@ -133,7 +131,7 @@ class ChromeAuthManager {
                         console.log('No cached token:', chrome.runtime.lastError.message);
                         resolve(null);
                     } else {
-                        resolve(token || null);
+                        resolve((token as string) || null);
                     }
                 }
             );
@@ -224,7 +222,7 @@ class ChromeAuthManager {
                             reject(new Error(error));
                         } else if (token) {
                             console.log('Interactive token obtained successfully');
-                            resolve(token);
+                            resolve(token as string);
                         } else {
                             console.error('No token received from interactive request');
                             reject(new Error('No token received from Chrome identity'));
@@ -328,7 +326,7 @@ class ChromeAuthManager {
 
             // Test Sheets API access  
             const sheetsTest = await fetch(
-                'https://sheets.googleapis.com/v4/spreadsheets?fields=files(id,name)',
+                'https://sheets.googleapis.com/v4/spreadsheets',
                 {
                     headers: { 'Authorization': `Bearer ${token}` },
                 }
@@ -337,8 +335,8 @@ class ChromeAuthManager {
             const results = {
                 hasTasksAccess: tasksTest.ok,
                 hasDriveAccess: driveTest.ok,
-                hasSheetsAccess: sheetsTest.ok || sheetsTest.status === 404, // 404 is ok for sheets
-                hasRequiredScopes: tasksTest.ok && driveTest.ok,
+                hasSheetsAccess: sheetsTest.ok || sheetsTest.status === 404,
+                hasRequiredScopes: tasksTest.ok && driveTest.ok && (sheetsTest.ok || sheetsTest.status === 404),
             };
 
             console.log('Permission status:', results);
@@ -353,6 +351,49 @@ class ChromeAuthManager {
                 hasTasksAccess: false,
                 error: error instanceof Error ? error.message : 'Permission check failed'
             };
+        }
+    }
+
+    // Add the missing hasRequiredScopes method
+    async hasRequiredScopes(scopes?: string[]): Promise<boolean> {
+        try {
+            const scopesToCheck = scopes || this.REQUIRED_SCOPES;
+            const token = this.authState.user?.accessToken;
+
+            if (!token) {
+                console.log('No access token available for scope check');
+                return false;
+            }
+
+            // If checking for Drive and Sheets access specifically
+            if (scopesToCheck.includes('https://www.googleapis.com/auth/drive.file') ||
+                scopesToCheck.includes('https://www.googleapis.com/auth/spreadsheets')) {
+
+                const permissionStatus = await this.getPermissionStatus();
+                return permissionStatus.hasRequiredScopes;
+            }
+
+            // For other scopes, do a simple token validation
+            const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `access_token=${token}`
+            });
+
+            if (response.ok) {
+                const tokenInfo = await response.json();
+                const tokenScopes = tokenInfo.scope ? tokenInfo.scope.split(' ') : [];
+
+                // Check if all required scopes are present
+                return scopesToCheck.every(scope => tokenScopes.includes(scope));
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Error checking required scopes:', error);
+            return false;
         }
     }
 
