@@ -1,6 +1,14 @@
 import { useState } from "react";
 import type { Task, Status } from "../types/task";
-import { folders } from "../useTaskManager";
+
+export const folders = [
+    { id: "backlog", title: "Backlog", emoji: "📥", priority: 1 },
+    { id: "todo", title: "To Do", emoji: "📋", priority: 2 },
+    { id: "in-progress", title: "In Progress", emoji: "🚧", priority: 3 },
+    { id: "overdue", title: "Overdue", emoji: "⏰", priority: 4 },
+    { id: "done", title: "Done", emoji: "✅", priority: 0 },
+    { id: "archive", title: "Archive", emoji: "🗄️", priority: -1 },
+];
 
 export interface TaskList {
     id: string;

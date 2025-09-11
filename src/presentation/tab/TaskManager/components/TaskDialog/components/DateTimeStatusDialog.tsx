@@ -1,7 +1,7 @@
 // src/presentation/components/TaskManager/TaskDialog/components/DateTimeStatusDialog.tsx
 import React, { useState, useEffect } from "react";
 import { Task, Status } from "../../../types/task";
-import { determineTaskStatus } from "../../../hooks/useTaskHelpers";
+import { determineTaskStatus } from "../../../hooks/useTaskOperations";
 import ModernDateTimePicker from "../../../../../components/common/ModernDateTimePicker";
 import {
   Calendar,

@@ -1,9 +1,7 @@
-import type { Task, Status } from "../types/task";
-import { folders } from "../useTaskManager";
+import type { Task, Status } from '../types/task';
 
 export const determineTaskStatus = (task: Task): Status => {
     const now = new Date();
-
     if (task.completed) return "done";
     if (!task.startDate && !task.startTime) return "backlog";
 
@@ -108,6 +106,15 @@ export const createInitialActivityLog = (): any[] => {
 };
 
 export const checkAndMoveOverdueTasks = (tasks: Task[]): Task[] => {
+    const folders = [
+        { id: "backlog", title: "Backlog", emoji: "📥", priority: 1 },
+        { id: "todo", title: "To Do", emoji: "📋", priority: 2 },
+        { id: "in-progress", title: "In Progress", emoji: "🚧", priority: 3 },
+        { id: "overdue", title: "Overdue", emoji: "⏰", priority: 4 },
+        { id: "done", title: "Done", emoji: "✅", priority: 0 },
+        { id: "archive", title: "Archive", emoji: "🗄️", priority: -1 },
+    ];
+
     const BATCH_SIZE = 50;
     const batchedTasks = [];
 
@@ -130,11 +137,51 @@ export const checkAndMoveOverdueTasks = (tasks: Task[]): Task[] => {
     return batchedTasks;
 };
 
-export function useTaskHelpers() {
-    return {
-        determineTaskStatus,
-        addActivityLogEntry,
-        createInitialActivityLog,
-        checkAndMoveOverdueTasks
+export const safeStringify = (value: any): string => {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    return String(value);
+};
+
+export const safeStringMatch = (text: string, searchTerm: string): boolean => {
+    try {
+        const safeText = safeStringify(text).toLowerCase();
+        const safeTerm = safeStringify(searchTerm).toLowerCase();
+        return safeText.includes(safeTerm);
+    } catch (error) {
+        console.warn('Error in string matching:', error);
+        return false;
+    }
+};
+
+export const getTaskDates = (task: Task): Date[] => {
+    const dates: Date[] = [];
+
+    // Kiểm tra từng field cụ thể thay vì dùng vòng lặp
+    const checkAndAddDate = (value: any): void => {
+        if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
+            try {
+                const parsedDate = new Date(value);
+                if (!isNaN(parsedDate.getTime())) {
+                    dates.push(parsedDate);
+                }
+            } catch (error) {
+                console.warn('Invalid date value:', value, error);
+            }
+        }
     };
-}
+
+    // Kiểm tra các date fields
+    checkAndAddDate(task.startDate);
+    checkAndAddDate(task.startTime);
+    checkAndAddDate(task.dueDate);
+    checkAndAddDate(task.dueTime);
+    checkAndAddDate(task.actualStartDate);
+    checkAndAddDate(task.actualStartTime);
+    checkAndAddDate(task.actualEndDate);
+    checkAndAddDate(task.actualEndTime);
+    checkAndAddDate(task.createdAt);
+    checkAndAddDate(task.updatedAt);
+
+    return dates;
+};

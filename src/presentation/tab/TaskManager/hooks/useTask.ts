@@ -1,120 +1,53 @@
-
-
-import { startTransition, useCallback, useMemo, useState, useEffect } from "react";
+// useTask.ts - Simplified version using centralized auth
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useAuth } from "./useAuth";
+import type { Task, Status } from "../types/task";
+import { fetchGoogleTasks } from "../services/GoogleTaskService";
+
+// Import custom hooks
 import { useTaskGroups } from "./useTaskGroups";
-import { useTaskState } from "./useTaskState";
+import { useTaskState, folders } from "./useTaskState";
 import { useTaskOperations } from "./useTaskOperations";
 import { useTaskFilters } from "./useTaskFilters";
-import { useTaskHelpers } from "./useTaskHelpers";
-import { usePerformance } from "./usePerformance";
-import { fetchGoogleTasks } from "../services/GoogleTaskService";
-import type { Task, Status } from "../types/task";
+import { useAuth } from "@/contexts/AuthContext"; // Use centralized auth
 
-export const folders = [
-    { id: "backlog", title: "Backlog", emoji: "📥", priority: 1 },
-    { id: "todo", title: "To Do", emoji: "📋", priority: 2 },
-    { id: "in-progress", title: "In Progress", emoji: "🚧", priority: 3 },
-    { id: "overdue", title: "Overdue", emoji: "⏰", priority: 4 },
-    { id: "done", title: "Done", emoji: "✅", priority: 0 },
-    { id: "archive", title: "Archive", emoji: "🗄️", priority: -1 },
-];
+// Import helper functions
+import {
+    addActivityLogEntry,
+    createInitialActivityLog,
+    getTaskDates,
+    safeStringify,
+    safeStringMatch
+} from "../utils/taskUtils";
 
-// Virtual scrolling constants
+// Constants
 const VIRTUAL_ITEM_HEIGHT = 120;
 const OVERSCAN = 5;
 
-// Helper function to safely convert values to strings for comparison
-const safeStringify = (value: any): string => {
-    if (typeof value === 'string') return value;
-    if (value === null || value === undefined) return '';
-    return String(value);
-};
-
-// Helper function for safe case-insensitive string matching
-const safeStringMatch = (text: string, searchTerm: string): boolean => {
-    try {
-        const safeText = safeStringify(text).toLowerCase();
-        const safeTerm = safeStringify(searchTerm).toLowerCase();
-        return safeText.includes(safeTerm);
-    } catch (error) {
-        console.warn('Error in string matching:', error);
-        return false;
-    }
-};
-
-// Helper function to extract and validate dates from a task
-const getTaskDates = (task: Task): Date[] => {
-    const dates: Date[] = [];
-
-    // Define date fields to check
-    const dateFields = [
-        'startDate', 'startTime', 'dueDate', 'dueTime',
-        'actualStartDate', 'actualStartTime', 'actualEndDate', 'actualEndTime',
-        'createdAt', 'updatedAt'
-    ];
-
-    dateFields.forEach(field => {
-        const dateValue = task[field as keyof Task];
-        if (dateValue) {
-            try {
-                const parsedDate = new Date(dateValue);
-                if (!isNaN(parsedDate.getTime())) {
-                    dates.push(parsedDate);
-                }
-            } catch (error) {
-                console.warn(`Invalid date in field ${field}:`, dateValue);
-            }
+// Performance monitoring hook
+function usePerformance() {
+    const performanceMonitor = useMemo(() => ({
+        startTimer: (operation: string) => {
+            const start = performance.now();
+            return () => {
+                const duration = performance.now() - start;
+                console.log(`${operation}: ${duration.toFixed(2)}ms`);
+            };
         }
-    });
+    }), []);
 
-    return dates;
-};
+    return { performanceMonitor };
+}
 
-// Enhanced date range filter function
-const isTaskInDateRange = (
-    task: Task,
-    filterStartTime: Date | null,
-    filterEndTime: Date | null
-): boolean => {
-    if (!filterStartTime && !filterEndTime) return true;
-
-    const taskDates = getTaskDates(task);
-
-    // If task has no valid dates, exclude it from date-filtered results
-    if (taskDates.length === 0) {
-        return false;
-    }
-
-    // Check if any task date falls within the specified range
-    return taskDates.some(taskDate => {
-        // Check start time constraint
-        if (filterStartTime && taskDate < filterStartTime) {
-            return false;
-        }
-
-        // Check end time constraint
-        if (filterEndTime && taskDate > filterEndTime) {
-            return false;
-        }
-
-        return true;
-    });
-};
-
-export function useTaskManager() {
-    // Performance monitoring
+export function useTask() {
+    const { authState, getFreshToken } = useAuth(); // Use centralized auth directly
     const { performanceMonitor } = usePerformance();
 
-    // Auth state
-    const { authState } = useAuth();
-
-    // Task groups
+    // Core hooks
     const { groups, activeGroup, setActiveGroup } = useTaskGroups();
 
-    // Task state and UI state
+    // State management
     const {
         lists,
         setLists,
@@ -134,21 +67,9 @@ export function useTaskManager() {
         setShowArchiveDrawer,
     } = useTaskState();
 
-    // Enhanced filter states
-    const [filterCollection, setFilterCollection] = useState<string[]>([]);
-    const [filterLocation, setFilterLocation] = useState<string>("");
-
-    // ENHANCED: Separate start and end time filters for better UX
-    const [filterStartTime, setFilterStartTime] = useState<Date | null>(null);
-    const [filterEndTime, setFilterEndTime] = useState<Date | null>(null);
-
-    // Additional filter options for different date types
-    const [dateFilterMode, setDateFilterMode] = useState<'any' | 'start' | 'due' | 'actual' | 'created'>('any');
-
-    // Task operations
+    // Task operations - pass centralized auth
     const {
         saveTask,
-        loadTasks: originalLoadTasks,
         handleDeleteTask,
         handleDuplicateTask,
         handleMove,
@@ -165,16 +86,11 @@ export function useTaskManager() {
         setQuickAddStatus,
         selectedTask,
         setSelectedTask,
-        setIsDialogOpen
+        setIsDialogOpen,
+        getFreshToken // Pass getFreshToken instead of authState
     );
 
-    // Task helpers
-    const {
-        addActivityLogEntry,
-        createInitialActivityLog,
-    } = useTaskHelpers();
-
-    // Task filters with enhanced filtering
+    // Filtering and sorting
     const {
         searchTerm,
         setSearchTerm,
@@ -192,63 +108,52 @@ export function useTaskManager() {
         setDateRange,
         handleClearFilters: originalHandleClearFilters,
         sortTasks,
-        getFilteredLists: originalGetFilteredLists,
     } = useTaskFilters();
 
-    // Virtual scrolling state
+    // Additional filter states
+    const [filterCollection, setFilterCollection] = useState<string[]>([]);
+    const [filterLocation, setFilterLocation] = useState<string>("");
+    const [filterStartTime, setFilterStartTime] = useState<Date | null>(null);
+    const [filterEndTime, setFilterEndTime] = useState<Date | null>(null);
+    const [dateFilterMode, setDateFilterMode] = useState<'any' | 'start' | 'due' | 'actual' | 'created'>('any');
+
+    // Virtual scrolling states
     const [virtualScrollOffset, setVirtualScrollOffset] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
 
-    // Enhanced loadTasks function
-    const loadTasks = useCallback(async () => {
-        if (!authState.user?.accessToken || !activeGroup) {
+    // Enhanced load tasks function using centralized auth
+    const loadTasks = useCallback(async (_force = false) => {
+        if (!authState.isAuthenticated || !activeGroup) {
             console.warn('Cannot load tasks: missing auth or active group');
             return;
         }
+
+        const endTimer = performanceMonitor.startTimer('loadTasks');
 
         try {
             setLoading(true);
             setError(null);
 
-            // Get fresh token
-            const token = await new Promise<string>((resolve, reject) => {
-                if (typeof chrome !== "undefined" && chrome.identity) {
-                    chrome.identity.getAuthToken(
-                        {
-                            interactive: false,
-                            scopes: [
-                                "openid",
-                                "email",
-                                "profile",
-                                "https://www.googleapis.com/auth/tasks",
-                                "https://www.googleapis.com/auth/tasks.readonly",
-                            ],
-                        },
-                        (result) => {
-                            if (result?.token) {
-                                resolve(result.token);
-                            } else {
-                                reject(new Error("No token received"));
-                            }
-                        }
-                    );
-                } else {
-                    resolve(authState.user.accessToken);
-                }
-            });
-
-            // Fetch tasks for the active group
+            // Get fresh token from centralized auth
+            const token = await getFreshToken();
             const tasks = await fetchGoogleTasks(token, activeGroup);
 
-            // Organize tasks into folder structure
+            // Organize tasks into lists
             const organizedLists = folders.map(folder => ({
                 id: folder.id,
                 title: folder.title,
                 emoji: folder.emoji,
-                tasks: tasks.filter((task: Task) => task.status === folder.id)
+                priority: folder.priority,
+                tasks: tasks
+                    .filter((task: Task) => task.status === folder.id)
+                    .map((task: Task) => ({
+                        ...task,
+                        activityLog: task.activityLog && task.activityLog.length > 0
+                            ? task.activityLog
+                            : createInitialActivityLog()
+                    }))
             }));
 
-            // Update lists with React transition
             startTransition(() => {
                 setLists(organizedLists);
             });
@@ -258,22 +163,22 @@ export function useTaskManager() {
             setError(error.message || 'Failed to load tasks');
         } finally {
             setLoading(false);
+            endTimer();
         }
-    }, [authState.user?.accessToken, activeGroup, setLoading, setError, setLists]);
+    }, [authState.isAuthenticated, activeGroup, setLoading, setError, setLists, performanceMonitor, getFreshToken]);
 
-    // Load tasks when active group changes
+    // Load tasks when dependencies change
     useEffect(() => {
-        if (activeGroup && authState.user?.accessToken) {
+        if (activeGroup && authState.isAuthenticated) {
             loadTasks();
         }
-    }, [activeGroup, authState.user?.accessToken, loadTasks]);
+    }, [activeGroup, authState.isAuthenticated, loadTasks]);
 
-    // ENHANCED: Advanced filtering function with improved date range logic
+    // Enhanced filter function
     const getEnhancedFilteredLists = useCallback((lists: any[]) => {
         return lists.map(list => ({
             ...list,
             tasks: list.tasks.filter((task: Task) => {
-                // Apply basic filters manually to avoid the fuzzySearch issue
                 // Search term filter
                 if (searchTerm) {
                     const searchLower = searchTerm.toLowerCase();
@@ -288,20 +193,22 @@ export function useTaskManager() {
                 }
 
                 // Priority filter
-                if (filterPriority && filterPriority !== "all" && Array.isArray(filterPriority) && filterPriority.length > 0) {
-                    if (!filterPriority.includes(task.priority)) {
+                if (filterPriority && filterPriority !== "all") {
+                    if (Array.isArray(filterPriority) && filterPriority.length > 0) {
+                        if (!filterPriority.includes(task.priority)) {
+                            return false;
+                        }
+                    } else if (task.priority !== filterPriority) {
                         return false;
                     }
                 }
 
                 // Status filter
-                if (filterStatus && filterStatus !== "all") {
-                    if (task.status !== filterStatus) {
-                        return false;
-                    }
+                if (filterStatus && filterStatus !== "all" && task.status !== filterStatus) {
+                    return false;
                 }
 
-                // Apply collection filter
+                // Collection filter
                 if (filterCollection.length > 0) {
                     const taskCollection = safeStringify(task.collection);
                     if (!filterCollection.some(collection =>
@@ -311,7 +218,7 @@ export function useTaskManager() {
                     }
                 }
 
-                // Apply location filter
+                // Location filter
                 if (filterLocation) {
                     const taskLocationName = safeStringify(task.locationName);
                     if (!safeStringMatch(taskLocationName, filterLocation)) {
@@ -319,24 +226,14 @@ export function useTaskManager() {
                     }
                 }
 
-                // Apply tags filter with safe string handling
+                // Tags filter
                 if (filterTags && Array.isArray(filterTags) && filterTags.length > 0) {
-                    const taskTags = task.tags || [];
-
-                    if (!Array.isArray(taskTags)) {
-                        console.warn('Task tags is not an array:', taskTags);
-                        return false;
-                    }
-
+                    const taskTags = Array.isArray(task.tags) ? task.tags : [];
                     const safeTaskTags = taskTags.map(tag => safeStringify(tag)).filter(tag => tag.length > 0);
 
                     const hasMatchingTag = filterTags.some(filterTag => {
                         const safeFilterTag = safeStringify(filterTag);
-
-                        if (!safeFilterTag) {
-                            console.warn('Filter tag is empty after stringification:', filterTag);
-                            return false;
-                        }
+                        if (!safeFilterTag) return false;
 
                         return safeTaskTags.some(taskTag => {
                             return safeStringMatch(taskTag, safeFilterTag) ||
@@ -344,19 +241,15 @@ export function useTaskManager() {
                         });
                     });
 
-                    if (!hasMatchingTag) {
-                        return false;
-                    }
+                    if (!hasMatchingTag) return false;
                 }
 
-                // ENHANCED: Apply date/time range filter with mode-specific logic
+                // Date range filter
                 if (filterStartTime || filterEndTime) {
                     let relevantDates: Date[] = [];
 
-                    // Get dates based on filter mode
                     switch (dateFilterMode) {
                         case 'start':
-                            // Only check start dates
                             [task.startDate, task.startTime, task.actualStartDate, task.actualStartTime]
                                 .forEach(date => {
                                     if (date) {
@@ -373,7 +266,6 @@ export function useTaskManager() {
                             break;
 
                         case 'due':
-                            // Only check due dates
                             [task.dueDate, task.dueTime].forEach(date => {
                                 if (date) {
                                     try {
@@ -389,7 +281,6 @@ export function useTaskManager() {
                             break;
 
                         case 'actual':
-                            // Only check actual completion dates
                             [task.actualStartDate, task.actualStartTime, task.actualEndDate, task.actualEndTime]
                                 .forEach(date => {
                                     if (date) {
@@ -406,7 +297,6 @@ export function useTaskManager() {
                             break;
 
                         case 'created':
-                            // Only check creation/update dates
                             [task.createdAt, task.updatedAt].forEach(date => {
                                 if (date) {
                                     try {
@@ -423,17 +313,12 @@ export function useTaskManager() {
 
                         case 'any':
                         default:
-                            // Check all available dates
                             relevantDates = getTaskDates(task);
                             break;
                     }
 
-                    // If no relevant dates found, exclude the task
-                    if (relevantDates.length === 0) {
-                        return false;
-                    }
+                    if (relevantDates.length === 0) return false;
 
-                    // Check if any relevant date falls within the range
                     const isInRange = relevantDates.some(taskDate => {
                         let withinRange = true;
 
@@ -448,9 +333,7 @@ export function useTaskManager() {
                         return withinRange;
                     });
 
-                    if (!isInRange) {
-                        return false;
-                    }
+                    if (!isInRange) return false;
                 }
 
                 return true;
@@ -472,7 +355,7 @@ export function useTaskManager() {
         setDateFilterMode('any');
     }, [originalHandleClearFilters]);
 
-    // Enhanced drag and drop handler
+    // Drag and drop handler
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         const endTimer = performanceMonitor.startTimer('dragEnd');
         const { active, over } = event;
@@ -495,7 +378,7 @@ export function useTaskManager() {
             const itemIndex = source.tasks.findIndex(t => t.id === active.id);
 
             if (fromIndex === toIndex) {
-                // Reordering within same list
+                // Reorder within the same list
                 const reordered = arrayMove(source.tasks, itemIndex, itemIndex);
                 startTransition(() => {
                     setLists(prev =>
@@ -505,7 +388,7 @@ export function useTaskManager() {
                     );
                 });
             } else {
-                // Moving between lists
+                // Move between lists
                 const moved = source.tasks[itemIndex];
                 const oldStatus = moved.status;
                 const newStatus = dest.id as Status;
@@ -534,9 +417,9 @@ export function useTaskManager() {
             }
         }
         endTimer();
-    }, [lists, saveTask, performanceMonitor, addActivityLogEntry, setLists]);
+    }, [lists, saveTask, performanceMonitor, setLists]);
 
-    // Task click handler
+    // Task interaction handlers
     const handleTaskClick = useCallback((task: Task) => {
         const taskWithActivityLog = {
             ...task,
@@ -549,9 +432,8 @@ export function useTaskManager() {
             setSelectedTask(taskWithActivityLog);
             setIsDialogOpen(true);
         });
-    }, [setSelectedTask, setIsDialogOpen, createInitialActivityLog]);
+    }, [setSelectedTask, setIsDialogOpen]);
 
-    // Enhanced handlers for individual tasks
     const handleEditTask = useCallback((task: Task) => {
         setSelectedTask(task);
         setIsDialogOpen(true);
@@ -585,21 +467,9 @@ export function useTaskManager() {
         });
 
         await saveTask(archivedTask);
-    }, [lists, saveTask, addActivityLogEntry, setLists]);
+    }, [lists, saveTask, setLists]);
 
-    // Folder operations
-    const handleCopyTasks = useCallback(async (folderId: string) => {
-        const folder = lists.find(l => l.id === folderId);
-        if (!folder) return;
-        await handleBatchOperations.copyTasks(folder.tasks);
-    }, [lists, handleBatchOperations]);
-
-    const handleMoveTasks = useCallback(async (fromFolderId: string, toFolderId: string) => {
-        const fromFolder = lists.find(l => l.id === fromFolderId);
-        if (!fromFolder) return;
-        await handleBatchOperations.moveTasks(fromFolder.tasks, toFolderId as Status);
-    }, [lists, handleBatchOperations]);
-
+    // Batch operations
     const handleArchiveTasks = useCallback(async (folderId: string) => {
         const folder = lists.find(l => l.id === folderId);
         if (!folder) return;
@@ -608,7 +478,7 @@ export function useTaskManager() {
 
     const handleDeleteTasks = useCallback(async (folderId: string) => {
         const folder = lists.find(l => l.id === folderId);
-        if (!folder || !authState.user || !activeGroup) return;
+        if (!folder || !activeGroup) return;
 
         if (!window.confirm(`Are you sure you want to delete all ${folder.tasks.length} tasks in ${folder.title}? This action cannot be undone.`)) {
             return;
@@ -616,7 +486,7 @@ export function useTaskManager() {
 
         const taskIds = folder.tasks.map(task => task.id);
         await handleBatchOperations.deleteMultiple(taskIds);
-    }, [lists, authState, activeGroup, handleBatchOperations]);
+    }, [lists, activeGroup, handleBatchOperations]);
 
     const handleSortTasks = useCallback((folderId: string, sortType: string) => {
         startTransition(() => {
@@ -630,12 +500,12 @@ export function useTaskManager() {
         });
     }, [sortTasks, sortOrder, setLists]);
 
-    // Enhanced filtered lists using the new filtering logic
-    const filteredLists = useMemo(() => {
-        return getEnhancedFilteredLists(lists);
-    }, [lists, getEnhancedFilteredLists]);
+    const handleCreateGroup = useCallback(async (name: string) => {
+        console.log('Creating group:', name);
+        // Implementation would go here
+    }, []);
 
-    // Virtual scrolling helpers
+    // Virtual scrolling calculations
     const calculateVirtualScrollData = useCallback((tasks: Task[]) => {
         const totalHeight = tasks.length * VIRTUAL_ITEM_HEIGHT;
         const visibleCount = Math.ceil(containerHeight / VIRTUAL_ITEM_HEIGHT);
@@ -651,46 +521,48 @@ export function useTaskManager() {
         };
     }, [containerHeight, virtualScrollOffset]);
 
-    // Statistics
-    const statistics = useMemo(() => {
-        const totalTasks = lists.filter(l => l.id !== 'archive').reduce((sum, l) => sum + l.tasks.length, 0);
-        const completedTasks = lists.find(l => l.id === "done")?.tasks.length ?? 0;
-        const overdueTasks = lists.find(l => l.id === "overdue")?.tasks.length ?? 0;
-        const urgentTasks = lists.filter(l => l.id !== 'archive').reduce(
-            (sum, l) => sum + l.tasks.filter(t => t.priority === "urgent").length,
-            0
-        );
-        const archivedTasks = lists.find(l => l.id === "archive")?.tasks ?? [];
-        const performanceStats = performanceMonitor.getStats();
+    // Filtered lists memoization
+    const filteredLists = useMemo(() => {
+        return getEnhancedFilteredLists(lists);
+    }, [lists, getEnhancedFilteredLists]);
 
+    // Task statistics
+    const taskStats = useMemo(() => {
+        const allTasks = lists.flatMap(l => l.tasks);
         return {
-            totalTasks,
-            completedTasks,
-            urgentTasks,
-            overdueTasks,
-            archivedTasks,
-            performanceStats,
+            totalTasks: allTasks.length,
+            completedTasks: allTasks.filter(t => t.status === 'done').length,
+            urgentTasks: allTasks.filter(t => t.priority === 'urgent').length,
+            overdueTasks: allTasks.filter(t => t.status === 'overdue').length,
         };
-    }, [lists, performanceMonitor]);
+    }, [lists]);
 
-    // Create group handler - placeholder that should be implemented in parent
-    const handleCreateGroup = useCallback(async (name: string) => {
-        // This will be overridden in the parent component
-        console.log('Creating group:', name);
-    }, []);
+    // Archived tasks calculation
+    const archivedTasks = useMemo(() => {
+        const archiveList = lists.find(l => l.id === 'archive');
+        return archiveList ? archiveList.tasks : [];
+    }, [lists]);
 
     return {
-        // Core state
+        // Auth & Groups - now using centralized auth
         authState,
         groups,
         activeGroup,
         setActiveGroup,
+
+        // State
         lists,
         filteredLists,
         loading,
         error,
+        selectedTask,
+        isDialogOpen,
+        setIsDialogOpen,
+        setSelectedTask,
+        showArchiveDrawer,
+        setShowArchiveDrawer,
 
-        // Filter state
+        // Filtering & Sorting
         searchTerm,
         setSearchTerm,
         filterPriority,
@@ -705,8 +577,6 @@ export function useTaskManager() {
         setSortOrder,
         dateRange,
         setDateRange,
-
-        // Enhanced filter states
         filterCollection,
         setFilterCollection,
         filterLocation,
@@ -715,70 +585,64 @@ export function useTaskManager() {
         setFilterStartTime,
         filterEndTime,
         setFilterEndTime,
+        filterTimeRange: {
+            start: filterStartTime,
+            end: filterEndTime,
+        },
+        setFilterTimeRange: useCallback((timeRange: { start?: Date | null; end?: Date | null }) => {
+            if (timeRange.start !== undefined) setFilterStartTime(timeRange.start);
+            if (timeRange.end !== undefined) setFilterEndTime(timeRange.end);
+        }, []),
         dateFilterMode,
         setDateFilterMode,
+        handleClearFilters,
 
-        // Quick add state
+        // Quick Add
         quickAddStatus,
         setQuickAddStatus,
         quickAddTitle,
         setQuickAddTitle,
 
-        // Dialog state
-        selectedTask,
-        isDialogOpen,
-        setIsDialogOpen,
-        setSelectedTask,
-
-        // Archive drawer
-        showArchiveDrawer,
-        setShowArchiveDrawer,
-
-        // Virtual scrolling
+        // Virtual Scrolling
         virtualScrollOffset,
         setVirtualScrollOffset,
         containerHeight,
         setContainerHeight,
         calculateVirtualScrollData,
 
-        // Core handlers
-        handleDragEnd,
+        // Task Operations
+        loadTasks,
         handleQuickAddTask,
         handleTaskClick,
-        handleCreateGroup,
-        handleDeleteTask,
-        handleDuplicateTask,
-        handleMove,
-        handleSaveTaskDetail,
-
-        // Folder operations
-        handleCopyTasks,
-        handleMoveTasks,
-        handleArchiveTasks,
-        handleDeleteTasks,
-        handleSortTasks,
-
-        // Individual task operations
         handleEditTask,
         handleMoveTask,
         handleCopyTask,
         handleArchiveTask,
-
-        // Batch operations
+        handleDeleteTask,
+        handleDuplicateTask,
+        handleMove,
+        handleSaveTaskDetail,
         handleBatchOperations,
 
-        // Utilities
-        handleClearFilters,
-        loadTasks,
+        // Batch Operations
+        handleArchiveTasks,
+        handleDeleteTasks,
+        handleSortTasks,
+
+        // Drag & Drop
+        handleDragEnd,
+
+        // Group Management
+        handleCreateGroup,
 
         // Statistics
-        ...statistics,
+        ...taskStats,
+        archivedTasks,
 
-        // Performance monitoring
-        performanceStats: statistics.performanceStats,
-
-        // Expose state setters
+        // Utilities
         setLists,
         setError,
     };
 }
+
+export { folders };

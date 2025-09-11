@@ -7,12 +7,10 @@ import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
 import TableLayout from "./layout/TableLayout";
 import FlowchartLayout from "./layout/FlowchartLayout";
-import { Globe } from "lucide-react";
-import { useTaskManager, folders } from "./hooks/useTaskManager";
+import { useTask, folders } from "./hooks/useTask";
 import {
   createGoogleTask,
   deleteGoogleTask,
-  fetchGoogleTasks,
   updateGoogleTaskList,
   deleteGoogleTaskList,
   createGoogleTaskList,
@@ -22,6 +20,8 @@ import { Status, Task } from "./types/task";
 // Import dialog components for status transitions
 import TransitionConfirmationDialog from "./components/TaskDialog/components/TransitionConfirmationDialog";
 import DateTimeStatusDialog from "./components/TaskDialog/components/DateTimeStatusDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { PermissionGuard } from "@/presentation/components/common/PermissionGuard";
 
 // Import transition utilities
 import {
@@ -30,8 +30,9 @@ import {
 } from "./components/TaskDialog/utils/taskTransitions";
 
 const TaskManager: React.FC = () => {
+  const { authState, getFreshToken } = useAuth(); // Use centralized auth
+
   const {
-    authState,
     groups,
     activeGroup,
     setActiveGroup,
@@ -82,14 +83,13 @@ const TaskManager: React.FC = () => {
     lists,
     setLists,
     loadTasks,
-    // Add enhanced filter states
     filterCollection,
     setFilterCollection,
     filterLocation,
     setFilterLocation,
     filterTimeRange,
     setFilterTimeRange,
-  } = useTaskManager();
+  } = useTask();
 
   // Layout state
   const [layoutType, setLayoutType] = React.useState<LayoutType>("kanban");
@@ -149,6 +149,7 @@ const TaskManager: React.FC = () => {
       activityLog: [],
       createdAt: "",
       updatedAt: "",
+      linkedTasks: [],
     };
 
     setSelectedTask(newTask);
@@ -387,106 +388,34 @@ const TaskManager: React.FC = () => {
     setDragDateTimeDialog({ isOpen: false, task: null, targetStatus: null });
   };
 
-  // Google Tasks integration functions with fallbacks
-  const getFreshToken = async (): Promise<string> => {
-    if (authState.user?.accessToken) {
-      return authState.user.accessToken;
-    }
-
-    if (typeof chrome !== "undefined" && chrome.identity) {
-      return new Promise((resolve, reject) => {
-        chrome.identity.getAuthToken(
-          {
-            interactive: false,
-            scopes: [
-              "openid",
-              "email",
-              "profile",
-              "https://www.googleapis.com/auth/tasks",
-              "https://www.googleapis.com/auth/tasks.readonly",
-            ],
-          },
-          (result) => {
-            if (result?.token) {
-              resolve(result.token);
-              return;
-            }
-            chrome.identity.getAuthToken(
-              {
-                interactive: true,
-                scopes: [
-                  "openid",
-                  "email",
-                  "profile",
-                  "https://www.googleapis.com/auth/tasks",
-                  "https://www.googleapis.com/auth/tasks.readonly",
-                ],
-              },
-              (interactiveResult) => {
-                if (chrome.runtime.lastError) {
-                  reject(
-                    new Error(
-                      `Chrome identity error: ${chrome.runtime.lastError.message}`
-                    )
-                  );
-                } else if (!interactiveResult?.token) {
-                  reject(
-                    new Error(
-                      "No token received from Chrome identity API. Please check extension permissions."
-                    )
-                  );
-                } else {
-                  resolve(interactiveResult.token);
-                }
-              }
-            );
-          }
-        );
-      });
-    }
-
-    throw new Error(
-      "Chrome identity API not available. This feature requires a Chrome extension context with proper OAuth2 configuration."
-    );
-  };
-
+  // Simplified Google Tasks integration - using centralized auth
   const createGoogleTaskWrapper = async (
-    token: string,
     taskData: any,
     activeGroup: string
   ) => {
     try {
-      if (!token) throw new Error("No authentication token provided");
+      const token = await getFreshToken(); // Use centralized auth
       if (!activeGroup) throw new Error("No active task list selected");
 
       const result = await createGoogleTask(token, taskData, activeGroup);
       return result;
     } catch (error: any) {
-      if (error.message?.includes("No token received")) {
-        throw new Error(
-          "Authentication failed while creating task. Please sign in again."
-        );
-      }
+      console.error("Task creation failed:", error);
       throw error;
     }
   };
 
   const deleteGoogleTaskWrapper = async (
-    token: string,
     taskId: string,
     activeGroup: string
   ) => {
     try {
-      if (!token) throw new Error("No authentication token provided");
+      const token = await getFreshToken(); // Use centralized auth
       if (!activeGroup) throw new Error("No active task list selected");
 
       await deleteGoogleTask(token, taskId, activeGroup);
     } catch (error: any) {
-      if (error.message?.includes("No token received")) {
-        throw new Error(
-          "Authentication failed while deleting task. Please sign in again."
-        );
-      }
+      console.error("Task deletion failed:", error);
       throw error;
     }
   };
@@ -494,17 +423,10 @@ const TaskManager: React.FC = () => {
   // Enhanced group creation with Google Tasks API integration
   const handleCreateGroupWrapper = async (name: string) => {
     try {
-      if (!authState.user?.accessToken) {
-        throw new Error("Authentication required to create task groups");
-      }
-
-      const token = await getFreshToken();
+      const token = await getFreshToken(); // Use centralized auth
       const newGroup = await createGoogleTaskList(token, name);
 
-      // Trigger group reload in useTaskManager
       await handleCreateGroup(name);
-
-      // Set the new group as active and load its tasks
       setActiveGroup(newGroup.id);
 
       return newGroup;
@@ -518,17 +440,9 @@ const TaskManager: React.FC = () => {
   // Enhanced group rename handler
   const handleRenameGroupWrapper = async (id: string, newName: string) => {
     try {
-      if (!authState.user?.accessToken) {
-        throw new Error("Authentication required to rename task groups");
-      }
-
-      const token = await getFreshToken();
+      const token = await getFreshToken(); // Use centralized auth
       await updateGoogleTaskList(token, id, newName);
-
-      // Reload groups to reflect the change
-      // This would typically trigger a refresh in useTaskGroups
-      // For now, we'll just reload the page or implement a group refresh
-      window.location.reload();
+      window.location.reload(); // Reload to reflect changes
     } catch (error: any) {
       console.error("Error renaming group:", error);
       setError(error.message || "Failed to rename task group");
@@ -539,11 +453,7 @@ const TaskManager: React.FC = () => {
   // Enhanced group delete handler
   const handleDeleteGroupWrapper = async (id: string) => {
     try {
-      if (!authState.user?.accessToken) {
-        throw new Error("Authentication required to delete task groups");
-      }
-
-      const token = await getFreshToken();
+      const token = await getFreshToken(); // Use centralized auth
       await deleteGoogleTaskList(token, id);
 
       // If we're deleting the active group, switch to the first available group
@@ -554,8 +464,7 @@ const TaskManager: React.FC = () => {
         }
       }
 
-      // Reload groups to reflect the change
-      window.location.reload();
+      window.location.reload(); // Reload to reflect changes
     } catch (error: any) {
       console.error("Error deleting group:", error);
       setError(error.message || "Failed to delete task group");
@@ -566,36 +475,13 @@ const TaskManager: React.FC = () => {
   // Enhanced group selection handler that properly loads tasks for the selected group
   const handleGroupSelection = async (groupId: string) => {
     try {
-      // Set the active group immediately for UI feedback
       setActiveGroup(groupId);
-
-      // Clear current lists to show loading state
-      setLists([]);
-
-      // Load tasks for the selected group
-      if (authState.user?.accessToken) {
-        const token = await getFreshToken();
-        const tasks = await fetchGoogleTasks(token, groupId);
-
-        // Organize tasks into folders/lists
-        const organizedLists = folders.map((folder) => ({
-          id: folder.id,
-          title: folder.title,
-          emoji: folder.emoji,
-          tasks: tasks.filter((task: Task) => task.status === folder.id),
-        }));
-
-        setLists(organizedLists);
-      }
+      setLists([]); // Clear current lists to show loading state
+      await loadTasks(); // This will use the new activeGroup
     } catch (error: any) {
       console.error("Error switching groups:", error);
       setError(error.message || "Failed to load tasks for selected group");
     }
-  };
-
-  // Transition start function for React 18 concurrent features
-  const startTransition = (callback: () => void) => {
-    React.startTransition(callback);
   };
 
   // Enhanced clear filters to include new filter types
@@ -606,39 +492,6 @@ const TaskManager: React.FC = () => {
     if (setFilterTimeRange) setFilterTimeRange({});
   };
 
-  if (!authState.isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center p-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 max-w-md transform hover:scale-105 transition-all duration-300">
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
-            <div className="relative p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full shadow-2xl shadow-blue-500/25">
-              <Globe
-                className="w-12 h-12 text-white animate-spin"
-                style={{ animationDuration: "3s" }}
-              />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">
-            Welcome to TaskFlow
-          </h3>
-          <p className="mb-8 text-gray-600 dark:text-gray-300 leading-relaxed">
-            Connect with Google to sync and manage your tasks across all devices
-          </p>
-          <button
-            onClick={() => authState.user && void 0}
-            className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:scale-105 active:scale-95 transition-all duration-200 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
-          >
-            <span className="flex items-center gap-3">
-              <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" />
-              Connect with Google
-            </span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Filter lists to exclude archive for main board
   const mainBoardLists = filteredLists.filter((list) => list.id !== "archive");
 
@@ -646,181 +499,181 @@ const TaskManager: React.FC = () => {
   const allTasks = mainBoardLists.flatMap((list) => list.tasks);
 
   return (
-    <div className="flex w-full h-screen bg-background overflow-hidden">
-      <TaskGroupSidebar
-        groups={groups}
-        activeGroup={activeGroup || ""}
-        onSelectGroup={handleGroupSelection}
-        onCreateGroup={handleCreateGroupWrapper}
-        onRenameGroup={handleRenameGroupWrapper}
-        onDeleteGroup={handleDeleteGroupWrapper}
-        getFreshToken={getFreshToken}
-        createGoogleTaskList={createGoogleTaskList}
-      />
-
-      <div className="flex-1 h-full overflow-hidden flex flex-col">
-        <TaskHeader
-          authState={authState}
-          totalTasks={totalTasks}
-          completedTasks={completedTasks}
-          urgentTasks={urgentTasks}
-          overdueTasks={overdueTasks}
-          archivedTasks={archivedTasks}
-          loading={loading}
-          error={error}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          filterPriority={filterPriority}
-          setFilterPriority={setFilterPriority}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          filterTags={filterTags}
-          setFilterTags={setFilterTags}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          sortOrder={sortOrder}
-          setSortOrder={setSortOrder}
-          layoutType={layoutType}
-          setLayoutType={setLayoutType}
-          setShowArchiveDrawer={setShowArchiveDrawer}
-          onOpenTheme={() => setShowThemeDrawer(true)}
-          onRefresh={handleRefresh}
-          onCreateTask={handleCreateTask}
-          onClearFilters={handleClearFiltersWrapper}
-          // Enhanced filter props
-          lists={lists}
-          filterCollection={filterCollection}
-          setFilterCollection={setFilterCollection}
-          filterLocation={filterLocation}
-          setFilterLocation={setFilterLocation}
-          filterTimeRange={filterTimeRange}
-          setFilterTimeRange={setFilterTimeRange}
+    <PermissionGuard>
+      <div className="flex w-full h-screen bg-background overflow-hidden">
+        <TaskGroupSidebar
+          groups={groups}
+          activeGroup={activeGroup || ""}
+          onSelectGroup={handleGroupSelection}
+          onCreateGroup={handleCreateGroupWrapper}
+          onRenameGroup={handleRenameGroupWrapper}
+          onDeleteGroup={handleDeleteGroupWrapper}
+          createGoogleTaskList={createGoogleTaskList}
         />
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {layoutType === "table" ? (
-            <TableLayout
-              tasks={allTasks}
-              onTaskClick={handleTaskClickWrapper}
-              onEditTask={handleTaskClickWrapper}
-              onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
-              onDeleteTask={handleDeleteTask}
-              onToggleComplete={handleToggleComplete}
-            />
-          ) : layoutType === "kanban" ? (
-            <KanbanLayout
-              filteredLists={mainBoardLists}
-              onTaskClick={handleTaskClickWrapper}
-              onDragEnd={handleDragEnd}
-              quickAddStatus={quickAddStatus}
-              setQuickAddStatus={(status) =>
-                setQuickAddStatus(status as Status | null)
-              }
-              quickAddTitle={quickAddTitle}
-              setQuickAddTitle={setQuickAddTitle}
-              handleQuickAddTask={async (status) => {
-                await handleQuickAddTask(status as Status);
-              }}
-              onArchiveTasks={handleArchiveTasks}
-              onDeleteTasks={handleDeleteTasks}
-              onSortTasks={handleSortTasks}
-              onStatusTransition={handleStatusTransition}
-            />
-          ) : (
-            <FlowchartLayout
-              filteredLists={mainBoardLists}
-              onTaskClick={handleTaskClickWrapper}
-              onDragEnd={handleDragEnd}
-              quickAddStatus={quickAddStatus}
-              setQuickAddStatus={(status) =>
-                setQuickAddStatus(status as Status | null)
-              }
-              quickAddTitle={quickAddTitle}
-              setQuickAddTitle={setQuickAddTitle}
-              handleQuickAddTask={async (status) => {
-                await handleQuickAddTask(status as Status);
-              }}
-              onArchiveTasks={handleArchiveTasks}
-              onDeleteTasks={handleDeleteTasks}
-              onSortTasks={handleSortTasks}
-              onStatusTransition={handleStatusTransition}
-            />
-          )}
+        <div className="flex-1 h-full overflow-hidden flex flex-col">
+          <TaskHeader
+            authState={authState}
+            totalTasks={totalTasks}
+            completedTasks={completedTasks}
+            urgentTasks={urgentTasks}
+            overdueTasks={overdueTasks}
+            archivedTasks={archivedTasks}
+            loading={loading}
+            error={error}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterPriority={filterPriority}
+            setFilterPriority={setFilterPriority}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            filterTags={filterTags}
+            setFilterTags={setFilterTags}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            layoutType={layoutType}
+            setLayoutType={setLayoutType}
+            setShowArchiveDrawer={setShowArchiveDrawer}
+            onOpenTheme={() => setShowThemeDrawer(true)}
+            onRefresh={handleRefresh}
+            onCreateTask={handleCreateTask}
+            onClearFilters={handleClearFiltersWrapper}
+            // Enhanced filter props
+            lists={lists}
+            filterCollection={filterCollection}
+            setFilterCollection={setFilterCollection}
+            filterLocation={filterLocation}
+            setFilterLocation={setFilterLocation}
+            filterTimeRange={filterTimeRange}
+            setFilterTimeRange={setFilterTimeRange}
+          />
+
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {layoutType === "table" ? (
+              <TableLayout
+                tasks={allTasks}
+                onTaskClick={handleTaskClickWrapper}
+                onEditTask={handleTaskClickWrapper}
+                onArchiveTask={(taskId) => handleMoveTask(taskId, "archive")}
+                onDeleteTask={handleDeleteTask}
+                onToggleComplete={handleToggleComplete}
+              />
+            ) : layoutType === "kanban" ? (
+              <KanbanLayout
+                filteredLists={mainBoardLists}
+                onTaskClick={handleTaskClickWrapper}
+                onDragEnd={handleDragEnd}
+                quickAddStatus={quickAddStatus}
+                setQuickAddStatus={(status) =>
+                  setQuickAddStatus(status as Status | null)
+                }
+                quickAddTitle={quickAddTitle}
+                setQuickAddTitle={setQuickAddTitle}
+                handleQuickAddTask={async (status) => {
+                  await handleQuickAddTask(status as Status);
+                }}
+                onArchiveTasks={handleArchiveTasks}
+                onDeleteTasks={handleDeleteTasks}
+                onSortTasks={handleSortTasks}
+                onStatusTransition={handleStatusTransition}
+              />
+            ) : (
+              <FlowchartLayout
+                filteredLists={mainBoardLists}
+                onTaskClick={handleTaskClickWrapper}
+                onDragEnd={handleDragEnd}
+                quickAddStatus={quickAddStatus}
+                setQuickAddStatus={(status) =>
+                  setQuickAddStatus(status as Status | null)
+                }
+                quickAddTitle={quickAddTitle}
+                setQuickAddTitle={setQuickAddTitle}
+                handleQuickAddTask={async (status) => {
+                  await handleQuickAddTask(status as Status);
+                }}
+                onArchiveTasks={handleArchiveTasks}
+                onDeleteTasks={handleDeleteTasks}
+                onSortTasks={handleSortTasks}
+                onStatusTransition={handleStatusTransition}
+              />
+            )}
+          </div>
         </div>
+
+        <ArchiveDrawer
+          isOpen={showArchiveDrawer}
+          onClose={() => setShowArchiveDrawer(false)}
+          archivedTasks={archivedTasks}
+          onRestoreTask={(taskId) => handleMoveTask(taskId, "todo")}
+          onDeleteTask={handleDeleteTask}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
+
+        <ThemeDrawer
+          isOpen={showThemeDrawer}
+          onClose={() => setShowThemeDrawer(false)}
+        />
+
+        {/* Enhanced Task Dialog with centralized auth */}
+        <TaskDialog
+          isOpen={isDialogOpen}
+          onClose={handleDialogClose}
+          task={selectedTask}
+          folders={folders.filter((f) => f.id !== "archive")}
+          onSave={handleSaveTaskDetail}
+          onDelete={handleDeleteTask}
+          onDuplicate={handleDuplicateTask}
+          onMove={handleMove}
+          isCreateMode={isCreateMode}
+          availableTasks={getAvailableTasks()}
+          onTaskClick={handleLinkedTaskClick}
+          // Simplified Google Tasks integration props
+          createGoogleTask={createGoogleTaskWrapper}
+          deleteGoogleTask={deleteGoogleTaskWrapper}
+          activeGroup={activeGroup || ""}
+          lists={lists}
+          setLists={setLists}
+          setError={setError}
+          startTransition={React.startTransition}
+          setSelectedTask={setSelectedTask}
+          setIsDialogOpen={setIsDialogOpen}
+        />
+
+        {/* Drag-and-Drop Transition Confirmation Dialog */}
+        <TransitionConfirmationDialog
+          isOpen={dragTransitionDialog.isOpen}
+          transition={
+            dragTransitionDialog.task &&
+            dragTransitionDialog.fromStatus &&
+            dragTransitionDialog.toStatus
+              ? {
+                  from: dragTransitionDialog.fromStatus,
+                  to: dragTransitionDialog.toStatus,
+                  scenarios: getTransitionScenarios(
+                    dragTransitionDialog.fromStatus,
+                    dragTransitionDialog.toStatus,
+                    dragTransitionDialog.task
+                  ),
+                }
+              : null
+          }
+          onConfirm={handleDragTransitionConfirm}
+          onCancel={handleDragTransitionCancel}
+        />
+
+        {/* Drag-and-Drop Date/Time Dialog */}
+        <DateTimeStatusDialog
+          isOpen={dragDateTimeDialog.isOpen}
+          onClose={handleDragDateTimeCancel}
+          onConfirm={handleDragDateTimeConfirm}
+          currentTask={dragDateTimeDialog.task || ({} as Task)}
+          targetStatus={dragDateTimeDialog.targetStatus || "todo"}
+        />
       </div>
-
-      <ArchiveDrawer
-        isOpen={showArchiveDrawer}
-        onClose={() => setShowArchiveDrawer(false)}
-        archivedTasks={archivedTasks}
-        onRestoreTask={(taskId) => handleMoveTask(taskId, "todo")}
-        onDeleteTask={handleDeleteTask}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
-
-      <ThemeDrawer
-        isOpen={showThemeDrawer}
-        onClose={() => setShowThemeDrawer(false)}
-      />
-
-      {/* Enhanced Task Dialog with Google Tasks integration props */}
-      <TaskDialog
-        isOpen={isDialogOpen}
-        onClose={handleDialogClose}
-        task={selectedTask}
-        folders={folders.filter((f) => f.id !== "archive")}
-        onSave={handleSaveTaskDetail}
-        onDelete={handleDeleteTask}
-        onDuplicate={handleDuplicateTask}
-        onMove={handleMove}
-        isCreateMode={isCreateMode}
-        availableTasks={getAvailableTasks()}
-        onTaskClick={handleLinkedTaskClick}
-        // Google Tasks integration props
-        getFreshToken={getFreshToken}
-        createGoogleTask={createGoogleTaskWrapper}
-        deleteGoogleTask={deleteGoogleTaskWrapper}
-        activeGroup={activeGroup || ""}
-        lists={lists}
-        setLists={setLists}
-        setError={setError}
-        startTransition={startTransition}
-        setSelectedTask={setSelectedTask}
-        setIsDialogOpen={setIsDialogOpen}
-      />
-
-      {/* Drag-and-Drop Transition Confirmation Dialog */}
-      <TransitionConfirmationDialog
-        isOpen={dragTransitionDialog.isOpen}
-        transition={
-          dragTransitionDialog.task &&
-          dragTransitionDialog.fromStatus &&
-          dragTransitionDialog.toStatus
-            ? {
-                from: dragTransitionDialog.fromStatus,
-                to: dragTransitionDialog.toStatus,
-                scenarios: getTransitionScenarios(
-                  dragTransitionDialog.fromStatus,
-                  dragTransitionDialog.toStatus,
-                  dragTransitionDialog.task
-                ),
-              }
-            : null
-        }
-        onConfirm={handleDragTransitionConfirm}
-        onCancel={handleDragTransitionCancel}
-      />
-
-      {/* Drag-and-Drop Date/Time Dialog */}
-      <DateTimeStatusDialog
-        isOpen={dragDateTimeDialog.isOpen}
-        onClose={handleDragDateTimeCancel}
-        onConfirm={handleDragDateTimeConfirm}
-        currentTask={dragDateTimeDialog.task || ({} as Task)}
-        targetStatus={dragDateTimeDialog.targetStatus || "todo"}
-      />
-    </div>
+    </PermissionGuard>
   );
 };
 

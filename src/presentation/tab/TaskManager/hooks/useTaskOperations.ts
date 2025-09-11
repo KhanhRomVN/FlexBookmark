@@ -1,28 +1,160 @@
-import { useCallback, useRef, startTransition, useEffect } from "react";
+import { useCallback, useRef, useEffect, startTransition } from "react";
+import type { Task, Status } from "../types/task";
+import { TaskList, folders } from "./useTaskState";
+import { useTaskGroups } from "./useTaskGroups";
+import { useAdvancedDebounce } from "./useAdvancedDebounce";
 import {
     fetchGoogleTasks,
     updateGoogleTask,
-    createGoogleTask,
     deleteGoogleTask,
-    verifyTokenScopes
-} from "../../../../utils/GGTask";
-import { useAuth } from "./useAuth";
-import { useTaskGroups } from "./useTaskGroups";
-import { useAdvancedDebounce } from "./useDebounce.";
-import { AdvancedCache } from "./useCache";
-import { PerformanceMonitor } from "./usePerformance";
-import {
-    determineTaskStatus,
-    addActivityLogEntry,
-    createInitialActivityLog,
-    checkAndMoveOverdueTasks
-} from "./useTaskHelpers";
-import type { Task, Status } from "../types/task";
-import type { TaskList } from "./useTaskState";
-import { folders } from "../useTaskManager";
+    createGoogleTask
+} from "../services/GoogleTaskService";
 
+// Constants
+const CACHE_TTL = 5 * 60 * 1000;
 const DEBOUNCE_DELAY = 300;
 
+interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
+    ttl: number;
+}
+
+// Cache implementation
+class AdvancedCache<T> {
+    private cache = new Map<string, CacheEntry<T>>();
+    private maxSize = 100;
+
+    set(key: string, data: T, ttl: number = CACHE_TTL): void {
+        if (this.cache.size >= this.maxSize) {
+            const oldestKey = this.cache.keys().next().value;
+            if (oldestKey !== undefined) {
+                this.cache.delete(oldestKey);
+            }
+        }
+
+        this.cache.set(key, {
+            data,
+            timestamp: Date.now(),
+            ttl
+        });
+    }
+
+    get(key: string): T | null {
+        const entry = this.cache.get(key);
+        if (!entry) return null;
+
+        if (Date.now() - entry.timestamp > entry.ttl) {
+            this.cache.delete(key);
+            return null;
+        }
+
+        this.cache.delete(key);
+        this.cache.set(key, entry);
+        return entry.data;
+    }
+
+    clear(): void {
+        this.cache.clear();
+    }
+}
+
+// Performance monitoring
+class PerformanceMonitor {
+    private metrics = new Map<string, number[]>();
+
+    startTimer(operation: string): () => void {
+        const start = performance.now();
+        return () => {
+            const duration = performance.now() - start;
+            if (!this.metrics.has(operation)) {
+                this.metrics.set(operation, []);
+            }
+            const measurements = this.metrics.get(operation)!;
+            measurements.push(duration);
+
+            if (measurements.length > 100) {
+                measurements.splice(0, measurements.length - 100);
+            }
+        };
+    }
+
+    getAverageTime(operation: string): number {
+        const measurements = this.metrics.get(operation);
+        if (!measurements || measurements.length === 0) return 0;
+        return measurements.reduce((a, b) => a + b, 0) / measurements.length;
+    }
+
+    getStats(): Record<string, { avg: number; min: number; max: number; count: number }> {
+        const stats: Record<string, any> = {};
+        for (const [operation, measurements] of this.metrics) {
+            if (measurements.length > 0) {
+                stats[operation] = {
+                    avg: this.getAverageTime(operation),
+                    min: Math.min(...measurements),
+                    max: Math.max(...measurements),
+                    count: measurements.length
+                };
+            }
+        }
+        return stats;
+    }
+}
+
+// Helper functions - simplified implementations
+const checkAndMoveOverdueTasks = (tasks: Task[]): Task[] => {
+    return tasks.map(task => {
+        // Simple overdue check
+        if (task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done') {
+            return { ...task, status: 'overdue' as Status };
+        }
+        return task;
+    });
+};
+
+const createInitialActivityLog = () => {
+    const now = new Date();
+    return [{
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details: `Task created at ${now.toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+        })}`,
+        action: "created",
+        userId: "system",
+        timestamp: now,
+    }];
+};
+
+const addActivityLogEntry = (task: Task, action: string, details: string): Task => {
+    const now = new Date();
+    const newEntry = {
+        id: `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`,
+        details,
+        action,
+        userId: "system",
+        timestamp: now,
+    };
+
+    return {
+        ...task,
+        activityLog: [...(task.activityLog || []), newEntry]
+    };
+};
+
+export const determineTaskStatus = (task: Task): Status => {
+    // Simple status determination logic
+    if (task.completed) return 'done';
+    if (task.dueDate && new Date(task.dueDate) < new Date()) return 'overdue';
+    if (task.status) return task.status;
+    return 'todo';
+};
+
+// UPDATED: Function signature now takes getFreshToken instead of authState
 export function useTaskOperations(
     lists: TaskList[],
     setLists: React.Dispatch<React.SetStateAction<TaskList[]>>,
@@ -33,37 +165,33 @@ export function useTaskOperations(
     setQuickAddStatus: (status: Status | null) => void,
     selectedTask: Task | null,
     setSelectedTask: (task: Task | null) => void,
-    setIsDialogOpen: (open: boolean) => void
+    setIsDialogOpen: (open: boolean) => void,
+    getFreshToken: () => Promise<string> // CHANGED: Use getFreshToken from centralized auth
 ) {
-    const { authState, getFreshToken } = useAuth();
     const { activeGroup } = useTaskGroups();
     const cache = useRef(new AdvancedCache<Task[]>());
     const performanceMonitor = useRef(new PerformanceMonitor());
     const abortController = useRef<AbortController | null>(null);
     const lastLoadTime = useRef<number>(0);
-    const isLoadingRef = useRef<boolean>(false); // Prevent duplicate loads
+    const isLoadingRef = useRef<boolean>(false);
 
-    // Enhanced loadTasks function with better error handling
     const loadTasks = useCallback(async (force = false) => {
-
-        if (!authState.user || !activeGroup || isLoadingRef.current) {
+        if (!activeGroup || isLoadingRef.current) {
             return;
         }
 
-        // Prevent duplicate loading
         isLoadingRef.current = true;
 
-        // Abort previous request if still running
         if (abortController.current) {
             abortController.current.abort();
         }
         abortController.current = new AbortController();
 
-        const cacheKey = `tasks_${activeGroup}_${authState.user.email}`;
+        const cacheKey = `tasks_${activeGroup}`;
 
         if (!force) {
             const cached = cache.current.get(cacheKey);
-            if (cached && Date.now() - lastLoadTime.current < 30000) { // 30 second cache
+            if (cached && Date.now() - lastLoadTime.current < 30000) {
                 const updated: TaskList[] = folders.map(f => ({
                     ...f,
                     tasks: cached.filter(t => t.status === f.id),
@@ -81,24 +209,14 @@ export function useTaskOperations(
         const endTimer = performanceMonitor.current.startTimer('loadTasks');
 
         try {
-
-            // Get fresh token with proper scopes
-            let token = authState.user.accessToken;
-
-            // Always verify token scopes first
-            const tokenInfo = await verifyTokenScopes(token);
-            if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
-                token = await getFreshToken();
-            }
-
-            // Fetch tasks with proper error handling
+            // CHANGED: Use getFreshToken from centralized auth
+            const token = await getFreshToken();
             const tasks: Task[] = await fetchGoogleTasks(token, activeGroup);
 
             if (abortController.current?.signal.aborted) {
                 return;
             }
 
-            // Process tasks in batches for better performance
             const tasksWithStatusCheck = checkAndMoveOverdueTasks(tasks);
             const tasksWithActivityLog = tasksWithStatusCheck.map(task => ({
                 ...task,
@@ -107,8 +225,6 @@ export function useTaskOperations(
                     : createInitialActivityLog()
             }));
 
-
-            // Cache the results
             cache.current.set(cacheKey, tasksWithActivityLog);
             lastLoadTime.current = Date.now();
 
@@ -127,8 +243,6 @@ export function useTaskOperations(
             }
 
             console.error("Task load error:", err);
-
-            // Provide more specific error messages
             let errorMessage = "Failed to load tasks.";
 
             if (err.message?.includes('403')) {
@@ -147,34 +261,28 @@ export function useTaskOperations(
             endTimer();
             isLoadingRef.current = false;
         }
-    }, [authState, activeGroup, getFreshToken, setLists, setLoading, setError]);
+    }, [activeGroup, setLists, setLoading, setError, getFreshToken]);
 
-    // Auto-load tasks when auth state or active group changes
+    // CHANGED: Removed direct authState dependency, loadTasks will be called from parent component
     useEffect(() => {
-        if (authState.isAuthenticated && authState.user && activeGroup) {
-            loadTasks(true); // Force reload on auth/group change
+        if (activeGroup) {
+            loadTasks(true);
         }
-    }, [authState.isAuthenticated, authState.user?.email, activeGroup, loadTasks]);
+    }, [activeGroup, loadTasks]);
 
-    // Debounced save task function with better error handling
     const saveTask = useAdvancedDebounce(
         useCallback(async (task: Task) => {
-            if (!authState.user || !activeGroup) {
+            if (!activeGroup) {
                 return;
             }
 
             const endTimer = performanceMonitor.current.startTimer('saveTask');
 
             try {
-                let token = authState.user.accessToken;
-                const tokenInfo = await verifyTokenScopes(token);
-                if (!tokenInfo || !tokenInfo.scope?.includes("tasks")) {
-                    token = await getFreshToken();
-                }
-
+                // CHANGED: Use getFreshToken from centralized auth
+                const token = await getFreshToken();
                 await updateGoogleTask(token, task.id, task, activeGroup);
 
-                // Persist collection mapping for the task
                 try {
                     const map = JSON.parse(localStorage.getItem('taskCollections') || '{}');
                     map[task.id] = task.collection || '';
@@ -183,35 +291,28 @@ export function useTaskOperations(
                     // ignore storage errors
                 }
 
-                // Update cache
-                cache.current.clear(); // Clear to force refresh
-
+                cache.current.clear();
             } catch (err: any) {
                 console.error("Failed to save task:", err);
                 setError(`Failed to save task: ${err.message || 'Unknown error'}`);
-
-                // Force reload on error to sync state
                 setTimeout(() => {
                     loadTasks(true);
                 }, 1000);
             } finally {
                 endTimer();
             }
-        }, [authState, activeGroup, getFreshToken, loadTasks, setError]),
+        }, [activeGroup, loadTasks, setError, getFreshToken]),
         DEBOUNCE_DELAY,
         { maxWait: 2000 }
     );
 
     const handleDeleteTask = useCallback(async (taskId: string) => {
-        if (!authState.user || !activeGroup) return;
+        if (!activeGroup) return;
 
         const endTimer = performanceMonitor.current.startTimer('deleteTask');
         try {
-            const tokenInfo = await verifyTokenScopes(authState.user.accessToken);
-            const token = tokenInfo?.scope?.includes("tasks")
-                ? authState.user.accessToken
-                : await getFreshToken();
-
+            // CHANGED: Use getFreshToken from centralized auth
+            const token = await getFreshToken();
             await deleteGoogleTask(token, taskId, activeGroup);
 
             startTransition(() => {
@@ -235,19 +336,17 @@ export function useTaskOperations(
         } finally {
             endTimer();
         }
-    }, [authState, activeGroup, getFreshToken, selectedTask, setLists, setIsDialogOpen, setSelectedTask, setError]);
+    }, [activeGroup, selectedTask, setLists, setIsDialogOpen, setSelectedTask, setError, getFreshToken]);
 
     const handleDuplicateTask = useCallback(async (task: Task) => {
-        if (!authState.user || !activeGroup) return;
+        if (!activeGroup) return;
 
         const endTimer = performanceMonitor.current.startTimer('duplicateTask');
         try {
-            const tokenInfo = await verifyTokenScopes(authState.user.accessToken);
-            const token = tokenInfo?.scope?.includes("tasks")
-                ? authState.user.accessToken
-                : await getFreshToken();
+            // CHANGED: Use getFreshToken from centralized auth
+            const token = await getFreshToken();
 
-            const clone = {
+            const clone: Partial<Task> = {
                 ...task,
                 id: "",
                 title: task.title + " (Copy)",
@@ -280,7 +379,7 @@ export function useTaskOperations(
         } finally {
             endTimer();
         }
-    }, [authState, activeGroup, getFreshToken, lists, setLists, setError]);
+    }, [activeGroup, lists, setLists, setError, getFreshToken]);
 
     const handleMove = useCallback(async (taskId: string, newStatus: Status) => {
         const found = lists.flatMap(l => l.tasks).find(t => t.id === taskId);
@@ -309,9 +408,8 @@ export function useTaskOperations(
         setSelectedTask(null);
     }, [lists, saveTask, setLists, setIsDialogOpen, setSelectedTask]);
 
-    // Enhanced quick add with smart defaults
     const handleQuickAddTask = useCallback(async (status: Status) => {
-        if (!quickAddTitle.trim() || !authState.user || !activeGroup) return;
+        if (!quickAddTitle.trim() || !activeGroup) return;
 
         const endTimer = performanceMonitor.current.startTimer('quickAddTask');
         const now = new Date();
@@ -321,8 +419,7 @@ export function useTaskOperations(
         const dueDate = new Date(now);
         dueDate.setHours(23, 59, 59, 999);
 
-        const newTask: Task = {
-            id: "",
+        const newTask: Partial<Task> = {
             title: quickAddTitle,
             description: "",
             status,
@@ -336,15 +433,14 @@ export function useTaskOperations(
             attachments: [],
             tags: [],
             activityLog: createInitialActivityLog(),
-            createdAt: "",
-            updatedAt: ""
+            linkedTasks: []
         };
 
-        // Determine the smart status
-        const smartStatus = determineTaskStatus(newTask);
+        const smartStatus = determineTaskStatus(newTask as Task);
         newTask.status = smartStatus;
 
         try {
+            // CHANGED: Use getFreshToken from centralized auth
             const token = await getFreshToken();
             const created = await createGoogleTask(token, newTask, activeGroup);
 
@@ -366,7 +462,6 @@ export function useTaskOperations(
                 });
             }
 
-            // Clear cache to ensure fresh data
             cache.current.clear();
         } catch (err: any) {
             console.error("Failed to create task:", err);
@@ -376,18 +471,19 @@ export function useTaskOperations(
             setQuickAddStatus(null);
             endTimer();
         }
-    }, [quickAddTitle, authState, activeGroup, getFreshToken, lists, setLists, setQuickAddTitle, setQuickAddStatus, setError]);
+    }, [quickAddTitle, activeGroup, lists, setLists, setQuickAddTitle, setQuickAddStatus, setError, getFreshToken]);
 
-    // Batch operations for better performance
     const handleBatchOperations = {
         deleteMultiple: useCallback(async (taskIds: string[]) => {
-            if (!authState.user || !activeGroup) return;
+            if (!activeGroup) return;
 
             const endTimer = performanceMonitor.current.startTimer('batchDelete');
             const batchSize = 10;
-            const token = await getFreshToken();
 
             try {
+                // CHANGED: Use getFreshToken from centralized auth
+                const token = await getFreshToken();
+
                 for (let i = 0; i < taskIds.length; i += batchSize) {
                     const batch = taskIds.slice(i, i + batchSize);
                     await Promise.all(
@@ -411,16 +507,18 @@ export function useTaskOperations(
             } finally {
                 endTimer();
             }
-        }, [authState, activeGroup, getFreshToken, setLists, setError]),
+        }, [activeGroup, setLists, setError, getFreshToken]),
 
         updateMultiple: useCallback(async (updates: Array<{ id: string; changes: Partial<Task> }>) => {
-            if (!authState.user || !activeGroup) return;
+            if (!activeGroup) return;
 
             const endTimer = performanceMonitor.current.startTimer('batchUpdate');
             const batchSize = 5;
-            const token = await getFreshToken();
 
             try {
+                // CHANGED: Use getFreshToken from centralized auth
+                const token = await getFreshToken();
+
                 for (let i = 0; i < updates.length; i += batchSize) {
                     const batch = updates.slice(i, i + batchSize);
                     await Promise.all(
@@ -435,7 +533,6 @@ export function useTaskOperations(
                     );
                 }
 
-                // Reload tasks after batch update
                 await loadTasks(true);
             } catch (err: any) {
                 console.error("Failed to update tasks:", err);
@@ -443,24 +540,22 @@ export function useTaskOperations(
             } finally {
                 endTimer();
             }
-        }, [authState, activeGroup, getFreshToken, lists, loadTasks, setError]),
+        }, [activeGroup, lists, loadTasks, setError, getFreshToken]),
 
         copyTasks: useCallback(async (tasks: Task[]) => {
-            if (!authState.user || !activeGroup) return;
+            if (!activeGroup) return;
 
             const endTimer = performanceMonitor.current.startTimer('copyTasks');
             try {
-                const tokenInfo = await verifyTokenScopes(authState.user.accessToken);
-                const token = tokenInfo?.scope?.includes("tasks")
-                    ? authState.user.accessToken
-                    : await getFreshToken();
+                // CHANGED: Use getFreshToken from centralized auth
+                const token = await getFreshToken();
 
                 const batchSize = 5;
                 for (let i = 0; i < tasks.length; i += batchSize) {
                     const batch = tasks.slice(i, i + batchSize);
                     await Promise.all(
                         batch.map(task => {
-                            const clone = {
+                            const clone: Partial<Task> = {
                                 ...task,
                                 id: "",
                                 title: task.title + " (Copy)",
@@ -478,7 +573,7 @@ export function useTaskOperations(
             } finally {
                 endTimer();
             }
-        }, [authState, activeGroup, getFreshToken, loadTasks, setError]),
+        }, [activeGroup, loadTasks, setError, getFreshToken]),
 
         moveTasks: useCallback(async (tasks: Task[], newStatus: Status) => {
             const updatedTasks = tasks.map(task =>
@@ -498,7 +593,6 @@ export function useTaskOperations(
                 })));
             });
 
-            // Save all moved tasks in batches
             const batchSize = 5;
             for (let i = 0; i < updatedTasks.length; i += batchSize) {
                 const batch = updatedTasks.slice(i, i + batchSize);
@@ -524,7 +618,6 @@ export function useTaskOperations(
                 })));
             });
 
-            // Save all archived tasks in batches
             const batchSize = 5;
             for (let i = 0; i < archivedTasks.length; i += batchSize) {
                 const batch = archivedTasks.slice(i, i + batchSize);
@@ -534,24 +627,20 @@ export function useTaskOperations(
     };
 
     const handleSaveTaskDetail = useCallback(async (task: Task) => {
-        if (!authState.user || !activeGroup) return;
+        if (!activeGroup) return;
 
         const endTimer = performanceMonitor.current.startTimer("saveTaskDetail");
         try {
-            const tokenInfo = await verifyTokenScopes(authState.user.accessToken);
-            const token = tokenInfo?.scope?.includes("tasks")
-                ? authState.user.accessToken
-                : await getFreshToken();
+            // CHANGED: Use getFreshToken from centralized auth
+            const token = await getFreshToken();
 
             if (task.id) {
                 const smartStatus = determineTaskStatus(task);
                 const finalTask = { ...task, status: smartStatus };
 
-                // Process subtasks with linked tasks
                 const processedSubtasks =
                     task.subtasks?.map((subtask) => {
                         if (subtask.linkedTaskId) {
-                            // Add activity log to linked task if it exists
                             const linkedTask = lists
                                 .flatMap((l) => l.tasks)
                                 .find((t) => t.id === subtask.linkedTaskId);
@@ -561,7 +650,6 @@ export function useTaskOperations(
                                     "subtask_linked",
                                     `Linked as subtask "${subtask.title}" in task "${task.title}"`
                                 );
-                                // Save the linked task
                                 saveTask(updatedLinkedTask);
                             }
                         }
@@ -601,11 +689,9 @@ export function useTaskOperations(
                 const smartStatus = determineTaskStatus(task);
                 const newTask = { ...task, status: smartStatus };
 
-                // Process subtasks for new task
                 const processedSubtasks =
                     task.subtasks?.map((subtask) => {
                         if (subtask.linkedTaskId) {
-                            // Add activity log to linked task if it exists
                             const linkedTask = lists
                                 .flatMap((l) => l.tasks)
                                 .find((t) => t.id === subtask.linkedTaskId);
@@ -615,7 +701,6 @@ export function useTaskOperations(
                                     "subtask_linked",
                                     `Linked as subtask "${subtask.title}" in new task "${task.title}"`
                                 );
-                                // Save the linked task
                                 saveTask(updatedLinkedTask);
                             }
                         }
@@ -657,8 +742,7 @@ export function useTaskOperations(
         } finally {
             endTimer();
         }
-    }, [authState, activeGroup, getFreshToken, lists, saveTask, setLists, setIsDialogOpen, setSelectedTask, setError]);
-
+    }, [activeGroup, lists, saveTask, setLists, setIsDialogOpen, setSelectedTask, setError, getFreshToken]);
 
     return {
         saveTask,

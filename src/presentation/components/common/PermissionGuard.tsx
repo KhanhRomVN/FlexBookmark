@@ -9,47 +9,60 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   children,
 }) => {
   const { authState, login, checkPermissions } = useAuth();
+  const [permissionStatus, setPermissionStatus] = useState<any>(null);
   const [checking, setChecking] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [reauthError, setReauthError] = useState<string | null>(null);
 
+  // Only check permissions after authentication is complete
   useEffect(() => {
-    if (authState.isAuthenticated) {
-      checkPermissionStatus();
-    }
-  }, [authState.isAuthenticated]);
-
-  const checkPermissionStatus = async () => {
-    setChecking(true);
-    try {
-      const permissions = await checkPermissions();
-      setDebugInfo(permissions);
-      console.log("Current permissions:", permissions);
-    } catch (error) {
-      console.error("Permission check failed:", error);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const handleReauth = async () => {
-    setChecking(true);
-    try {
-      // Clear Chrome's OAuth cache completely
-      if (chrome?.identity) {
-        await new Promise<void>((resolve) => {
-          chrome.identity.clearAllCachedAuthTokens(() => {
-            console.log("Cleared all cached tokens");
-            resolve();
-          });
-        });
+    const checkPermissionStatus = async () => {
+      if (!authState.isAuthenticated || !authState.user?.accessToken) {
+        return;
       }
 
-      // Force new login with interactive mode
-      await login();
-      await checkPermissionStatus();
+      setChecking(true);
+      try {
+        const permissions = await checkPermissions();
+        setPermissionStatus(permissions);
+        console.log("Current permissions:", permissions);
+      } catch (error) {
+        console.error("Permission check failed:", error);
+        // Don't treat permission errors as auth failures
+        setPermissionStatus({
+          hasRequiredScopes: false,
+          hasDriveAccess: false,
+          hasSheetsAccess: false,
+          error:
+            error instanceof Error ? error.message : "Permission check failed",
+        });
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    if (authState.isAuthenticated && !authState.loading) {
+      checkPermissionStatus();
+    }
+  }, [
+    authState.isAuthenticated,
+    authState.loading,
+    authState.user?.accessToken,
+    checkPermissions,
+  ]);
+
+  const handleLogin = async () => {
+    setChecking(true);
+    setReauthError(null);
+
+    try {
+      const success = await login();
+      if (!success) {
+        setReauthError("Login failed. Please try again.");
+      }
     } catch (error) {
-      console.error("Reauthentication failed:", error);
+      console.error("Login error:", error);
+      setReauthError("Login failed. Please try again.");
     } finally {
       setChecking(false);
     }
@@ -57,43 +70,46 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
 
   const handleForceFullReauth = async () => {
     setChecking(true);
+    setReauthError(null);
+
     try {
-      // More aggressive token clearing
+      // Clear all cached tokens
       if (chrome?.identity) {
-        // Clear all tokens
         await new Promise<void>((resolve) => {
-          chrome.identity.clearAllCachedAuthTokens(resolve);
+          chrome.identity.clearAllCachedAuthTokens(() => {
+            console.log("Cleared all cached tokens");
+            resolve();
+          });
         });
 
-        // Clear any stored auth state
+        // Also clear local storage
         await chrome.storage.local.clear();
-
-        console.log("Cleared all auth data, forcing full reauth...");
       }
 
-      // Wait a bit then login
-      setTimeout(async () => {
-        await login();
-        await checkPermissionStatus();
-        setChecking(false);
-      }, 1000);
+      // Wait a moment then login
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const success = await login();
+      if (!success) {
+        setReauthError("Force reauthentication failed. Please try again.");
+      }
     } catch (error) {
       console.error("Force reauth failed:", error);
+      setReauthError("Force reauthentication failed. Please try again.");
+    } finally {
       setChecking(false);
     }
   };
 
-  // Loading state with full screen
+  // Show loading state
   if (authState.loading || checking) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
         <div className="flex flex-col items-center space-y-4">
-          {/* Modern spinner */}
           <div className="relative">
             <div className="w-12 h-12 border-4 border-blue-200/30 border-t-blue-400 rounded-full animate-spin"></div>
             <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-l-blue-600 rounded-full animate-spin animate-reverse"></div>
           </div>
-
           <div className="text-center">
             <p className="text-blue-100 text-sm font-medium">
               {authState.loading
@@ -109,14 +125,12 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     );
   }
 
-  // Authentication required state with full screen
+  // Show login screen if not authenticated
   if (!authState.isAuthenticated) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
         <div className="w-full max-w-md">
-          {/* Glassmorphism card */}
           <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-            {/* Logo/Icon section */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-blue-500 to-purple-600 rounded-2xl mb-4 shadow-lg">
                 <svg
@@ -133,7 +147,6 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
                   />
                 </svg>
               </div>
-
               <h1 className="text-2xl font-bold text-white mb-2">
                 FlexBookmark
               </h1>
@@ -142,7 +155,6 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
               </p>
             </div>
 
-            {/* Authentication section */}
             <div className="text-center mb-8">
               <h2 className="text-xl font-semibold text-white mb-3">
                 Authentication Required
@@ -151,35 +163,10 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
                 Connect with Google to access all your bookmarks, tasks,
                 calendar and productivity features.
               </p>
-
-              {/* Required permissions list */}
-              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-400/20 rounded-lg">
-                <p className="text-blue-200 text-xs font-medium mb-3">
-                  Required Permissions:
-                </p>
-                <div className="space-y-2 text-xs text-blue-100/80">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span>Google Calendar - Manage events</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span>Google Tasks - Task management</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span>Google Drive - File storage</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span>Google Sheets - Data sync</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Error message if any */}
-            {authState.error && (
+            {(reauthError || authState.error) && (
               <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <svg
@@ -195,15 +182,16 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
                       d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <p className="text-red-200 text-sm">{authState.error}</p>
+                  <p className="text-red-200 text-sm">
+                    {reauthError || authState.error}
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="space-y-3">
               <button
-                onClick={handleReauth}
+                onClick={handleLogin}
                 disabled={checking}
                 className="w-full bg-white hover:bg-gray-50 disabled:bg-gray-200 text-gray-900 font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70 flex items-center justify-center space-x-3 group"
               >
@@ -242,7 +230,6 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
                 )}
               </button>
 
-              {/* Force full reauth button */}
               <button
                 onClick={handleForceFullReauth}
                 disabled={checking}
@@ -251,7 +238,6 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
                 {checking ? "Processing..." : "Force Full Re-authentication"}
               </button>
 
-              {/* Debug toggle */}
               <button
                 onClick={() => setShowDebug(!showDebug)}
                 className="w-full text-blue-200/60 hover:text-blue-200 text-xs py-2 transition-colors"
@@ -261,91 +247,42 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
             </div>
 
             {/* Debug information */}
-            {showDebug && debugInfo && (
+            {showDebug && (
               <div className="mt-4 p-3 bg-black/20 rounded-lg">
                 <p className="text-blue-200 text-xs font-medium mb-2">
                   Debug Info:
                 </p>
                 <pre className="text-xs text-blue-100/80 whitespace-pre-wrap break-all">
-                  {JSON.stringify(debugInfo, null, 2)}
+                  {JSON.stringify(
+                    {
+                      isAuthenticated: authState.isAuthenticated,
+                      hasUser: !!authState.user,
+                      hasToken: !!authState.user?.accessToken,
+                      permissionStatus,
+                      error: authState.error,
+                    },
+                    null,
+                    2
+                  )}
                 </pre>
               </div>
             )}
 
-            {/* Security note */}
             <div className="mt-6 pt-6 border-t border-white/10">
               <p className="text-xs text-blue-200/60 text-center leading-relaxed">
                 Your data is encrypted and secure. We only access the
-                permissions you grant to enhance your productivity experience.
+                permissions you grant.
               </p>
-            </div>
-          </div>
-
-          {/* Features preview */}
-          <div className="mt-8 text-center">
-            <p className="text-blue-200/60 text-xs mb-4">
-              What you'll get access to:
-            </p>
-            <div className="flex justify-center space-x-6 text-blue-200/80">
-              <div className="flex flex-col items-center space-y-1">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                    />
-                  </svg>
-                </div>
-                <span className="text-xs">Bookmarks</span>
-              </div>
-              <div className="flex flex-col items-center space-y-1">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                </div>
-                <span className="text-xs">Tasks</span>
-              </div>
-              <div className="flex flex-col items-center space-y-1">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6a2 2 0 012 2v10a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2z"
-                    />
-                  </svg>
-                </div>
-                <span className="text-xs">Calendar</span>
-              </div>
             </div>
           </div>
         </div>
       </div>
     );
+  }
+
+  // If authenticated but permission check shows issues, show warning but still allow access
+  if (permissionStatus && !permissionStatus.hasRequiredScopes) {
+    console.warn("Some permissions may be missing, but allowing access");
   }
 
   return <>{children}</>;

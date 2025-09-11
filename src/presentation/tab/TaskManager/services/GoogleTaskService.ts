@@ -46,76 +46,19 @@ function safeDateParse(dateStr: string): Date | undefined {
     }
 }
 
-// Helper function to get fresh token with proper scopes
-async function getFreshToken(): Promise<string> {
-    return new Promise((resolve, reject) => {
-        chrome.identity.getAuthToken(
-            {
-                interactive: true,
-                scopes: [
-                    'openid',
-                    'email',
-                    'profile',
-                    'https://www.googleapis.com/auth/tasks',
-                    'https://www.googleapis.com/auth/tasks.readonly'
-                ]
-            },
-            (result) => {
-                if (chrome.runtime.lastError) {
-                    reject(new Error(chrome.runtime.lastError.message));
-                } else if (!result?.token) {
-                    reject(new Error('No token received'));
-                } else {
-                    resolve(result.token);
-                }
-            }
-        );
-    });
-}
-
-// Helper function to make authenticated requests with retry logic
+// Simplified authenticated request - no token refresh logic here
 async function makeAuthenticatedRequest(
     url: string,
-    options: RequestInit = {},
-    retryCount: number = 0
+    token: string,
+    options: RequestInit = {}
 ): Promise<Response> {
-    const maxRetries = 2;
-
-    try {
-        const response = await fetch(url, options);
-
-        // If forbidden and we haven't retried yet, try to get fresh token
-        if (response.status === 403 && retryCount < maxRetries) {
-            const freshToken = await getFreshToken();
-
-            const newOptions = {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${freshToken}`
-                }
-            };
-
-            return makeAuthenticatedRequest(url, newOptions, retryCount + 1);
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
         }
-
-        return response;
-    } catch (error) {
-        if (retryCount < maxRetries) {
-            const freshToken = await getFreshToken();
-
-            const newOptions = {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${freshToken}`
-                }
-            };
-
-            return makeAuthenticatedRequest(url, newOptions, retryCount + 1);
-        }
-        throw error;
-    }
+    });
 }
 
 // Create a new Google Tasks list (task group)
@@ -139,10 +82,10 @@ export async function createGoogleTaskList(
 
         const response = await makeAuthenticatedRequest(
             'https://www.googleapis.com/tasks/v1/users/@me/lists',
+            accessToken,
             {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(taskListData),
@@ -184,11 +127,7 @@ export async function fetchGoogleTaskLists(accessToken: string) {
     try {
         const response = await makeAuthenticatedRequest(
             "https://www.googleapis.com/tasks/v1/users/@me/lists",
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                },
-            }
+            accessToken
         );
 
         if (!response.ok) {
@@ -211,11 +150,10 @@ export async function fetchGoogleTaskLists(accessToken: string) {
     }
 }
 
-
 // Helper to create simplified task notes with full format
 function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: number; isOverLimit: boolean } {
     try {
-        // Build complete metadata object với định dạng thống nhất
+        // Build complete metadata object with consistent formatting
         const metadata: any = {
             // Core fields
             description: task.description || "",
@@ -229,7 +167,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             locationCoordinates: task.locationCoordinates || "",
         };
 
-        // Format thời gian và ngày tháng nhất quán - chỉ khi có giá trị
+        // Format time and date consistently - only when values exist
         if (task.startTime && task.startTime instanceof Date && !isNaN(task.startTime.getTime())) {
             const timeStr = task.startTime.toISOString().split("T")[1];
             metadata.startTime = timeStr;
@@ -256,7 +194,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             metadata.dueDate = "";
         }
 
-        // *** FIX: Add actual start/end date/time fields ***
+        // Add actual start/end date/time fields
         if (task.actualStartTime && task.actualStartTime instanceof Date && !isNaN(task.actualStartTime.getTime())) {
             const timeStr = task.actualStartTime.toISOString().split("T")[1];
             metadata.actualStartTime = timeStr;
@@ -283,7 +221,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             metadata.actualEndDate = "";
         }
 
-        // Luôn include array (rỗng nếu không có)
+        // Always include arrays (empty if none)
         metadata.subtasks = task.subtasks || [];
         metadata.attachments = task.attachments || [];
         metadata.tags = task.tags || [];
@@ -291,7 +229,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         // Activity log
         let activityLog = task.activityLog || [];
 
-        // Nếu task mới (không có activity log và không có id) thì tạo entry "created"
+        // If new task (no activity log and no id) then create "created" entry
         if (activityLog.length === 0 && !task.id) {
             const now = new Date();
             const entryId = `${now.getTime()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -313,26 +251,16 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
         }
         metadata.activityLog = activityLog;
 
-        // Also update fetchGoogleTasks to parse actual times
-        // This part should be added to fetchGoogleTasks function:
-        /*
-        // Parse actual start/end date/time fields
-        actualStartTime: taskData.actualStartTime ? safeDateParse(taskData.actualStartTime) : null,
-        actualEndTime: taskData.actualEndTime ? safeDateParse(taskData.actualEndTime) : null,
-        actualStartDate: taskData.actualStartDate ? safeDateParse(taskData.actualStartDate) : null,
-        actualEndDate: taskData.actualEndDate ? safeDateParse(taskData.actualEndDate) : null,
-        */
-
         // Serialize JSON
         let jsonString = JSON.stringify(metadata, null, 0);
         let characterCount = jsonString.length;
         let isOverLimit = characterCount > MAX_NOTES_LENGTH;
 
-        // Nếu quá limit -> tối ưu giảm size
+        // If over limit -> optimize to reduce size
         if (isOverLimit) {
             console.warn(`Metadata too large (${characterCount}/${MAX_NOTES_LENGTH}), reducing size...`);
 
-            // Giới hạn activity log
+            // Limit activity log
             if (metadata.activityLog && metadata.activityLog.length > 5) {
                 metadata.activityLog = metadata.activityLog.slice(-5);
                 jsonString = JSON.stringify(metadata, null, 0);
@@ -343,7 +271,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
-            // Xoá attachments
+            // Remove attachments
             if (metadata.attachments && metadata.attachments.length > 0) {
                 metadata.attachments = [];
                 jsonString = JSON.stringify(metadata, null, 0);
@@ -354,7 +282,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
-            // Giới hạn subtasks
+            // Limit subtasks
             if (metadata.subtasks && metadata.subtasks.length > 5) {
                 metadata.subtasks = metadata.subtasks.slice(0, 5);
                 jsonString = JSON.stringify(metadata, null, 0);
@@ -387,7 +315,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                 }
             }
 
-            // Giải pháp cuối cùng: giữ metadata tối thiểu
+            // Final solution: keep minimal metadata
             if (isOverLimit) {
                 console.warn("Using minimal metadata due to size constraints");
                 const minimalMetadata = {
@@ -402,7 +330,7 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
                     dueTime: metadata.dueTime,
                     startDate: metadata.startDate,
                     dueDate: metadata.dueDate,
-                    // *** IMPORTANT: Keep actual times even in minimal metadata ***
+                    // Keep actual times even in minimal metadata
                     actualStartTime: metadata.actualStartTime,
                     actualEndTime: metadata.actualEndTime,
                     actualStartDate: metadata.actualStartDate,
@@ -434,7 +362,6 @@ function createTaskNotes(task: Partial<Task>): { notes: string; characterCount: 
             dueTime: "",
             startDate: "",
             dueDate: "",
-            // *** IMPORTANT: Include actual times in safe fallback too ***
             actualStartTime: task.actualStartTime ?
                 task.actualStartTime.toISOString().split("T")[1] : "",
             actualEndTime: task.actualEndTime ?
@@ -515,28 +442,6 @@ function validateTaskData(taskData: any): { isValid: boolean; errors: string[] }
     return { isValid: errors.length === 0, errors };
 }
 
-// Modified function - chỉ set default times khi được yêu cầu explicit
-function setDefaultTaskTimes(): { startTime: Date; dueTime: Date; startDate: Date; dueDate: Date } {
-    const now = new Date();
-
-    // Set start time to current time (rounded to next 15-minute interval)
-    const startTime = new Date(now);
-    const minutes = startTime.getMinutes();
-    const roundedMinutes = Math.ceil(minutes / 15) * 15;
-    startTime.setMinutes(roundedMinutes, 0, 0);
-
-    // Set end time to 1 hour after start time
-    const dueTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-
-    // Set start date to today (beginning of day in UTC to avoid timezone issues)
-    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Set end date to tomorrow (beginning of day in UTC)
-    const dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-    return { startTime, dueTime, startDate, dueDate };
-}
-
 // Update a Google Tasks list
 export async function updateGoogleTaskList(
     accessToken: string,
@@ -560,10 +465,10 @@ export async function updateGoogleTaskList(
 
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/users/@me/lists/${listId}`,
+            accessToken,
             {
                 method: 'PATCH',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(taskListData),
@@ -596,11 +501,9 @@ export async function deleteGoogleTaskList(
     try {
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/users/@me/lists/${listId}`,
+            accessToken,
             {
                 method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
             }
         );
 
@@ -618,11 +521,7 @@ export async function deleteGoogleTaskList(
 export async function fetchGoogleTasks(token: string, tasklistId: string = '@default') {
     const response = await makeAuthenticatedRequest(
         `https://www.googleapis.com/tasks/v1/lists/${tasklistId}/tasks?showCompleted=true&showHidden=true`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
+        token
     );
 
     if (!response.ok) {
@@ -634,7 +533,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
     const data = await response.json();
 
     return (data.items || []).map((item: any) => {
-        // Parse metadata từ notes
+        // Parse metadata from notes
         let taskData: any = {};
 
         try {
@@ -643,7 +542,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
                 taskData = parsedNotes;
             }
         } catch (error) {
-            // Nếu notes không phải JSON -> coi như description
+            // If notes is not JSON -> treat as description
             taskData.description = item.notes || "";
         }
 
@@ -666,7 +565,7 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             startDate: taskData.startDate ? safeDateParse(taskData.startDate) : null,
             dueDate: taskData.dueDate ? safeDateParse(taskData.dueDate) : null,
 
-            // *** FIX: Parse actual start/end date/time fields ***
+            // Parse actual start/end date/time fields
             actualStartTime: taskData.actualStartTime ? safeDateParse(taskData.actualStartTime) : null,
             actualEndTime: taskData.actualEndTime ? safeDateParse(taskData.actualEndTime) : null,
             actualStartDate: taskData.actualStartDate ? safeDateParse(taskData.actualStartDate) : null,
@@ -678,7 +577,8 @@ export async function fetchGoogleTasks(token: string, tasklistId: string = '@def
             tags: taskData.tags || [],
             activityLog: taskData.activityLog || [],
             updatedAt: item.updated || "",
-            createdAt: item.updated || ""
+            createdAt: item.updated || "",
+            linkedTasks: taskData.linkedTasks || []
         };
 
         return task;
@@ -691,7 +591,7 @@ export const createGoogleTask = async (
     taskListId: string
 ): Promise<Task> => {
     try {
-        // KHÔNG TỰ ĐỘNG SET DEFAULT TIMES - chỉ dùng những gì user nhập
+        // Don't auto-set default times - only use what user inputs
         const taskWithDefaults = { ...task };
 
         // Prepare minimal task data for Google Tasks API
@@ -702,7 +602,7 @@ export const createGoogleTask = async (
         // Set status (Google Tasks only supports 'needsAction' and 'completed')
         googleTaskData.status = taskWithDefaults.completed ? 'completed' : 'needsAction';
 
-        // Add due date CHỈ KHI CÓ (use dueDate or dueTime)
+        // Add due date ONLY WHEN AVAILABLE (use dueDate or dueTime)
         const dueDate = taskWithDefaults.dueDate || taskWithDefaults.dueTime;
         if (dueDate instanceof Date && !isNaN(dueDate.getTime())) {
             googleTaskData.due = formatDueDateTime(dueDate);
@@ -733,10 +633,10 @@ export const createGoogleTask = async (
 
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks`,
+            accessToken,
             {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(googleTaskData),
@@ -763,7 +663,7 @@ export const createGoogleTask = async (
 
         const data = await response.json();
 
-        // Return the task với chỉ những gì user đã nhập - KHÔNG thêm default times
+        // Return the task with only what user input - DON'T add default times
         return {
             id: data.id,
             title: data.title || taskWithDefaults.title || "New Task",
@@ -772,16 +672,21 @@ export const createGoogleTask = async (
             priority: taskWithDefaults.priority || 'medium',
             collection: taskWithDefaults.collection || "",
 
-            // FIXED: Return individual location fields
             locationName: taskWithDefaults.locationName || "",
             locationAddress: taskWithDefaults.locationAddress || "",
             locationCoordinates: taskWithDefaults.locationCoordinates || "",
 
-            // CHỈ GIỮ LẠI THỜI GIAN NẾU USER ĐÃ NHẬP
             startTime: taskWithDefaults.startTime || null,
             dueTime: taskWithDefaults.dueTime || null,
             startDate: taskWithDefaults.startDate || null,
             dueDate: taskWithDefaults.dueDate || null,
+
+            // Add actual start/end fields if needed
+            actualStartTime: taskWithDefaults.actualStartTime || null,
+            actualEndTime: taskWithDefaults.actualEndTime || null,
+            actualStartDate: taskWithDefaults.actualStartDate || null,
+            actualEndDate: taskWithDefaults.actualEndDate || null,
+
             completed: data.status === 'completed',
             subtasks: taskWithDefaults.subtasks || [],
             attachments: taskWithDefaults.attachments || [],
@@ -789,6 +694,7 @@ export const createGoogleTask = async (
             activityLog: taskWithDefaults.activityLog || [],
             createdAt: data.updated || new Date().toISOString(),
             updatedAt: data.updated || new Date().toISOString(),
+            linkedTasks: taskWithDefaults.linkedTasks || []
         };
     } catch (error) {
         console.error('Error in createGoogleTask:', error);
@@ -843,10 +749,10 @@ export const updateGoogleTask = async (
 
         const response = await makeAuthenticatedRequest(
             `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+            accessToken,
             {
                 method: 'PATCH',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(googleTaskData),
@@ -874,15 +780,13 @@ export const updateGoogleTask = async (
 export const deleteGoogleTask = async (
     accessToken: string,
     taskId: string,
-    taskListId: string = '@default'  // Added missing parameter
+    taskListId: string = '@default'
 ): Promise<void> => {
     const response = await makeAuthenticatedRequest(
-        `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,  // Fixed: use taskListId instead of tasklistId
+        `https://www.googleapis.com/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+        accessToken,
         {
             method: 'DELETE',
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
         }
     );
 
@@ -896,9 +800,7 @@ export const deleteGoogleTask = async (
 export async function fetchGoogleTaskGroups(accessToken: string) {
     const response = await makeAuthenticatedRequest(
         "https://www.googleapis.com/tasks/v1/users/@me/lists",
-        {
-            headers: { Authorization: `Bearer ${accessToken}` },
-        }
+        accessToken
     );
 
     if (!response.ok) {
@@ -911,70 +813,57 @@ export async function fetchGoogleTaskGroups(accessToken: string) {
     return data.items || [];
 }
 
-// Helper function to verify token and scopes
-export async function verifyTokenScopes(token: string): Promise<any> {
-    try {
-        const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
-        if (response.ok) {
-            const tokenInfo = await response.json();
-            return tokenInfo;
-        }
-    } catch (error) {
-        console.error('Error verifying token:', error);
-    }
-    return null;
-}
-
-// Export helper function to calculate metadata size for UI
 export function calculateTaskMetadataSize(task: Partial<Task>): {
     characterCount: number;
     isOverLimit: boolean;
     breakdown: {
         description: number;
+        activityLog: number;
         subtasks: number;
         attachments: number;
         tags: number;
-        location: number;
-        actualTimes: number; // NEW: Add actual times to breakdown
         other: number;
-    }
-} {
-    const { characterCount, isOverLimit } = createTaskNotes(task);
-
-    // Calculate breakdown
-    const description = (task.description || "").length;
-    const subtasksSize = JSON.stringify(task.subtasks || []).length;
-    const attachmentsSize = JSON.stringify(task.attachments || []).length;
-    const tagsSize = JSON.stringify(task.tags || []).length;
-
-    // Calculate location size
-    const locationSize = (task.locationName || "").length +
-        (task.locationAddress || "").length +
-        (task.locationCoordinates || "").length;
-
-    // *** NEW: Calculate actual times size ***
-    const actualTimesSize =
-        (task.actualStartTime ? task.actualStartTime.toISOString().length : 0) +
-        (task.actualEndTime ? task.actualEndTime.toISOString().length : 0) +
-        (task.actualStartDate ? task.actualStartDate.toISOString().split("T")[0].length : 0) +
-        (task.actualEndDate ? task.actualEndDate.toISOString().split("T")[0].length : 0);
-
-    const other = Math.max(0, characterCount - description - subtasksSize - attachmentsSize - tagsSize - locationSize - actualTimesSize);
-
-    return {
-        characterCount,
-        isOverLimit,
-        breakdown: {
-            description,
-            subtasks: subtasksSize,
-            attachments: attachmentsSize,
-            tags: tagsSize,
-            location: locationSize,
-            actualTimes: actualTimesSize, // NEW: Include actual times in breakdown
-            other
-        }
     };
+} {
+    try {
+        // Use the same logic as createTaskNotes to get consistent sizing
+        const { characterCount, isOverLimit } = createTaskNotes(task);
+
+        // Calculate breakdown of different components
+        const breakdown = {
+            description: (task.description || "").length,
+            activityLog: JSON.stringify(task.activityLog || []).length,
+            subtasks: JSON.stringify(task.subtasks || []).length,
+            attachments: JSON.stringify(task.attachments || []).length,
+            tags: JSON.stringify(task.tags || []).length,
+            other: 0
+        };
+
+        // Calculate "other" as the remainder
+        const knownSize = Object.values(breakdown).reduce((sum, size) => sum + size, 0) - breakdown.other;
+        breakdown.other = Math.max(0, characterCount - knownSize);
+
+        return {
+            characterCount,
+            isOverLimit,
+            breakdown
+        };
+    } catch (error) {
+        console.error('Error calculating task metadata size:', error);
+        return {
+            characterCount: 0,
+            isOverLimit: false,
+            breakdown: {
+                description: 0,
+                activityLog: 0,
+                subtasks: 0,
+                attachments: 0,
+                tags: 0,
+                other: 0
+            }
+        };
+    }
 }
 
 // Export character limits for use in UI
-export { MAX_NOTES_LENGTH, MAX_TITLE_LENGTH, setDefaultTaskTimes };
+export { MAX_NOTES_LENGTH, MAX_TITLE_LENGTH };
