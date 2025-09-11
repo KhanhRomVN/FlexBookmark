@@ -101,30 +101,6 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     }
   };
 
-  // Show loading state
-  if (authState.loading || checking) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-blue-200/30 border-t-blue-400 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-l-blue-600 rounded-full animate-spin animate-reverse"></div>
-          </div>
-          <div className="text-center">
-            <p className="text-blue-100 text-sm font-medium">
-              {authState.loading
-                ? "Initializing..."
-                : "Verifying permissions..."}
-            </p>
-            <p className="text-blue-200/60 text-xs mt-1">
-              Please wait a moment
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Show login screen if not authenticated
   if (!authState.isAuthenticated) {
     return (

@@ -5,7 +5,6 @@ export class HabitServer {
     private sheetService: SheetService;
 
     constructor(accessToken: string) {
-        // Fix lỗi 1: Xóa unused variable accessToken
         this.sheetService = new SheetService(accessToken);
     }
 

@@ -3,7 +3,6 @@ import { HabitServer } from '../services/habitService';
 import { Habit, HabitFormData } from '../types/types';
 import { createHabit, calculateStreak } from '../utils/habitUtils';
 import { useAuth } from '../../../../contexts/AuthContext';
-import ChromeAuthManager from '../../../../utils/chromeAuth';
 import { cacheHabits, getCachedHabits } from '../utils/cacheUtils';
 
 export const useHabit = () => {
@@ -25,12 +24,8 @@ export const useHabit = () => {
     useEffect(() => {
         const checkDriveAccess = async () => {
             if (authState.isAuthenticated && authState.user) {
-                const authManager = ChromeAuthManager.getInstance();
-                const hasAccess = await authManager.hasRequiredScopes([
-                    'https://www.googleapis.com/auth/drive.file',
-                    'https://www.googleapis.com/auth/spreadsheets'
-                ]);
-                setHasDriveAccess(hasAccess);
+                // Assume access if authenticated with centralized auth
+                setHasDriveAccess(true);
             } else {
                 setHasDriveAccess(false);
             }

@@ -6,9 +6,12 @@ import HabitListPanel from "./components/HabitListPanel";
 import HabitDetailPanel from "./components/HabitDetailPanel";
 import Sidebar from "./components/Sidebar";
 import { Habit, HabitFormData } from "./types/types";
-import { PermissionGuard } from "../../components/common/PermissionGuard";
+import { PermissionGuard } from "@/presentation/components/common/PermissionGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
 const HabitManager: React.FC = () => {
+  useAuth(); // Get auth state from centralized auth
+
   const {
     habits,
     loading,
