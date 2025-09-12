@@ -8,6 +8,7 @@ import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
 import TaskManager from "@/presentation/tab/TaskManager";
 import HabitManager from "@/presentation/tab/HabitManager";
+import MoneyManager from "@/presentation/tab/MoneyManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,10 +23,13 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "manager" | "taskManager" | "habits"
+    | "dashboard"
+    | "bookmarkManager"
+    | "taskManager"
+    | "habitManager"
+    | "moneyManager"
   >("dashboard");
 
-  // Keyboard shortcuts: 1 = Dashboard, 2 = Bookmarks, 3 = Calendar, 4 = Task Manager, 5 = Habits
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
@@ -40,13 +44,16 @@ const App: React.FC = () => {
         setActiveTab("dashboard");
       }
       if (e.key === "2" || e.code === "Digit2" || e.code === "Numpad2") {
-        setActiveTab("manager");
+        setActiveTab("bookmarkManager");
       }
       if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
         setActiveTab("taskManager");
       }
       if (e.key === "4" || e.code === "Digit4" || e.code === "Numpad4") {
-        setActiveTab("habits");
+        setActiveTab("habitManager");
+      }
+      if (e.key === "5" || e.code === "Digit5" || e.code === "Numpad5") {
+        setActiveTab("moneyManager");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -59,9 +66,10 @@ const App: React.FC = () => {
       if (
         result.flexbookmark_active_tab &&
         (result.flexbookmark_active_tab === "dashboard" ||
-          result.flexbookmark_active_tab === "manager" ||
+          result.flexbookmark_active_tab === "bookmarkManager" ||
           result.flexbookmark_active_tab === "taskManager" ||
-          result.flexbookmark_active_tab === "habits")
+          result.flexbookmark_active_tab === "habitManager" ||
+          result.flexbookmark_active_tab === "moneyManager")
       ) {
         setActiveTab(result.flexbookmark_active_tab);
       }
@@ -83,14 +91,22 @@ const App: React.FC = () => {
                 value={activeTab}
                 onValueChange={(v) =>
                   setActiveTab(
-                    v as "dashboard" | "manager" | "taskManager" | "habits"
+                    v as
+                      | "dashboard"
+                      | "bookmarkManager"
+                      | "taskManager"
+                      | "habitManager"
+                      | "moneyManager"
                   )
                 }
               >
                 <TabsContent value="dashboard" className="flex-1 overflow-auto">
                   <Dashboard />
                 </TabsContent>
-                <TabsContent value="manager" className="flex-1 overflow-auto">
+                <TabsContent
+                  value="bookmarkManager"
+                  className="flex-1 overflow-auto"
+                >
                   <BookmarkManager />
                 </TabsContent>
                 <TabsContent
@@ -99,8 +115,17 @@ const App: React.FC = () => {
                 >
                   <TaskManager />
                 </TabsContent>
-                <TabsContent value="habits" className="flex-1 overflow-auto">
+                <TabsContent
+                  value="habitManager"
+                  className="flex-1 overflow-auto"
+                >
                   <HabitManager />
+                </TabsContent>
+                <TabsContent
+                  value="moneyManager"
+                  className="flex-1 overflow-auto"
+                >
+                  <MoneyManager />
                 </TabsContent>
               </Tabs>
             </div>
