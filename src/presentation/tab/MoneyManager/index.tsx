@@ -1,3 +1,4 @@
+// src/presentation/tab/MoneyManager/index.tsx
 import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar/Sidebar";
 import MoneyListPanel from "./components/MoneyListPanel/MoneyListPanel";
@@ -25,23 +26,66 @@ const MoneyManager: React.FC = () => {
   const [savedFilters, setSavedFilters] = useState<
     Array<{ name: string; filters: any }>
   >([]);
+  const [retryCount, setRetryCount] = useState(0);
 
   const {
     transactions,
     accounts,
     categories,
-    loading,
+    error,
     addTransaction,
     reloadMoneyData,
+    connectionStatus,
+    isBackgroundLoading,
+    hasInitialData,
   } = useMoney();
+
   const { deleteTransaction } = useTransactions();
   const { updateAccount } = useAccounts();
   const { updateCategory } = useCategories();
 
+  // Handle connection retry
+  const handleRetryConnection = async () => {
+    setRetryCount((prev) => prev + 1);
+    try {
+      await reloadMoneyData(false);
+    } catch (error) {
+      console.error("Retry failed:", error);
+    }
+  };
+
   useEffect(() => {
-    // Load initial data
-    reloadMoneyData();
-  }, []);
+    // Load initial data - this will use cached data first, then sync in background
+    const initializeData = async () => {
+      try {
+        await reloadMoneyData(hasInitialData); // Use background sync if we have cached data
+      } catch (error) {
+        console.error("Initial data load failed:", error);
+      }
+    };
+
+    initializeData();
+  }, [hasInitialData]);
+
+  // Auto-retry on error with exponential backoff
+  useEffect(() => {
+    if (connectionStatus === "error" && retryCount < 3) {
+      const retryDelay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+      const timer = setTimeout(() => {
+        console.log(`Auto-retry ${retryCount + 1}/3 after ${retryDelay}ms`);
+        handleRetryConnection();
+      }, retryDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [connectionStatus, retryCount]);
+
+  // Reset retry count on successful connection
+  useEffect(() => {
+    if (connectionStatus === "connected") {
+      setRetryCount(0);
+    }
+  }, [connectionStatus]);
 
   const handleAddTransaction = () => {
     setDialogType("transaction");
@@ -91,16 +135,24 @@ const MoneyManager: React.FC = () => {
         // Other cases for budget, savings, debt
       }
       setDialogOpen(false);
-      reloadMoneyData();
+      // Trigger a background reload to refresh data
+      await reloadMoneyData(true);
     } catch (error) {
       console.error("Error saving data:", error);
+      // You might want to show an error message to the user here
     }
   };
 
   const handleDeleteTransaction = async (transactionId: string) => {
     if (window.confirm("Are you sure you want to delete this transaction?")) {
-      await deleteTransaction(transactionId);
-      reloadMoneyData();
+      try {
+        await deleteTransaction(transactionId);
+        // Trigger a background reload to refresh data
+        await reloadMoneyData(true);
+      } catch (error) {
+        console.error("Error deleting transaction:", error);
+        // You might want to show an error message to the user here
+      }
     }
   };
 
@@ -148,31 +200,44 @@ const MoneyManager: React.FC = () => {
         onAddAccount={handleAddAccount}
         onExportData={handleExportData}
         savedFilters={savedFilters}
+        hasInitialData={hasInitialData}
       />
 
-      <div className="flex-1 flex">
-        <div className="w-1/2 border-r border-gray-200 dark:border-gray-700">
-          <MoneyListPanel
-            transactions={transactions}
-            accounts={accounts}
-            categories={categories}
-            selectedAccountId={selectedAccountId}
-            selectedCategoryId={selectedCategoryId}
-            timeFilter={timeFilter}
-            searchQuery={searchQuery}
-            loading={loading}
-            onEditTransaction={handleEditTransaction}
-            onDeleteTransaction={handleDeleteTransaction}
-            onEditAccount={handleEditAccount}
-            onViewAccountTransactions={setSelectedAccountId}
-            onSelectAccount={setSelectedAccountId}
-            onSelectCategory={setSelectedCategoryId}
-            onSetTimeFilter={setTimeFilter}
-            onSetSearchQuery={setSearchQuery}
-          />
-        </div>
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex">
+          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700">
+            <MoneyListPanel
+              transactions={transactions}
+              accounts={accounts}
+              categories={categories}
+              selectedAccountId={selectedAccountId}
+              selectedCategoryId={selectedCategoryId}
+              timeFilter={timeFilter}
+              searchQuery={searchQuery}
+              connectionStatus={connectionStatus}
+              isBackgroundLoading={isBackgroundLoading}
+              onEditTransaction={handleEditTransaction}
+              onDeleteTransaction={handleDeleteTransaction}
+              onEditAccount={handleEditAccount}
+              onViewAccountTransactions={setSelectedAccountId}
+              onSelectAccount={setSelectedAccountId}
+              onSelectCategory={setSelectedCategoryId}
+              onSetTimeFilter={setTimeFilter}
+              onSetSearchQuery={setSearchQuery}
+              hasInitialData={hasInitialData}
+            />
+          </div>
 
-        <div className="w-1/2 overflow-y-auto">{renderDetailPanel()}</div>
+          <div className="w-1/2 overflow-y-auto">
+            {hasInitialData ? (
+              renderDetailPanel()
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <MoneyDialog
