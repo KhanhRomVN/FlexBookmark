@@ -9,7 +9,7 @@
   },
   "permissions": [
     "bookmarks",
-    "storage",
+    "storage",  
     "tabs",
     "identity",
     "geolocation"

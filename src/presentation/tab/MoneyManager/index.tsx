@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar/Sidebar";
 import MoneyListPanel from "./components/MoneyListPanel/MoneyListPanel";
 import FinancialDashboard from "./components/MoneyDetailPanel/overview/FinancialDashboard";
+import AccountManagementPanel from "./components/MoneyDetailPanel/account/AccountManagementPanel";
 import { useMoney } from "./hooks/useMoney";
 import { useTransactions } from "./hooks/useTransactions";
 import { useAccounts } from "./hooks/useAccounts";
@@ -41,7 +42,7 @@ const MoneyManager: React.FC = () => {
   } = useMoney();
 
   const { deleteTransaction } = useTransactions();
-  const { updateAccount } = useAccounts();
+  const { addAccount, updateAccount } = useAccounts();
   const { updateCategory } = useCategories();
 
   // Handle connection retry
@@ -125,6 +126,9 @@ const MoneyManager: React.FC = () => {
         case "account":
           if (editingEntity) {
             await updateAccount({ ...editingEntity, ...data });
+          } else {
+            // Add new account
+            await addAccount(data);
           }
           break;
         case "category":
@@ -173,6 +177,14 @@ const MoneyManager: React.FC = () => {
             transactions={transactions}
             accounts={accounts}
             categories={categories}
+          />
+        );
+      case "accounts":
+        return (
+          <AccountManagementPanel
+            accounts={accounts}
+            onEditAccount={handleEditAccount}
+            onAddAccount={handleAddAccount}
           />
         );
       case "transactions":

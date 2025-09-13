@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { TransactionFormData, AccountFormData } from "../../types/types";
 import { MoneyDialogType } from "./MoneyDialog";
 import { CURRENCIES, ACCOUNT_TYPES } from "../../constants/constants";
@@ -6,6 +6,7 @@ import {
   validateTransaction,
   validateAccount,
 } from "../../utils/validationUtils";
+import { EmojiPicker } from "../common/EmojiPicker";
 
 interface MoneyDialogFormProps {
   type: MoneyDialogType;
@@ -22,6 +23,8 @@ const MoneyDialogForm: React.FC<MoneyDialogFormProps> = ({
   accounts,
   categories,
 }) => {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
   const updateField = (field: string, value: any) => {
     onChange({ ...formData, [field]: value });
   };
@@ -202,6 +205,32 @@ const MoneyDialogForm: React.FC<MoneyDialogFormProps> = ({
             className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 text-gray-900 dark:text-white"
             placeholder="e.g., Cash Wallet, Bank Account..."
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Icon
+          </label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-left"
+            >
+              {data.icon}
+            </button>
+            {showEmojiPicker && (
+              <div className="absolute z-10 mt-1">
+                <EmojiPicker
+                  selectedEmoji={data.icon}
+                  onEmojiSelect={(emoji) => {
+                    updateField("icon", emoji);
+                    setShowEmojiPicker(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
