@@ -1,4 +1,4 @@
-// Add this interface at the top of the file
+// src/presentation/tab/MoneyManager/services/sheetService.ts
 interface FolderSearchResponse {
     files: Array<{
         id: string;
@@ -18,6 +18,7 @@ export class SheetService {
     private sheetDataCache = new Map<string, CachedData>();
     private CACHE_EXPIRY = 30000; // 30 seconds
     private requestQueue: Promise<any> = Promise.resolve();
+    private retryDelays = [1000, 2000, 4000]; // Exponential backoff delays
 
     constructor(accessToken: string) {
         this.accessToken = accessToken;
@@ -35,7 +36,7 @@ export class SheetService {
     private async makeGoogleSheetsRequest(url: string, options: RequestInit = {}, retryCount = 3): Promise<any> {
         // Queue requests to prevent rate limiting
         return this.requestQueue = this.requestQueue.then(async () => {
-            // Add delay to prevent rate limiting (500ms between requests - reduced from 1s)
+            // Add delay to prevent rate limiting (500ms between requests)
             await new Promise(resolve => setTimeout(resolve, 500));
 
             this.checkAuth();
@@ -53,7 +54,8 @@ export class SheetService {
 
                     if (response.status === 429) {
                         // Exponential backoff for rate limiting
-                        const backoffTime = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        const backoffTime = this.retryDelays[i] || 8000;
+                        console.warn(`Rate limited. Retrying in ${backoffTime}ms...`);
                         await new Promise(resolve => setTimeout(resolve, backoffTime));
                         continue;
                     }
@@ -65,6 +67,12 @@ export class SheetService {
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error('Google API error:', response.status, response.statusText, errorText);
+
+                        if (response.status === 404) {
+                            // Sheet doesn't exist, we'll create it
+                            throw new Error(`Sheet not found: ${url}`);
+                        }
+
                         throw new Error(`Google API error: ${response.status} ${response.statusText}`);
                     }
 
@@ -73,7 +81,7 @@ export class SheetService {
                     if (i === retryCount - 1) throw error;
 
                     // Exponential backoff for other errors
-                    const backoffTime = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    const backoffTime = this.retryDelays[i] || 8000;
                     await new Promise(resolve => setTimeout(resolve, backoffTime));
                 }
             }
@@ -108,97 +116,7 @@ export class SheetService {
 
             console.log('No existing spreadsheet found, creating new one...');
 
-            // 1. Find or create FlexBookmark folder with retry logic
-            let flexBookmarkFolderId;
-            for (let i = 0; i < 3; i++) {
-                const flexBookmarkFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files?q=name="FlexBookmark" and mimeType="application/vnd.google-apps.folder" and trashed=false'
-                ) as FolderSearchResponse;
-
-                if (flexBookmarkFolderResponse?.files?.length > 0) {
-                    flexBookmarkFolderId = flexBookmarkFolderResponse.files[0].id;
-                    break;
-                }
-
-                if (i === 2) throw new Error('Failed to find or create FlexBookmark folder');
-
-                console.log('Creating FlexBookmark folder...');
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: 'FlexBookmark',
-                            mimeType: 'application/vnd.google-apps.folder'
-                        })
-                    }
-                );
-                flexBookmarkFolderId = createFolderResponse.id;
-                await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay
-            }
-
-            // 2. Find or create MoneyManager folder with retry logic
-            let moneyManagerFolderId;
-            for (let i = 0; i < 3; i++) {
-                const moneyManagerFolderResponse = await this.makeGoogleSheetsRequest(
-                    `https://www.googleapis.com/drive/v3/files?q=name="MoneyManager" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${flexBookmarkFolderId}" in parents`
-                ) as FolderSearchResponse;
-
-                if (moneyManagerFolderResponse?.files?.length > 0) {
-                    moneyManagerFolderId = moneyManagerFolderResponse.files[0].id;
-                    break;
-                }
-
-                if (i === 2) throw new Error('Failed to find or create MoneyManager folder');
-
-                console.log('Creating MoneyManager folder...');
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: 'MoneyManager',
-                            mimeType: 'application/vnd.google-apps.folder',
-                            parents: [flexBookmarkFolderId]
-                        })
-                    }
-                );
-                moneyManagerFolderId = createFolderResponse.id;
-                await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay
-            }
-
-            // 3. Find or create year folder
-            const currentYear = new Date().getFullYear().toString();
-            let yearFolderId;
-            for (let i = 0; i < 3; i++) {
-                const yearFolderResponse = await this.makeGoogleSheetsRequest(
-                    `https://www.googleapis.com/drive/v3/files?q=name="${currentYear}" and mimeType="application/vnd.google-apps.folder" and trashed=false and "${moneyManagerFolderId}" in parents`
-                ) as FolderSearchResponse;
-
-                if (yearFolderResponse?.files?.length > 0) {
-                    yearFolderId = yearFolderResponse.files[0].id;
-                    break;
-                }
-
-                if (i === 2) throw new Error('Failed to find or create year folder');
-
-                console.log('Creating year folder...');
-                const createFolderResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: currentYear,
-                            mimeType: 'application/vnd.google-apps.folder',
-                            parents: [moneyManagerFolderId]
-                        })
-                    }
-                );
-                yearFolderId = createFolderResponse.id;
-                await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay
-            }
-
-            // 4. Create spreadsheet
+            // Create spreadsheet directly without complex folder structure
             console.log('Creating new spreadsheet...');
             const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
                 'https://www.googleapis.com/drive/v3/files',
@@ -206,8 +124,7 @@ export class SheetService {
                     method: 'POST',
                     body: JSON.stringify({
                         name: this.spreadsheetName,
-                        mimeType: 'application/vnd.google-apps.spreadsheet',
-                        parents: [yearFolderId]
+                        mimeType: 'application/vnd.google-apps.spreadsheet'
                     })
                 }
             );
@@ -215,35 +132,13 @@ export class SheetService {
             this.spreadsheetId = createSpreadsheetResponse.id;
             await this.initializeSpreadsheet();
 
+            if (!this.spreadsheetId) {
+                throw new Error('Failed to create spreadsheet');
+            }
             return this.spreadsheetId;
         } catch (error) {
             console.error('Error setting up Drive:', error);
-
-            // Fallback: Create a simple spreadsheet without folder structure
-            try {
-                console.log('Attempting fallback spreadsheet creation...');
-                const createSpreadsheetResponse = await this.makeGoogleSheetsRequest(
-                    'https://www.googleapis.com/drive/v3/files',
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            name: this.spreadsheetName,
-                            mimeType: 'application/vnd.google-apps.spreadsheet'
-                        })
-                    }
-                );
-
-                this.spreadsheetId = createSpreadsheetResponse.id;
-                await this.initializeSpreadsheet();
-
-                if (!this.spreadsheetId) {
-                    throw new Error('Failed to create fallback spreadsheet');
-                }
-                return this.spreadsheetId;
-            } catch (fallbackError) {
-                console.error('Fallback spreadsheet creation also failed:', fallbackError);
-                throw error; // Re-throw original error
-            }
+            throw error;
         }
     }
 
@@ -262,6 +157,7 @@ export class SheetService {
             {
                 name: 'accounts', headers: [
                     'id', 'name', 'type', 'balance', 'currency', 'color', 'icon',
+                    'description', // ADDED: description field to accounts sheet headers
                     'isArchived', 'createdAt', 'updatedAt'
                 ]
             },
@@ -292,42 +188,52 @@ export class SheetService {
         ];
 
         // Get current spreadsheet to check existing sheets
-        const spreadsheetDetails = await this.makeGoogleSheetsRequest(
-            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}`
-        );
-
-        const existingSheets = spreadsheetDetails.sheets.map((sheet: any) => sheet.properties.title);
-
-        for (const sheet of sheets) {
-            if (!existingSheets.includes(sheet.name)) {
-                // Add new sheet
-                await this.makeGoogleSheetsRequest(
-                    `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}:batchUpdate`,
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            requests: [{
-                                addSheet: {
-                                    properties: {
-                                        title: sheet.name
-                                    }
-                                }
-                            }]
-                        })
-                    }
-                );
-            }
-
-            // Set headers for the sheet
-            await this.makeGoogleSheetsRequest(
-                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheet.name}!A1:${String.fromCharCode(65 + sheet.headers.length - 1)}1?valueInputOption=RAW`,
-                {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        values: [sheet.headers]
-                    })
-                }
+        try {
+            const spreadsheetDetails = await this.makeGoogleSheetsRequest(
+                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}`
             );
+
+            const existingSheets = spreadsheetDetails.sheets.map((sheet: any) => sheet.properties.title);
+
+            for (const sheet of sheets) {
+                if (!existingSheets.includes(sheet.name)) {
+                    // Add new sheet
+                    await this.makeGoogleSheetsRequest(
+                        `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}:batchUpdate`,
+                        {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                requests: [{
+                                    addSheet: {
+                                        properties: {
+                                            title: sheet.name
+                                        }
+                                    }
+                                }]
+                            })
+                        }
+                    );
+                }
+
+                // Set headers for the sheet
+                try {
+                    await this.makeGoogleSheetsRequest(
+                        `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheet.name}!A1:${String.fromCharCode(65 + sheet.headers.length - 1)}1?valueInputOption=RAW`,
+                        {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                values: [sheet.headers]
+                            })
+                        }
+                    );
+                } catch (error) {
+                    console.warn(`Failed to set headers for ${sheet.name}:`, error);
+                    // Continue with other sheets
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing spreadsheet:', error);
+            // We'll continue even if initialization fails partially
         }
     }
 

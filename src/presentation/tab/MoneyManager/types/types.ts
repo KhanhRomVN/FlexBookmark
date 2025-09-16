@@ -1,3 +1,4 @@
+// src/presentation/tab/MoneyManager/types/types.ts
 export interface Account {
     id: string;
     name: string;
@@ -6,6 +7,7 @@ export interface Account {
     currency: string;
     color: string;
     icon: string;
+    description?: string; // ADDED: Optional description field
     isArchived: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -108,10 +110,11 @@ export interface TransactionFormData {
 export interface AccountFormData {
     name: string;
     type: 'cash' | 'bank' | 'ewallet' | 'credit_card' | 'investment';
-    initialBalance: number;
+    balance: number; // FIXED: Changed from initialBalance to balance to match AccountModal
     currency: string;
     color: string;
     icon: string;
+    description?: string; // ADDED: Optional description field
 }
 
 export interface CategoryFormData {

@@ -11,7 +11,8 @@ import { useCategories } from "./hooks/useCategories";
 import MoneyDialog, {
   MoneyDialogType,
 } from "./components/MoneyDialog/MoneyDialog";
-import { Transaction, Account } from "./types/types";
+import AccountModal from "./components/MoneyDetailPanel/account/AccountModal";
+import { Transaction, Account, AccountFormData } from "./types/types";
 
 const MoneyManager: React.FC = () => {
   const [selectedView, setSelectedView] = useState("overview");
@@ -22,8 +23,10 @@ const MoneyManager: React.FC = () => {
   >("month");
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [accountModalOpen, setAccountModalOpen] = useState(false); // THÊM STATE CHO ACCOUNT DIALOG
   const [dialogType, setDialogType] = useState<MoneyDialogType>("transaction");
   const [editingEntity, setEditingEntity] = useState<any>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null); // THÊM STATE CHO ACCOUNT EDITING
   const [savedFilters, setSavedFilters] = useState<
     Array<{ name: string; filters: any }>
   >([]);
@@ -42,7 +45,7 @@ const MoneyManager: React.FC = () => {
   } = useMoney();
 
   const { deleteTransaction } = useTransactions();
-  const { addAccount, updateAccount } = useAccounts();
+  const { addAccount, updateAccount } = useAccounts(); // SỬ DỤNG HOOK useAccounts
   const { updateCategory } = useCategories();
 
   // Handle connection retry
@@ -95,9 +98,14 @@ const MoneyManager: React.FC = () => {
   };
 
   const handleAddAccount = () => {
-    setDialogType("account");
-    setEditingEntity(null);
-    setDialogOpen(true);
+    // LỖI: Đang mở MoneyDialog thay vì AccountModal
+    // setDialogType("account");
+    // setEditingEntity(null);
+    // setDialogOpen(true);
+
+    // ĐÃ SỬA: Mở AccountModal thay vì MoneyDialog
+    setEditingAccount(null);
+    setAccountModalOpen(true);
   };
 
   const handleEditTransaction = (transaction: Transaction) => {
@@ -107,9 +115,14 @@ const MoneyManager: React.FC = () => {
   };
 
   const handleEditAccount = (account: Account) => {
-    setDialogType("account");
-    setEditingEntity(account);
-    setDialogOpen(true);
+    // LỖI: Đang mở MoneyDialog thay vì AccountModal
+    // setDialogType("account");
+    // setEditingEntity(account);
+    // setDialogOpen(true);
+
+    // ĐÃ SỬA: Mở AccountModal với account cần edit
+    setEditingAccount(account);
+    setAccountModalOpen(true);
   };
 
   const handleDialogSubmit = async (data: any) => {
@@ -144,6 +157,27 @@ const MoneyManager: React.FC = () => {
     } catch (error) {
       console.error("Error saving data:", error);
       // You might want to show an error message to the user here
+    }
+  };
+
+  // THÊM HÀM XỬ LÝ ACCOUNT DIALOG
+  const handleAccountModalSubmit = async (
+    accountData: AccountFormData | Account
+  ) => {
+    try {
+      if (editingAccount) {
+        // Update existing account
+        await updateAccount(accountData as Account);
+      } else {
+        // Add new account
+        await addAccount(accountData as AccountFormData);
+      }
+      setAccountModalOpen(false);
+      setEditingAccount(null);
+      // Trigger a background reload to refresh data
+      await reloadMoneyData(true);
+    } catch (error) {
+      console.error("Error saving account:", error);
     }
   };
 
@@ -217,7 +251,8 @@ const MoneyManager: React.FC = () => {
 
       <div className="flex-1 flex flex-col">
         <div className="flex-1 flex">
-          <div className="w-1/2 border-r border-gray-200 dark:border-gray-700">
+          {/* MoneyListPanel - 60% width */}
+          <div className="w-3/5 border-r border-gray-200 dark:border-gray-700">
             <MoneyListPanel
               transactions={transactions}
               accounts={accounts}
@@ -240,7 +275,8 @@ const MoneyManager: React.FC = () => {
             />
           </div>
 
-          <div className="w-1/2 overflow-y-auto">
+          {/* Detail Panel - 40% width */}
+          <div className="w-2/5 overflow-y-auto">
             {hasInitialData ? (
               renderDetailPanel()
             ) : (
@@ -260,6 +296,18 @@ const MoneyManager: React.FC = () => {
         onSubmit={handleDialogSubmit}
         accounts={accounts}
         categories={categories}
+      />
+
+      {/* THÊM ACCOUNT DIALOG */}
+      <AccountModal
+        account={editingAccount || undefined}
+        isOpen={accountModalOpen}
+        onClose={() => {
+          setAccountModalOpen(false);
+          setEditingAccount(null);
+        }}
+        onSubmit={handleAccountModalSubmit}
+        isCreating={!editingAccount}
       />
     </div>
   );
