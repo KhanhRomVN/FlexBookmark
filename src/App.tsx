@@ -6,7 +6,6 @@ import { Tabs, TabsContent } from "@/presentation/components/ui/tabs";
 import { AuthProvider } from "./contexts/AuthContext";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
-import TaskManager from "@/presentation/tab/TaskManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,9 +19,9 @@ const queryClient = new QueryClient({
 });
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<
-    "dashboard" | "bookmarkManager" | "taskManager"
-  >("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "bookmarkManager">(
+    "dashboard"
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -39,9 +38,6 @@ const App: React.FC = () => {
       }
       if (e.key === "2" || e.code === "Digit2" || e.code === "Numpad2") {
         setActiveTab("bookmarkManager");
-      }
-      if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
-        setActiveTab("taskManager");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -78,9 +74,7 @@ const App: React.FC = () => {
               <Tabs
                 value={activeTab}
                 onValueChange={(v) =>
-                  setActiveTab(
-                    v as "dashboard" | "bookmarkManager" | "taskManager"
-                  )
+                  setActiveTab(v as "dashboard" | "bookmarkManager")
                 }
               >
                 <TabsContent value="dashboard" className="flex-1 overflow-auto">
@@ -91,12 +85,6 @@ const App: React.FC = () => {
                   className="flex-1 overflow-auto"
                 >
                   <BookmarkManager />
-                </TabsContent>
-                <TabsContent
-                  value="taskManager"
-                  className="flex-1 overflow-auto"
-                >
-                  <TaskManager />
                 </TabsContent>
               </Tabs>
             </div>
