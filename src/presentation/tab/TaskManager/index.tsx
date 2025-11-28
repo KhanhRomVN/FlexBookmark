@@ -20,6 +20,7 @@ import TransitionConfirmationDialog from "./components/TaskDialog/components/Tra
 import DateTimeStatusDialog from "./components/TaskDialog/components/DateTimeStatusDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { PermissionGuard } from "@/presentation/components/common/PermissionGuard";
+import { useTheme } from "@/presentation/providers/theme-provider";
 
 // Import transition utilities
 import {
@@ -29,6 +30,7 @@ import {
 
 const TaskManager: React.FC = () => {
   const { authState, getFreshToken } = useAuth(); // Use centralized auth
+  const { theme } = useTheme(); // Use theme for background styling
 
   const {
     groups,
@@ -434,8 +436,30 @@ const TaskManager: React.FC = () => {
 
   return (
     <PermissionGuard>
-      <div className="flex w-full h-screen bg-background overflow-hidden">
-        <div className="flex-1 h-full overflow-hidden flex flex-col">
+      <div
+        className={`relative min-h-screen flex w-full h-screen overflow-hidden ${
+          theme !== "image" ? "bg-background" : ""
+        }`}
+      >
+        {theme === "image" && (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: "var(--bg-url)",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                filter: "blur(var(--bg-blur))",
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: "var(--overlay-color)" }}
+            />
+          </>
+        )}
+        <div className="flex-1 h-full overflow-hidden flex flex-col relative z-10">
           <TaskHeader
             authState={authState}
             totalTasks={totalTasks}
