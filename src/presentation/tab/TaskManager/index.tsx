@@ -1,7 +1,6 @@
 import React from "react";
-import TaskGroupSidebar from "./components/TaskGroupSidebar";
 import TaskDialog from "./components/TaskDialog";
-import TaskHeader, { LayoutType } from "./components/TasKHeader";
+import TaskHeader, { LayoutType } from "./components/TaskHeader";
 import ArchiveDrawer from "./components/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
@@ -419,70 +418,6 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  // Enhanced group creation with Google Tasks API integration
-  const handleCreateGroupWrapper = async (name: string) => {
-    try {
-      const token = await getFreshToken(); // Use centralized auth
-      const newGroup = await createGoogleTaskList(token, name);
-
-      await handleCreateGroup(name);
-      setActiveGroup(newGroup.id);
-
-      return newGroup;
-    } catch (error: any) {
-      console.error("Error creating group:", error);
-      setError(error.message || "Failed to create task group");
-      throw error;
-    }
-  };
-
-  // Enhanced group rename handler
-  const handleRenameGroupWrapper = async (id: string, newName: string) => {
-    try {
-      const token = await getFreshToken(); // Use centralized auth
-      await updateGoogleTaskList(token, id, newName);
-      window.location.reload(); // Reload to reflect changes
-    } catch (error: any) {
-      console.error("Error renaming group:", error);
-      setError(error.message || "Failed to rename task group");
-      throw error;
-    }
-  };
-
-  // Enhanced group delete handler
-  const handleDeleteGroupWrapper = async (id: string) => {
-    try {
-      const token = await getFreshToken(); // Use centralized auth
-      await deleteGoogleTaskList(token, id);
-
-      // If we're deleting the active group, switch to the first available group
-      if (activeGroup === id && groups.length > 1) {
-        const remainingGroups = groups.filter((g) => g.id !== id);
-        if (remainingGroups.length > 0) {
-          setActiveGroup(remainingGroups[0].id);
-        }
-      }
-
-      window.location.reload(); // Reload to reflect changes
-    } catch (error: any) {
-      console.error("Error deleting group:", error);
-      setError(error.message || "Failed to delete task group");
-      throw error;
-    }
-  };
-
-  // Enhanced group selection handler that properly loads tasks for the selected group
-  const handleGroupSelection = async (groupId: string) => {
-    try {
-      setActiveGroup(groupId);
-      setLists([]); // Clear current lists to show loading state
-      await loadTasks(); // This will use the new activeGroup
-    } catch (error: any) {
-      console.error("Error switching groups:", error);
-      setError(error.message || "Failed to load tasks for selected group");
-    }
-  };
-
   // Enhanced clear filters to include new filter types
   const handleClearFiltersWrapper = () => {
     handleClearFilters();
@@ -500,16 +435,6 @@ const TaskManager: React.FC = () => {
   return (
     <PermissionGuard>
       <div className="flex w-full h-screen bg-background overflow-hidden">
-        <TaskGroupSidebar
-          groups={groups}
-          activeGroup={activeGroup || ""}
-          onSelectGroup={handleGroupSelection}
-          onCreateGroup={handleCreateGroupWrapper}
-          onRenameGroup={handleRenameGroupWrapper}
-          onDeleteGroup={handleDeleteGroupWrapper}
-          createGoogleTaskList={createGoogleTaskList}
-        />
-
         <div className="flex-1 h-full overflow-hidden flex flex-col">
           <TaskHeader
             authState={authState}

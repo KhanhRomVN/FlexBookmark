@@ -139,8 +139,8 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707
-           M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707
-           M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+ M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707
+ M16 12a4 4 0 11-8 0 4 4 0 018 0z"
       />
     </svg>
   );
@@ -157,7 +157,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M20.354 15.354A9 9 0 018.646 3.646
-           9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+ 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
       />
     </svg>
   );
@@ -174,18 +174,20 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16
-           m-2-2l1.586-1.586a2 2 0 012.828 0L20 14
-           m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2
-           H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+ m-2-2l1.586-1.586a2 2 0 012.828 0L20 14
+ m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2
+ H6a2 2 0 00-2 2v12a2 2 0 002 2z"
       />
     </svg>
   );
 
-  // Theme mode buttons
+  // Theme mode buttons - minimalist design
   const renderThemeSelector = () => (
-    <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-4">Theme Mode</h3>
-      <div className="grid grid-cols-3 gap-4">
+    <div className="mb-8">
+      <h3 className="text-lg font-semibold mb-4 text-text-primary">
+        Theme Mode
+      </h3>
+      <div className="grid grid-cols-3 gap-3">
         {["light", "dark", "image"].map((mode) => {
           const Icon =
             mode === "light"
@@ -197,26 +199,24 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             <button
               key={mode}
               onClick={() => setTheme(mode as any)}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all
-                ${
-                  theme === mode
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-gray-200 dark:border-gray-700"
-                }
-                hover:bg-gray-50 dark:hover:bg-gray-800`}
+              className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200
+ ${
+   theme === mode
+     ? "bg-primary/10 text-primary shadow-sm"
+     : "bg-card-background hover:bg-card-background/80 text-text-secondary"
+ }
+ hover:scale-[1.02] active:scale-[0.98]`}
             >
               <div
-                className={`mb-2 p-2 rounded-full ${
-                  mode === "light"
-                    ? "bg-yellow-100 text-yellow-600"
-                    : mode === "dark"
-                    ? "bg-indigo-100 text-indigo-600"
-                    : "bg-purple-100 text-purple-600"
+                className={`mb-2 p-2 rounded-full transition-colors ${
+                  theme === mode
+                    ? "bg-primary/20 text-primary"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                 }`}
               >
                 <Icon />
               </div>
-              <span className="font-medium capitalize">{mode}</span>
+              <span className="font-medium capitalize text-sm">{mode}</span>
             </button>
           );
         })}
@@ -224,11 +224,13 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Preset color swatches
+  // Preset color swatches - minimalist design
   const renderPresetThemes = (t: "light" | "dark") => (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-4">Preset Themes</h3>
-      <div className="grid grid-cols-2 gap-4">
+      <h3 className="text-lg font-semibold mb-4 text-text-primary">
+        Preset Themes
+      </h3>
+      <div className="grid grid-cols-2 gap-3">
         {PRESET_THEMES[t].map((preset, idx) => {
           const isSelected =
             colorSettings.primary === preset.primary &&
@@ -238,23 +240,23 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             <button
               key={idx}
               onClick={() => applyPresetTheme(preset)}
-              className={`relative flex flex-col p-4 rounded-2xl border transition-all overflow-hidden
-                ${
-                  isSelected
-                    ? "border-primary ring-4 ring-primary/30 shadow-lg"
-                    : "border-gray-200 dark:border-gray-700"
-                }
-                hover:shadow-md hover:scale-[1.02] duration-200`}
+              className={`relative flex flex-col p-3 rounded-xl transition-all overflow-hidden
+ ${
+   isSelected
+     ? "bg-primary/5 shadow-md"
+     : "bg-card-background hover:bg-card-background/80"
+ }
+ hover:scale-[1.02] duration-200`}
             >
               {isSelected && (
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
               )}
-              <div className="w-full h-24 rounded-lg overflow-hidden mb-3 border border-border relative">
+              <div className="w-full h-20 rounded-lg overflow-hidden mb-2 relative">
                 <div
-                  className="h-4 w-full"
+                  className="h-3 w-full"
                   style={{ backgroundColor: preset.primary }}
                 />
-                <div className="flex h-20">
+                <div className="flex h-17">
                   <div
                     className="w-1/4 h-full"
                     style={{
@@ -267,21 +269,21 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                     style={{ backgroundColor: preset.background }}
                   >
                     <div
-                      className="w-full h-4 rounded mb-1"
+                      className="w-full h-3 rounded mb-1"
                       style={{ backgroundColor: preset.cardBackground }}
                     />
                     <div
-                      className="w-3/4 h-4 rounded"
+                      className="w-3/4 h-3 rounded"
                       style={{ backgroundColor: preset.cardBackground }}
                     />
                   </div>
                 </div>
-                <div className="absolute top-2 right-2 bg-white/80 dark:bg-black/80 p-1.5 rounded-full">
+                <div className="absolute top-1 right-1 bg-white/90 dark:bg-black/90 p-1 rounded-full">
                   {preset.icon ? (
-                    <div className="text-lg">{preset.icon}</div>
+                    <div className="text-sm">{preset.icon}</div>
                   ) : (
                     <div
-                      className="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800"
+                      className="w-4 h-4 rounded-full"
                       style={{ backgroundColor: preset.primary }}
                     />
                   )}
@@ -299,26 +301,26 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                 {isSelected && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-green-500 flex-shrink-0"
+                    className="h-4 w-4 text-green-500 flex-shrink-0"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
                     <path
                       fillRule="evenodd"
                       d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293
-                             a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293
-                             a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+ a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293
+ a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                       clipRule="evenodd"
                     />
                   </svg>
                 )}
               </div>
-              <div className="flex mt-3 gap-1 w-full">
+              <div className="flex mt-2 gap-1 w-full">
                 {["primary", "background", "cardBackground", "textPrimary"].map(
                   (k) => (
                     <div
                       key={k}
-                      className="h-2 flex-1 rounded-full"
+                      className="h-1 flex-1 rounded-full"
                       style={{ backgroundColor: (preset as any)[k] || "#000" }}
                     />
                   )
@@ -331,10 +333,12 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Enhanced Background Images section
+  // Enhanced Background Images section - minimalist design
   const renderBackgroundSection = () => (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold mb-4">Background Images</h3>
+      <h3 className="text-lg font-semibold mb-4 text-text-primary">
+        Background Images
+      </h3>
 
       {/* URL input with improved UX */}
       <div className="relative mb-4">
@@ -348,8 +352,10 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             }}
             onKeyDown={(e) => e.key === "Enter" && handleAddFromUrl()}
             placeholder="Enter image URL"
-            className={`flex-1 h-10 px-3 border rounded-lg bg-input-background text-sm
-              ${error ? "border-red-500" : "border-border"}`}
+            className={`flex-1 h-10 px-3 rounded-lg bg-input-background text-sm transition-colors
+ ${
+   error ? "ring-1 ring-red-500" : "ring-1 ring-border/50 focus:ring-primary/50"
+ }`}
           />
           <button
             onClick={handleAddFromUrl}
@@ -393,15 +399,15 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
 
       {/* Enhanced dropzone */}
       <div
-        className={`relative mb-4 flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all
-          ${
-            dragActive
-              ? "border-primary bg-primary/10"
-              : error
-              ? "border-red-500 bg-red-500/5"
-              : "border-border hover:border-primary/50"
-          }
-          ${backgroundImages.length > 0 ? "h-32" : "h-40"}`}
+        className={`relative mb-4 flex flex-col items-center justify-center p-6 rounded-xl transition-all
+ ${
+   dragActive
+     ? "bg-primary/5 ring-1 ring-primary"
+     : error
+     ? "bg-red-500/5 ring-1 ring-red-500"
+     : "bg-card-background ring-1 ring-border/50 hover:ring-primary/50"
+ }
+ ${backgroundImages.length > 0 ? "h-32" : "h-40"}`}
         onDragEnter={handleDrag}
         onDragOver={handleDrag}
         onDragLeave={handleDrag}
@@ -448,17 +454,19 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
       {/* Enhanced gallery */}
       {backgroundImages.length > 0 && (
         <>
-          <h4 className="text-md font-medium mb-3">Your Backgrounds</h4>
+          <h4 className="text-md font-medium mb-3 text-text-primary">
+            Your Backgrounds
+          </h4>
           <div className="grid grid-cols-3 gap-3">
             {backgroundImages.map((img, idx) => (
               <div
                 key={idx}
-                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all
-                  ${
-                    backgroundImage === img
-                      ? "border-primary ring-2 ring-primary/40"
-                      : "border-transparent"
-                  }`}
+                className={`relative aspect-square rounded-lg overflow-hidden transition-all
+ ${
+   backgroundImage === img
+     ? "ring-2 ring-primary shadow-md"
+     : "ring-1 ring-border/30 hover:ring-primary/50"
+ }`}
               >
                 <img
                   onClick={() => setBackgroundImage(img)}
@@ -496,10 +504,10 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Dashboard-specific image controls
+  // Dashboard-specific image controls - minimalist design
   const renderDashboardSettings = () => (
-    <div className="p-4 bg-card-background rounded-xl border border-border mb-6">
-      <h4 className="font-medium mb-3 flex items-center gap-2">
+    <div className="p-4 bg-card-background rounded-xl mb-6">
+      <h4 className="font-medium mb-3 flex items-center gap-2 text-text-primary">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-5 w-5"
@@ -512,9 +520,9 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16
-                   m-2-2l1.586-1.586a2 2 0 012.828 0L20 14
-                   m-6-6h.01M6 20h12a2 2 0 002-2V6
-                   a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+ m-2-2l1.586-1.586a2 2 0 012.828 0L20 14
+ m-6-6h.01M6 20h12a2 2 0 002-2V6
+ a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </svg>
         Dashboard Settings
@@ -572,11 +580,11 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           <span className="text-sm font-medium">Clock Gradient</span>
           <div className="flex gap-1">
             <div
-              className="w-4 h-4 rounded-full border border-border"
+              className="w-4 h-4 rounded-full"
               style={{ backgroundColor: imageThemeSettings.clockGradientFrom }}
             />
             <div
-              className="w-4 h-4 rounded-full border border-border"
+              className="w-4 h-4 rounded-full"
               style={{ backgroundColor: imageThemeSettings.clockGradientTo }}
             />
           </div>
@@ -602,8 +610,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
               className="flex flex-col items-center group"
             >
               <div
-                className="w-10 h-10 rounded-lg border-2 border-border overflow-hidden mb-1
-                            transition-all group-hover:scale-105"
+                className="w-10 h-10 rounded-lg overflow-hidden mb-1 transition-all group-hover:scale-105"
                 style={{
                   backgroundImage: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
                 }}
@@ -628,7 +635,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                   clockGradientFrom: e.target.value,
                 })
               }
-              className="w-full h-8 border border-border bg-input-background rounded-lg cursor-pointer"
+              className="w-full h-8 bg-input-background rounded-lg cursor-pointer"
             />
           </div>
           <div className="flex-1">
@@ -642,7 +649,7 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
                   clockGradientTo: e.target.value,
                 })
               }
-              className="w-full h-8 border border-border bg-input-background rounded-lg cursor-pointer"
+              className="w-full h-8 bg-input-background rounded-lg cursor-pointer"
             />
           </div>
         </div>
@@ -696,175 +703,13 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
     </div>
   );
 
-  // Bookmark-manager-specific image controls
-  const renderBookmarkManagerSettings = () => (
-    <div className="p-4 bg-card-background rounded-xl border border-border">
-      <h4 className="font-medium mb-3 flex items-center gap-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16
-                   l-7-3.5L5 21V5z"
-          />
-        </svg>
-        Bookmark Manager Settings
-      </h4>
-
-      {/* Background Blur */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Background Blur</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmBlur}px
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="20"
-          value={imageThemeSettings.bmBlur}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmBlur: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-
-      {/* Overlay Transparency */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Overlay Transparency</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmOverlayOpacity}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={imageThemeSettings.bmOverlayOpacity}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmOverlayOpacity: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-
-      {/* Sidebar Transparency */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Sidebar Transparency</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmSidebarOpacity}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={imageThemeSettings.bmSidebarOpacity}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmSidebarOpacity: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-
-      {/* Card Transparency */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Card Transparency</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmCardOpacity}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={imageThemeSettings.bmCardOpacity}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmCardOpacity: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-
-      {/* Card Blur */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Card Blur</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmCardBlur}px
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="20"
-          value={imageThemeSettings.bmCardBlur}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmCardBlur: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-
-      {/* Dialog Transparency */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Dialog Transparency</span>
-          <span className="text-sm font-medium bg-button-second-bg px-2 py-1 rounded">
-            {imageThemeSettings.bmDialogOpacity}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={imageThemeSettings.bmDialogOpacity}
-          onChange={(e) =>
-            setImageThemeSettings({
-              ...imageThemeSettings,
-              bmDialogOpacity: parseInt(e.target.value, 10),
-            })
-          }
-          className="w-full h-2 bg-input-background rounded-full accent-primary"
-        />
-      </div>
-    </div>
-  );
-
   return (
     <MotionCustomDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="Theme Settings"
       subtitle="Customize the look and feel of your app"
-      size="lg"
+      size="md"
       direction="right"
       animationType="elastic"
       enableBlur={true}
@@ -884,11 +729,11 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2
-                   h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12
-                   a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343
-                   M11 7.343l1.657-1.657a2 2 0 012.828 0
-                   l2.829 2.829a2 2 0 010 2.828l-8.486 8.485
-                   M7 17h.01"
+ h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12
+ a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343
+ M11 7.343l1.657-1.657a2 2 0 012.828 0
+ l2.829 2.829a2 2 0 010 2.828l-8.486 8.485
+ M7 17h.01"
           />
         </svg>
       }
@@ -896,13 +741,13 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
         <>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-border hover:bg-button-second-bg-hover transition-colors"
+            className="px-4 py-2 rounded-lg bg-button-second-bg hover:bg-button-second-bg-hover transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-button-bg text-button-text hover:bg-button-bg-hover transition-colors shadow-sm"
+            className="px-4 py-2 rounded-lg bg-button-bg text-button-text hover:bg-button-bg-hover transition-colors"
           >
             Apply Changes
           </button>
@@ -918,7 +763,6 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           <>
             {renderBackgroundSection()}
             {renderDashboardSettings()}
-            <div className="mt-6">{renderBookmarkManagerSettings()}</div>
           </>
         )}
       </div>

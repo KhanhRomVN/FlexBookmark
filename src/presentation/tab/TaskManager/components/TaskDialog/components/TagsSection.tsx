@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, X, Smile } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Task } from "../../../types/task";
-import EmojiPicker from "../../../../../components/common/EmojiPicker";
+import EmojiPicker from "../../EmojiPicker";
 
 interface TagsSectionProps {
   editedTask: Task;
@@ -41,12 +41,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showEmojiPicker]);
-
-  const handleEmojiSelect = (emoji: string) => {
-    setSelectedEmoji(emoji);
-    setShowEmojiPicker(false);
-    inputRef.current?.focus();
-  };
 
   const handleTagSubmit = () => {
     const trimmedTag = newTag.trim();
@@ -136,7 +130,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           {/* Emoji Picker */}
           <EmojiPicker
             value={selectedEmoji || "😀"}
-            onChange={(emoji) => setSelectedEmoji(emoji)}
+            onChange={(emoji: React.SetStateAction<string>) =>
+              setSelectedEmoji(emoji)
+            }
             className="w-9 h-9"
           />
 

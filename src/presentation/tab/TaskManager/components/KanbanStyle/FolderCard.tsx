@@ -85,7 +85,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   };
 
   return (
-    <div className="bg-card-background rounded-xl w-full max-h-full flex flex-col shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200 overflow-hidden">
+    <div className="bg-card-background rounded-xl w-full max-h-full flex flex-col shadow-sm transition-all duration-200 overflow-hidden hover:shadow-md">
       {/* Header - Fixed height */}
       <div className="p-4 border-b border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">

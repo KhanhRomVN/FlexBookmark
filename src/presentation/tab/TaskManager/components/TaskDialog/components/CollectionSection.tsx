@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
 import { Task } from "../../../types/task";
-import EmojiPicker from "../../../../../components/common/EmojiPicker";
+import EmojiPicker from "../../EmojiPicker";
 
 interface CollectionSectionProps {
   editedTask: Task;

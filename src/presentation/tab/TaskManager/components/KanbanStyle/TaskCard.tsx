@@ -223,7 +223,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="bg-card-background rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col group"
+      className="bg-card-background rounded-lg shadow-sm p-4 cursor-pointer transition-all duration-200 min-h-[120px] flex flex-col group hover:shadow-md"
     >
       {/* 1. Due Date & Time + Priority + Edit Button with border-bottom */}
       <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">

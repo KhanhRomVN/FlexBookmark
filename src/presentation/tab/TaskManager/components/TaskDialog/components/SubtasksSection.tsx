@@ -1,16 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  Plus,
-  X,
-  Check,
-  Link,
-  ExternalLink,
-  Search,
-  Lock,
-  Smile,
-} from "lucide-react";
+import { Plus, X, Check, Link, ExternalLink, Search, Lock } from "lucide-react";
 import { Subtask, Task } from "../../../types/task";
-import EmojiPicker from "../../../../../components/common/EmojiPicker";
+import EmojiPicker from "../../EmojiPicker";
 
 interface SubtasksSectionProps {
   editedTask: Task;
@@ -53,10 +44,8 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     null
   );
   const [editingSearchQuery, setEditingSearchQuery] = useState("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [editingEmojiPicker, setEditingEmojiPicker] = useState<string | null>(
-    null
-  );
+  const [, setShowEmojiPicker] = useState(false);
+  const [, setEditingEmojiPicker] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const editingDropdownRef = useRef<HTMLDivElement>(null);
@@ -112,11 +101,6 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
     value: string | null | boolean
   ) => {
     setNewSubtaskForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setNewSubtaskForm((prev) => ({ ...prev, emoji }));
-    setShowEmojiPicker(false);
   };
 
   const handleEditingEmojiSelect = (subtaskId: string, emoji: string) => {
@@ -330,7 +314,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                     {/* Emoji picker */}
                     <EmojiPicker
                       value={emoji || "😀"}
-                      onChange={(newEmoji) =>
+                      onChange={(newEmoji: string) =>
                         handleEditingEmojiSelect(subtask.id, newEmoji)
                       }
                       className="w-6 h-6"
@@ -567,7 +551,7 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <EmojiPicker
               value={newSubtaskForm.emoji || "😀"}
-              onChange={(emoji) =>
+              onChange={(emoji: any) =>
                 setNewSubtaskForm((prev) => ({ ...prev, emoji }))
               }
               className="w-6 h-6"
