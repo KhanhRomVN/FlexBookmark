@@ -1,51 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Plus, Trash2, AlertTriangle, Smile } from "lucide-react";
 import { Task } from "../../../types/task";
+import EmojiPicker from "../../../../../components/common/EmojiPicker";
 
 interface CollectionSectionProps {
   editedTask: Task;
   handleChange: (field: keyof Task, value: any) => void;
   availableTasks: Task[];
 }
-
-// Common emojis for collections
-const EMOJI_SUGGESTIONS = [
-  "📁",
-  "📂",
-  "🗂️",
-  "📋",
-  "📊",
-  "📝",
-  "💼",
-  "🏠",
-  "🏢",
-  "💻",
-  "🎯",
-  "📅",
-  "⭐",
-  "🔥",
-  "💡",
-  "🚀",
-  "💪",
-  "🎉",
-  "✅",
-  "❤️",
-  "🔴",
-  "🟠",
-  "🟡",
-  "🟢",
-  "🔵",
-  "🟣",
-  "⚫",
-  "⚪",
-  "🟤",
-  "🛒",
-  "🍕",
-  "🎮",
-  "📚",
-  "🎵",
-  "🏃",
-];
 
 const CollectionSection: React.FC<CollectionSectionProps> = ({
   editedTask,
@@ -116,12 +78,6 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleEmojiSelect = (emoji: string) => {
-    setSelectedEmoji(emoji);
-    setShowEmojiPicker(false);
-    inputRef.current?.focus();
-  };
 
   const clearEmoji = () => {
     setSelectedEmoji("");
@@ -234,24 +190,10 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
                   </button>
 
                   {/* Emoji Picker */}
-                  {showEmojiPicker && (
-                    <div className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-20 w-64">
-                      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                        Choose an emoji:
-                      </div>
-                      <div className="grid grid-cols-8 gap-1 max-h-32 overflow-y-auto">
-                        {EMOJI_SUGGESTIONS.map((emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleEmojiSelect(emoji)}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <EmojiPicker
+                    value={selectedEmoji || "😀"}
+                    onChange={(emoji) => setSelectedEmoji(emoji)}
+                  />
                 </div>
 
                 {/* Clear Emoji Button */}

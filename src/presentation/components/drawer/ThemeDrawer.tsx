@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import Drawer from "react-modern-drawer";
-import "react-modern-drawer/dist/index.css";
 import { useTheme } from "../../providers/theme-provider";
 import { PRESET_THEMES } from "./PresetTheme";
+import MotionCustomDrawer from "../common/CustomDrawer";
 
 interface ThemeDrawerProps {
   isOpen: boolean;
@@ -860,59 +859,41 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
   );
 
   return (
-    <Drawer
-      open={isOpen}
+    <MotionCustomDrawer
+      isOpen={isOpen}
       onClose={onClose}
+      title="Theme Settings"
+      subtitle="Customize the look and feel of your app"
+      size="lg"
       direction="right"
-      size="28rem"
-      overlayClassName="z-[1500]"
+      animationType="elastic"
+      enableBlur={true}
+      closeOnOverlayClick={true}
+      showCloseButton={true}
       overlayOpacity={0.3}
-      className="!bg-drawer-background"
-    >
-      <div className="h-full flex flex-col">
-        <div className="p-5 border-b border-border bg-card-background">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2
-                       h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12
-                       a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343
-                       M11 7.343l1.657-1.657a2 2 0 012.828 0
-                       l2.829 2.829a2 2 0 010 2.828l-8.486 8.485
-                       M7 17h.01"
-              />
-            </svg>
-            Theme Settings
-          </h2>
-          <p className="text-sm text-text-secondary mt-1">
-            Customize the look and feel of your app
-          </p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          {renderThemeSelector()}
-
-          {(theme === "light" || theme === "dark") && renderPresetThemes(theme)}
-
-          {theme === "image" && (
-            <>
-              {renderBackgroundSection()}
-              {renderDashboardSettings()}
-              <div className="mt-6">{renderBookmarkManagerSettings()}</div>
-            </>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-border bg-card-background flex justify-end gap-2">
+      headerActions={
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 text-primary"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2
+                   h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12
+                   a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343
+                   M11 7.343l1.657-1.657a2 2 0 012.828 0
+                   l2.829 2.829a2 2 0 010 2.828l-8.486 8.485
+                   M7 17h.01"
+          />
+        </svg>
+      }
+      footerActions={
+        <>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border border-border hover:bg-button-second-bg-hover transition-colors"
@@ -925,9 +906,23 @@ const ThemeDrawer: React.FC<ThemeDrawerProps> = ({ isOpen, onClose }) => {
           >
             Apply Changes
           </button>
-        </div>
+        </>
+      }
+    >
+      <div className="h-full overflow-y-auto px-5 py-4">
+        {renderThemeSelector()}
+
+        {(theme === "light" || theme === "dark") && renderPresetThemes(theme)}
+
+        {theme === "image" && (
+          <>
+            {renderBackgroundSection()}
+            {renderDashboardSettings()}
+            <div className="mt-6">{renderBookmarkManagerSettings()}</div>
+          </>
+        )}
       </div>
-    </Drawer>
+    </MotionCustomDrawer>
   );
 };
 

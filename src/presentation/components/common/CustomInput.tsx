@@ -1,5 +1,6 @@
 import React, { useState, forwardRef } from "react";
 import { Eye, EyeOff, AlertCircle, CheckCircle, Info } from "lucide-react";
+import DateAndTimePicker from "./DateAndTimePicker";
 
 interface CustomInputProps
   extends Omit<
@@ -27,6 +28,10 @@ interface CustomInputProps
   prefix?: string;
   suffix?: string;
   onChange?: (value: string) => void;
+  // DateTimePicker specific props
+  minDate?: string;
+  maxDate?: string;
+  showTime?: boolean;
 }
 
 const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
@@ -51,6 +56,9 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       value = "",
       onChange,
       disabled,
+      minDate,
+      maxDate,
+      showTime = true,
       ...props
     },
     ref
@@ -59,6 +67,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     const isPassword = type === "password";
+    const isDateTimeLocal = type === "datetime-local";
     const inputType = isPassword && showPassword ? "text" : type;
     const hasValue = String(value).length > 0;
     const charCount = String(value).length;
@@ -243,6 +252,66 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       onChange?.(e.target.value);
     };
 
+    // Handle datetime-local value change from DateAndTimePicker
+    const handleDateTimeChange = (isoString: string) => {
+      onChange?.(isoString);
+    };
+
+    // Format datetime-local value for display
+    const formatDateTimeValue = (isoString: string) => {
+      if (!isoString) return "";
+
+      try {
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return "";
+
+        const day = date.getDate().toString().padStart(2, "0");
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, "0");
+        const minutes = date.getMinutes().toString().padStart(2, "0");
+
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+      } catch {
+        return "";
+      }
+    };
+
+    // For datetime-local, we'll render the DateAndTimePicker
+    if (isDateTimeLocal) {
+      return (
+        <div className={variantStyles[variant].container}>
+          {/* Label for non-floating variants */}
+          {label && variant !== "floating" && (
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {label}
+                {required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+            </div>
+          )}
+
+          <DateAndTimePicker
+            value={value as string}
+            onChange={handleDateTimeChange}
+            disabled={disabled}
+            size={size}
+            error={!!error}
+            helperText={error || success || hint}
+            showTime={showTime}
+            minDate={minDate}
+            maxDate={maxDate}
+            placeholder={props.placeholder || "Select date and time"}
+            className={className}
+            variant={variant}
+            leftIcon={leftIcon}
+            required={required}
+            label={variant === "floating" ? label : undefined}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className={variantStyles[variant].container}>
         {/* Label for non-floating variants */}
@@ -338,11 +407,15 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             )}
 
             {/* Custom Right Icon */}
-            {rightIcon && !isPassword && !loading && !statusStyles.icon && (
-              <div className="text-gray-400 dark:text-gray-500">
-                {rightIcon}
-              </div>
-            )}
+            {rightIcon &&
+              !isPassword &&
+              !isDateTimeLocal &&
+              !loading &&
+              !statusStyles.icon && (
+                <div className="text-gray-400 dark:text-gray-500">
+                  {rightIcon}
+                </div>
+              )}
           </div>
 
           {/* Suffix */}

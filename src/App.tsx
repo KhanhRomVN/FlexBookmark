@@ -7,8 +7,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Dashboard from "@/presentation/tab/Dashboard";
 import BookmarkManager from "@/presentation/tab/BookmarkManager";
 import TaskManager from "@/presentation/tab/TaskManager";
-import HabitManager from "@/presentation/tab/HabitManager";
-import MoneyManager from "@/presentation/tab/MoneyManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,11 +21,7 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
-    | "dashboard"
-    | "bookmarkManager"
-    | "taskManager"
-    | "habitManager"
-    | "moneyManager"
+    "dashboard" | "bookmarkManager" | "taskManager"
   >("dashboard");
 
   useEffect(() => {
@@ -48,12 +42,6 @@ const App: React.FC = () => {
       }
       if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
         setActiveTab("taskManager");
-      }
-      if (e.key === "4" || e.code === "Digit4" || e.code === "Numpad4") {
-        setActiveTab("habitManager");
-      }
-      if (e.key === "5" || e.code === "Digit5" || e.code === "Numpad5") {
-        setActiveTab("moneyManager");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -91,12 +79,7 @@ const App: React.FC = () => {
                 value={activeTab}
                 onValueChange={(v) =>
                   setActiveTab(
-                    v as
-                      | "dashboard"
-                      | "bookmarkManager"
-                      | "taskManager"
-                      | "habitManager"
-                      | "moneyManager"
+                    v as "dashboard" | "bookmarkManager" | "taskManager"
                   )
                 }
               >
@@ -114,18 +97,6 @@ const App: React.FC = () => {
                   className="flex-1 overflow-auto"
                 >
                   <TaskManager />
-                </TabsContent>
-                <TabsContent
-                  value="habitManager"
-                  className="flex-1 overflow-auto"
-                >
-                  <HabitManager />
-                </TabsContent>
-                <TabsContent
-                  value="moneyManager"
-                  className="flex-1 overflow-auto"
-                >
-                  <MoneyManager />
                 </TabsContent>
               </Tabs>
             </div>

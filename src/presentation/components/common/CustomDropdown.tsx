@@ -1,5 +1,5 @@
 import React from "react";
-import { cn } from "@/shared/lib/utils";
+import { cn } from "../../../shared/lib/utils";
 
 export interface DropdownOption {
   value: string;
@@ -33,7 +33,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
     <div className={cn("relative", className)}>
       <div
         className={cn(
-          "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95",
+          "bg-card-background border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95",
           width,
           align === "right" ? "right-0" : "left-0"
         )}

@@ -117,7 +117,7 @@ const CustomModal: React.FC<CustomModalProps> = ({
 
               <CustomButton
                 variant="secondary"
-                size="md"
+                size="sm"
                 onClick={handleCancel}
                 className="w-fit"
               >
@@ -127,7 +127,7 @@ const CustomModal: React.FC<CustomModalProps> = ({
               {actionText && onAction && (
                 <CustomButton
                   variant="primary"
-                  size="md"
+                  size="sm"
                   onClick={handleAction}
                   disabled={actionDisabled}
                   loading={actionLoading}

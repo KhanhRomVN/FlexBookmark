@@ -13,13 +13,11 @@ import {
   Archive,
   Palette,
   LayoutGrid,
-  Workflow,
   Table,
-  BarChart3,
 } from "lucide-react";
 import FilterSection from "./FilterSection";
 
-export type LayoutType = "kanban" | "list" | "flowchart" | "table" | "gantt";
+export type LayoutType = "kanban" | "list" | "table";
 
 interface TaskHeaderProps {
   authState: {
@@ -66,7 +64,6 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
   authState,
   archivedTasks,
   loading,
-  error,
   searchTerm,
   setSearchTerm,
   filterPriority,
@@ -179,17 +176,6 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
               <span className="hidden sm:inline">Kanban</span>
             </button>
             <button
-              onClick={() => setLayoutType("flowchart")}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-all duration-200 text-xs font-medium ${
-                layoutType === "flowchart"
-                  ? "bg-blue-500 text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-              }`}
-            >
-              <Workflow className="w-3 h-3" />
-              <span className="hidden sm:inline">Flow</span>
-            </button>
-            <button
               onClick={() => setLayoutType("table")}
               className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-all duration-200 text-xs font-medium ${
                 layoutType === "table"
@@ -199,17 +185,6 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
             >
               <Table className="w-3 h-3" />
               <span className="hidden sm:inline">Table</span>
-            </button>
-            <button
-              onClick={() => setLayoutType("gantt")}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-all duration-200 text-xs font-medium ${
-                layoutType === "gantt"
-                  ? "bg-blue-500 text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-              }`}
-            >
-              <BarChart3 className="w-3 h-3" />
-              <span className="hidden sm:inline">Gantt</span>
             </button>
           </div>
 

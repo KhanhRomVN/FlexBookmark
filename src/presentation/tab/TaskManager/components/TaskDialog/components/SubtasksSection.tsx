@@ -10,6 +10,7 @@ import {
   Smile,
 } from "lucide-react";
 import { Subtask, Task } from "../../../types/task";
+import EmojiPicker from "../../../../../components/common/EmojiPicker";
 
 interface SubtasksSectionProps {
   editedTask: Task;
@@ -30,38 +31,8 @@ interface NewSubtaskForm {
   emoji: string;
 }
 
-// Common emojis for subtasks
-const SUBTASK_EMOJIS = [
-  "✅",
-  "📝",
-  "🎯",
-  "💡",
-  "🔧",
-  "📋",
-  "⚡",
-  "🚀",
-  "💼",
-  "📱",
-  "💻",
-  "📊",
-  "📞",
-  "✉️",
-  "🎨",
-  "🔍",
-  "📚",
-  "🎵",
-  "🏃",
-  "🍕",
-  "☕",
-  "🌟",
-  "🔥",
-  "💪",
-];
-
 const SubtasksSection: React.FC<SubtasksSectionProps> = ({
   editedTask,
-  newSubtask,
-  setNewSubtask,
   handleSubtaskChange,
   handleAddSubtask,
   handleDeleteSubtask,
@@ -356,56 +327,14 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
                 <div className="flex-1 space-y-2 min-w-0">
                   {/* Title with emoji */}
                   <div className="flex items-center gap-2">
-                    {/* Emoji picker button */}
-                    <div className="relative" ref={editingEmojiPickerRef}>
-                      <button
-                        onClick={() =>
-                          setEditingEmojiPicker(
-                            editingEmojiPicker === subtask.id
-                              ? null
-                              : subtask.id
-                          )
-                        }
-                        className={`w-6 h-6 rounded flex items-center justify-center text-sm transition-colors ${
-                          emoji
-                            ? "hover:bg-gray-100 dark:hover:bg-gray-700"
-                            : "border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-                        }`}
-                        title="Add or change emoji"
-                      >
-                        {emoji || <Smile size={12} className="text-gray-400" />}
-                      </button>
-
-                      {editingEmojiPicker === subtask.id && (
-                        <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                            Choose emoji:
-                          </div>
-                          <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
-                            <button
-                              onClick={() =>
-                                handleEditingEmojiSelect(subtask.id, "")
-                              }
-                              className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs border border-dashed"
-                              title="Remove emoji"
-                            >
-                              <X size={8} />
-                            </button>
-                            {SUBTASK_EMOJIS.map((emoji) => (
-                              <button
-                                key={emoji}
-                                onClick={() =>
-                                  handleEditingEmojiSelect(subtask.id, emoji)
-                                }
-                                className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {/* Emoji picker */}
+                    <EmojiPicker
+                      value={emoji || "😀"}
+                      onChange={(newEmoji) =>
+                        handleEditingEmojiSelect(subtask.id, newEmoji)
+                      }
+                      className="w-6 h-6"
+                    />
 
                     <input
                       value={titleWithoutEmoji}
@@ -636,47 +565,13 @@ const SubtasksSection: React.FC<SubtasksSectionProps> = ({
 
           {/* Title with Emoji */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="relative" ref={emojiPickerRef}>
-              <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`w-6 h-6 rounded flex items-center justify-center text-sm transition-colors ${
-                  newSubtaskForm.emoji
-                    ? "hover:bg-gray-100 dark:hover:bg-gray-700"
-                    : "border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400"
-                }`}
-                title="Add emoji"
-              >
-                {newSubtaskForm.emoji || (
-                  <Smile size={12} className="text-gray-400" />
-                )}
-              </button>
-
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-default z-20 w-48">
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                    Choose emoji:
-                  </div>
-                  <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
-                    <button
-                      onClick={() => handleEmojiSelect("")}
-                      className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs border border-dashed"
-                      title="No emoji"
-                    >
-                      <X size={8} />
-                    </button>
-                    {SUBTASK_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleEmojiSelect(emoji)}
-                        className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <EmojiPicker
+              value={newSubtaskForm.emoji || "😀"}
+              onChange={(emoji) =>
+                setNewSubtaskForm((prev) => ({ ...prev, emoji }))
+              }
+              className="w-6 h-6"
+            />
 
             <input
               type="text"

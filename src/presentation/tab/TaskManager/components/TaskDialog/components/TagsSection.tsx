@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus, X, Smile } from "lucide-react";
 import { Task } from "../../../types/task";
+import EmojiPicker from "../../../../../components/common/EmojiPicker";
 
 interface TagsSectionProps {
   editedTask: Task;
@@ -10,42 +11,6 @@ interface TagsSectionProps {
   handleAddTag: (tagToAdd?: string) => void;
   handleDeleteTag: (tag: string) => void;
 }
-
-// Common emojis for tags
-const EMOJI_SUGGESTIONS = [
-  "🏷️",
-  "📝",
-  "⭐",
-  "🔥",
-  "💡",
-  "🎯",
-  "📅",
-  "⚡",
-  "🚀",
-  "💪",
-  "🎉",
-  "✅",
-  "❤️",
-  "🔴",
-  "🟠",
-  "🟡",
-  "🟢",
-  "🔵",
-  "🟣",
-  "⚫",
-  "⚪",
-  "🟤",
-  "📊",
-  "💻",
-  "🏠",
-  "💼",
-  "🛒",
-  "🍕",
-  "🎮",
-  "📚",
-  "🎵",
-  "🏃",
-];
 
 const TagsSection: React.FC<TagsSectionProps> = ({
   editedTask,
@@ -168,41 +133,12 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       {/* Add Tag Input */}
       <div className="relative">
         <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all duration-200">
-          {/* Emoji Button */}
-          <div className="relative" ref={emojiPickerRef}>
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 ${
-                selectedEmoji
-                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
-              }`}
-              title="Add emoji"
-            >
-              {selectedEmoji || <Smile size={16} />}
-            </button>
-
-            {/* Emoji Picker */}
-            {showEmojiPicker && (
-              <div className="absolute top-full left-0 mt-2 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-10 w-72">
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  Choose an emoji:
-                </div>
-                <div className="grid grid-cols-8 gap-1 max-h-32 overflow-y-auto">
-                  {EMOJI_SUGGESTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => handleEmojiSelect(emoji)}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-lg"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Emoji Picker */}
+          <EmojiPicker
+            value={selectedEmoji || "😀"}
+            onChange={(emoji) => setSelectedEmoji(emoji)}
+            className="w-9 h-9"
+          />
 
           {/* Clear Emoji Button */}
           {selectedEmoji && (

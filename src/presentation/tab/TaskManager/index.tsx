@@ -6,7 +6,6 @@ import ArchiveDrawer from "./components/ArchiveDrawer";
 import ThemeDrawer from "../../components/drawer/ThemeDrawer";
 import KanbanLayout from "./layout/KanbanLayout";
 import TableLayout from "./layout/TableLayout";
-import FlowchartLayout from "./layout/FlowchartLayout";
 import { useTask, folders } from "./hooks/useTask";
 import {
   createGoogleTask,
